@@ -1,8 +1,8 @@
-<!-- redact: public copy; source sha256 50e54d9df15f4fd04dc89a8040e85ff53f01b579c7439a7816f767419cf81f6d; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 2193db59eee8c3ad0a6559129402c547e96f371c79181c1fc3cb3385cbfed6cf; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
 # Session Continuity Command Center
 
-Updated: 2026-10-19, Joy Anne Claude's fifth body and wire bell in her row;
-previous update 2026-10-18.
+Updated: 2026-10-31, the Sessions repository and the room's front door;
+previous update 2026-10-19. Sections below that date are older and may be stale.
 Status: active current-state board
 
 Durable method lives in [DOCTRINE.md](DOCTRINE.md). Historical changes and
@@ -12,6 +12,15 @@ history.
 
 ## Current Operating Summary
 
+- **2026-10-31, the Session Continuity Manager:**
+  - **Repository:** Sessions has its own private Git repository, `nooksee/sessions`, at this same path (George's bootstrap, `Receipts/repository-bootstrap-20261031.md`). Control still tracks legacy Sessions paths until a reviewed Control change; hosted checks wait on a token with workflow scope.
+  - **Front door:** `CLAUDE.md` appoints nobody. A role written there had become an identity for anyone who entered, which is how a conversation could carry the Session Continuity Manager's name and posture without his lineage. Identity comes from the registry and the resident's own session.
+  - **Posture:** keep what is built and add no new machinery. One thing at a time.
+  - **Open, not urgent:**
+    - Live test 1 is prepared but not run; its live run needs Claudio's review of the runbook.
+    - PoT Amendment 1 revision 4 waits.
+    - The Session Continuity Manager's memory routing is with George.
+    - `hard_vol2` still needs replacing.
 - **Open custody work (PoT 5.3.3), recorded 2026-10-30 22:03 EDT by the Session Continuity
   Manager:** `hard_vol2`, the second custody medium, is known to be failing
   (pending sectors and a bad area; section 134 of the Session Continuity
