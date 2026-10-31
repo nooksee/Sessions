@@ -1,0 +1,12 @@
+# Script Registry
+
+Authoritative registry for `Sessions/ops/lib/scripts/*` tools. Framework: STELA (`Projects/STELA/docs/ops/registry/scripts.md`). One word per script, a spec of the same name in `docs/ops/specs/scripts/`, tests in `tools/test/test_<word>.py` (`docs/ops/README.md`, rules for every new file). Updated 2026-10-30.
+
+| ID | Name | File Path | Status | Notes |
+| --- | --- | --- | --- | --- |
+| SCRIPT-01 | Gauge | ops/lib/scripts/gauge.py | built | Spec: `docs/ops/specs/scripts/gauge.md`. Tests: `tools/test/test_gauge.py` (`TEST-01`, 21). Writer: Claudine Colbert. Reads each registered resident's newest provider token figure from the end of its body, never message content; prints the table or JSON; appends one line per resident to the disposable ledger `storage/gauges/ledger.jsonl`. Reviewed by Claudio Freeman, section 131: 0 blockers. No timer and no notification installed. |
+| SCRIPT-02 | Closeout | ops/lib/scripts/closeout.py | designed | Spec: `docs/ops/specs/scripts/closeout.md`. Not written. A `UserPromptSubmit` hook that puts the closeout card in the resident's own context at the reserve (50,000 tokens before the 70 percent line). [PLACEHOLDER: script, tests `tools/test/test_closeout.py` and test spec; writer to be named by Claude Shannon. Wiring needs Claudio's review and Kevin's named go.] |
+| SCRIPT-03 | Mind | ops/lib/scripts/mind.py | built, under review | Spec: `docs/ops/specs/scripts/mind.md`. Tests: `tools/test/test_mind.py` (`TEST-02`, 30). Writer: Claudine Colbert. Keeps each resident's mind as a chain of immutable leaves in `<room>/archives/surfaces/` with a pointer line in `<room>/MIND.md`; writes only with Kevin's words (`--yes`). Tested on synthetic rooms only; no mind written. Claudio Freeman reviews before it is relied on. The first Sessions mind waits for a Control ignore rule for `MIND.md` and `archives/surfaces/`. |
+| SCRIPT-04 | Rotate | ops/lib/scripts/rotate.py | spec only | Spec: `docs/ops/specs/scripts/rotate.md` (also registered as runbook `RUNBOOK-01`). Not written; rotations follow the spec by hand. Claude residents first; Codex waits for its own design and a loader test. [PLACEHOLDER: script, tests and test spec; writer to be named by Claude Shannon; ingredients in `Candidates/joy-anne-rotation-20261030/` and `Candidates/shannon-rebuild-20261029/`.] |
+
+Not registered here: the 42 legacy scripts in `Sessions/Scripts/`. Each moves to `ops/lib/scripts/<word>.py` with a spec, and gains a row here, when it is next touched.

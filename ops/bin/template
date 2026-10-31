@@ -1,0 +1,915 @@
+#!/usr/bin/env bash
+# ops/bin/template: renders the Sessions room's forms from ops/src/**/*.tpl.
+#
+# Adapted from STELA's ops/bin/template and its factory and manifest backends
+# (Projects/STELA): each form is a .tpl file with a front matter
+# (template_type, template_id, template_version, requires_slots) and a body
+# with {{SLOT}} markers. Sessions keeps one entrypoint and no backends.
+#
+# Two modes:
+#   template <word>                          a new tool's three skeleton files
+#   template receipt|packet|closeout|ror|custody|validation|readme  one report, every slot supplied
+#
+# It never overwrites a file, never deletes anything, never writes a
+# registry, and leaves no {{...}} marker in anything it renders.
+#
+# Spec: docs/ops/specs/binaries/template.md
+set -euo pipefail
+shopt -s inherit_errexit
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOM_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+SRC_DIR="${ROOM_ROOT}/ops/src"
+SELFTEST_FIXTURE=""
+
+# Report types: name, template file under ops/src, expected template_type.
+REPORT_TYPES=(receipt packet closeout ror custody validation readme)
+declare -A REPORT_FILE=(
+  [receipt]="reports/receipt.md.tpl"
+  [packet]="reports/packet.md.tpl"
+  [closeout]="reports/closeout.md.tpl"
+  [ror]="reports/ror.md.tpl"
+  [custody]="reports/custody.md.tpl"
+  [validation]="reports/validation.md.tpl"
+  [readme]="docs/readme.md.tpl"
+)
+declare -A REPORT_KIND=(
+  [receipt]="report"
+  [packet]="report"
+  [closeout]="report"
+  [ror]="report"
+  [custody]="report"
+  [validation]="report"
+  [readme]="docs"
+)
+# The tool set: target path (relative to the root, @WORD@ substituted),
+# template file under ops/src, and template_id. template_type is "tool".
+TOOL_IDS=(script spec test)
+declare -A TOOL_FILE=(
+  [script]="scripts/script.py.tpl"
+  [spec]="docs/spec.md.tpl"
+  [test]="tests/test.py.tpl"
+)
+declare -A TOOL_TARGET=(
+  [script]="ops/lib/scripts/@WORD@.py"
+  [spec]="docs/ops/specs/scripts/@WORD@.md"
+  [test]="tools/test/test_@WORD@.py"
+)
+# Slots the binary sets itself in tool-set mode; giving them is refused.
+AUTO_SLOTS=(WORD DATE)
+
+usage() {
+  cat <<'USAGE'
+Usage: ops/bin/template [--dry-run] [--root=DIR] [SLOTS] <word>
+       ops/bin/template receipt|packet|closeout|ror|custody|validation|readme [SLOTS] [--out PATH]
+       ops/bin/template --test
+       ops/bin/template -h|--help
+
+SLOTS: --slot KEY=VALUE (repeatable) and/or --slots-file PATH, a file of
+KEY=VALUE lines (blank lines and lines starting with # are skipped). A slot
+given twice, an empty slot, or a slot the template does not declare is
+refused, each one named.
+
+Tool-set mode, <word> (one lowercase word, letters a-z, 2 to 32 of them):
+writes, from ops/src/scripts/script.py.tpl, ops/src/docs/spec.md.tpl and
+ops/src/tests/test.py.tpl,
+  ops/lib/scripts/<word>.py
+  docs/ops/specs/scripts/<word>.md
+  tools/test/test_<word>.py
+and prints a row for docs/ops/registry/scripts.md for the registry writer.
+WORD and DATE are set by template. Every other slot not given is filled with
+"[PLACEHOLDER: <note>, owner: <owner>]"; this is the only mode that allows
+placeholders. It refuses when any of the three files exists (all three or
+none) and when the registry already names ops/lib/scripts/<word>.py.
+
+  --dry-run    print what would be written; write nothing
+  --root=DIR   write under DIR instead of this room (scratch trees, tests)
+
+Report mode, receipt|packet|closeout|ror|custody|validation|readme: renders
+ops/src/reports/<type>.md.tpl (readme: ops/src/docs/readme.md.tpl) to
+standard output. Every slot the template requires must be given; missing
+slots are named. A value holding "[PLACEHOLDER" or a {{...}} marker is
+refused. These four words are therefore not available as tool names.
+
+  --out PATH   write to PATH instead; refuses an existing PATH, and a PATH
+               whose folder does not exist
+
+  --test       self-test in a temporary directory; never touches the room
+
+Print a template's slots and what each must hold:
+  ops/bin/template receipt          (with no slots: the refusal lists them)
+USAGE
+}
+
+die() {
+  echo "ERROR: $*" >&2
+  exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Templates: front matter and body
+# ---------------------------------------------------------------------------
+
+TPL_REL=""
+TPL_TYPE=""
+TPL_ID=""
+TPL_VERSION=""
+TPL_OWNER=""
+TPL_BODY=""
+TPL_REQUIRED=()
+declare -A TPL_NOTES=()
+
+# load_template REL WANT_TYPE WANT_ID: reads ops/src/REL into the TPL_* globals
+# and refuses a template that is malformed or is not the one expected.
+#
+# Front matter grammar (a restricted YAML form, read line by line):
+#   key: value              scalars; template_type, template_id,
+#                           template_version and placeholder_owner are read,
+#                           other keys (source) are documentation
+#   requires_slots:         followed by "  - SLOT" lines
+#   slot_notes:             followed by "  SLOT: what it must hold" lines
+load_template() {
+  local rel="$1" want_type="$2" want_id="$3"
+  local path="${SRC_DIR}/${rel}"
+  local line="" section="" key="" val="" state=0 n=0 body="" slot="" marker=""
+  local markers=()
+  local -A seen=()
+
+  TPL_REL="ops/src/${rel}"
+  TPL_TYPE=""; TPL_ID=""; TPL_VERSION=""; TPL_OWNER=""; TPL_BODY=""
+  TPL_REQUIRED=()
+  TPL_NOTES=()
+
+  [[ -f "$path" ]] || die "template: template file missing: ${TPL_REL}"
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    n=$((n + 1))
+    if (( state == 0 )); then
+      [[ "$line" == "---" ]] || die "template: ${TPL_REL}: line 1 must be --- (front matter)"
+      state=1
+      continue
+    fi
+    if (( state == 1 )); then
+      if [[ "$line" == "---" ]]; then
+        state=2
+        continue
+      fi
+      if [[ "$line" =~ ^([a-z_]+):[[:space:]]*(.*)$ ]]; then
+        key="${BASH_REMATCH[1]}"
+        val="${BASH_REMATCH[2]}"
+        section=""
+        case "$key" in
+          template_type) TPL_TYPE="$val" ;;
+          template_id) TPL_ID="$val" ;;
+          template_version) TPL_VERSION="$val" ;;
+          placeholder_owner) TPL_OWNER="$val" ;;
+          requires_slots|slot_notes)
+            [[ -z "$val" ]] || die "template: ${TPL_REL}: line ${n}: ${key} takes an indented list, not a value"
+            section="$key"
+            ;;
+          *) ;;
+        esac
+      elif [[ "$section" == "requires_slots" && "$line" =~ ^[[:space:]]+-[[:space:]]+([A-Z][A-Z0-9_]*)[[:space:]]*$ ]]; then
+        slot="${BASH_REMATCH[1]}"
+        [[ -z "${seen[$slot]+set}" ]] || die "template: ${TPL_REL}: slot ${slot} is listed twice"
+        seen[$slot]=1
+        TPL_REQUIRED+=("$slot")
+      elif [[ "$section" == "slot_notes" && "$line" =~ ^[[:space:]]+([A-Z][A-Z0-9_]*):[[:space:]]+(.+)$ ]]; then
+        TPL_NOTES[${BASH_REMATCH[1]}]="${BASH_REMATCH[2]}"
+      elif [[ -z "${line//[[:space:]]/}" || "$line" =~ ^[[:space:]]*# ]]; then
+        :
+      else
+        die "template: ${TPL_REL}: front matter line ${n} is not understood: ${line}"
+      fi
+      continue
+    fi
+    body+="${line}"$'\n'
+  done < "$path"
+
+  (( state == 2 )) || die "template: ${TPL_REL}: the front matter is not closed with ---"
+  [[ "$TPL_TYPE" == "$want_type" ]] || die "template: ${TPL_REL}: template_type is '${TPL_TYPE}', expected '${want_type}'"
+  [[ "$TPL_ID" == "$want_id" ]] || die "template: ${TPL_REL}: template_id is '${TPL_ID}', expected '${want_id}'"
+  [[ "$TPL_VERSION" =~ ^[1-9][0-9]*$ ]] || die "template: ${TPL_REL}: template_version must be a whole number: '${TPL_VERSION}'"
+  (( ${#TPL_REQUIRED[@]} > 0 )) || die "template: ${TPL_REL}: requires_slots is empty"
+  if [[ "$want_type" == "tool" && -z "$TPL_OWNER" ]]; then
+    die "template: ${TPL_REL}: a tool template needs placeholder_owner"
+  fi
+  for slot in "${TPL_REQUIRED[@]}"; do
+    [[ -n "${TPL_NOTES[$slot]+set}" ]] || die "template: ${TPL_REL}: slot ${slot} has no slot_notes line"
+  done
+  for slot in "${!TPL_NOTES[@]}"; do
+    [[ -n "${seen[$slot]+set}" ]] || die "template: ${TPL_REL}: slot_notes names ${slot}, which requires_slots does not list"
+  done
+
+  # The body and requires_slots must agree: every marker declared, every
+  # declared slot used. A template that fails this is a defect, not input.
+  mapfile -t markers < <(grep -oE '\{\{[^{}]*\}\}' <<< "$body" | sort -u || true)
+  local -A used=()
+  for marker in "${markers[@]}"; do
+    [[ -n "$marker" ]] || continue
+    slot="${marker#\{\{}"
+    slot="${slot%\}\}}"
+    [[ "$slot" =~ ^[A-Z][A-Z0-9_]*$ ]] || die "template: ${TPL_REL}: malformed marker ${marker}"
+    [[ -n "${seen[$slot]+set}" ]] || die "template: ${TPL_REL}: the body uses ${marker}, which requires_slots does not list"
+    used[$slot]=1
+  done
+  for slot in "${TPL_REQUIRED[@]}"; do
+    [[ -n "${used[$slot]+set}" ]] || die "template: ${TPL_REL}: slot ${slot} is required but the body never uses it"
+  done
+  TPL_BODY="$body"
+}
+
+# ---------------------------------------------------------------------------
+# Slots given on the command line
+# ---------------------------------------------------------------------------
+
+declare -A GIVEN=()
+GIVEN_ORDER=()
+SLOTS_FILE=""
+
+add_slot() {
+  local key="$1" value="$2" origin="$3"
+  [[ "$key" =~ ^[A-Z][A-Z0-9_]*$ ]] || die "template: '${key}' (${origin}) is not a slot name; slot names are capitals, digits and _"
+  [[ -z "${GIVEN[$key]+set}" ]] || die "template: slot ${key} is given twice (again in ${origin}); give each slot once"
+  [[ -n "${value//[[:space:]]/}" ]] || die "template: slot ${key} is empty (${origin}); write 'none' when a field is empty"
+  GIVEN[$key]="$value"
+  GIVEN_ORDER+=("$key")
+}
+
+add_slot_pair() {
+  local pair="$1" origin="$2"
+  [[ "$pair" == *=* ]] || die "template: ${origin}: expected KEY=VALUE, got '${pair}'"
+  add_slot "${pair%%=*}" "${pair#*=}" "$origin"
+}
+
+load_slots_file() {
+  local file="$1" line="" n=0
+  [[ -f "$file" ]] || die "template: slots file not found: ${file}"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    n=$((n + 1))
+    if [[ -z "${line//[[:space:]]/}" || "$line" =~ ^[[:space:]]*# ]]; then
+      continue
+    fi
+    [[ "$line" =~ ^[A-Z][A-Z0-9_]*= ]] || die "template: ${file} line ${n} is not KEY=VALUE"
+    add_slot_pair "$line" "${file} line ${n}"
+  done < "$file"
+}
+
+# ---------------------------------------------------------------------------
+# Rendering: one pass, so a value is never searched for markers itself
+# ---------------------------------------------------------------------------
+
+declare -A VALUES=()
+RENDERED=""
+
+render_body() {
+  local rest="$1" out="" key=""
+  while [[ "$rest" == *"{{"* ]]; do
+    out+="${rest%%"{{"*}"
+    rest="${rest#*"{{"}"
+    if [[ "$rest" =~ ^([A-Z][A-Z0-9_]*)\}\} ]]; then
+      key="${BASH_REMATCH[1]}"
+      if [[ -n "${VALUES[$key]+set}" ]]; then
+        out+="${VALUES[$key]}"
+        rest="${rest:$(( ${#key} + 2 ))}"
+        continue
+      fi
+    fi
+    out+="{{"
+  done
+  RENDERED="${out}${rest}"
+}
+
+# check_rendered LABEL: no {{...}} may remain; LABEL names the output.
+check_rendered() {
+  local label="$1" found=""
+  if grep -qE '\{\{.*\}\}' <<< "$RENDERED"; then
+    found="$(grep -oE '\{\{[^{}]*\}\}' <<< "$RENDERED" | sort -u | tr '\n' ' ' || true)"
+    if [[ -z "$found" ]]; then
+      found="a {{ ... }} sequence"
+    fi
+    die "template: ${label}: a {{...}} marker would remain in the output: ${found}; a slot value may not hold one"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Report mode
+# ---------------------------------------------------------------------------
+
+report_mode() {
+  local kind="$1" out_path="$2"
+  local slot="" key="" bytes="" dir=""
+  local missing=() unknown=() holding=()
+  local -A required=()
+
+  load_template "${REPORT_FILE[$kind]}" "${REPORT_KIND[$kind]}" "$kind"
+  for slot in "${TPL_REQUIRED[@]}"; do
+    required[$slot]=1
+  done
+  for key in "${GIVEN_ORDER[@]}"; do
+    [[ -n "${required[$key]+set}" ]] || unknown+=("$key")
+  done
+  for slot in "${TPL_REQUIRED[@]}"; do
+    [[ -n "${GIVEN[$slot]+set}" ]] || missing+=("$slot")
+  done
+  if (( ${#unknown[@]} > 0 )); then
+    {
+      echo "template ${kind}: ${#unknown[@]} unknown slot(s); ${TPL_REL} does not declare:"
+      for key in "${unknown[@]}"; do echo "  ${key}"; done
+    } >&2
+  fi
+  if (( ${#missing[@]} > 0 )); then
+    {
+      echo "template ${kind}: ${#missing[@]} of ${#TPL_REQUIRED[@]} required slot(s) missing:"
+      for slot in "${missing[@]}"; do echo "  ${slot}: ${TPL_NOTES[$slot]}"; done
+    } >&2
+  fi
+  if (( ${#unknown[@]} + ${#missing[@]} > 0 )); then
+    die "template ${kind}: refused; nothing rendered (${#missing[@]} missing, ${#unknown[@]} unknown)"
+  fi
+
+  for key in "${GIVEN_ORDER[@]}"; do
+    if [[ "${GIVEN[$key]}" == *"[PLACEHOLDER"* ]]; then
+      holding+=("$key")
+    fi
+  done
+  if (( ${#holding[@]} > 0 )); then
+    die "template ${kind}: refused; placeholders belong to tool skeletons only, and these slots hold one: ${holding[*]}"
+  fi
+
+  VALUES=()
+  for key in "${GIVEN_ORDER[@]}"; do
+    VALUES[$key]="${GIVEN[$key]}"
+  done
+  render_body "$TPL_BODY"
+  check_rendered "$kind"
+
+  if [[ -z "$out_path" ]]; then
+    printf '%s' "$RENDERED"
+    return 0
+  fi
+  if [[ -e "$out_path" || -L "$out_path" ]]; then
+    die "template ${kind}: refusing to overwrite ${out_path}"
+  fi
+  dir="$(dirname -- "$out_path")"
+  [[ -d "$dir" ]] || die "template ${kind}: the folder for --out does not exist: ${dir}; template creates no folders in report mode"
+  # noclobber: a file that appeared since the check above is not overwritten.
+  if ! (set -C; printf '%s' "$RENDERED" > "$out_path") 2>/dev/null; then
+    die "template ${kind}: refusing to overwrite ${out_path}; it appeared during the run"
+  fi
+  bytes="$(wc -c < "$out_path" | tr -d ' ')"
+  echo "template ${kind}: wrote ${out_path} (${bytes} bytes) from ${TPL_REL} version ${TPL_VERSION}"
+}
+
+# ---------------------------------------------------------------------------
+# Tool-set mode
+# ---------------------------------------------------------------------------
+
+# next_registry_id REGISTRY: the next SCRIPT-NN after the highest in the file.
+next_registry_id() {
+  local reg="$1"
+  local max=""
+  if [[ ! -f "$reg" ]]; then
+    printf 'SCRIPT-[PLACEHOLDER: next id; registry not found]'
+    return 0
+  fi
+  max="$(grep -oE '^\| *SCRIPT-[0-9]+' "$reg" | grep -oE '[0-9]+$' | sort -n | tail -n 1 || true)"
+  if [[ -z "$max" ]]; then
+    max=0
+  fi
+  printf 'SCRIPT-%02d' "$((10#$max + 1))"
+}
+
+# registry_row REGISTRY: one row in the registry's own column order, read from
+# its "| ID |" header line. Without a registry, the Sessions form of
+# 2026-10-30 is used: ID, Name, File Path, Status, Notes.
+registry_row() {
+  local reg="$1"
+  local header=""
+  local out="|"
+  local cap col val purpose
+  local cols=()
+
+  cap="$(printf '%s' "${WORD:0:1}" | tr '[:lower:]' '[:upper:]')${WORD:1}"
+  purpose="[PLACEHOLDER: one-line purpose, owner: the tool's writer]"
+  if [[ -n "${GIVEN[PURPOSE]+set}" ]]; then
+    purpose="${GIVEN[PURPOSE]//$'\n'/ }"
+  fi
+  if [[ -f "$reg" ]]; then
+    header="$(grep -m 1 -E '^\| *ID *\|' "$reg" || true)"
+  fi
+  if [[ -z "$header" ]]; then
+    header="| ID | Name | File Path | Status | Notes |"
+  fi
+  IFS='|' read -r -a cols <<< "$header"
+  for col in "${cols[@]}"; do
+    col="${col#"${col%%[![:space:]]*}"}"
+    col="${col%"${col##*[![:space:]]}"}"
+    if [[ -z "$col" ]]; then
+      continue
+    fi
+    case "$col" in
+      ID) val="$(next_registry_id "$reg")" ;;
+      Name) val="$cap" ;;
+      "File Path") val="ops/lib/scripts/${WORD}.py" ;;
+      Status) val="skeleton" ;;
+      Notes) val="Spec: \`docs/ops/specs/scripts/${WORD}.md\`. Tests: \`tools/test/test_${WORD}.py\`. Skeleton generated ${TODAY}; ${purpose}." ;;
+      *) val="[PLACEHOLDER: ${col}]" ;;
+    esac
+    out+=" ${val} |"
+  done
+  printf '%s\n' "$out"
+}
+
+toolset_mode() {
+  local root="$1"
+  local dry_run="$2"
+  local id rel abs bytes key slot
+  local existing=() unknown=() auto_given=() rels=()
+  local -A known=() content=() filled=()
+  local registry=""
+
+  if [[ ! "$WORD" =~ ^[a-z]{2,32}$ ]]; then
+    die "template: the name must be one lowercase word, letters a-z only, 2 to 32 of them: '${WORD}'"
+  fi
+  if [[ ! -d "$root" ]]; then
+    die "template: root is not a directory: ${root}"
+  fi
+  root="$(cd "$root" && pwd -P)"
+  registry="${root}/docs/ops/registry/scripts.md"
+
+  for id in "${TOOL_IDS[@]}"; do
+    rel="${TOOL_TARGET[$id]//@WORD@/$WORD}"
+    rels+=("$rel")
+    if [[ -e "${root}/${rel}" || -L "${root}/${rel}" ]]; then
+      existing+=("$rel")
+    fi
+  done
+  if (( ${#existing[@]} > 0 )); then
+    die "template: refusing to overwrite; ${#existing[@]} of 3 file(s) already exist under ${root}: ${existing[*]}"
+  fi
+  if [[ -f "$registry" ]] && grep -qF "ops/lib/scripts/${WORD}.py" "$registry"; then
+    die "template: the registry already names ops/lib/scripts/${WORD}.py: ${registry}"
+  fi
+
+  # Known slots: the union of the three templates, less those template sets.
+  for id in "${TOOL_IDS[@]}"; do
+    load_template "${TOOL_FILE[$id]}" "tool" "$id"
+    for slot in "${TPL_REQUIRED[@]}"; do
+      known[$slot]=1
+    done
+  done
+  for slot in "${AUTO_SLOTS[@]}"; do
+    unset 'known[$slot]'
+  done
+  for key in "${GIVEN_ORDER[@]}"; do
+    case " ${AUTO_SLOTS[*]} " in
+      *" ${key} "*) auto_given+=("$key"); continue ;;
+    esac
+    [[ -n "${known[$key]+set}" ]] || unknown+=("$key")
+  done
+  if (( ${#auto_given[@]} > 0 )); then
+    die "template: ${auto_given[*]} is set by template itself (the word and the clock); do not give it"
+  fi
+  if (( ${#unknown[@]} > 0 )); then
+    {
+      echo "template: ${#unknown[@]} unknown slot(s); the tool templates declare none of:"
+      for key in "${unknown[@]}"; do echo "  ${key}"; done
+    } >&2
+    die "template: refused; nothing written"
+  fi
+
+  # Render all three before writing any.
+  for id in "${TOOL_IDS[@]}"; do
+    load_template "${TOOL_FILE[$id]}" "tool" "$id"
+    VALUES=()
+    VALUES[WORD]="$WORD"
+    VALUES[DATE]="$TODAY"
+    for slot in "${TPL_REQUIRED[@]}"; do
+      [[ -z "${VALUES[$slot]+set}" ]] || continue
+      if [[ -n "${GIVEN[$slot]+set}" ]]; then
+        VALUES[$slot]="${GIVEN[$slot]}"
+        filled[$slot]=1
+      else
+        VALUES[$slot]="[PLACEHOLDER: ${TPL_NOTES[$slot]}, owner: ${TPL_OWNER}]"
+      fi
+    done
+    render_body "$TPL_BODY"
+    check_rendered "${TPL_REL}"
+    content[$id]="$RENDERED"
+  done
+
+  if [[ "$dry_run" == "1" ]]; then
+    echo "template: dry run; nothing written. Would write under ${root}:"
+  else
+    mkdir -p "${root}/ops/lib/scripts" "${root}/docs/ops/specs/scripts" "${root}/tools/test"
+    echo "template: wrote under ${root}:"
+  fi
+
+  for id in "${TOOL_IDS[@]}"; do
+    rel="${TOOL_TARGET[$id]//@WORD@/$WORD}"
+    abs="${root}/${rel}"
+    bytes="$(printf '%s' "${content[$id]}" | wc -c | tr -d ' ')"
+    if [[ "$dry_run" != "1" ]]; then
+      # noclobber: a file that appeared since the check above is not overwritten.
+      if ! (set -C; printf '%s' "${content[$id]}" > "$abs") 2>/dev/null; then
+        die "template: refusing to overwrite ${rel}; it appeared during the run. Files written before it remain."
+      fi
+    fi
+    printf '  %s (%s bytes, from %s)\n' "$rel" "$bytes" "ops/src/${TOOL_FILE[$id]}"
+  done
+  printf '  slots given: %s of %s; the rest are [PLACEHOLDER] text\n' "${#filled[@]}" "$(( ${#known[@]} ))"
+
+  if [[ "$dry_run" == "1" ]]; then
+    for id in "${TOOL_IDS[@]}"; do
+      rel="${TOOL_TARGET[$id]//@WORD@/$WORD}"
+      printf '\n----- %s -----\n%s' "$rel" "${content[$id]}"
+    done
+    printf '\n'
+  fi
+
+  echo "Registry row for docs/ops/registry/scripts.md (for the registry writer; not written):"
+  registry_row "$registry"
+  echo "Next: fill every [PLACEHOLDER], then run: python3 -I -B tools/test/test_${WORD}.py"
+}
+
+# ---------------------------------------------------------------------------
+# --test
+# ---------------------------------------------------------------------------
+
+cleanup_fixture() {
+  if [[ -n "$SELFTEST_FIXTURE" && -d "$SELFTEST_FIXTURE" && "$SELFTEST_FIXTURE" == */sessions-template-test.* ]]; then
+    rm -rf -- "$SELFTEST_FIXTURE"
+  fi
+}
+
+expect() {
+  local label="$1"
+  shift
+  if ! "$@"; then
+    die "Template self-test failed: ${label}"
+  fi
+}
+
+# refuses LABEL CMD...: CMD must exit non-zero; its stderr is kept in REFUSAL.
+REFUSAL=""
+refuses() {
+  local label="$1"
+  shift
+  if REFUSAL="$("$@" 2>&1 >/dev/null)"; then
+    die "Template self-test failed: ${label} (it was accepted)"
+  fi
+}
+
+file_count() { find "$1" -type f | wc -l | tr -d ' '; }
+
+# The full slot set for a report type, one KEY=VALUE line each.
+full_slots() {
+  local kind="$1" slot
+  load_template "${REPORT_FILE[$kind]}" "${REPORT_KIND[$kind]}" "$kind"
+  for slot in "${TPL_REQUIRED[@]}"; do
+    printf '%s=value of %s for %s\n' "$slot" "$slot" "$kind"
+  done
+}
+
+run_self_test() {
+  local fx out name before after sum1 sum2 headings kind slot line card want
+  local passed=0
+  local total=18
+  local self="${SCRIPT_DIR}/template"
+  local tpl_count=0
+
+  SELFTEST_FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/sessions-template-test.XXXXXX")"
+  trap cleanup_fixture EXIT
+  fx="${SELFTEST_FIXTURE}"
+
+  # 1. Names that are not one lowercase word are refused, and write nothing.
+  mkdir -p "$fx/names"
+  for name in "Gauge" "two words" "with-dash" "a_b" "abc1" "x" "" "../evil" "$(printf 'a%.0s' {1..33})"; do
+    if "$self" --root="$fx/names" "$name" >/dev/null 2>&1; then
+      die "Template self-test failed: the name '${name}' was accepted"
+    fi
+  done
+  expect "refused names wrote nothing" test "$(file_count "$fx/names")" = "0"
+  passed=$((passed + 1))
+
+  # 2. A dry run writes nothing and prints all three files.
+  mkdir -p "$fx/dry"
+  out="$("$self" --dry-run --root="$fx/dry" sample)"
+  expect "dry run wrote nothing" test "$(file_count "$fx/dry")" = "0"
+  expect "dry run prints three files" test "$(printf '%s\n' "$out" | grep -c '^----- ')" = "3"
+  passed=$((passed + 1))
+
+  # 3. A real run writes exactly three files and prints a registry row.
+  mkdir -p "$fx/real"
+  out="$("$self" --root="$fx/real" sample)"
+  expect "real run wrote three files" test "$(file_count "$fx/real")" = "3"
+  expect "script written" test -f "$fx/real/ops/lib/scripts/sample.py"
+  expect "spec written" test -f "$fx/real/docs/ops/specs/scripts/sample.md"
+  expect "test written" test -f "$fx/real/tools/test/test_sample.py"
+  expect "registry row printed with placeholder id" grep -qF '| SCRIPT-[PLACEHOLDER: next id; registry not found] | Sample | ops/lib/scripts/sample.py |' <<< "$out"
+  passed=$((passed + 1))
+
+  # 4. The spec carries the five STELA sections, in order, once each.
+  headings="$(grep -E '^#{1,2} ' "$fx/real/docs/ops/specs/scripts/sample.md")"
+  expect "five sections in order" test "$headings" = "$(printf '%s\n' \
+    '# Technical Specification: sample' \
+    '## First Principles Rationale' \
+    '## Mechanics and Sequencing' \
+    '## Anecdotal Anchor' \
+    '## Integrity Filter Warnings')"
+  expect "spec header has a Status: line" grep -qE '^Script: .*Status: skeleton generated by' "$fx/real/docs/ops/specs/scripts/sample.md"
+  passed=$((passed + 1))
+
+  # 5. A second run refuses and leaves the first files byte for byte.
+  sum1="$(cat "$fx/real/ops/lib/scripts/sample.py" "$fx/real/docs/ops/specs/scripts/sample.md" "$fx/real/tools/test/test_sample.py" | sha256sum)"
+  refuses "an existing tool was overwritten" "$self" --root="$fx/real" sample
+  expect "overwrite refusal names the files" grep -qF 'refusing to overwrite; 3 of 3' <<< "$REFUSAL"
+  sum2="$(cat "$fx/real/ops/lib/scripts/sample.py" "$fx/real/docs/ops/specs/scripts/sample.md" "$fx/real/tools/test/test_sample.py" | sha256sum)"
+  expect "existing files unchanged" test "$sum1" = "$sum2"
+  passed=$((passed + 1))
+
+  # 6. A spec written first (as for closeout and rotate) refuses the whole set.
+  mkdir -p "$fx/specfirst/docs/ops/specs/scripts"
+  printf '# Technical Specification: early\n' > "$fx/specfirst/docs/ops/specs/scripts/early.md"
+  before="$(file_count "$fx/specfirst")"
+  refuses "a pre-existing spec was accepted" "$self" --root="$fx/specfirst" early
+  after="$(file_count "$fx/specfirst")"
+  expect "all or nothing on refusal" test "$before" = "$after"
+  passed=$((passed + 1))
+
+  # 7. The registry: next id after the highest; a registered name is refused.
+  mkdir -p "$fx/reg/docs/ops/registry"
+  printf '| ID | Name | File Path | Notes |\n| --- | --- | --- | --- |\n| SCRIPT-01 | Gauge | ops/lib/scripts/gauge.py | x |\n| SCRIPT-07 | Mind | ops/lib/scripts/mind.py | x |\n' \
+    > "$fx/reg/docs/ops/registry/scripts.md"
+  out="$("$self" --dry-run --root="$fx/reg" fresh)"
+  expect "next id is SCRIPT-08" grep -qF '| SCRIPT-08 | Fresh | ops/lib/scripts/fresh.py |' <<< "$out"
+  refuses "a registered name was accepted" "$self" --dry-run --root="$fx/reg" mind
+  mkdir -p "$fx/reg5/docs/ops/registry"
+  printf '| ID | Name | File Path | Status | Notes |\n| --- | --- | --- | --- | --- |\n| SCRIPT-04 | Rotate | ops/lib/scripts/rotate.py | spec only | x |\n' \
+    > "$fx/reg5/docs/ops/registry/scripts.md"
+  out="$("$self" --dry-run --root="$fx/reg5" fresh)"
+  expect "row follows a five-column header" grep -qF '| SCRIPT-05 | Fresh | ops/lib/scripts/fresh.py | skeleton | Spec: `docs/ops/specs/scripts/fresh.md`.' <<< "$out"
+  passed=$((passed + 1))
+
+  # 8. The generated Python parses, and the generated test passes (2 run, 1 skipped).
+  if command -v python3 >/dev/null 2>&1; then
+    expect "generated python parses" python3 -I -B -c 'import ast, sys
+for p in sys.argv[1:]:
+    ast.parse(open(p, encoding="ascii").read(), p)' "$fx/real/ops/lib/scripts/sample.py" "$fx/real/tools/test/test_sample.py"
+    out="$(python3 -I -B "$fx/real/tools/test/test_sample.py" 2>&1)" || die "Template self-test failed: generated test did not pass: ${out}"
+    expect "generated test reports one skip" grep -qF 'OK (skipped=1)' <<< "$out"
+  else
+    die "Template self-test failed: python3 not found"
+  fi
+  passed=$((passed + 1))
+
+  # 9. Everything generated, and every template, is plain ASCII.
+  expect "generated files are ASCII" test "$(LC_ALL=C grep -rlP '[^\x00-\x7F]' "$fx/real" | wc -l | tr -d ' ')" = "0"
+  expect "templates are ASCII" test "$(LC_ALL=C grep -rlP '[^\x00-\x7F]' "$SRC_DIR" --include='*.tpl' | wc -l | tr -d ' ')" = "0"
+  passed=$((passed + 1))
+
+  # 10. Every template loads: front matter with the four keys, the expected
+  #     type and id, a note for every slot, and body markers equal to
+  #     requires_slots (load_template refuses any mismatch).
+  for kind in "${TOOL_IDS[@]}"; do
+    load_template "${TOOL_FILE[$kind]}" "tool" "$kind"
+    tpl_count=$((tpl_count + 1))
+  done
+  for kind in "${REPORT_TYPES[@]}"; do
+    load_template "${REPORT_FILE[$kind]}" "${REPORT_KIND[$kind]}" "$kind"
+    tpl_count=$((tpl_count + 1))
+  done
+  expect "ten templates load" test "$tpl_count" = "10"
+  expect "ten .tpl files under ops/src/{docs,scripts,tests,reports}" test \
+    "$(find "$SRC_DIR/docs" "$SRC_DIR/scripts" "$SRC_DIR/tests" "$SRC_DIR/reports" -name '*.tpl' -type f | wc -l | tr -d ' ')" = "10"
+  passed=$((passed + 1))
+
+  # 11. Every report renders with all of its slots: no marker remains, no
+  #     placeholder, every value appears; --slot and --slots-file agree, and
+  #     --out writes exactly what standard output shows.
+  mkdir -p "$fx/reports"
+  for kind in "${REPORT_TYPES[@]}"; do
+    full_slots "$kind" > "$fx/reports/${kind}.slots"
+    out="$("$self" "$kind" --slots-file "$fx/reports/${kind}.slots")"
+    expect "${kind}: no marker remains" test "$(grep -cE '\{\{|\}\}' <<< "$out" || true)" = "0"
+    expect "${kind}: no placeholder" test "$(grep -c 'PLACEHOLDER' <<< "$out" || true)" = "0"
+    while IFS= read -r line; do
+      expect "${kind}: value ${line%%=*} appears" grep -qF "${line#*=}" <<< "$out"
+    done < "$fx/reports/${kind}.slots"
+    local -a pairs=()
+    while IFS= read -r line; do
+      pairs+=(--slot "$line")
+    done < "$fx/reports/${kind}.slots"
+    expect "${kind}: --slot equals --slots-file" test "$("$self" "$kind" "${pairs[@]}")" = "$out"
+    "$self" "$kind" --slots-file "$fx/reports/${kind}.slots" --out "$fx/reports/${kind}.md" >/dev/null
+    expect "${kind}: --out equals standard output" test "$(cat "$fx/reports/${kind}.md")" = "$out"
+  done
+  passed=$((passed + 1))
+
+  # 12. A missing slot is refused, each one named, and nothing is written.
+  grep -vE '^(GATES|ROLLBACK)=' "$fx/reports/receipt.slots" > "$fx/reports/short.slots"
+  refuses "a receipt with two slots missing" "$self" receipt --slots-file "$fx/reports/short.slots" --out "$fx/reports/short.md"
+  expect "missing GATES named" grep -qE '^  GATES: ' <<< "$REFUSAL"
+  expect "missing ROLLBACK named" grep -qE '^  ROLLBACK: ' <<< "$REFUSAL"
+  expect "missing count stated" grep -qF '2 of 17 required slot(s) missing' <<< "$REFUSAL"
+  expect "nothing written on a missing slot" test ! -e "$fx/reports/short.md"
+  refuses "a closeout with no slots" "$self" closeout
+  expect "every closeout slot named" test "$(grep -cE '^  (PERCENT|WINDOW|READING_TIME|ROTATION_WRITER): ' <<< "$REFUSAL")" = "4"
+  refuses "an empty slot" "$self" closeout --slot PERCENT= --slot WINDOW=1 --slot READING_TIME=t --slot ROTATION_WRITER=w
+  passed=$((passed + 1))
+
+  # 13. An unknown slot is refused, in both modes; WORD and DATE cannot be given.
+  refuses "an unknown report slot" "$self" packet --slots-file "$fx/reports/packet.slots" --slot BOGUS=x
+  expect "unknown slot named" grep -qE '^  BOGUS$' <<< "$REFUSAL"
+  mkdir -p "$fx/unknown"
+  refuses "an unknown tool slot" "$self" --root="$fx/unknown" --slot BOGUS=x sample
+  expect "unknown tool slot named" grep -qE '^  BOGUS$' <<< "$REFUSAL"
+  refuses "WORD given in tool-set mode" "$self" --root="$fx/unknown" --slot WORD=other sample
+  refuses "a slot given twice" "$self" closeout --slot PERCENT=1 --slot PERCENT=2 --slot WINDOW=1 --slot READING_TIME=t --slot ROTATION_WRITER=w
+  printf 'PERCENT 65\n' > "$fx/reports/bad.slots"
+  refuses "a slots-file line without =" "$self" closeout --slots-file "$fx/reports/bad.slots"
+  expect "bad line number named" grep -qF 'line 1 is not KEY=VALUE' <<< "$REFUSAL"
+  expect "unknown-slot refusals wrote nothing" test "$(file_count "$fx/unknown")" = "0"
+  passed=$((passed + 1))
+
+  # 14. --out never overwrites (a file or a link), and never creates a folder.
+  printf 'keep me\n' > "$fx/reports/exists.md"
+  sum1="$(sha256sum < "$fx/reports/exists.md")"
+  refuses "--out over an existing file" "$self" closeout --slots-file "$fx/reports/closeout.slots" --out "$fx/reports/exists.md"
+  expect "overwrite refusal says so" grep -qF 'refusing to overwrite' <<< "$REFUSAL"
+  expect "existing --out file unchanged" test "$(sha256sum < "$fx/reports/exists.md")" = "$sum1"
+  ln -s "$fx/reports/nowhere.md" "$fx/reports/link.md"
+  refuses "--out over a dangling link" "$self" closeout --slots-file "$fx/reports/closeout.slots" --out "$fx/reports/link.md"
+  expect "no file behind the link" test ! -e "$fx/reports/nowhere.md"
+  refuses "--out into a missing folder" "$self" closeout --slots-file "$fx/reports/closeout.slots" --out "$fx/reports/nofolder/c.md"
+  expect "no folder created" test ! -e "$fx/reports/nofolder"
+  passed=$((passed + 1))
+
+  # 15. A leftover marker is refused: a value holding a marker, its own or
+  #     another slot's, is never expanded and never left in the output.
+  refuses "a value holding another slot's marker" "$self" closeout --slot 'PERCENT={{WINDOW}}' --slot WINDOW=1 --slot READING_TIME=t --slot ROTATION_WRITER=w --out "$fx/reports/left.md"
+  expect "leftover marker named" grep -qF '{{WINDOW}}' <<< "$REFUSAL"
+  expect "nothing written on a leftover marker" test ! -e "$fx/reports/left.md"
+  sed 's/^GATES=.*/GATES=all passed {{TODO}}/' "$fx/reports/receipt.slots" > "$fx/reports/left.slots"
+  refuses "a receipt value holding {{TODO}}" "$self" receipt --slots-file "$fx/reports/left.slots"
+  expect "leftover {{TODO}} named" grep -qF '{{TODO}}' <<< "$REFUSAL"
+  mkdir -p "$fx/lefttool"
+  refuses "a tool slot holding a marker" "$self" --root="$fx/lefttool" --slot 'PURPOSE=see {{SPEC}}' sample
+  expect "leftover tool marker wrote nothing" test "$(file_count "$fx/lefttool")" = "0"
+  passed=$((passed + 1))
+
+  # 16. Placeholders belong to tool skeletons only: a report value holding
+  #     one is refused. In tool-set mode, a given slot replaces its placeholder.
+  sed 's/^DEVIATIONS=.*/DEVIATIONS=[PLACEHOLDER: count later]/' "$fx/reports/receipt.slots" > "$fx/reports/ph.slots"
+  refuses "a receipt holding a placeholder" "$self" receipt --slots-file "$fx/reports/ph.slots"
+  expect "placeholder slot named" grep -qF 'DEVIATIONS' <<< "$REFUSAL"
+  mkdir -p "$fx/given"
+  printf 'PURPOSE=reads a fixture and prints its size\nSPEC_WRITER=Claude Shannon\n' > "$fx/given/s.slots"
+  out="$("$self" --root="$fx/given" --slots-file "$fx/given/s.slots" --slot 'BEHAVIOR_TESTS=- refuses an empty fixture' sample)"
+  expect "given PURPOSE in the script" grep -qF '"""sample: reads a fixture and prints its size' "$fx/given/ops/lib/scripts/sample.py"
+  expect "given SPEC_WRITER in the spec" grep -qF 'Spec writer: Claude Shannon.' "$fx/given/docs/ops/specs/scripts/sample.md"
+  expect "given BEHAVIOR_TESTS in the test" grep -qF -- '- refuses an empty fixture' "$fx/given/tools/test/test_sample.py"
+  expect "a slot not given stays a placeholder" grep -qF '(writer: [PLACEHOLDER: the script writer'"'"'s name, owner: the spec writer])' "$fx/given/docs/ops/specs/scripts/sample.md"
+  expect "given PURPOSE in the registry row" grep -qF 'reads a fixture and prints its size.' <<< "$out"
+  expect "slots given counted" grep -qF 'slots given: 3 of 9' <<< "$out"
+  passed=$((passed + 1))
+
+  # 17. The closeout card's single source is its template (PoT 1.2, SSOT):
+  #     it renders as six lines with the four slots filled, step 4 keeps
+  #     the operator's words, and the spec points to the template instead
+  #     of carrying a second copy of the card.
+  out="$("$self" closeout --slot 'PERCENT=<N>' --slot 'WINDOW=<window>' --slot 'READING_TIME=<time>' --slot 'ROTATION_WRITER=Shannon')"
+  expect "the card renders as six lines" test "$(printf '%s\n' "$out" | wc -l | tr -d ' ')" = "6"
+  expect "card line 1 carries the reading" test "$(printf '%s\n' "$out" | head -n 1)" = "CLOSEOUT. Your context is <N> percent of <window>, measured from your own body at <time>. It is time to close out, in this order:"
+  expect "card step 4 keeps the operator's words" grep -qF 'then it is written with his words and the date.' <<< "$out"
+  expect "card step 5 renders the writer" test "$(printf '%s\n' "$out" | sed -n 6p)" = "5. Tell Kevin you are ready for rotation. Shannon runs it."
+  expect "the spec points to the card template" grep -qF 'ops/src/reports/closeout.md.tpl' "${ROOM_ROOT}/docs/ops/specs/scripts/closeout.md"
+  expect "the spec carries no second card" bash -c '! grep -qF "CLOSEOUT. Your context is" "$1"' _ "${ROOM_ROOT}/docs/ops/specs/scripts/closeout.md"
+  passed=$((passed + 1))
+
+  # 18. Option misuse is refused: --out in tool-set mode; --dry-run or
+  #     --root in report mode.
+  refuses "--out in tool-set mode" "$self" --root="$fx/unknown" --out "$fx/x.md" sample
+  refuses "--dry-run in report mode" "$self" closeout --dry-run --slots-file "$fx/reports/closeout.slots"
+  refuses "--root in report mode" "$self" closeout --root="$fx" --slots-file "$fx/reports/closeout.slots"
+  expect "misuse wrote nothing" test ! -e "$fx/x.md"
+  passed=$((passed + 1))
+
+  if [[ "$passed" != "$total" ]]; then
+    die "Template self-test count mismatch: expected=${total} actual=${passed}."
+  fi
+  echo "OK: template self-test passed (${passed}/${total})."
+}
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
+DRY_RUN=0
+ROOT_ARG="$ROOM_ROOT"
+ROOT_GIVEN=0
+OUT_PATH=""
+OUT_GIVEN=0
+WORD=""
+WORD_SET=0
+TODAY="$(date +%Y-%m-%d)"
+SLOT_PAIRS=()
+
+if (( $# == 1 )) && [[ "$1" == "--test" ]]; then
+  run_self_test
+  exit 0
+fi
+
+while (( $# > 0 )); do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --test)
+      die "template: --test takes no other arguments"
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    --root=*)
+      ROOT_ARG="${1#--root=}"
+      ROOT_GIVEN=1
+      if [[ -z "$ROOT_ARG" ]]; then
+        die "template: --root needs a directory"
+      fi
+      ;;
+    --slot=*)
+      SLOT_PAIRS+=("${1#--slot=}")
+      ;;
+    --slot)
+      (( $# >= 2 )) || die "template: --slot needs KEY=VALUE"
+      SLOT_PAIRS+=("$2")
+      shift
+      ;;
+    --slots-file=*|--slots-file)
+      if [[ "$1" == "--slots-file" ]]; then
+        (( $# >= 2 )) || die "template: --slots-file needs a path"
+        shift
+        set -- "--slots-file=$1" "${@:2}"
+      fi
+      [[ -z "$SLOTS_FILE" ]] || die "template: one --slots-file only"
+      SLOTS_FILE="${1#--slots-file=}"
+      [[ -n "$SLOTS_FILE" ]] || die "template: --slots-file needs a path"
+      ;;
+    --out=*|--out)
+      if [[ "$1" == "--out" ]]; then
+        (( $# >= 2 )) || die "template: --out needs a path"
+        shift
+        set -- "--out=$1" "${@:2}"
+      fi
+      OUT_PATH="${1#--out=}"
+      OUT_GIVEN=1
+      [[ -n "$OUT_PATH" ]] || die "template: --out needs a path"
+      ;;
+    -*)
+      die "template: unknown option '$1'"
+      ;;
+    *)
+      if (( WORD_SET == 1 )); then
+        die "template: one name only"
+      fi
+      WORD="$1"
+      WORD_SET=1
+      ;;
+  esac
+  shift
+done
+
+if (( WORD_SET == 0 )); then
+  usage >&2
+  die "template: a tool name or a report type is required"
+fi
+
+# Slots: the file first, then each --slot in order; a key given twice is refused.
+if [[ -n "$SLOTS_FILE" ]]; then
+  load_slots_file "$SLOTS_FILE"
+fi
+for pair in "${SLOT_PAIRS[@]}"; do
+  add_slot_pair "$pair" "--slot"
+done
+
+if [[ -n "$WORD" && -n "${REPORT_FILE[$WORD]+set}" ]]; then
+  (( DRY_RUN == 0 )) || die "template ${WORD}: --dry-run is for tool-set mode; without --out, a report only prints"
+  (( ROOT_GIVEN == 0 )) || die "template ${WORD}: --root is for tool-set mode; use --out PATH"
+  report_mode "$WORD" "$OUT_PATH"
+  exit 0
+fi
+
+(( OUT_GIVEN == 0 )) || die "template: --out is for report mode (${REPORT_TYPES[*]}); a tool set writes its three fixed paths"
+
+if (( ROOT_GIVEN == 0 )); then
+  for marker in AGENTS.md DOCTRINE.md; do
+    if [[ ! -f "${ROOM_ROOT}/${marker}" ]]; then
+      die "template: not a Sessions room (missing ${marker}): ${ROOM_ROOT}"
+    fi
+  done
+fi
+
+toolset_mode "$ROOT_ARG" "$DRY_RUN"

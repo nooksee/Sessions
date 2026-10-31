@@ -1,0 +1,573 @@
+#!/usr/bin/env bash
+# ops/bin/help: wayfinding for the Sessions room (Session Continuity).
+#
+# Adapted from STELA's ops/bin/help (Projects/STELA). Read-only: it writes
+# nothing in the room. --test writes only its own temporary fixture under
+# TMPDIR and removes that fixture when it exits.
+#
+# Spec: docs/ops/specs/binaries/help.md
+set -euo pipefail
+shopt -s inherit_errexit
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOM_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+ROOT="$ROOM_ROOT"
+SELFTEST_FIXTURE=""
+
+# The read-in order: path|why. The first five are the room's own canon
+# (Sessions/CLAUDE.md and AGENTS.md); the last two are the system map and the
+# operator manual.
+READ_ORDER=(
+  "AGENTS.md|room instructions and the hard safety boundary"
+  "CLAUDE.md|who you are: ask the registry and the checkers, not prose"
+  "DOCTRINE.md|continuity doctrine (help doctrine lists its sections)"
+  "NOW.md|current state; wins over older embedded counts"
+  "INDEX.md|room index"
+  "docs/ops/README.md|the system map: four tools, one loop"
+  "docs/MANUAL.md|operator manual"
+)
+LOOP_LINE="gauge -> closeout -> Kevin says yes -> mind -> rotate -> gauge"
+
+usage() {
+  cat <<'USAGE'
+Usage: ops/bin/help [read|specs|doctrine|curriculum|--test]
+       ops/bin/help term <text>
+       ops/bin/help <text>          (same as term <text>)
+USAGE
+}
+
+die() {
+  echo "ERROR: $*" >&2
+  exit 1
+}
+
+say() {
+  printf 'Sessions help: %s\n' "$*"
+}
+
+color_init() {
+  bold=""
+  dim=""
+  green=""
+  cyan=""
+  reset=""
+  if [[ -t 1 && -n "${TERM:-}" ]] && command -v tput >/dev/null 2>&1 && tput sgr0 >/dev/null 2>&1; then
+    bold="$(tput bold)"
+    dim="$(tput dim)"
+    green="$(tput setaf 2)"
+    cyan="$(tput setaf 6)"
+    reset="$(tput sgr0)"
+  fi
+}
+
+require_room() {
+  local marker
+  for marker in AGENTS.md DOCTRINE.md; do
+    if [[ ! -f "${ROOT}/${marker}" ]]; then
+      die "Not a Sessions room (missing ${marker}): ${ROOT}"
+    fi
+  done
+  if [[ ! -d "${ROOT}/docs" ]]; then
+    die "docs/ directory not found under ${ROOT}"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# read: the read-in order, checked
+# ---------------------------------------------------------------------------
+
+show_read_order() {
+  local entry path note flag lines holds
+  local n=0
+  local missing=0
+
+  say "Read-in order (room: ${ROOT}):"
+  for entry in "${READ_ORDER[@]}"; do
+    path="${entry%%|*}"
+    note="${entry#*|}"
+    n=$((n + 1))
+    if [[ -f "$path" ]]; then
+      lines="$(wc -l < "$path" | tr -d ' ')"
+      holds="$(grep -cF '[PLACEHOLDER' "$path" || true)"
+      if [[ "$holds" == "0" ]]; then
+        flag="ok"
+      else
+        flag="${holds} placeholder line(s)"
+      fi
+      printf '%d. %-20s %6s lines  %-24s %s\n' "$n" "$path" "$lines" "$flag" "$note"
+    else
+      printf '%d. %-20s MISSING  %s\n' "$n" "$path" "$note"
+      missing=$((missing + 1))
+    fi
+  done
+  if (( missing > 0 )); then
+    die "Read-in order incomplete: ${missing} of ${n} file(s) missing."
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# doctrine: an index of DOCTRINE.md, never a substitute for it
+# ---------------------------------------------------------------------------
+
+show_doctrine() {
+  local file="DOCTRINE.md"
+  local out=""
+
+  if [[ ! -f "$file" ]]; then
+    die "Doctrine source not found: ${file}"
+  fi
+  out="$(grep -n '^## ' "$file" || true)"
+  if [[ -z "$out" ]]; then
+    die "Doctrine parse failed: no level-two headings in ${file}."
+  fi
+  say "Sections of ${file} (line: heading). This is an index; read the section itself."
+  printf '%s\n' "$out" | sed 's/^\([0-9]*\):## /  \1: /'
+}
+
+# ---------------------------------------------------------------------------
+# specs: every tool spec with its own Status: line and its convention files
+# ---------------------------------------------------------------------------
+
+# spec_status FILE: the first sentence after "Status:" in the header, that is,
+# before the first level-two heading. Empty when there is none.
+spec_status() {
+  awk '
+    /^## / { exit }
+    index($0, "Status:") > 0 {
+      s = substr($0, index($0, "Status:") + 7)
+      sub(/^[ \t]+/, "", s)
+      p = index(s, ". ")
+      if (p > 0) s = substr(s, 1, p - 1)
+      sub(/[. \t]+$/, "", s)
+      print s
+      exit
+    }
+  ' "$1"
+}
+
+status_text() {
+  local s=""
+  s="$(spec_status "$1")"
+  if [[ -z "$s" ]]; then
+    s="[no Status: line before the first section]"
+  elif (( ${#s} > 100 )); then
+    s="${s:0:97}..."
+  fi
+  printf '%s' "$s"
+}
+
+# tool_words: the union of spec names and script names, so that a script
+# without a spec (or a spec without a script) is visible.
+tool_words() {
+  {
+    if [[ -d docs/ops/specs/scripts ]]; then
+      find docs/ops/specs/scripts -maxdepth 1 -type f -name '*.md' -printf '%f\n' | sed 's/\.md$//'
+    fi
+    if [[ -d ops/lib/scripts ]]; then
+      find ops/lib/scripts -maxdepth 1 -type f -name '*.py' -printf '%f\n' | sed 's/\.py$//'
+    fi
+  } | LC_ALL=C sort -u
+}
+
+tool_row() {
+  local w="$1"
+  local has_spec="no"
+  local has_script="no"
+  local has_test="no"
+  local st=""
+
+  if [[ -f "docs/ops/specs/scripts/${w}.md" ]]; then has_spec="yes"; fi
+  if [[ -f "ops/lib/scripts/${w}.py" ]]; then has_script="yes"; fi
+  if [[ -f "tools/test/test_${w}.py" ]]; then has_test="yes"; fi
+  if [[ "$has_spec" == "yes" ]]; then
+    st="$(status_text "docs/ops/specs/scripts/${w}.md")"
+  else
+    st="[no spec: convention break; see docs/ops/README.md]"
+  fi
+  printf '  %-10s spec %-3s  script %-3s  tests %-3s  %s\n' "$w" "$has_spec" "$has_script" "$has_test" "$st"
+}
+
+show_specs() {
+  local w file rel group
+  local current=""
+  local words=()
+  local files=()
+
+  if [[ ! -d docs/ops/specs ]]; then
+    die "Spec directory not found: docs/ops/specs"
+  fi
+
+  say "Tool specs (docs/ops/specs/scripts), with the convention files each one has:"
+  mapfile -t words < <(tool_words)
+  if (( ${#words[@]} == 0 )); then
+    printf '  (none)\n'
+  fi
+  for w in "${words[@]}"; do
+    tool_row "$w"
+  done
+  printf '\n'
+
+  say "Other spec groups (status from each spec's own Status: line):"
+  mapfile -t files < <(find docs/ops/specs -type f -name '*.md' ! -path 'docs/ops/specs/scripts/*' -print | LC_ALL=C sort)
+  if (( ${#files[@]} == 0 )); then
+    printf '  (none)\n'
+  fi
+  for file in "${files[@]}"; do
+    rel="${file#docs/ops/specs/}"
+    if [[ "$rel" == */* ]]; then
+      group="${rel%/*}"
+    else
+      group="root"
+    fi
+    if [[ "$group" != "$current" ]]; then
+      printf '%s[%s]%s\n' "$bold" "$group" "$reset"
+      current="$group"
+    fi
+    printf '  %-48s %s\n' "$file" "$(status_text "$file")"
+  done
+}
+
+# ---------------------------------------------------------------------------
+# term: fixed-string search, specs first, then the manual, then docs/
+# ---------------------------------------------------------------------------
+
+grep_files() {
+  local term="$1"
+  shift
+  if (( $# == 0 )); then
+    return 0
+  fi
+  grep -HniF --binary-files=without-match -- "$term" "$@" || true
+}
+
+search_docs() {
+  local term="$1"
+  local out=""
+  local found=0
+  local specs=()
+  local rest=()
+
+  if [[ -z "$term" ]]; then
+    die "Search term required."
+  fi
+  if [[ ! -d docs ]]; then
+    die "docs/ directory not found."
+  fi
+
+  mapfile -t specs < <(if [[ -d docs/ops/specs ]]; then find docs/ops/specs -type f -name '*.md' -print | LC_ALL=C sort; fi)
+  mapfile -t rest < <(find docs -type f -name '*.md' ! -path 'docs/ops/specs/*' ! -path 'docs/MANUAL.md' -print | LC_ALL=C sort)
+
+  say "Searching for \"${term}\" (fixed string, any case): specs first, then the manual, then the rest of docs/."
+
+  out="$(grep_files "$term" "${specs[@]}")"
+  if [[ -n "$out" ]]; then
+    say "Spec references (authoritative first):"
+    printf '%s\n' "$out"
+    found=1
+  else
+    say "No spec references."
+  fi
+
+  if [[ -f docs/MANUAL.md ]]; then
+    out="$(grep_files "$term" docs/MANUAL.md)"
+    if [[ -n "$out" ]]; then
+      say "Manual references:"
+      printf '%s\n' "$out"
+      found=1
+    else
+      say "No manual references."
+    fi
+  else
+    say "docs/MANUAL.md not found."
+  fi
+
+  out="$(grep_files "$term" "${rest[@]}")"
+  if [[ -n "$out" ]]; then
+    say "Other references in docs/:"
+    printf '%s\n' "$out"
+    found=1
+  fi
+
+  if (( found == 0 )); then
+    say "No references found regarding \"${term}\" in docs/."
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# curriculum: not built
+# ---------------------------------------------------------------------------
+
+show_curriculum() {
+  say "Curriculum mode is not built."
+  cat <<'EOF_CURRICULUM'
+[PLACEHOLDER: the wake sequence and the closeout sequence as exact commands,
+owner Claude Shannon; it waits for ops/lib/scripts/closeout.py and rotate.py.]
+
+Until then, by hand:
+- Wake: Sessions/CLAUDE.md, section "ON WAKE", then HANDOFF.md.
+- Closeout: docs/ops/specs/scripts/closeout.md (design only).
+- Rotation: docs/ops/specs/scripts/rotate.md (script not written).
+EOF_CURRICULUM
+}
+
+# ---------------------------------------------------------------------------
+# menu
+# ---------------------------------------------------------------------------
+
+show_menu() {
+  local entry path note w
+  local n=0
+  local words=()
+
+  printf '%sSessions Help%s\n' "$bold" "$reset"
+  printf '%sWayfinding for the Session Continuity room. Map: docs/ops/README.md.%s\n\n' "$dim" "$reset"
+
+  printf '%sRead-in order%s (checked by %shelp read%s)\n' "$bold" "$reset" "$cyan" "$reset"
+  for entry in "${READ_ORDER[@]}"; do
+    path="${entry%%|*}"
+    note="${entry#*|}"
+    n=$((n + 1))
+    printf '  %d. %s%-20s%s %s\n' "$n" "$green" "$path" "$reset" "$note"
+  done
+  printf '\n'
+
+  printf '%sThe loop%s\n' "$bold" "$reset"
+  printf '  %s\n\n' "$LOOP_LINE"
+
+  printf '%sTools%s (ops/lib/scripts/<word>.py; run with python3 -I -B <script> --help)\n' "$bold" "$reset"
+  mapfile -t words < <(tool_words)
+  if (( ${#words[@]} == 0 )); then
+    printf '  (none)\n'
+  fi
+  for w in "${words[@]}"; do
+    tool_row "$w"
+  done
+  printf '\n'
+
+  printf '%sBinaries%s (ops/bin)\n' "$bold" "$reset"
+  printf '  %shelp%s       this page; read-in check, spec status, doctrine index, search\n' "$cyan" "$reset"
+  printf '  %stemplate%s   new tool skeleton: script, spec, test, and a registry row printed for its writer\n\n' "$cyan" "$reset"
+
+  printf '%sHelp modes%s\n' "$bold" "$reset"
+  printf '  %sread%s          the read-in order: present, line count, placeholder lines\n' "$cyan" "$reset"
+  printf '  %sspecs%s         every spec with its own Status: line; tool rows show spec, script and tests\n' "$cyan" "$reset"
+  printf '  %sdoctrine%s      section headings of DOCTRINE.md with line numbers\n' "$cyan" "$reset"
+  printf '  %sterm <text>%s   fixed-string search, any case: specs, then docs/MANUAL.md, then docs/\n' "$cyan" "$reset"
+  printf '  %scurriculum%s    [PLACEHOLDER: wake and closeout sequences, owner Claude Shannon]\n' "$cyan" "$reset"
+  printf '  %s--test%s        self-test: fixtures plus a read-only pass over this room\n\n' "$cyan" "$reset"
+
+  printf '%sWhere things live%s\n' "$bold" "$reset"
+  printf '  storage/      disposable: empty it and the system still works\n'
+  printf '  archives/, Receipts/, custody   durable records\n'
+  printf '  MIND.md + archives/surfaces/    minds, out of Git\n'
+  printf '  Who you are: Evidence/resident-identities.json, never prose\n'
+}
+
+# ---------------------------------------------------------------------------
+# --test
+# ---------------------------------------------------------------------------
+
+cleanup_fixture() {
+  if [[ -n "$SELFTEST_FIXTURE" && -d "$SELFTEST_FIXTURE" && "$SELFTEST_FIXTURE" == */sessions-help-test.* ]]; then
+    rm -rf -- "$SELFTEST_FIXTURE"
+  fi
+}
+
+expect() {
+  local label="$1"
+  shift
+  if ! "$@"; then
+    die "Help self-test failed: ${label}"
+  fi
+}
+
+contains() { printf '%s\n' "$1" | grep -qF -- "$2"; }
+count_lines_matching() { printf '%s\n' "$1" | grep -cE -- "$2" || true; }
+line_of() { printf '%s\n' "$1" | grep -nF -- "$2" | head -n 1 | cut -d: -f1; }
+
+write_fixture_room() {
+  local r="$1"
+  mkdir -p "$r/docs/ops/specs/scripts" "$r/docs/ops/specs/binaries" "$r/ops/lib/scripts" "$r/tools/test"
+  printf '# Agents\n' > "$r/AGENTS.md"
+  printf '# Claude\n' > "$r/CLAUDE.md"
+  printf '# Doctrine\n\n## 1. First\ntext\n\n## 2. Second\ntext\n' > "$r/DOCTRINE.md"
+  printf '# Index\n' > "$r/INDEX.md"
+  printf '# Map\n' > "$r/docs/ops/README.md"
+  printf '[PLACEHOLDER]\nthe alpha tool in the manual\n' > "$r/docs/MANUAL.md"
+  printf '# Notes\nan alpha note\n' > "$r/docs/notes.md"
+  printf '# Technical Specification: alpha\n\nScript: x. Status: built in a fixture; not wired. More text.\n\n## First Principles Rationale\nStatus: not this one. ALPHA here.\n' \
+    > "$r/docs/ops/specs/scripts/alpha.md"
+  printf '# Technical Specification: beta\n\nScript: y.\n\n## First Principles Rationale\ntext\n' > "$r/docs/ops/specs/scripts/beta.md"
+  printf '# Technical Specification: x\n\nStatus: placeholder binary.\n' > "$r/docs/ops/specs/binaries/x.md"
+  printf 'print(1)\n' > "$r/ops/lib/scripts/alpha.py"
+  printf 'print(1)\n' > "$r/ops/lib/scripts/gamma.py"
+  printf 'print(1)\n' > "$r/tools/test/test_alpha.py"
+}
+
+run_self_test() {
+  local out="" fx="" bare=""
+  local passed=0
+  local total=14
+  local w
+
+  bold=""; dim=""; green=""; cyan=""; reset=""
+  SELFTEST_FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/sessions-help-test.XXXXXX")"
+  trap cleanup_fixture EXIT
+  fx="${SELFTEST_FIXTURE}/room"
+  bare="${SELFTEST_FIXTURE}/bare"
+  mkdir -p "$fx" "$bare/docs"
+  write_fixture_room "$fx"
+  printf '# Agents\n' > "$bare/AGENTS.md"
+  printf '# Doctrine without sections\n' > "$bare/DOCTRINE.md"
+
+  # 1. Live room: all seven read-in files are present and numbered 1 to 7.
+  out="$(cd "$ROOM_ROOT" && show_read_order)"
+  expect "live read-in order lists 7 entries" test "$(count_lines_matching "$out" '^[1-7][.] ')" = "7"
+  passed=$((passed + 1))
+
+  # 2. Live room: each loop tool has exactly one row in the spec listing.
+  out="$(cd "$ROOM_ROOT" && show_specs)"
+  for w in gauge closeout mind rotate; do
+    expect "live specs list ${w} once" test "$(count_lines_matching "$out" "^  ${w} ")" = "1"
+  done
+  passed=$((passed + 1))
+
+  # 3. Live room: DOCTRINE.md yields at least one section heading.
+  out="$(cd "$ROOM_ROOT" && show_doctrine)"
+  expect "live doctrine index is non-empty" test "$(count_lines_matching "$out" '^  [0-9]+: ')" -gt 0
+  passed=$((passed + 1))
+
+  # 4. Fixture: a missing read-in file (NOW.md not yet written) fails closed.
+  if (ROOT="$fx"; cd "$ROOT" && show_read_order) >/dev/null 2>&1; then
+    die "Help self-test failed: a missing read-in file was accepted"
+  fi
+  passed=$((passed + 1))
+
+  # 5. Fixture: complete read-in order passes and flags the placeholder manual.
+  printf '# Now\n' > "$fx/NOW.md"
+  out="$(ROOT="$fx"; cd "$ROOT" && show_read_order)"
+  expect "fixture read-in lists 7 entries" test "$(count_lines_matching "$out" '^[1-7][.] ')" = "7"
+  expect "fixture manual flagged as placeholder" contains "$out" "1 placeholder line(s)"
+  passed=$((passed + 1))
+
+  # 6. Fixture: Status: is the first header sentence, never a later section's.
+  out="$(ROOT="$fx"; cd "$ROOT" && show_specs)"
+  expect "alpha row has all three files" contains "$out" "alpha      spec yes  script yes  tests yes  built in a fixture; not wired"
+  expect "later Status: line ignored" test "$(count_lines_matching "$out" 'not this one')" = "0"
+  passed=$((passed + 1))
+
+  # 7. Fixture: a spec without a Status: line says so.
+  expect "beta row reports no Status line" contains "$out" "beta       spec yes  script no   tests no   [no Status: line before the first section]"
+  passed=$((passed + 1))
+
+  # 8. Fixture: a script without a spec is shown as a convention break.
+  expect "gamma row reports no spec" contains "$out" "gamma      spec no   script yes  tests no   [no spec: convention break"
+  expect "binaries group listed" contains "$out" "docs/ops/specs/binaries/x.md"
+  passed=$((passed + 1))
+
+  # 9. Fixture: search is case-insensitive and ordered specs, manual, docs.
+  out="$(ROOT="$fx"; cd "$ROOT" && search_docs "Alpha")"
+  local a b c
+  a="$(line_of "$out" "docs/ops/specs/scripts/alpha.md:")"
+  b="$(line_of "$out" "docs/MANUAL.md:")"
+  c="$(line_of "$out" "docs/notes.md:")"
+  expect "search found all three tiers" test -n "$a" -a -n "$b" -a -n "$c"
+  expect "search tier order is specs, manual, docs" test "$a" -lt "$b" -a "$b" -lt "$c"
+  passed=$((passed + 1))
+
+  # 10. Fixture: zero matches is an explicit report and a clean exit.
+  out="$(ROOT="$fx"; cd "$ROOT" && search_docs "no-such-term-zz")"
+  expect "no-match report" contains "$out" "No references found regarding \"no-such-term-zz\" in docs/."
+  passed=$((passed + 1))
+
+  # 11. An empty search term fails.
+  if (ROOT="$fx"; cd "$ROOT" && search_docs "") >/dev/null 2>&1; then
+    die "Help self-test failed: an empty search term was accepted"
+  fi
+  passed=$((passed + 1))
+
+  # 12. Doctrine: two fixture headings; a doctrine with none fails closed.
+  out="$(ROOT="$fx"; cd "$ROOT" && show_doctrine)"
+  expect "fixture doctrine lists 2 headings" test "$(count_lines_matching "$out" '^  [0-9]+: ')" = "2"
+  if (ROOT="$bare"; cd "$ROOT" && show_doctrine) >/dev/null 2>&1; then
+    die "Help self-test failed: a doctrine without sections was accepted"
+  fi
+  passed=$((passed + 1))
+
+  # 13. Argument contract, through the binary itself.
+  if "${SCRIPT_DIR}/help" a b c >/dev/null 2>&1; then
+    die "Help self-test failed: three arguments were accepted"
+  fi
+  if "${SCRIPT_DIR}/help" term >/dev/null 2>&1; then
+    die "Help self-test failed: term without text was accepted"
+  fi
+  if "${SCRIPT_DIR}/help" specs extra >/dev/null 2>&1; then
+    die "Help self-test failed: specs with an extra argument was accepted"
+  fi
+  passed=$((passed + 1))
+
+  # 14. Menu: read-in order, loop, and both binaries are present.
+  out="$(cd "$ROOM_ROOT" && show_menu)"
+  expect "menu lists 7 read-in entries" test "$(count_lines_matching "$out" '^  [1-7][.] ')" = "7"
+  expect "menu shows the loop" contains "$out" "$LOOP_LINE"
+  expect "menu lists template" contains "$out" "template"
+  passed=$((passed + 1))
+
+  if [[ "$passed" != "$total" ]]; then
+    die "Help self-test count mismatch: expected=${total} actual=${passed}."
+  fi
+  echo "OK: help self-test passed (${passed}/${total})."
+}
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
+color_init
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
+if (( $# > 2 )); then
+  die "Too many arguments."
+fi
+if (( $# == 2 )) && [[ "$1" != "term" ]]; then
+  die "Too many arguments (only term takes a second argument)."
+fi
+
+require_room
+cd "$ROOT"
+
+case "${1:-}" in
+  "")
+    show_menu
+    ;;
+  read)
+    show_read_order
+    ;;
+  specs)
+    show_specs
+    ;;
+  doctrine)
+    show_doctrine
+    ;;
+  curriculum)
+    show_curriculum
+    ;;
+  --test)
+    run_self_test
+    ;;
+  term)
+    if (( $# < 2 )); then
+      die "Usage: ops/bin/help term <text>"
+    fi
+    search_docs "$2"
+    ;;
+  *)
+    search_docs "$1"
+    ;;
+esac
