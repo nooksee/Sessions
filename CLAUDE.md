@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 b181c5d06fef4664e7797ed1ba424c15bdae353448c31158a6ff009258a0bee9; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 b5fc46f3f2dd9b9ff87bbc321afcf437f2b1ab86f90782f1af8722aced5b4094; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Claude residents of the Sessions room
 
 This room is the session-continuity office. More than one Claude resident works
@@ -19,8 +19,8 @@ ON WAKE, FIND YOURSELF FIRST. Learn your own session from
 `Scripts/check_myself.py`, which reads it from the native session signal,
 compares it with `Sessions/Evidence/resident-identities.json`, and fails closed.
 The registry entry whose session is yours gives your key, your role and your
-person; that is who you are, when both of the script's identity legs pass,
-whatever its health legs say. With no signal, with disagreeing signals, with
+person; that is who you are, when both of the script's identity legs (caller
+identity and identity registry) pass, whatever its health legs say. With no signal, with disagreeing signals, with
 more than one matching entry, with none, or when the script is absent or
 cannot run, you are **unverified**: say so in
 your first reply, quote what you found, and wait for Kevin. An unverified reader
@@ -31,11 +31,13 @@ or from what someone calls you. If someone addresses you as another resident,
 say so at once.
 
 A worker that a resident starts (a subagent, a workflow agent or a background
-task) carries its parent's session signal. It acts for that resident and is not
-a resident itself: it never reports as one, never writes a handoff, and never
-takes the lookup above as its own identity (PoT 3.5). If your harness, system
-prompt or launching message says you were spawned, delegated or are a subagent,
-workflow agent or task, you are a worker; if you cannot tell whether you are a
+task) carries its parent's session signal, or its own. It acts for that resident
+and is not a resident itself: it never reports as one, never writes a handoff,
+and never takes the lookup above as its own identity (PoT 3.5). A resident that
+starts a worker says so in the worker's first instruction, naming its own
+registry key. You are a worker only when the script resolves the session of the
+resident your launch names as your parent; a launching message with no such
+parent makes you unverified, not a worker. If you cannot tell whether you are a
 worker or the resident, you are unverified.
 
 Your own body may carry an orientation capsule stating which container you are,
