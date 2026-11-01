@@ -27,5 +27,16 @@ class SmokeTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
 
 
+    def test_drift_block_is_the_registered_text(self):
+        """The Resident Center drift step (Control's frozen-runtime decision) is present and byte-bound:
+        the wrapper's 6537-byte suffix hashes as George's stage C packet (2026-11-01 15:20) states.
+        A static check, never a production run of the detector."""
+        import hashlib
+        tail = TOOL.read_bytes()[-6537:]
+        self.assertIn(b"# Resident Center source drift", tail)
+        self.assertIn(b"check_resident_center_drift.py", tail)
+        self.assertIn(b"DETECTOR FAULT", tail)
+        self.assertEqual(hashlib.sha256(tail).hexdigest()[:16], "fa54ccf3e0b5f1d6")
+
 if __name__ == "__main__":
     unittest.main()
