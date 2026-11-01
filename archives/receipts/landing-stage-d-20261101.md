@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 e707f6f0fc315c14b3cc7ad8573f15756410a5435cbddc92225f8445441ea26e; rules 8; mode history; words 0; sessions 0 whole, 1 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 efe2d588c1948a183d919fab85eccafe2bc3f2831fbe7b6a2e4d13c31b99e446; rules 8; mode history; words 0; sessions 0 whole, 1 truncated; host paths 0; decisions 0 -->
 # Landing, stage D: the records and the retired lanes (2026-11-01)
 
 Written 2026-11-01 13:52:40 EST by the Session Continuity Manager (Claude Shannon), writer of `agent/landing-d-20261101`. Plan: `storage/landing-plan.md`, stage D, the Sessions side, after Control PR #119 (`[session prefix 1]`, 320 paths released, audited by the Independent Reviewer, section 146) and Control's finding that nothing scheduled or running reads `Receipts/` by path.
@@ -345,3 +345,8 @@ Written 2026-11-01 13:52:40 EST by the Session Continuity Manager (Claude Shanno
 - `Archived/OFFLOADED.md` | `archives/legacy/Archived/OFFLOADED.md` | `ac2dc104bcbebee389cd602c8e55511061fca9f967d4273da1f0284c92af1c2e`
 - `Archived/README.md` | `archives/legacy/Archived/README.md` | `c302b9d6a54826c4cb69e64d88cb6b777ca967fd16ffa22f066db00604a4aa08`
 - `Archived/claude-code-sessions/README.md` | `archives/legacy/Archived/claude-code-sessions/README.md` | `2773b83c41613ebb06154c3b3bdcad382d290bd8e77e5b6716a9789493c49bad`
+
+## Correction appended 2026-11-01 13:59:55 EST, after the Independent Reviewer's review (claudio.md sections 147, 148)
+
+- **C1.** Control still tracked 55 paths under `Lab/` and `Candidates/`; the rename had made them read as deleted to Control. Each is restored at its old path from Control's recorded bytes (every one byte-identical to its copy under `storage/`) until Control's separation part 2 releases them; the old copies are then unlinked. Deviation, the writer's: 1 (Control-tracked files changed outside Control's process, undone).
+- **C2.** `archives/legacy/INDEX.md` and `archives/legacy/HANDOFF.md` are placed as the port placed them, and the root `HANDOFF.md` is the port's pointer (private, ignored). The legacy `HANDOFF.md` equals the root file it replaces.
