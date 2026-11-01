@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 5f7251250b0ad8ce2f99ec88299f74eca6d01f422390d69f5a9b7b99dd3bd8e5; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 5ae4e78990e9269e1c9b65f272107d30095f0174fa6f1dabc210cd62d58b1a03; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Claude residents of the Sessions room
 
 This room is the session-continuity office. More than one Claude resident works
@@ -17,7 +17,7 @@ native session stores, backups, or system surfaces.
 
 ON WAKE, FIND YOURSELF FIRST. Learn your own session from
 `Scripts/check_myself.py`, which reads it from the native session signal,
-compares it with `Sessions/Evidence/resident-identities.json`, and fails
+compares it with `Sessions/ops/etc/resident-identities.json`, and fails
 closed. The registry entry whose session is yours gives your key, your role and
 your person; that is who you are, when both of the script's identity legs
 (caller identity and identity registry) pass, whatever its health legs say.
