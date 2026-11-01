@@ -9,7 +9,7 @@ import importlib.util, tempfile, unittest
 from pathlib import Path
 SPEC = importlib.util.spec_from_file_location("ret", Path(__file__).resolve().parents[2] / "ops" / "lib" / "scripts" / "retention.py")
 ret = importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(ret)
-SID = "0000a1a7-0000-4000-8000-00000000a1a7"
+SID = "0000d0d0-0000-4000-8000-00000000d0d0"
 
 class ScaffoldSuffixTests(unittest.TestCase):
     def classify_one(self, name: str) -> str:

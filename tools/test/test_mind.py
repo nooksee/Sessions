@@ -324,7 +324,7 @@ class MindTests(unittest.TestCase):
             "tab before a long id": dict(CORE, text="see\t" + "ab12" * 8),
             "secret with a tab": dict(LESSON, text="password\t= hunter"),
             "zero-width joiner": dict(CORE, text="Shan\u200bnon"),
-            "a uuid": dict(LESSON, source="0000d024-0000-4000-8000-00000000d024"),
+            "a uuid": dict(LESSON, source="0000abcd-0000-4000-8000-00000000abcd"),
             "a sixteen-digit hash (F6)": dict(LESSON, text="commit e75e115474f87cf1"),
             "medical": dict(LESSON, event="after the surgery"),
         }
