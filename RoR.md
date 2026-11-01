@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 290ba0beb33168f1863b533cee3b000e9c6547226588d25ed3e4ff20c4ad6763; rules 8; mode history; words 12; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 3a5e50a9327a518cfe80552b955b7c06c86cc78582725ebab9e15df307819811; rules 8; mode history; words 13; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
 # RoR: the decision ledger of the Sessions room
 
 This is the room's decision ledger (PoT 1.2.10, 1.3.2). Each entry records one operator decision, standing direction, exception, acting holder, or anomaly that needs a decision: the operator's exact words, when they were given, the act they authorize, and a pointer to the record of that act.
@@ -92,3 +92,11 @@ Entries are appended only, generated from `ops/src/reports/ror.md.tpl` (`ops/bin
 - **Act:** The block Live test 1 now ends at 01:15 EDT, 30 minutes after the direction, instead of 02:00. On the coordinator's reading, the live run itself is not in this block: after Claudio's PASS it needs the operator's named go and about 45 minutes of prompts typed by the operator, more than the block holds, so under the plan's stop condition it moves to the next block. Within the 30 minutes the members prepare: the runbook and the test folder (Claudine), the review of the frozen code and of whatever runbook has arrived (Claudio), the review of Amendment 1 revision 4 and a measurement method (Joe), and the two Control readings or the time they will come (George, by request). The prerequisites of RoR-7 stand. A further direction from the operator overrides this reading.
 - **Record:** storage/handoff/shannon.md, "[words sha256=383ef38320b53e06e1c569d67e48e81c2d3e23566f8cf52d47cc7836ffd94514]"
 - **Entered by:** Session Continuity Manager (Claude Shannon), registry key session-doctor, at 2026-10-31 00:42:51 EDT
+
+### RoR-12: ratification
+
+- **Given:** 2026-11-01, in conversation with the Session Continuity Manager, shortly before the entry time below, after the team reviews (Claudine section 7, Joe) and the Independent Reviewer's PASS on the changed lines (claudio.md section 135, 01:59:57 EST)
+- **Words:** "[words sha256=28a275997a14ecfcfcacee25c1f741afdadaee66bdb0bd42163125ea716d5b8b]"
+- **Act:** Amendment 1 revision 4 is applied under 7.3: PoT.md is now the reviewed text, sha256 ef2e16c0e3baa2312247d349d2b336365d29b82c2c9123451af9c2537b63efed, snapshotted write-once as archives/PoT-ef2e16c0.md. The superseded text 388546477dd9f01f2997d38976f5b6f9fd87f13e3697562687e9340e8766af94 remains as archives/PoT-38854647.md. Applied by the Session Continuity Manager (7.3). The Independent Reviewer audits the applied text next (7.3); the port candidate Amendment 3 rebases on this text.
+- **Record:** PoT.md; archives/PoT-ef2e16c0.md; storage/PoT-amendment-1-delta.diff (the full delta since [session prefix 1]); claudio.md section 135; storage/handoff/claudine.md section 7; storage/handoff/joe.md
+- **Entered by:** Session Continuity Manager (Claude Shannon), registry key session-doctor, at 2026-11-01 02:13:53 EST
