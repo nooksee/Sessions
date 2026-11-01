@@ -233,15 +233,57 @@ class MindTests(unittest.TestCase):
         (self.r.room / mind.POINTER).write_text(mind.pointer_text(lines))
         self.failed_check("points behind the newest leaf")
 
-    def test_c3_a_leaf_outside_surfaces_is_refused(self):
+    def test_c3_a_leaf_outside_the_archives_root_is_refused(self):
         leaf = self.genesis()
-        other = self.r.room / "archives" / "elsewhere"
-        other.mkdir()
-        (other / leaf.name).write_bytes(leaf.read_bytes())
-        lines = self.r.pointer()
-        lines["session-doctor"] = (f"archives/elsewhere/{leaf.name}", lines["session-doctor"][1])
-        (self.r.room / mind.POINTER).write_text(mind.pointer_text(lines))
-        self.failed_check("is not a leaf name in archives/surfaces/")
+        for folder in ("elsewhere", "surfaces"):                # "surfaces" was the leaf home before RoR-3
+            with self.subTest(folder):
+                other = self.r.room / "archives" / folder
+                other.mkdir(exist_ok=True)
+                (other / leaf.name).write_bytes(leaf.read_bytes())
+                lines = self.r.pointer()
+                lines["session-doctor"] = (f"archives/{folder}/{leaf.name}", lines["session-doctor"][1])
+                (self.r.room / mind.POINTER).write_text(mind.pointer_text(lines))
+                self.failed_check("is not a leaf name in archives/")
+
+    # -- RoR-3: leaves at the archives/ root, grouped by their MIND- prefix -------
+    def test_ror3_leaves_sit_at_the_archives_root(self):
+        leaf = self.genesis()
+        self.assertEqual(leaf.parent, self.r.room / "archives")
+        self.assertTrue(leaf.name.startswith("MIND-session-doctor-"))
+        self.assertTrue(self.r.pointer()["session-doctor"][0].startswith("archives/MIND-session-doctor-"))
+        self.ok(self.r.run("check"))
+
+    def test_ror3_other_archive_files_are_not_minds(self):
+        self.genesis()
+        archives = self.r.room / "archives"
+        (archives / "receipts").mkdir()
+        (archives / "receipts" / "some-receipt.md").write_text("a receipt\n")
+        (archives / "PoT-38854647.md").write_text("a snapshot\n")
+        (archives / "README.md").write_text("not a mind\n")
+        result = self.ok(self.r.run("check"))
+        self.assertNotIn("outside-pointer", result.stdout)
+        (archives / "MIND-nobody-2026-11-01-deadbeef.md").write_text("a stray leaf\n")
+        result = self.ok(self.r.run("check"))
+        self.assertIn("REPORT room outside-pointer : 1 MIND- files in archives/", result.stdout)
+
+    def test_ror3_a_linked_leaf_name_is_never_read(self):
+        leaf = self.genesis()
+        archives = self.r.room / "archives"
+        (archives / "receipts").mkdir()
+        target = archives / "receipts" / "x.md"
+        target.write_text("a receipt, not a mind\n")
+        link = archives / "MIND-session-doctor-2026-11-01-deadbeef.md"
+        link.symlink_to(target)
+        real = mind.Path.read_bytes
+        seen = []
+        def spy(path):
+            seen.append(Path(path))
+            return real(path)
+        with mock.patch.object(mind.Path, "read_bytes", autospec=True, side_effect=spy):
+            ahead, outside = mind.other_leaves(self.r.room, "session-doctor", set(), mind.sha256(leaf.read_bytes()))
+        self.assertIn(link.name, outside)
+        self.assertNotIn(link, seen)
+        self.assertNotIn(target, seen)
 
     def test_c4_a_resident_of_another_room_cannot_write_here(self):
         base = Path(self.tmp.name)
@@ -372,8 +414,8 @@ class MindTests(unittest.TestCase):
         subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
         self.refused(self.r.write({"add": [CORE]}), "not ignored by Git")
         self.assertFalse((self.r.room / mind.POINTER).exists())
-        self.assertFalse((self.r.room / mind.SURFACES).exists())
-        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/surfaces/\n/storage/\n")
+        self.assertEqual(list(self.r.room.glob("archives/MIND-*")), [])
+        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/MIND-*\n/storage/\n")
         self.ok(self.r.write({"add": [CORE]}))
 
     # -- George's read, 10-30: F1, the Git check fails closed --------------------
@@ -414,7 +456,7 @@ class MindTests(unittest.TestCase):
 
     def test_f1_a_broken_repository_is_a_refusal(self):
         subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
-        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/surfaces/\n/storage/\n")
+        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/MIND-*\n/storage/\n")
         head = self.r.room / ".git" / "HEAD"
         head.write_text("not a ref\n")                          # Git now says "not a git repository" here
         self.refused(self.r.write({"add": [CORE]}), "a broken repository is not proof of being outside Git")
@@ -422,14 +464,14 @@ class MindTests(unittest.TestCase):
         (self.r.room / ".git" / "config").write_text("[[[ broken\n")
         self.refused(self.r.write({"add": [CORE]}), "git rev-parse failed (exit 128")
         self.assertFalse((self.r.room / mind.POINTER).exists())
-        self.assertFalse((self.r.room / mind.SURFACES).exists())
+        self.assertEqual(list(self.r.room.glob("archives/MIND-*")), [])
 
     def test_f1_only_a_positive_answer_passes(self):
         cases = {
             "rev-parse says false": ('echo false\n', "not 'true'"),
             "rev-parse fails otherwise": ('echo "fatal: something else" >&2; exit 128\n', "git rev-parse failed (exit 128: fatal: something else)"),
             "check-ignore errors": ('case "$3" in rev-parse) echo true;; *) echo "fatal: boom" >&2; exit 128;; esac\n',
-                                    "git check-ignore failed for archives/surfaces/"),
+                                    "git check-ignore failed for archives/MIND-"),
         }
         for label, (script, words) in cases.items():
             with self.subTest(label):

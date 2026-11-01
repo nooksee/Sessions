@@ -1,7 +1,7 @@
-<!-- redact: public copy; source sha256 423e6620c93645332649b0826c3515c2510ab1817a972db99cc5cdc8bcf460af; rules 8; mode history; words 30; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 58cfe241607992a3a5710c0120ff61020ee531075699f7589760a24b79c376ae; rules 8; mode history; words 30; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: mind
 
-Script: `Sessions/ops/lib/scripts/mind.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_mind.py`. Spec writer: Claudine Colbert, Sessions block 3, 2026-10-30, under Kevin's decisions of 10-30 as Shannon recorded them (`storage/handoff/shannon.md`, block 3). Status: built and tested on synthetic rooms only; corrected on 10-30 for George's two findings (F1, the Git check fails closed; F2, the write is bound to the preview), under Shannon's packet. No mind has been written. Nothing is wired: no hook, no timer. Claudio Freeman reviews it before it is relied on.
+Script: `Sessions/ops/lib/scripts/mind.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_mind.py`. Spec writer: Claudine Colbert, Sessions block 3, 2026-10-30, under Kevin's decisions of 10-30 as Shannon recorded them (`storage/handoff/shannon.md`, block 3). Status: built and tested on synthetic rooms only; corrected on 10-30 for George's two findings (F1, the Git check fails closed; F2, the write is bound to the preview), under Shannon's packet. Leaf location moved to the `archives/` root (RoR-3) on 2026-11-01, in the port copy `Projects/sessions-port-110126/Sessions` only; the live room still has the earlier location. No mind has been written. Nothing is wired: no hook, no timer. Claudio Freeman reviews it before it is relied on.
 
 ## First Principles Rationale
 
@@ -14,7 +14,7 @@ The first design, the mind-manifest package of 10-29 and 10-30, kept the mind as
 Kevin then turned the design around:
 - **Input is solicited.** Model input to a mind is asked for in conversation (the closeout card, step 4) and written only after his yes there, with his words stored.
 - **Nothing waits.** There are no stored proposals, no queue and no secret key.
-- **Minds live per room.** Each room has a `MIND.md` pointer at its root, and the leaves sit in `archives/surfaces/`, out of Git.
+- **Minds live per room.** Each room has a `MIND.md` pointer at its root, and the leaves sit at the root of `archives/`, grouped by their `MIND-` prefix (RoR-3), out of Git.
 
 So there is nothing to ratify later: everything in a mind was said yes to by Kevin, in words the leaf carries.
 
@@ -34,11 +34,11 @@ The tool cannot know who typed those words, and it does not pretend to. Three th
 
 ### The pieces
 
-- **Leaf.** `<room>/archives/surfaces/MIND-<key>-<date>-<hash8>.md`. Immutable: created once at mode 0600 and never overwritten. `<date>` is the UTC date it was written, and `<hash8>` is the first 8 hex digits of its own SHA-256.
+- **Leaf.** `<room>/archives/MIND-<key>-<date>-<hash8>.md`, directly in `archives/`, never in a subfolder. The tool reads only names with the `MIND-` prefix there; every other file in `archives/` is not a mind. Immutable: created once at mode 0600 and never overwritten. `<date>` is the UTC date it was written, and `<hash8>` is the first 8 hex digits of its own SHA-256.
 - **Pointer.** `<room>/MIND.md`. A fixed header, then one line per resident in the room:
-  `resident=<key>|leaf=archives/surfaces/<name>|sha256=<64 hex>`.
+  `resident=<key>|leaf=archives/<name>|sha256=<64 hex>`.
   Only this tool writes it, at mode 0600, by atomic rename. A `MIND.md` that is not exactly what the tool writes is left as it is, and every write refuses until it is resolved.
-- **Registry.** `Sessions/Evidence/resident-identities.json`, read only. A key must be registered exactly once, and its `room` must be this room. The tool never prints a session id.
+- **Registry.** `Sessions/ops/etc/resident-identities.json`, read only. A key must be registered exactly once, and its `room` must be this room. The tool never prints a session id.
 - **Lock.** `<room>/storage/mind.lock`, held for the whole of a write.
 
 ### A leaf
@@ -49,7 +49,7 @@ The tool cannot know who typed those words, and it does not pretend to. Three th
 [words sha256=f00678d1945a1e419b25f2cf3335c808bc619bbd03da2cea692a6bcdee81379a]
 [words sha256=24742ba23ba7b60bd5cf2f9e8b74e3efe4a22d97613e2bde54411eb8232f8876]
 [words sha256=7f7d8fd39875b150b6ccd09a08f41917b51f5b8454c8dfe7038cd7d3ed0e1446]
-[words sha256=32c752d7d6a0ec11508cfef2380319393374cfc787924e1dfd9e1724598676af]
+[words sha256=dddaea0036f435b8fc5258fe5e5c563ec376f1a65f8ae4ae3666fe351fcd83ba]
 [words sha256=3d82e36aea1324bd31a4a17167318b7c789bd34cc78fd18cf57c9b3eedabc147]
 [words sha256=f497b408f5385682d9e74402717b3e5255e7cd2bcb63360e050e7d117f1bad5c]
 [words sha256=3a799c9d52221ac2eeb5ffea85f821a7f74baf4eecf760aad4a7dab577f8f4e9]
@@ -139,7 +139,7 @@ A JSON object with up to three lists:
 Blocking:
 - **registered:** the key appears in the registry exactly once, in this room.
 - **pointer:** `MIND.md` is the tool's own form, names each resident once and has a line for this one.
-- **leaf:** the leaf is in `archives/surfaces/`, has its own name form and key, is not a symbolic link, and its hash matches both its name and the pointer.
+- **leaf:** the leaf is directly in `archives/` (not in a subfolder), has its own name form and key, is not a symbolic link, and its hash matches both its name and the pointer.
 - **entries:**
   - the header is well formed;
   - every entry has its layer's fields and a yes;
@@ -218,6 +218,7 @@ Both were fixed with tests on the same day. A mutation check confirmed that undo
 - **Never edit a leaf.** A leaf edited by hand fails its hash, its canonical form, or both. A change is always a new leaf.
 - **Out of Git, on Git's own word** (PoT 5.1). `write` refuses inside a Git work tree that does not ignore the leaf and `MIND.md`, and refuses whenever Git cannot answer.
   - On 10-30 the Sessions room did not yet ignore `MIND.md` or `archives/surfaces/`. George queued the ignore rule for the next Control writer slot.
+  - Since RoR-3 the leaves sit at the `archives/` root, so the rule is `/MIND.md` and `/archives/MIND-*` (as `/Sessions/MIND.md` and `/Sessions/archives/MIND-*` from Control's root). Measured 2026-11-01: the port's `.gitignore` carries both (lines 41 and 42), and Git ignores both paths in the live room too.
   - A host without Git can write no mind; that is by design.
 - **The binding is not a key.** It is not secret: anyone can run `preview` again. It makes drift between the yes and the write impossible by accident and visible on purpose: the preview Kevin answered carries its binding in the conversation. It does not prove who typed the words, and the conversation stays the authority.
 - **Identity stays in the registry.** A mind names no session or container.
@@ -235,7 +236,7 @@ Both were fixed with tests on the same day. A mutation check confirmed that undo
 | B2 model archive then use revives | removed by design (no archive or use; an entry is in the leaf or not); a retired number is never reissued | `test_b2_a_retired_entry_never_revives`, `test_b2_a_forged_leaf_reusing_a_retired_number_fails_check` |
 | C1 blind approvals | removed by design (no ratify or restore); `preview` shows before and after, and `write` prints what it wrote | `test_c1_preview_shows_before_and_after_and_writes_nothing` |
 | C2 store line rewritten undetectably | removed by design (no store); each leaf is bound by its successor's recorded SHA-256 and its own name | `test_c2_an_ancestor_changed_after_it_was_written_is_detected` |
-| C3 leaf provenance | fixed, with tests: name, key, place, hash, canonical form, chain and newest | `test_c3_a_forged_current_leaf_fails`, `test_c3_c4_a_leaf_from_another_mind_is_never_served`, `test_c3_a_pointer_moved_back_to_an_older_genuine_leaf_fails`, `test_c3_a_leaf_outside_surfaces_is_refused` |
+| C3 leaf provenance | fixed, with tests: name, key, place, hash, canonical form, chain and newest | `test_c3_a_forged_current_leaf_fails`, `test_c3_c4_a_leaf_from_another_mind_is_never_served`, `test_c3_a_pointer_moved_back_to_an_older_genuine_leaf_fails`, `test_c3_a_leaf_outside_the_archives_root_is_refused` |
 | C4 `house_path` accepts any mind | removed by design (no house); the registry binds a key to its room | `test_c3_c4_a_leaf_from_another_mind_is_never_served`, `test_c4_a_resident_of_another_room_cannot_write_here` |
 | C5 two minds share a key | fixed, with tests: one pointer line per key, and one registry entry per key | `test_c5_one_resident_has_one_mind`, `test_c5_a_key_registered_twice_is_refused` |
 | C6 policy files not hash-bound | removed by design (rules in the reviewed script); each leaf records the rules' digest, and a difference is reported | `test_c6_each_leaf_records_the_policy_it_was_written_under` |
@@ -254,3 +255,4 @@ Both were fixed with tests on the same day. A mutation check confirmed that undo
 | --- | --- | --- |
 | F1 the Git check fails open | fixed, with tests: only Git's positive answers pass; Git missing, a timeout, a broken repository, any other error and a check-ignore error each refuse with their cause | `test_f1_no_git_on_path_is_a_refusal`, `test_f1_a_git_that_does_not_answer_is_a_refusal`, `test_f1_a_check_ignore_that_does_not_answer_is_a_refusal`, `test_f1_a_broken_repository_is_a_refusal`, `test_f1_only_a_positive_answer_passes`, `test_minds_live_out_of_git` |
 | F2 the preview is not bound to the write | fixed, with tests: `write` requires the binding `preview` printed, and refuses an edited change file, other standard input, or a moved predecessor | `test_f2_write_needs_the_preview_binding`, `test_f2_a_change_file_edited_after_the_preview_is_refused`, `test_f2_layout_does_not_matter_but_content_does`, `test_f2_changes_from_standard_input`, `test_f2_a_moved_predecessor_is_refused` |
+| RoR-3 leaf location (the operator's answer of 2026-10-30: leaves at the `archives/` root) | done in the port copy, with tests: leaves are written directly in `archives/`, a leaf in any subfolder (the old `archives/surfaces/` included) is refused, other files in `archives/` are never read as minds or reported as strays, and a symbolic link named like a leaf is listed as outside the chain and never read through | `test_ror3_leaves_sit_at_the_archives_root`, `test_ror3_other_archive_files_are_not_minds`, `test_ror3_a_linked_leaf_name_is_never_read`, `test_c3_a_leaf_outside_the_archives_root_is_refused` |

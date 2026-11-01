@@ -22,26 +22,23 @@
 !/archives/PoT-38854647.md
 !/archives/PoT-ef2e16c0.md
 !/archives/PoT-draft-v0-de5d6c0c.md
-!/Receipts/
-/Receipts/*
-!/Receipts/repository-bootstrap-20261031.md
+/archives/legacy/Resident-Center/
+/archives/legacy/Config/
+/archives/legacy/Evidence/
+!/logs/
+/logs/*
+!/logs/.gitkeep
 
-# Private continuity and working lanes remain outside Git.
+# Private continuity and working lanes remain outside Git (storage/ holds lab/ and candidates/, which carry session bodies;
+# ops/etc/ holds the registry, the promotions, the launcher roster and the bindings).
+/ops/etc/resident-identities.json
+/ops/etc/promoted-workers.json
+/ops/etc/residents.json
+/ops/etc/host-bindings.json
 /storage/
 /MIND.md
 /archives/MIND-*
 /archives/surfaces/
-/Archived/
-/Attic/
-/Candidates/
-/Intake/
-/Lab/
-/Resident-Center/
-/Evidence/
-/Config/
-/Scripts/
-/Plans/
-/HANDOFF.md
 /.venv/
 /.idea/
 /.claude/
@@ -55,3 +52,8 @@
 .env.*
 *.pem
 *.key
+!/Receipts/
+/Receipts/*
+!/Receipts/repository-bootstrap-20261031.md
+!/Receipts/landing-stage-a-20261101.md
+/ops/etc/*.json

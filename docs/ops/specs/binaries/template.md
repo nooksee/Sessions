@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 39867ca92e82b7dd346447c37bf18ad2f7797bea10e8fd0062a6ff34a1a008e0; rules 8; mode history; words 7; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 a0831851659baf42309cdaa7054d363273539be92890664cd891b21e00f40a6a; rules 8; mode history; words 7; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: template
 
 Binary: `Sessions/ops/bin/template` (Bash, no library). Templates: `Sessions/ops/src/{scripts,docs,tests,reports}/*.tpl`, 10 files. Self-test: `ops/bin/template --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/template`, its `factory` renderer and its `ops/src/**/*.tpl` form (`Projects/STELA`); rewritten the same day to render from template files instead of inline text. Status: built 2026-10-30, self-test 18 of 18 passing; it has written no tool and no report in the room. Claudio Freeman reviews it before it is relied on. Map: `docs/ops/README.md`.
@@ -117,7 +117,7 @@ On 2026-10-30, Kevin asked for the rotation to be formalized: "[words sha256=6c0
 
 The same day, the room adopted STELA's convention, and its map lists 42 legacy scripts in `Scripts/` to be moved to `ops/lib/scripts/`, one word each, with a spec each, as each is next touched. That is 42 chances for the same kind of slip at the joins between script, spec, tests and registry. The day `template` was first built, `help specs` showed where hand assembly had already left gaps: `closeout` and `rotate` each have a spec and no script.
 
-Later that day Kevin explained STELA's templates: the agent "[words sha256=18eeb6b42379ecd0426e12cf1a6ceee32a63df32b45d0bfadbaef1503ca3d9b4]" The rotation receipts in `Receipts/` show the same drift: Joy's rotation 6 receipt (`joy-anne-rotation-6-20261030.md`) is organized as Why, Close and custody, Build, Gates, Install, Rollback, Not done and Deviations, while `rotate.md` phase 9 asks for tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations, acceptance and its time. `template receipt` holds every future receipt to the phase 9 list.
+Later that day Kevin explained STELA's templates: the agent "[words sha256=18eeb6b42379ecd0426e12cf1a6ceee32a63df32b45d0bfadbaef1503ca3d9b4]" The rotation receipts in `archives/receipts/` show the same drift: Joy's rotation 6 receipt (`joy-anne-rotation-6-20261030.md`) is organized as Why, Close and custody, Build, Gates, Install, Rollback, Not done and Deviations, while `rotate.md` phase 9 asks for tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations, acceptance and its time. `template receipt` holds every future receipt to the phase 9 list.
 
 ## Integrity Filter Warnings
 

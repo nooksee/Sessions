@@ -24,7 +24,7 @@ Spec: docs/ops/specs/scripts/{{WORD}}.md. Tests: tools/test/test_{{WORD}}.py.
 
 House rules, fixed by the template: session bodies are read-only, and message
 content is never read or printed. Rebuildable output goes in storage/; anything
-that cannot be rebuilt goes in archives/, Receipts/ or custody, never in
+that cannot be rebuilt goes in archives/, archives/receipts/ or custody, never in
 storage/.
 """
 from __future__ import annotations

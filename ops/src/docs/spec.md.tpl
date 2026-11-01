@@ -18,7 +18,7 @@ slot_notes:
   SCRIPT_WRITER: the script writer's name
   SPEC_WRITER: the spec writer's name
   FIRST_PRINCIPLES_RATIONALE: the failure this tool prevents, and why a tool rather than a habit. Quote whoever asked for it, with the date
-  MECHANICS_AND_SEQUENCING: numbered steps. What the tool reads and in what order; what it writes and where (rebuildable output in `storage/`; anything that cannot be rebuilt in `archives/`, `Receipts/` or custody); where it stops for Kevin
+  MECHANICS_AND_SEQUENCING: numbered steps. What the tool reads and in what order; what it writes and where (rebuildable output in `storage/`; anything that cannot be rebuilt in `archives/`, `archives/receipts/` or custody); where it stops for Kevin
   ANECDOTAL_ANCHOR: the dated incident or measurement behind the tool, with its receipt or handoff section
   INTEGRITY_FILTER_WARNINGS: every condition on which the tool refuses, or prints "unknown" rather than guessing; what it never reads (message content of session bodies) and never writes (production JSONL; the registry without a named go). Name the reviewer before it is relied on
 ---

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """mind: keep each resident's mind as a chain of immutable leaves. Standard library only.
 
-A mind is one Markdown leaf in the room's `archives/surfaces/`, named
+A mind is one Markdown leaf at the root of the room's `archives/` (RoR-3), named
 `MIND-<key>-<date>-<hash8>.md`, and one line in the room's root `MIND.md`
 that points at it with its full SHA-256. A change is a new leaf: it names its
 predecessor and that leaf's SHA-256, says what changed, and carries Kevin's
@@ -35,8 +35,9 @@ import unicodedata
 from pathlib import Path
 
 SESSIONS = Path(__file__).resolve().parents[3]
-REGISTRY = SESSIONS / "Evidence" / "resident-identities.json"
-SURFACES = "archives/surfaces"
+REGISTRY = SESSIONS / "ops" / "etc" / "resident-identities.json"
+SURFACES = "archives"                    # RoR-3: leaves sit at the archives/ root, grouped by their prefix
+LEAF_PREFIX = "MIND-"
 POINTER = "MIND.md"
 LOCK = Path("storage") / "mind.lock"
 
@@ -63,7 +64,7 @@ HEAD_KEYS = ("resident", "written", "by", "predecessor", "change", "yes", "issue
 
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 NAME_RE = re.compile(r"^MIND-(?P<key>[a-z0-9][a-z0-9-]*?)-(?P<date>\d{4}-\d{2}-\d{2})-(?P<hash>[0-9a-f]{8})\.md$")
-PRED_RE = re.compile(r"^(archives/surfaces/\S+) sha256=([0-9a-f]{64})$")
+PRED_RE = re.compile(r"^(archives/MIND-\S+) sha256=([0-9a-f]{64})$")
 ISSUED_RE = re.compile(r"^" + " ".join(f"{layer}=(\\d+)" for layer in LAYERS) + r"$")
 YES_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}), "(.+)"$')
 WRITTEN_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -96,7 +97,7 @@ POINTER_HEAD = (
     "# Minds in this room\n\n"
     "Each line names one resident's current mind leaf and the SHA-256 of that leaf. Only "
     "`ops/lib/scripts/mind.py` writes this file, after Kevin's yes in conversation. The leaves live in "
-    "`archives/surfaces/`, out of Git. Spec: `Sessions/docs/ops/specs/scripts/mind.md`.\n\n")
+    "`archives/`, named `MIND-<key>-<date>-<hash8>.md`, out of Git. Spec: `Sessions/docs/ops/specs/scripts/mind.md`.\n\n")
 
 
 class Refused(Exception):
@@ -599,7 +600,12 @@ def other_leaves(room: Path, key: str, shas: set, current_sha: str) -> tuple[lis
         return ahead, outside
     for path in sorted(surfaces.iterdir()):
         m = NAME_RE.match(path.name)
-        if not m or m.group("key") != key or not path.is_file():
+        if not m or m.group("key") != key:
+            continue
+        if path.is_symlink():                 # never read through a link: archives/ also holds other records
+            outside.append(path.name)
+            continue
+        if not path.is_file():
             continue
         data = path.read_bytes()
         if sha256(data) in shas:
@@ -864,10 +870,10 @@ def cmd_check(args):
             print(f"{status} {key} {gate} : {'; '.join(problems) if problems else detail}")
     surfaces = args.room / SURFACES
     if not args.key and surfaces.is_dir():
-        strays = sorted(p.name for p in surfaces.iterdir()
-                        if not (NAME_RE.match(p.name) and NAME_RE.match(p.name).group("key") in lines))
+        strays = sorted(p.name for p in surfaces.iterdir() if p.name.startswith(LEAF_PREFIX)
+                        and not (NAME_RE.match(p.name) and NAME_RE.match(p.name).group("key") in lines))
         if strays:
-            print(f"REPORT room outside-pointer : {len(strays)} files in {SURFACES}/ belong to no resident in {POINTER}")
+            print(f"REPORT room outside-pointer : {len(strays)} {LEAF_PREFIX} files in {SURFACES}/ belong to no resident in {POINTER}")
     print(f"blocking failures: {failed}")
     return 1 if failed else 0
 
@@ -910,7 +916,7 @@ def parse_now(value: str | None) -> dt.datetime:
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="mind.py", description=__doc__.split("\n\n")[0])
-    ap.add_argument("--room", type=Path, default=SESSIONS, help="the room whose MIND.md and archives/surfaces/ hold the minds")
+    ap.add_argument("--room", type=Path, default=SESSIONS, help="the room whose MIND.md and archives/MIND-* leaves hold the minds")
     ap.add_argument("--registry", type=Path, default=REGISTRY)
     ap.add_argument("--now", default=None, help="ISO time to use instead of the clock (tests)")
     sub = ap.add_subparsers(dest="command", required=True)

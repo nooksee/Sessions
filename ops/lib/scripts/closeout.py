@@ -39,7 +39,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 SESSIONS = HERE.parents[2]
 GAUGE = HERE / "gauge.py"
-DEFAULTS = {"registry": SESSIONS / "Evidence" / "resident-identities.json",
+DEFAULTS = {"registry": SESSIONS / "ops" / "etc" / "resident-identities.json",
             "spec": SESSIONS / "docs" / "ops" / "specs" / "scripts" / "gauge.md",
             "state-dir": SESSIONS / "storage" / "closeout",
             "template": SESSIONS / "ops" / "src" / "reports" / "closeout.md.tpl"}
