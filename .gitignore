@@ -1,4 +1,5 @@
-# Sessions repository bootstrap: classify a lane before admitting it.
+# Sessions: a root allowlist. Everything is ignored unless admitted by name below.
+# What is private, and why, is stated here on purpose: nothing is hidden about what is hidden.
 /*
 !/.gitignore
 !/AGENTS.md
@@ -21,25 +22,32 @@
 !/archives/
 /archives/*
 !/archives/PoT-38854647.md
-!/archives/PoT-ef2e16c0.md
 !/archives/PoT-draft-v0-de5d6c0c.md
-/archives/legacy/Resident-Center/
-/archives/legacy/Config/
-/archives/legacy/Evidence/
+!/archives/PoT-ef2e16c0.md
+!/archives/receipts/
+/archives/receipts/*
+!/archives/receipts/repository-bootstrap-20261031.md
+!/archives/receipts/landing-stage-a-20261101.md
+!/archives/receipts/landing-stage-d-20261101.md
 !/logs/
 /logs/*
 !/logs/.gitkeep
 
-# Private continuity and working lanes remain outside Git (storage/ holds lab/ and candidates/, which carry session bodies;
-# ops/etc/ holds the registry, the promotions, the launcher roster and the bindings).
-/ops/etc/resident-identities.json
-/ops/etc/promoted-workers.json
-/ops/etc/residents.json
-/ops/etc/host-bindings.json
+# Private by design (PoT 5.1, 5.4). These exist on the host and never enter Git:
+#   archives/receipts/*  records that quote the operator and name host paths; admitted one by one after redaction
+#   archives/legacy/     frozen copies of retired lanes, including runtime data that carries session identifiers
+#   MIND.md, archives/MIND-*, archives/NOTEBOOK-*  minds and sealed notebooks: who a resident is
+#   ops/etc/*.json       the registry, roster, promotions and host bindings: identity
+#   logs/*               telemetry: output, not a record
+#   storage/             working and disposable: handoffs, candidates, the lab, bodies in custody
+#   HANDOFF.md           the manager's own handoff
 /storage/
 /MIND.md
 /archives/MIND-*
-/archives/surfaces/
+/archives/NOTEBOOK-*
+/archives/legacy/
+/ops/etc/*.json
+/HANDOFF.md
 /.venv/
 /.idea/
 /.claude/
@@ -53,8 +61,3 @@
 .env.*
 *.pem
 *.key
-!/Receipts/
-/Receipts/*
-!/Receipts/repository-bootstrap-20261031.md
-!/Receipts/landing-stage-a-20261101.md
-/ops/etc/*.json
