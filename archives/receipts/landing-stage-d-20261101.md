@@ -1,9 +1,9 @@
-<!-- redact: public copy; source sha256 efe2d588c1948a183d919fab85eccafe2bc3f2831fbe7b6a2e4d13c31b99e446; rules 8; mode history; words 0; sessions 0 whole, 1 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 d824e10f55871e8ff248a7267bf78d1bd030fb882771a40b8ec10c2a69f1cbfd; rules 8; mode history; words 0; sessions 0 whole, 1 truncated; host paths 0; decisions 0 -->
 # Landing, stage D: the records and the retired lanes (2026-11-01)
 
 Written 2026-11-01 13:52:40 EST by the Session Continuity Manager (Claude Shannon), writer of `agent/landing-d-20261101`. Plan: `storage/landing-plan.md`, stage D, the Sessions side, after Control PR #119 (`[session prefix 1]`, 320 paths released, audited by the Independent Reviewer, section 146) and Control's finding that nothing scheduled or running reads `Receipts/` by path.
 
-**Moved by copy, sha256 verify and unlink:** 328 files: `Receipts/` to `archives/receipts/` and `Plans/`, `Intake/`, `Attic/`, `Archived/` to `archives/legacy/<Name>/`. **Renamed within the volume:** `Lab/` to `storage/lab/` (665 files, 6 bodies verified by hash before and after); `Candidates/` to `storage/candidates/` (379 files, 38 bodies verified by hash before and after). **Root pointers from the port:** `AGENTS.md`, `INDEX.md`, `START-HERE.md`, `DOCTRINE.md`; `README.md` written through `ops/src/docs/readme.md.tpl`. **Untouched:** `CLAUDE.md`, `PoT.md`, `RoR.md`, `Scripts/`, `Evidence/`, `Config/`, `Resident-Center/`, every body and mind, the 36 paths Control retained. **Git:** receipts and legacy stay ignored until the redaction pass; the three records named in `.gitignore` are admitted.
+**Moved by copy, sha256 verify and unlink:** 328 files: `Receipts/` to `archives/receipts/` and `Plans/`, `Intake/`, `Attic/`, `Archived/` to `archives/legacy/<Name>/`. **Renamed within the volume:** `Lab/` to `storage/lab/` (665 files, 6 bodies verified by hash before and after); `Candidates/` to `storage/candidates/` (379 files, 38 bodies verified by hash before and after). **Root pointers from the port:** `AGENTS.md`, `INDEX.md`, `START-HERE.md`, `DOCTRINE.md`; `README.md` written through `ops/src/docs/readme.md.tpl`. **Untouched:** `CLAUDE.md`, `PoT.md`, `RoR.md`, `Scripts/`, `Evidence/`, `Config/`, `Resident-Center/`, every body and mind, the paths Control retained (764 after PR #119; 55 of them under Lab/ and Candidates/, see the correction below). **Git:** receipts and legacy stay ignored until the redaction pass; the three records named in `.gitignore` are admitted.
 
 **Counts:** moved 328; renamed lanes 2; unlinked after verify 328; deleted without a copy 0; services, timers, hooks, settings, registry changed 0.
 
@@ -350,3 +350,54 @@ Written 2026-11-01 13:52:40 EST by the Session Continuity Manager (Claude Shanno
 
 - **C1.** Control still tracked 55 paths under `Lab/` and `Candidates/`; the rename had made them read as deleted to Control. Each is restored at its old path from Control's recorded bytes (every one byte-identical to its copy under `storage/`) until Control's separation part 2 releases them; the old copies are then unlinked. Deviation, the writer's: 1 (Control-tracked files changed outside Control's process, undone).
 - **C2.** `archives/legacy/INDEX.md` and `archives/legacy/HANDOFF.md` are placed as the port placed them, and the root `HANDOFF.md` is the port's pointer (private, ignored). The legacy `HANDOFF.md` equals the root file it replaces.
+
+## Second correction appended 2026-11-01 14:43:42 EST, after the Assistant's audit (claudine.md section 24)
+
+- **C1, wording:** the untouched set is the 764 paths Control retains after PR #119, not 36; the 55 under `Lab/` and `Candidates/` are the ones the rename affected, restored above until Control's part 2 releases them.
+- **C2, the 303 receipts in no repository: decision.** Owner: the Session Continuity Manager. They enter the Sessions repository after the redaction pass (quoted operator words and host details removed or digested), which is the block after Amendment 2; until then they are kept out by the allowlist, and a two-tier custody copy exists from this hour: batch `sessions-receipts-20261101` (`custody-sessions-receipts-20261101.md`), 306 files verified on both tiers. This amends decision 2 of 01:46, under the operator's deferral of 12:4x.
+- **Observations taken:** the root `HANDOFF.md` is now the pointer (first correction); the placeholder yaml under `ops/src/runbook/agents/` is ignored by name until it has content; the remainder of row D (`Evidence/`, `Config/`, `Resident-Center/`) is owned by stages B and C (George for Control's side, the Session Continuity Manager for the room's).
+- **The 44 bodies under `storage/`, by hash (files only, never content):**
+  - `storage/candidates/joy-anne-rotation-20261013/donor-snapshot.jsonl` | `3c9bd093fb8cd91526034fdf389a53d0fc3cef0d4a6455d1708d09c4e742082e`
+  - `storage/candidates/joy-anne-rotation-20261013/successor-treated.jsonl` | `abdac7c04505a90f1745c207005d2418677e77446337591afc187cfb10e38d63`
+  - `storage/candidates/joy-anne-rotation-20261013/successor.jsonl` | `75e602b253f60530462242b43c84bfb6edb8f788bf078cafbff3b5cedcc0c358`
+  - `storage/candidates/joy-anne-rotation-20261016/donor-snapshot-20261016T1717.jsonl` | `e3796814439c03e4dd67a8e2c1abadb4fec484de1a0e7228fa3cd0de9d8a172c`
+  - `storage/candidates/joy-anne-rotation-20261016/donor-snapshot.jsonl` | `e02dc8f6a7dec616508c101c6ec84fb87bdd6a1bb0540cfbd5581f51c5aa21c9`
+  - `storage/candidates/joy-anne-rotation-20261016/donor-window-20261016T1717.jsonl` | `3d691f2a9220910de1c7ef694a9749712ec36b4c006092b26de8d009a1aa51e3`
+  - `storage/candidates/joy-anne-rotation-20261016/donor-window.jsonl` | `6ea50a9bd6f78443dca63d3a547ea40f2c77ff2e00bafd9baaea28da469a271b`
+  - `storage/candidates/joy-anne-rotation-20261016/successor-20261016T1717-stale.jsonl` | `b5ded9c0de2c44dbbb2fc66b21cfa20853a9427e9ae126949a5696fc04dc3b5b`
+  - `storage/candidates/joy-anne-rotation-20261016/successor-treated-20261016T1717-stale.jsonl` | `b5ded9c0de2c44dbbb2fc66b21cfa20853a9427e9ae126949a5696fc04dc3b5b`
+  - `storage/candidates/joy-anne-rotation-20261016/successor-treated.jsonl` | `7bd167cee60fe55f954a4c67295f15ecb69cb9ae44f468fbbc6c723c767ca392`
+  - `storage/candidates/joy-anne-rotation-20261016/successor.jsonl` | `23e29723d18adb355b370f250bea6051f89ea1cf72c8238c58cc9324204dc4de`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt1-path-not-text/successor-final.jsonl` | `448689f390666999b48ae33f5148491d953eb0e76fcd5b21f865c5f87ce036d6`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt1-path-not-text/successor-treated.jsonl` | `b9af086fcd91af710b0d1111d31b1950a88cb366b736325c6414725f6dd27024`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt1-path-not-text/successor.jsonl` | `dd0189623ae305154e19061902b7a948ecff61f70006e38f3596e1af712792d0`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt2-relative-media-hint/successor-final.jsonl` | `87084383f1e9ded99454e5445ef2c4e0c8894829f0e952945701d800b5e17db0`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt2-relative-media-hint/successor-treated.jsonl` | `bd522b3497daf7bd5cad83c212d8aab45bfe254f7c8451ae2fc9eae45f9bbafd`
+  - `storage/candidates/joy-anne-rotation-20261030/spliced-window.jsonl` | `87ca5369b084d3ae58b0e46a8504332167aa79c87f93811ac4c48d5980d7311d`
+  - `storage/candidates/joy-anne-rotation-20261030/successor-final.jsonl` | `028f63c431d116c4a65dc1f12f1ebfdc9e878f0db0142d5c936a16523c3d152c`
+  - `storage/candidates/joy-anne-rotation-20261030/successor-treated.jsonl` | `71108bc6e268e1f0901c3a9c5b03102f30b813ae11710ddb0367a24574097741`
+  - `storage/candidates/joy-anne-rotation-20261030/successor.jsonl` | `39613fe233b8c04424ba685526ab0bbd43e9e3e238149f1f8c16f1f4b52bcd54`
+  - `storage/candidates/mind-manifest-20261029/package/storage/sessions/active/mind.manifest.jsonl` | `d5edbfdea7973da887dfd771314354d9b3922a7058013fb36e374a4589ebeb0e`
+  - `storage/candidates/shannon-rebuild-20261029/spliced-window.jsonl` | `41b5925f0a6ff218bce1075d6199d2da032c7d0536a8a27e8648a9ed0c9bf87e`
+  - `storage/candidates/shannon-rebuild-20261029/successor-final.jsonl` | `faeea9c7bf03eee875667c083aa910956559e0a89371319838db983deafa1873`
+  - `storage/candidates/shannon-rebuild-20261029/successor-treated.jsonl` | `8ed8b3c3607f7fcb393eeae9ec5a626a469600a7107c26e4f4305f139fe17264`
+  - `storage/candidates/shannon-rebuild-20261029/successor.jsonl` | `c1f76ae668a2b395f8fce2382a71e5a0f79601d06067c78aa3847078ec288c8d`
+  - `storage/candidates/shannon-rebuild-20261029/v2/spliced-window.jsonl` | `303f723261f373301ce8b1ca6b4b8535cad956f1ecce9c03fe32ea3951a83fdc`
+  - `storage/candidates/shannon-rebuild-20261029/v2/successor-final.jsonl` | `33d5b0621f46961107bb81f5d2d7e25865e838930321f9e70e16bff8001370ec`
+  - `storage/candidates/shannon-rebuild-20261029/v2/successor-treated.jsonl` | `6aff0515349514be8befa21897d27c4b709e05733be173be363597f81fe14a48`
+  - `storage/candidates/shannon-rebuild-20261029/v2/successor.jsonl` | `8ce69bdf4065c18fe95f9ead9fb85dc065d34e999ec44201be8bc144188fab35`
+  - `storage/candidates/shannon-rotation-20261012/DRYRUN.jsonl` | `a64f9f6bdbf28d6bc87074baf2ad27d55fd6a68c3db03f8defdb38772e19524d`
+  - `storage/candidates/shannon-rotation-20261012/donor-snapshot.jsonl` | `f940823f7d804f3ce6abb60880cf409a859468c7985438042a85ed107ed49bf4`
+  - `storage/candidates/shannon-rotation-20261012/donor-window.jsonl` | `c5d5463cb1b8ae488ef565192bdcf8eb4359a2400402eb93e63868257515baad`
+  - `storage/candidates/shannon-rotation-20261012/successor-treated.jsonl` | `0ef992546395ee2b56744a73e5e8fc5b4fae3ce7d5667923133cf57a416f0d16`
+  - `storage/candidates/shannon-rotation-20261012/successor.jsonl` | `ca96a5f84b086a7f455f6f625aa1d4afc45edadef7fec92910ccd322090fa464`
+  - `storage/candidates/shannon-rotation-20261013/donor-snapshot.jsonl` | `ac23b0c1cac36f9d2e720eb620d28a6134c1730bd9da970348e55c2dbf390d45`
+  - `storage/candidates/shannon-rotation-20261013/donor-window.jsonl` | `857a13e1cc7765cdceede62726ed8700453240970480234d4bcf507479037b12`
+  - `storage/candidates/shannon-rotation-20261013/successor-treated.jsonl` | `554e875a1b29c2110eaf4ac864165c7e129fa40538f3921360bc3583f726ca45`
+  - `storage/candidates/shannon-rotation-20261013/successor.jsonl` | `554e875a1b29c2110eaf4ac864165c7e129fa40538f3921360bc3583f726ca45`
+  - `storage/lab/george-king-elision-20260729/candidate-v2.jsonl` | `a84838aa5a8421022eb0509e98880204362e0d4588e57a72085fda2715d7dd0d`
+  - `storage/lab/george-king-elision-20260729/candidate.jsonl` | `ee4415f3a96806f4ff46a511bf9fdb4503deb76dfb6049e83ceece89fa4c7141`
+  - `storage/lab/rotation-batch-20260730/george-king.jsonl` | `ac1acdc471077950f9499447a7b2936cebdc11e59af29845cee3eb83d3a7c740`
+  - `storage/lab/rotation-batch-20260730/george-prince.jsonl` | `11331dcbaf0ca8ca2f2c0b57a081a7e868972178368cd0f1db35e2eb257687f6`
+  - `storage/lab/rotation-batch-20260730/jerry-codex.jsonl` | `605054647d1af27d40c51e7655bf5486b4f4bfb6c8e3c4b69f94cf54860e449b`
+  - `storage/lab/stela-source-study-20261028/journal-wf_700181ba-531.jsonl` | `b170a80685ee07f2a69e9e6f0e9c2d9b9a2cc3122d00e2f7ca56400bbf036bcf`

@@ -29,6 +29,7 @@
 !/archives/receipts/repository-bootstrap-20261031.md
 !/archives/receipts/landing-stage-a-20261101.md
 !/archives/receipts/landing-stage-d-20261101.md
+!/archives/receipts/custody-sessions-receipts-20261101.md
 !/logs/
 /logs/*
 !/logs/.gitkeep
@@ -41,6 +42,7 @@
 #   logs/*               telemetry: output, not a record
 #   storage/             working and disposable: handoffs, candidates, the lab, bodies in custody
 #   HANDOFF.md           the manager's own handoff
+#   ops/src/runbook/agents/  the operator's placeholder sketches, admitted when they have content
 /storage/
 /MIND.md
 /archives/MIND-*
@@ -48,6 +50,7 @@
 /archives/legacy/
 /ops/etc/*.json
 /HANDOFF.md
+/ops/src/runbook/agents/
 /.venv/
 /.idea/
 /.claude/
