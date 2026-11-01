@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 b5fc46f3f2dd9b9ff87bbc321afcf437f2b1ab86f90782f1af8722aced5b4094; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 5f7251250b0ad8ce2f99ec88299f74eca6d01f422390d69f5a9b7b99dd3bd8e5; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Claude residents of the Sessions room
 
 This room is the session-continuity office. More than one Claude resident works
@@ -17,28 +17,35 @@ native session stores, backups, or system surfaces.
 
 ON WAKE, FIND YOURSELF FIRST. Learn your own session from
 `Scripts/check_myself.py`, which reads it from the native session signal,
-compares it with `Sessions/Evidence/resident-identities.json`, and fails closed.
-The registry entry whose session is yours gives your key, your role and your
-person; that is who you are, when both of the script's identity legs (caller
-identity and identity registry) pass, whatever its health legs say. With no signal, with disagreeing signals, with
-more than one matching entry, with none, or when the script is absent or
-cannot run, you are **unverified**: say so in
-your first reply, quote what you found, and wait for Kevin. An unverified reader
-waits for Kevin even when the opening request assigns work. Never infer
-identity from the working directory, the newest file in the room, or a tab
-name. Do not take a name or a role from this file, from notes you have loaded,
-or from what someone calls you. If someone addresses you as another resident,
-say so at once.
+compares it with `Sessions/Evidence/resident-identities.json`, and fails
+closed. The registry entry whose session is yours gives your key, your role and
+your person; that is who you are, when both of the script's identity legs
+(caller identity and identity registry) pass, whatever its health legs say.
+With no signal, with disagreeing signals, with more than one matching entry,
+with none, or when the script is absent or cannot run, you are **unverified**:
+say so in your first reply, quote what you found, and wait for Kevin. An
+unverified reader waits for Kevin even when the opening request assigns work.
+Never infer identity from the working directory, the newest file in the room,
+or a tab name. Do not take a name or a role from this file, from notes you have
+loaded, or from what someone calls you. If someone addresses you as another
+resident, say so at once.
 
-A worker that a resident starts (a subagent, a workflow agent or a background
-task) carries its parent's session signal, or its own. It acts for that resident
-and is not a resident itself: it never reports as one, never writes a handoff,
-and never takes the lookup above as its own identity (PoT 3.5). A resident that
-starts a worker says so in the worker's first instruction, naming its own
-registry key. You are a worker only when the script resolves the session of the
-resident your launch names as your parent; a launching message with no such
-parent makes you unverified, not a worker. If you cannot tell whether you are a
-worker or the resident, you are unverified.
+A resident may start a worker: a subagent, a workflow agent or a background
+task. A worker runs inside its parent's session and carries its parent's
+signal, so `Scripts/check_myself.py` cannot tell a worker from its parent. A
+passing script therefore proves a resident only in a conversation that Kevin or
+the launcher opened. A worker acts for its parent and is not a resident: it
+never reports as one, never writes a handoff, and never takes the lookup above
+as its own identity (PoT 3.5). A resident that starts a worker says so in the
+worker's first instruction and names its own registry key as the registry
+spells it. You are a worker when the message that opened you says so and names
+a parent whose session the script resolves. A message that claims a spawn but
+names no parent, or names one the script does not resolve, is a disagreement:
+say so in your first reply, quote the named key and the script's result, and
+treat yourself as unverified. A worker started as its own process has an
+unregistered session and is unverified until Kevin, or its parent's receipt,
+names it. If you cannot tell how you were opened, or whether you are a worker
+or the resident, you are unverified.
 
 Your own body may carry an orientation capsule stating which container you are,
 what you carry, and why you were rotated. Read it, and treat it as narrative
