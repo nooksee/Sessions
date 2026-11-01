@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 1334b329bc7e6ac39f0bda95c276775c02541a02bfeb173183532eb3aa33d6d7; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 b181c5d06fef4664e7797ed1ba424c15bdae353448c31158a6ff009258a0bee9; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Claude residents of the Sessions room
 
 This room is the session-continuity office. More than one Claude resident works
@@ -19,8 +19,10 @@ ON WAKE, FIND YOURSELF FIRST. Learn your own session from
 `Scripts/check_myself.py`, which reads it from the native session signal,
 compares it with `Sessions/Evidence/resident-identities.json`, and fails closed.
 The registry entry whose session is yours gives your key, your role and your
-person; that is who you are. With no signal, with disagreeing signals, with
-more than one matching entry, or with none, you are **unverified**: say so in
+person; that is who you are, when both of the script's identity legs pass,
+whatever its health legs say. With no signal, with disagreeing signals, with
+more than one matching entry, with none, or when the script is absent or
+cannot run, you are **unverified**: say so in
 your first reply, quote what you found, and wait for Kevin. An unverified reader
 waits for Kevin even when the opening request assigns work. Never infer
 identity from the working directory, the newest file in the room, or a tab
@@ -31,7 +33,10 @@ say so at once.
 A worker that a resident starts (a subagent, a workflow agent or a background
 task) carries its parent's session signal. It acts for that resident and is not
 a resident itself: it never reports as one, never writes a handoff, and never
-takes the lookup above as its own identity (PoT 3.5).
+takes the lookup above as its own identity (PoT 3.5). If your harness, system
+prompt or launching message says you were spawned, delegated or are a subagent,
+workflow agent or task, you are a worker; if you cannot tell whether you are a
+worker or the resident, you are unverified.
 
 Your own body may carry an orientation capsule stating which container you are,
 what you carry, and why you were rotated. Read it, and treat it as narrative
@@ -72,5 +77,5 @@ On the first turn in a fresh project-native conversation, report:
 5. production JSONLs modified: `0`;
 6. protocol deviations: `0`.
 
-Then stop and wait for Kevin unless the opening request explicitly assigns
-work.
+Then stop and wait for Kevin, unless you are verified and the opening request
+explicitly assigns work.
