@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 990946309155e6b63da1e2919d4fa189e0c12a0d2cf35c4f898e4bbaf58dbc86; rules 8; mode history; words 5; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 b0f98358e3333ae7a771aa3489d2075d4de03b022f072dabc8d05d103520024d; rules 8; mode history; words 5; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: agent-input (the packet for a resident)
 
 Asset: `Sessions/ops/src/runbook/agent-input.yaml` (`[PLACEHOLDER]` on 2026-10-30). Registry entry: `docs/ops/registry/runbook.md` (`RUNBOOK-02`). Spec written 2026-10-30 for Claude Shannon, adapted from the STELA runbook form (the file first held STELA's execution-decision spec, preserved in custody and in `Projects/STELA/docs/ops/specs/runbook/execution-decision.md`). Sources for the fields below: the Control root `CLAUDE.md` ("[words sha256=15b87514b499698e86a243b761548dee834aadb26e930877a64814e1d339cb42]", five steps), `Decisions/control-staff-routing-and-incident-closure.md`, and the Sessions block assignments in `storage/handoff/shannon.md`. Status: spec written 2026-10-30; the packet template asset is a placeholder.
@@ -21,7 +21,7 @@ A packet has to stand alone. The resident receiving it may have been rotated, co
    - **Stop condition:** the deliverable, the time box ("[words sha256=427998eef293b10c9772cba8668ea2901a8e036273110ba99ff80159f551d2f9]"), and the point at which the owner stops and reports instead of continuing (a failed gate, an ambiguous authority, a surface another writer holds).
    - **Report:** where the result goes (for the Sessions team, the owner's own file in `storage/handoff/`), and what it contains: files written with sizes, what is real versus placeholder, tests run, deviations counted, and the release of the writer claim.
 3. **Delivery.** Kevin pastes the packet into the resident's own chat. A packet written to a file is a draft until he does.
-4. **Close.** The owner reports by the stop condition. Results that last are promoted from the team room to `Receipts/` or the office handoff.
+4. **Close.** The owner reports by the stop condition. Results that last are promoted from the team room to `archives/receipts/` or the office handoff.
 
 [PLACEHOLDER: the paste-ready packet template in `ops/src/runbook/agent-input.yaml`, carrying the fields above as blanks to fill. Owner: Claude Shannon.]
 [PLACEHOLDER: a packet check (every field present, scope given as paths, a stop condition with a time). Owner: Claude Shannon; nothing is built and none is required before the template exists.]

@@ -32,10 +32,10 @@ import sys
 from pathlib import Path
 
 SESSIONS = Path(__file__).resolve().parents[3]
-REGISTRY = SESSIONS / "Evidence" / "resident-identities.json"
+REGISTRY = SESSIONS / "ops" / "etc" / "resident-identities.json"
 LEDGER = SESSIONS / "storage" / "gauges" / "ledger.jsonl"
 SPEC = SESSIONS / "docs" / "ops" / "specs" / "scripts" / "gauge.md"
-RESOURCE_STATE = SESSIONS / "Evidence" / "resource-state.json"
+RESOURCE_STATE = SESSIONS / "logs" / "resource-state.json"
 CLAUDE_ROOT = Path.home() / ".claude" / "projects"
 CODEX_LIVE = [Path.home() / ".codex" / "sessions", Path("/media/nos4r2/user_vol/VMs/Shared/Workbench/sessions")]
 CODEX_ARCHIVED = [Path.home() / ".codex" / "archived_sessions"]

@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 80c375a304f03720b016a2c1516bb92db6b203af03299d63ae34ab3a0f6fc172; rules 8; mode history; words 2; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 5852fbfe42dbe01252a0e8f04d5625a34958aa401f707cf9acf0e990d4cde9ae; rules 8; mode history; words 2; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: help
 
 Binary: `Sessions/ops/bin/help` (Bash, no library). Self-test: `ops/bin/help --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/help` and its spec (`Projects/STELA`). Status: built 2026-10-30, self-test 14 of 14 passing; read-only, wired to no hook and no timer. Claudio Freeman reviews it before it is relied on. Map: `docs/ops/README.md`.
@@ -26,7 +26,7 @@ STELA's help solved the same problem for STELA: deterministic wayfinding, specs 
      7. `docs/MANUAL.md`
    - The loop: gauge, closeout, Kevin says yes, mind, rotate, gauge.
    - One row per tool, from the union of `docs/ops/specs/scripts/*.md` and `ops/lib/scripts/*.py`, with the same columns as `specs` below.
-   - The two binaries, the help modes, and where things live (`storage/` disposable; `archives/`, `Receipts/` and custody durable; minds in `MIND.md` and `archives/surfaces/`, out of Git; identity in `Evidence/resident-identities.json`).
+   - The two binaries, the help modes, and where things live (`storage/` disposable; `archives/`, `archives/receipts/` and custody durable; minds in `MIND.md` and `archives/surfaces/`, out of Git; identity in `ops/etc/resident-identities.json`).
 4. **`read`.** Checks the seven read-in files in order. For each: present or `MISSING`, its line count, and how many lines carry `[PLACEHOLDER`. Any missing file fails the command after the full list is printed.
 5. **`specs`.** First the tool rows. For each word: spec yes or no, script yes or no, tests yes or no, and the first sentence after `Status:` in the spec's header (the text before its first `## ` section). A spec with no such line prints `[no Status: line before the first section]`. A script with no spec prints `[no spec: convention break]`. Then every other spec under `docs/ops/specs/`, grouped by folder, with its own status the same way.
 6. **`doctrine`.** Prints each level-two heading of `DOCTRINE.md` with its line number. It is an index, never a summary. It fails when the file is missing or has no such heading.

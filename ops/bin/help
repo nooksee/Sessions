@@ -358,9 +358,9 @@ show_menu() {
 
   printf '%sWhere things live%s\n' "$bold" "$reset"
   printf '  storage/      disposable: empty it and the system still works\n'
-  printf '  archives/, Receipts/, custody   durable records\n'
+  printf '  archives/, archives/receipts/, custody   durable records\n'
   printf '  MIND.md + archives/surfaces/    minds, out of Git\n'
-  printf '  Who you are: Evidence/resident-identities.json, never prose\n'
+  printf '  Who you are: ops/etc/resident-identities.json, never prose\n'
 }
 
 # ---------------------------------------------------------------------------

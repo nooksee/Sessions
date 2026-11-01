@@ -1,11 +1,11 @@
-<!-- redact: public copy; source sha256 fe2941477da97a7ff2fb63df336807360c050ef9dab40073beb6f75a5bfeb826; rules 8; mode history; words 58; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
+<!-- redact: public copy; source sha256 de73043834a760eb7b182e2673a5f18cde8edc29add992a85786973be84854d1; rules 8; mode history; words 58; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
 # Sessions Operations Manual (Command Console)
 
 Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request ("[words sha256=5b699f7ed115780f2363d3261427967ee430cbc0ed7514b43d295b5965b799dd]"), by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
 
 Authority order, unchanged by this manual:
 - **Method:** `DOCTRINE.md` wins over this manual.
-- **Identity:** `Evidence/resident-identities.json` (the registry) wins over any prose, including this manual.
+- **Identity:** `ops/etc/resident-identities.json` (the registry) wins over any prose, including this manual.
 - **Behavior of a tool:** its spec in `docs/ops/specs/` wins over the summary here.
 - **Decisions:** Kevin decides; this manual records how his decisions are carried out.
 
@@ -43,19 +43,19 @@ This manual is the operator console: what runs, in what order, who decides, and 
 
 Rules that hold for every seat:
 - **One writer per surface.** Each file, live session and rollout has exactly one named writer at a time.
-- **The team room.** `storage/handoff/{shannon,claudine,joe}.md`. Each member writes only their own file. Results are promoted to `Receipts/` or the office handoff; the room itself is working notes.
+- **The team room.** `storage/handoff/{shannon,claudine,joe}.md`. Each member writes only their own file. Results are promoted to `archives/receipts/` or the office handoff; the room itself is working notes.
 - **A file proves no delivery.** Kevin relays between chats. A routing decision or a note in the team room is not delivery.
 - **Attribution.** Relayed text is attributed to its real author; "[words sha256=b91136286b50c5be49bd3fdbd00648a98aded623894ebd9debdaa91ad844ca5c]" only for the author's own words.
 - **House style.** No contractions. Deviations reported as counts.
 
-The authority for who each resident is lives only in the registry. A resident checks its own body with `Scripts/check_myself.py` and the identity lock with `Scripts/check_identity_lock.py`.
+The authority for who each resident is lives only in the registry. A resident checks its own body with `ops/lib/scripts/myself.py` and the identity lock with `ops/lib/scripts/identity.py`.
 
 ---
 
 ## 1A. The Four-Tool Loop
 
 ```
- [words sha256=26ac57c9016a8e8ae0accfcf35287db2e014f6733c07918cc023a29592952f84]
+ [words sha256=a936effdf84b60a4e277697cd5b5dae19671bf2a21ef6130b151667ce37cddab]
       [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
       [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
  [words sha256=3da5acfb42553bb23d0a161395a46499a6b03928214b0b904b1f06b18bda69bf]
@@ -138,7 +138,7 @@ Reviewers also run each suite at the host umasks 0002 and 0022 as well as 0077; 
 
 [words sha256=586c21943eb6e906ba9e6525e60f73bf0908c13f1accbe67079a2bcee7fbeef6]
 [words sha256=4d517bb3b682d043b685a67dd3c76f28389eff8773da08db4425cfe75db9faa3]
-[words sha256=88265ad3fbf4b299ae48bcdaea1afc35d4eeffe55c49bbd1ff2ea0395b82700a]
+[words sha256=833fcf08d7ce53d1a43c72b4e77d37a4917472bc987c2e74e378130bdd32cc05]
 [words sha256=8cc5b94fc409a5b365a9e7497ae5e748e7104ff05dccc65cdf3419f87c023b83]
 [words sha256=783853d13b652edcc43f9096169b4095dad79e7920dc5c4359106d6ebc2fbf77]
 ~~~
@@ -284,11 +284,11 @@ Spec: `docs/ops/specs/scripts/rotate.md`. Status: spec only; `rotate.py` is not 
 | 6 to 7 Kevin's go | the writer names container, room, size, custody hash and rollback, then waits; a go given at phase 0 does not count | Kevin's go |
 | 7 Install | verified swap (default) or Kevin's `.NEW` swap (fallback); registry and binding switched; six identity checks agree; rollback on any failure | six checks agree |
 | 8 Acceptance | `launcher serve <key>` (load test and hold release); first reply gives room status and speaks as itself; first gauge reading recorded; clean native append; then Kevin's own acceptance | "[words sha256=b7494444967da680678b7a4213860505e8af14fd8a85b960d4bd8374a2a46898]" |
-| 9 Close | receipt `Receipts/<resident>-rotation-<n>-<date>.md`; donor store entry removed or relabeled only after custody is verified in both tiers; the new resident confirms its mind | receipt written |
+| 9 Close | receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`; donor store entry removed or relabeled only after custody is verified in both tiers; the new resident confirms its mind | receipt written |
 
-**Codex residents.** `Scripts/build_codex_rotation.py` does not carry the native compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
+**Codex residents.** `ops/lib/scripts/rotation.py` does not carry the native compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
 
-[PLACEHOLDER: `ops/lib/scripts/rotate.py` (Claude residents first), its tests and its test spec. Owner: Claude Shannon assigns the writer; Claudio reviews; ingredients are `splice_window.py` and the gates in `Candidates/joy-anne-rotation-20261030/` and `Candidates/shannon-rebuild-20261029/`.]
+[PLACEHOLDER: `ops/lib/scripts/rotate.py` (Claude residents first), its tests and its test spec. Owner: Claude Shannon assigns the writer; Claudio reviews; ingredients are `splice_window.py` and the gates in `storage/candidates/joy-anne-rotation-20261030/` and `storage/candidates/shannon-rebuild-20261029/`.]
 
 ---
 
@@ -323,7 +323,7 @@ Kevin's policy, 2026-10-30: only the live, registered body carries the plain nam
 - Codex in PyCharm: the chat title in the PyCharm workspace state, edited only while PyCharm is closed.
 - Phone: the thread title record in the Codex state database.
 
-Back up before every label edit. At cutover the plain name moves to the new body and the donor label to the old one. Current map: `Receipts/resident-label-map-20261030.md`.
+Back up before every label edit. At cutover the plain name moves to the new body and the donor label to the old one. Current map: `archives/receipts/resident-label-map-20261030.md`.
 
 **Why.** On 2026-10-29 Kevin faced two identical entries and could not tell which was the live resident. A label makes the wrong body impossible to open by accident.
 
@@ -354,13 +354,13 @@ From the map (`docs/ops/README.md`), binding on every writer in this room:
 
 1. Before creating a folder, find the existing base folder it belongs in. The base is `archives/`, `docs/`, `ops/`, `storage/` and `tools/`, plus the root files. No new specialty folders.
 2. One word per script, in `ops/lib/scripts/<word>.py`; a spec with the same name in `docs/ops/specs/scripts/<word>.md`, in STELA's sections (First Principles Rationale, Mechanics and Sequencing, Anecdotal Anchor, Integrity Filter Warnings); tests beside it in `tools/test/test_<word>.py`, with a test spec in `docs/ops/specs/tools/test/<word>.md`. `ops/bin/template <word>` writes the first three as skeletons.
-3. Working notes and rebuildable output go in `storage/`. Anything that cannot be rebuilt goes in `archives/`, `Receipts/` or custody, never in `storage/`. `storage/` can be emptied and the system still works.
+3. Working notes and rebuildable output go in `storage/`. Anything that cannot be rebuilt goes in `archives/`, `archives/receipts/` or custody, never in `storage/`. `storage/` can be emptied and the system still works.
 4. A root file is a pointer, not a document.
 5. Every new script, binary, test or runbook gets a row in its registry under `docs/ops/registry/`.
 
 Also:
-- The 42 legacy scripts in `Scripts/` move to `ops/lib/scripts/` one at a time, each with a spec, when each is next touched.
-- `Archived/`, `Attic/`, `Plans/`, `Intake/` and `Config/` each get one review for the base or retirement.
+- The legacy scripts moved from `Scripts/` to `ops/lib/scripts/` on 2026-11-01, one word each with a spec (`docs/ops/specs/runbook/port.md`); the two frozen remains are under `archives/legacy/Scripts/`.
+- `archives/legacy/Archived/`, `archives/legacy/Attic/`, `archives/legacy/Plans/`, `archives/legacy/Intake/` and `archives/legacy/Config/` each get one review for the base or retirement.
 - Raw session payload never enters Git.
 
 ---
@@ -369,7 +369,7 @@ Also:
 
 | Path | What |
 | --- | --- |
-| `Evidence/resident-identities.json` | the registry: who each resident is (read only here) |
+| `ops/etc/resident-identities.json` | the registry: who each resident is (read only here) |
 | `ops/lib/scripts/` | the tools |
 | `ops/bin/` | entry points (`help`, `template`), adapted from STELA |
 | `ops/src/` | templates and runbook assets |
@@ -379,9 +379,9 @@ Also:
 | `storage/gauges/ledger.jsonl` | gauge ledger (disposable) |
 | `storage/handoff/` | team room (working notes) |
 | `MIND.md`, `archives/surfaces/` | minds (out of Git) |
-| `Receipts/` | one receipt per action (durable, tracked) |
+| `archives/receipts/` | one receipt per action (durable, tracked) |
 | `Backup/Codex-Session-Preservation/<batch>/` (under `[host path 6]`) | tier-1 custody |
-| `Candidates/`, `Lab/` | proposal records and scratch; not homes for tools |
+| `storage/candidates/`, `storage/lab/` | proposal records and scratch; not homes for tools |
 
 ---
 
@@ -391,7 +391,7 @@ Also:
 - **Body:** the session file the provider writes (Claude JSONL, Codex rollout, Copilot events).
 - **Container:** the provider-native session a body belongs to; replaced at rotation.
 - **Room:** the project root a resident works from; minds live per room.
-- **Registry:** `Evidence/resident-identities.json`; the only authority for identity.
+- **Registry:** `ops/etc/resident-identities.json`; the only authority for identity.
 - **Window:** the model's context size in tokens.
 - **Reading:** the provider's own token figure for one call, as `gauge` finds it.
 - **Reserve:** the 50,000 tokens before the 70 percent line, where the closeout begins.
@@ -408,6 +408,6 @@ Also:
 - **Hold:** the launcher's stop record, kept from custody until acceptance.
 - **Verified swap:** the writer's atomic install after Kevin's go; the `.NEW` swap is Kevin's fallback.
 - **Custody:** two-tier, hash-verified preservation; see section 7.
-- **Receipt:** the durable record of one action in `Receipts/`.
+- **Receipt:** the durable record of one action in `archives/receipts/`.
 - **Writer:** the single named owner of a surface or operation.
 - **Worker thread:** a provider-spawned helper session; not a resident (`DOCTRINE.md` section 1A).

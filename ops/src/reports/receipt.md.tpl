@@ -23,7 +23,7 @@ requires_slots:
   - ROLLBACK
 slot_notes:
   RESIDENT: the resident as Role (Person) and registry key
-  ROTATION: the rotation number, as in Receipts/<resident>-rotation-<n>-<date>.md
+  ROTATION: the rotation number, as in archives/receipts/<resident>-rotation-<n>-<date>.md
   DATE: the date and the clock span, read from a clock, not estimated
   WRITER: the one writer, never the resident being moved
   AUTHORITY: Kevin's go for this replacement, quoted with its time; a go given at phase 0 does not count

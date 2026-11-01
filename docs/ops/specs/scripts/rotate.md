@@ -1,7 +1,7 @@
-<!-- redact: public copy; source sha256 7ec9646330c24d58930c49c6badccbae1f9b76468885c1b74bce830157389407; rules 8; mode history; words 9; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 c7555fe2bd1e0d337ee8216aca24e30982d57180a4c4b196654f27085f4c6a3d; rules 8; mode history; words 9; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: rotate
 
-Script: `Sessions/ops/lib/scripts/rotate.py` (to write; Claude residents first). Spec writer: Claude Shannon, 2026-10-30. It is ported from Claudine Colbert's runbook (`Candidates/mind-manifest-20261029/package/docs/ops/specs/runbook/transition.md`) and adds:
+Script: `Sessions/ops/lib/scripts/rotate.py` (to write; Claude residents first). Spec writer: Claude Shannon, 2026-10-30. It is ported from Claudine Colbert's runbook (`storage/candidates/mind-manifest-20261029/package/docs/ops/specs/runbook/transition.md`) and adds:
 - Claudio Freeman's conditions C11 to C13 (`claudio.md` section 130);
 - Kevin's decisions of 2026-10-30, and the install decision Shannon made under his deferral.
 
@@ -84,11 +84,11 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
    - **Mechanical.** `launcher serve <key>`, which also releases the hold and is the load test. The first reply gives the room's status and then speaks as itself. Its first gauge reading is recorded beside the wake estimate. (C13) A clean native append: after that turn the body still parses, Claude Code's own new rows carry the new session id, and tool pairs match.
    - **Kevin's.** "[words sha256=fd5bcd88e65b807ef0f1e495514a1dd1017f86ceecb0a9da40326c93940db9e4]". A correct status alone is not acceptance.
 9. **Close.**
-   - Write the receipt `Receipts/<resident>-rotation-<n>-<date>.md`: tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations counted, acceptance and its time.
+   - Write the receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`: tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations counted, acceptance and its time.
    - Handle the donor's store entry. After its custody is verified by hash in both tiers, the entry is either relabeled "[words sha256=cb6190c0758601751b2152299b4bb37dbad972d727cac156e75b36fbcac723d8]" or removed from the list, as Kevin prefers. His standing preference since 2026-10-29: removed. The custody copy is the donor of record.
    - The new resident confirms its mind entries.
 
-**Codex residents** (Joe Codex, 2026-10-30): `Scripts/build_codex_rotation.py` carries messages after the last native compaction but not the compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
+**Codex residents** (Joe Codex, 2026-10-30): `ops/lib/scripts/rotation.py` carries messages after the last native compaction but not the compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
 
 ## Anecdotal Anchor
 

@@ -1,0 +1,1253 @@
+#!/usr/bin/env python3
+"""Measure one resident's native identity and session health, without writes.
+
+Run this script with no arguments. It identifies the caller only from a
+provider-bound native session signal. A working directory is never identity.
+
+The tool rules out only the known identity, coverage, context-pressure,
+native-body, compaction-count, and timestamp-cluster failure classes that it
+measures. It proves nothing about unknown failure classes and grants repair
+authority 0.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import json
+import os
+import re
+import sys
+from collections import Counter
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Mapping, Sequence
+
+
+UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+)
+LABEL_RE = re.compile(r"You are\s+`([^`]+?)\s*\(([^`()]+)\)`", re.IGNORECASE)
+ORIENTATION_IDENTITY_RE = re.compile(
+    r"(?:^|\n)\s*You are\s+(.+?)(?:\.|\n|$)",
+    re.IGNORECASE,
+)
+ROMAN_ROLE_SUFFIX_RE = re.compile(r"\s+[IVXLCDM]+$", re.IGNORECASE)
+ROTATION_PERCENT = 70.0
+TIMESTAMP_CLUSTER_MINIMUM = 20
+RESOURCE_FRESHNESS_REFERENCE_SECONDS = 1800
+RESOURCE_FUTURE_TOLERANCE_SECONDS = 300
+EXPECTED_LEGS = 9
+LIMIT_TEXT = (
+    "This tool rules out only the known identity, coverage, context-pressure, "
+    "native-body, compaction-count, and timestamp-cluster failure classes "
+    "that it measures. It proves nothing about unknown failure classes and "
+    "grants repair authority 0. Claude token usage is caller-body native; its "
+    "model window is model-matched capability evidence whose age is reported "
+    "and which is not caller-bound telemetry."
+)
+
+
+@dataclass(frozen=True)
+class CheckPaths:
+    registry: Path
+    roster: Path
+    bindings: Path
+    resource_state: Path
+    codex_lock_root: Path
+    proc_root: Path = Path("/proc")
+
+    @classmethod
+    def live(cls) -> "CheckPaths":
+        sessions = Path(__file__).resolve().parents[3]
+        return cls(
+            registry=sessions / "ops/etc/resident-identities.json",
+            roster=sessions / "ops/etc/residents.json",
+            bindings=sessions / "ops/etc/host-bindings.json",
+            resource_state=sessions / "logs/resource-state.json",
+            codex_lock_root=Path.home() / ".codex/thread-writer-locks",
+        )
+
+
+@dataclass(frozen=True)
+class CallerSignal:
+    provider: str
+    session_id: str
+    surface: str
+
+
+@dataclass
+class Leg:
+    name: str
+    status: str
+    detail: str
+    surfaces: tuple[str, ...]
+
+
+@dataclass
+class Report:
+    legs: list[Leg] = field(default_factory=list)
+    duplicates: int = 0
+    source_failures: list[str] = field(default_factory=list)
+
+    def add(
+        self,
+        name: str,
+        status: str,
+        detail: str,
+        *surfaces: str,
+    ) -> None:
+        if status not in {"pass", "finding", "undetermined"}:
+            raise ValueError(f"unsupported leg status: {status}")
+        self.legs.append(Leg(name, status, detail, tuple(surfaces)))
+
+    @property
+    def unresolved(self) -> int:
+        return sum(leg.status == "undetermined" for leg in self.legs)
+
+    @property
+    def findings(self) -> int:
+        return sum(leg.status == "finding" for leg in self.legs)
+
+    @property
+    def exit_code(self) -> int:
+        complete = len(self.legs) == EXPECTED_LEGS and self.unresolved == 0
+        clean = self.findings == 0 and not self.source_failures
+        return 0 if complete and clean else 1
+
+
+@dataclass(frozen=True)
+class BodyIdentityClaim:
+    kind: str
+    line_number: int
+    person: str | None = None
+    role: str | None = None
+    display: str | None = None
+
+
+@dataclass
+class BodyAnalysis:
+    path: Path
+    provider: str
+    size: int
+    rows: int = 0
+    parse_errors: int = 0
+    native_compactions: int = 0
+    message_rows: int = 0
+    missing_message_timestamps: int = 0
+    timestamp_counts: Counter[str] = field(default_factory=Counter)
+    identity_rows_seen: int = 0
+    identity_claims: list[BodyIdentityClaim] = field(default_factory=list)
+    latest_identity_line: int | None = None
+    latest_identity_claim: BodyIdentityClaim | None = None
+    native_session_id: str | None = None
+    native_cwd: str | None = None
+    context_tokens: int | None = None
+    context_window: int | None = None
+    context_observed_at: str | None = None
+    model_id: str | None = None
+
+
+def _surface(path: Path) -> str:
+    return str(path.resolve(strict=False))
+
+
+def _parse_timestamp(value: object) -> dt.datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        stamp = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=dt.timezone.utc)
+    return stamp.astimezone(dt.timezone.utc)
+
+
+def _load_json(path: Path) -> tuple[object | None, str | None]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8")), None
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+
+
+def _environment_signals(environ: Mapping[str, str]) -> tuple[list[CallerSignal], list[str]]:
+    signals: list[CallerSignal] = []
+    errors: list[str] = []
+    mapping = {
+        "CODEX_THREAD_ID": "codex",
+        "CLAUDE_CODE_SESSION_ID": "claude",
+        "CLAUDE_SESSION_ID": "claude",
+    }
+    for key, provider in mapping.items():
+        value = environ.get(key)
+        if value is None:
+            continue
+        if not UUID_RE.fullmatch(value):
+            errors.append(f"/proc/self/environ::{key} is not a native UUID")
+            continue
+        signals.append(
+            CallerSignal(provider, value, f"/proc/self/environ::{key}")
+        )
+    return signals, errors
+
+
+def _read_proc_tokens(proc_root: Path, pid: int) -> tuple[list[str], str | None]:
+    path = proc_root / str(pid) / "cmdline"
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        return [], f"{_surface(path)}: {type(exc).__name__}: {exc}"
+    return [part.decode("utf-8", "replace") for part in raw.split(b"\0") if part], None
+
+
+def _read_ppid(proc_root: Path, pid: int) -> int | None:
+    path = proc_root / str(pid) / "status"
+    try:
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("PPid:"):
+                return int(line.split(":", 1)[1].strip())
+    except (OSError, ValueError):
+        return None
+    return None
+
+
+def _command_provider(tokens: Sequence[str]) -> str | None:
+    if not tokens:
+        return None
+    launch_tokens = tokens[:2]
+    marker = " ".join(Path(token).name.lower() for token in launch_tokens)
+    joined = " ".join(token.lower() for token in launch_tokens)
+    if "claude" in marker or "/claude" in joined:
+        return "claude"
+    if "codex" in marker or "/codex" in joined:
+        return "codex"
+    return None
+
+
+def _resume_id(tokens: Sequence[str], provider: str) -> str | None:
+    if provider == "codex":
+        markers = {"resume"}
+    else:
+        markers = {"--resume", "--session-id", "-r"}
+    for index, token in enumerate(tokens):
+        if token in markers and index + 1 < len(tokens):
+            value = tokens[index + 1]
+            if UUID_RE.fullmatch(value):
+                return value
+        for marker in markers:
+            prefix = marker + "="
+            if token.startswith(prefix):
+                value = token[len(prefix):]
+                if UUID_RE.fullmatch(value):
+                    return value
+    return None
+
+
+def _ancestry_signals(
+    proc_root: Path,
+    start_pid: int | None,
+    maximum_depth: int = 16,
+) -> tuple[
+    list[CallerSignal],
+    list[str],
+    dict[str, list[tuple[int, str]]],
+    list[str],
+]:
+    if start_pid is None:
+        return [], [], {}, []
+    signals: list[CallerSignal] = []
+    errors: list[str] = []
+    provider_processes: dict[str, list[tuple[int, str]]] = {}
+    inspected_surfaces: list[str] = []
+    pid = start_pid
+    seen: set[int] = set()
+    for _ in range(maximum_depth):
+        if pid <= 1 or pid in seen:
+            break
+        seen.add(pid)
+        inspected_surfaces.extend(
+            [
+                _surface(proc_root / str(pid) / "cmdline"),
+                _surface(proc_root / str(pid) / "status"),
+            ]
+        )
+        tokens, error = _read_proc_tokens(proc_root, pid)
+        if error is not None:
+            errors.append(error)
+            break
+        provider = _command_provider(tokens)
+        if provider is not None:
+            surface = _surface(proc_root / str(pid) / "cmdline")
+            provider_processes.setdefault(provider, []).append((pid, surface))
+            session_id = _resume_id(tokens, provider)
+            if session_id is not None:
+                signals.append(
+                    CallerSignal(
+                        provider,
+                        session_id,
+                        surface,
+                    )
+                )
+        parent = _read_ppid(proc_root, pid)
+        if parent is None or parent == pid:
+            break
+        pid = parent
+    return signals, errors, provider_processes, inspected_surfaces
+
+
+def _codex_writer_lock_evidence(
+    lock_root: Path,
+    session_id: str,
+    proc_root: Path,
+    provider_processes: Sequence[tuple[int, str]],
+) -> tuple[list[str], str | None]:
+    lock_path = (lock_root / f"{session_id}.lock").resolve(strict=False)
+    if not lock_path.is_file():
+        return [_surface(lock_path)], "exact Codex writer lock is absent"
+    for pid, _ in provider_processes:
+        fd_root = proc_root / str(pid) / "fd"
+        try:
+            descriptors = list(fd_root.iterdir())
+        except OSError:
+            continue
+        for descriptor in descriptors:
+            try:
+                target = os.readlink(descriptor)
+            except OSError:
+                continue
+            if Path(target).resolve(strict=False) == lock_path:
+                return [_surface(lock_path), str(descriptor.absolute())], None
+    return (
+        [_surface(lock_path)],
+        "exact Codex writer lock is not held by a caller-ancestor Codex process",
+    )
+
+
+def resolve_caller(
+    environ: Mapping[str, str],
+    proc_root: Path,
+    start_pid: int | None,
+    codex_lock_root: Path,
+) -> tuple[CallerSignal | None, tuple[str, ...], list[str]]:
+    env_signals, env_errors = _environment_signals(environ)
+    (
+        process_signals,
+        process_errors,
+        provider_processes,
+        inspected_surfaces,
+    ) = _ancestry_signals(proc_root, start_pid)
+    accepted_environment: list[CallerSignal] = []
+    support_surfaces: list[str] = []
+    for signal in env_signals:
+        processes = provider_processes.get(signal.provider, [])
+        if not processes:
+            env_errors.append(
+                f"{signal.surface} has no matching {signal.provider} process "
+                "in the caller ancestry"
+            )
+            continue
+        surfaces = [surface for _, surface in processes]
+        if signal.provider == "codex":
+            lock_surfaces, lock_error = _codex_writer_lock_evidence(
+                codex_lock_root,
+                signal.session_id,
+                proc_root,
+                processes,
+            )
+            surfaces.extend(lock_surfaces)
+            if lock_error is not None:
+                env_errors.append(f"{signal.surface}: {lock_error}")
+                continue
+        else:
+            exact_process_ids = {
+                item.session_id
+                for item in process_signals
+                if item.provider == "claude"
+            }
+            if signal.session_id not in exact_process_ids:
+                env_errors.append(
+                    f"{signal.surface} has no matching exact Claude session "
+                    "identifier in the caller process ancestry"
+                )
+                continue
+        accepted_environment.append(signal)
+        support_surfaces.extend(surfaces)
+    all_signals = accepted_environment + process_signals
+    unique = {(item.provider, item.session_id) for item in all_signals}
+    surfaces = tuple(
+        dict.fromkeys(
+            [item.surface for item in all_signals] + support_surfaces
+            + inspected_surfaces
+        )
+    )
+    errors = env_errors + process_errors
+    if len(unique) != 1:
+        if not unique:
+            errors.append("no provider-bound native session signal was found")
+        else:
+            errors.append(f"caller signals disagree across {len(unique)} native identities")
+        return None, surfaces, errors
+    provider, session_id = next(iter(unique))
+    chosen = CallerSignal(provider, session_id, surfaces[0])
+    return chosen, surfaces, errors
+
+
+def _canonical_label(text: object) -> str | None:
+    if not isinstance(text, str):
+        return None
+    match = LABEL_RE.search(text)
+    if match is None:
+        return None
+    role = " ".join(match.group(1).split())
+    person = " ".join(match.group(2).split())
+    return f"{role} ({person})"
+
+
+def _display_claim(text: object, line_number: int) -> BodyIdentityClaim | None:
+    display = _canonical_label(text)
+    if display is None:
+        return None
+    match = re.fullmatch(r"(.+?)\s*\(([^()]+)\)", display)
+    if match is None:
+        return None
+    return BodyIdentityClaim(
+        kind="lineage capsule",
+        line_number=line_number,
+        role=" ".join(match.group(1).split()),
+        person=" ".join(match.group(2).split()),
+        display=display,
+    )
+
+
+def _orientation_claim(text: object, line_number: int) -> BodyIdentityClaim | None:
+    if not isinstance(text, str) or not text.lstrip().startswith(
+        "<session_clinic_orientation>"
+    ):
+        return None
+    match = ORIENTATION_IDENTITY_RE.search(text)
+    if match is None:
+        return None
+    clauses = [" ".join(part.strip(" `").split()) for part in match.group(1).split(",")]
+    clauses = [part for part in clauses if part]
+    if not clauses:
+        return None
+    return BodyIdentityClaim(
+        kind="session-clinic orientation",
+        line_number=line_number,
+        person=clauses[0],
+        role=clauses[1] if len(clauses) > 1 else None,
+    )
+
+
+def _normalized(value: str) -> str:
+    return " ".join(value.split()).casefold()
+
+
+def _normalized_role(value: str) -> str:
+    return _normalized(ROMAN_ROLE_SUFFIX_RE.sub("", value.strip()))
+
+
+def _compare_body_identity(
+    claim: BodyIdentityClaim,
+    expected_role: str,
+    expected_person: str,
+) -> tuple[str, str]:
+    expected_display = f"{expected_role} ({expected_person})"
+    if claim.display is not None:
+        agreement = _normalized(claim.display) == _normalized(expected_display)
+        return (
+            ("pass", "canonical display agrees with registry")
+            if agreement
+            else (
+                "finding",
+                f"body_identity={claim.display!r}; registry_identity={expected_display!r}",
+            )
+        )
+
+    if claim.person is None:
+        return "undetermined", "orientation contains no parseable person claim"
+    person_claim = _normalized(claim.person)
+    expected_person_normalized = _normalized(expected_person)
+    if person_claim == expected_person_normalized:
+        role_note = (
+            f"; orientation_role={claim.role!r} is mutable registry-owned context"
+            if claim.role
+            else ""
+        )
+        return "pass", f"durable person identity agrees with registry{role_note}"
+
+    expected_first = expected_person_normalized.split()[0]
+    if person_claim == expected_first and claim.role is not None:
+        if _normalized_role(claim.role) == _normalized_role(expected_role):
+            return (
+                "pass",
+                "provider-name and role identity agree with registry; "
+                "the orientation omits the durable surname",
+            )
+        return (
+            "undetermined",
+            "orientation gives only a provider-name claim and its role does not "
+            "corroborate the registry",
+        )
+    return (
+        "finding",
+        f"body_person={claim.person!r}; registry_person={expected_person!r}",
+    )
+
+
+def _record_message_timestamp(analysis: BodyAnalysis, row: dict[str, Any]) -> None:
+    analysis.message_rows += 1
+    stamp = row.get("timestamp")
+    if isinstance(stamp, str) and stamp:
+        analysis.timestamp_counts[stamp] += 1
+    else:
+        analysis.missing_message_timestamps += 1
+
+
+def analyze_codex_body(path: Path) -> BodyAnalysis:
+    analysis = BodyAnalysis(path=path, provider="codex", size=path.stat().st_size)
+    latest_context: tuple[int, int, str | None] | None = None
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, 1):
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                analysis.parse_errors += 1
+                continue
+            if not isinstance(row, dict):
+                analysis.parse_errors += 1
+                continue
+            analysis.rows += 1
+            row_type = row.get("type")
+            payload = row.get("payload")
+            if line_number == 1 and row_type == "session_meta" and isinstance(payload, dict):
+                value = payload.get("id")
+                cwd = payload.get("cwd")
+                analysis.native_session_id = value if isinstance(value, str) else None
+                analysis.native_cwd = cwd if isinstance(cwd, str) else None
+            if row_type == "compacted" and isinstance(payload, dict):
+                if isinstance(payload.get("window_number"), int):
+                    analysis.native_compactions += 1
+                claim = _display_claim(payload.get("message"), line_number)
+                if claim is not None:
+                    analysis.identity_rows_seen += 1
+                    analysis.identity_claims.append(claim)
+                    analysis.latest_identity_line = line_number
+                    analysis.latest_identity_claim = claim
+            if row_type == "response_item" and isinstance(payload, dict):
+                if payload.get("type") == "message":
+                    _record_message_timestamp(analysis, row)
+            if row_type == "event_msg" and isinstance(payload, dict):
+                if payload.get("type") != "token_count":
+                    continue
+                info = payload.get("info")
+                if not isinstance(info, dict):
+                    continue
+                usage = info.get("last_token_usage")
+                tokens = usage.get("input_tokens") if isinstance(usage, dict) else None
+                window = info.get("model_context_window")
+                if isinstance(tokens, int) and isinstance(window, int) and window > 0:
+                    latest_context = (tokens, window, row.get("timestamp"))
+    if latest_context is not None:
+        analysis.context_tokens, analysis.context_window, observed = latest_context
+        analysis.context_observed_at = observed if isinstance(observed, str) else None
+    return analysis
+
+
+def analyze_claude_body(path: Path) -> BodyAnalysis:
+    analysis = BodyAnalysis(path=path, provider="claude", size=path.stat().st_size)
+    latest_usage: tuple[int, str, str | None] | None = None
+    with path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, 1):
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                analysis.parse_errors += 1
+                continue
+            if not isinstance(row, dict):
+                analysis.parse_errors += 1
+                continue
+            analysis.rows += 1
+            session_id = row.get("sessionId")
+            cwd = row.get("cwd")
+            if isinstance(session_id, str):
+                analysis.native_session_id = session_id
+            if isinstance(cwd, str):
+                analysis.native_cwd = cwd
+            row_type = row.get("type")
+            if row_type in {"user", "assistant"}:
+                _record_message_timestamp(analysis, row)
+            if row.get("subtype") == "compact_boundary":
+                analysis.native_compactions += 1
+            if row_type == "user":
+                message = row.get("message")
+                content = message.get("content") if isinstance(message, dict) else None
+                if isinstance(content, str) and content.lstrip().startswith(
+                    "<session_clinic_orientation>"
+                ):
+                    analysis.identity_rows_seen += 1
+                    analysis.latest_identity_line = line_number
+                    claim = _display_claim(content, line_number) or _orientation_claim(
+                        content,
+                        line_number,
+                    )
+                    analysis.latest_identity_claim = claim
+                    if claim is not None:
+                        analysis.identity_claims.append(claim)
+            if row_type == "assistant":
+                message = row.get("message")
+                if not isinstance(message, dict):
+                    continue
+                usage = message.get("usage")
+                model = message.get("model")
+                if not isinstance(usage, dict) or not isinstance(model, str):
+                    continue
+                parts = [
+                    usage.get("input_tokens"),
+                    usage.get("cache_creation_input_tokens"),
+                    usage.get("cache_read_input_tokens"),
+                ]
+                if all(isinstance(value, int) and value >= 0 for value in parts):
+                    latest_usage = (sum(parts), model, row.get("timestamp"))
+    if latest_usage is not None:
+        analysis.context_tokens, analysis.model_id, observed = latest_usage
+        analysis.context_observed_at = observed if isinstance(observed, str) else None
+    return analysis
+
+
+def _candidate_bodies(
+    provider: str,
+    session_id: str,
+    session_root: Path,
+) -> list[Path]:
+    if provider == "codex":
+        root = (session_root / "sessions").resolve(strict=False)
+        pattern = f"*{session_id}*.jsonl"
+        raw = root.rglob(pattern) if root.is_dir() else []
+    else:
+        root = session_root.resolve(strict=False)
+        pattern = f"*/{session_id}.jsonl"
+        raw = root.glob(pattern) if root.is_dir() else []
+    matches: list[Path] = []
+    for path in raw:
+        try:
+            resolved = path.resolve(strict=True)
+        except OSError:
+            continue
+        if not resolved.is_file():
+            continue
+        try:
+            resolved.relative_to(root)
+        except ValueError:
+            continue
+        matches.append(resolved)
+    return sorted(set(matches))
+
+
+def _claude_window(
+    analysis: BodyAnalysis,
+    path: Path,
+    now: dt.datetime,
+) -> tuple[int | None, str]:
+    payload, error = _load_json(path)
+    if error is not None or not isinstance(payload, dict):
+        return None, error or "resource state is not an object"
+    generated = _parse_timestamp(payload.get("generated_at"))
+    if generated is None:
+        return None, "resource state generated_at is absent or invalid"
+    age = (now.astimezone(dt.timezone.utc) - generated).total_seconds()
+    if age < -RESOURCE_FUTURE_TOLERANCE_SECONDS:
+        return None, f"resource state is future-dated: age_seconds={age:.0f}"
+    age = max(0.0, age)
+    model = payload.get("model")
+    context = payload.get("context")
+    if not isinstance(model, dict) or not isinstance(context, dict):
+        return None, "resource state model or context is absent"
+    if model.get("id") != analysis.model_id:
+        return None, (
+            "resource model does not match the caller body: "
+            f"resource={model.get('id')!r} body={analysis.model_id!r}"
+        )
+    window = context.get("window_size")
+    if not isinstance(window, int) or window <= 0:
+        return None, "resource state context window is absent"
+    freshness = (
+        "recent"
+        if age <= RESOURCE_FRESHNESS_REFERENCE_SECONDS
+        else "older-model-capability-evidence"
+    )
+    return (
+        window,
+        f"model={analysis.model_id}; capability_record_age_seconds={age:.0f}; "
+        f"capability_record_class={freshness}; tokens_source=caller-native-body; "
+        "window_source=model-matched-identifier-free-capability-record",
+    )
+
+
+def _identity_rows(payload: object) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict) or not isinstance(payload.get("identities"), list):
+        return []
+    return [row for row in payload["identities"] if isinstance(row, dict)]
+
+
+def _resident_rows(payload: object) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict) or not isinstance(payload.get("residents"), list):
+        return []
+    return [row for row in payload["residents"] if isinstance(row, dict)]
+
+
+def _resident_collection_is_whole(payload: object) -> bool:
+    """True only for a {"residents": [objects]} payload.
+
+    _resident_rows() drops what it cannot read, which is safe when a row must
+    be found. For a held resident, absence is the passing state, so a missing,
+    non-list or partly unreadable collection must not count as verified absence.
+    """
+    return (
+        isinstance(payload, dict)
+        and isinstance(payload.get("residents"), list)
+        and all(isinstance(row, dict) for row in payload["residents"])
+    )
+
+
+def _private_mode_discrepancy(path: Path) -> str | None:
+    try:
+        mode = path.stat().st_mode & 0o777
+    except OSError:
+        mode = None
+    if mode != 0o600:
+        return f"private binding mode={oct(mode) if mode is not None else 'unreadable'}"
+    return None
+
+
+def run_check(
+    paths: CheckPaths,
+    *,
+    environ: Mapping[str, str],
+    start_pid: int | None,
+    now: dt.datetime | None = None,
+) -> Report:
+    report = Report()
+    current_time = now or dt.datetime.now(dt.timezone.utc)
+    caller, signal_surfaces, signal_errors = resolve_caller(
+        environ, paths.proc_root, start_pid, paths.codex_lock_root
+    )
+    if caller is None:
+        report.add(
+            "caller identity",
+            "undetermined",
+            "; ".join(signal_errors),
+            *(signal_surfaces or ("/proc/self/environ",)),
+        )
+    elif signal_errors:
+        report.source_failures.extend(signal_errors)
+        report.add(
+            "caller identity",
+            "finding",
+            f"provider={caller.provider}; native_session={caller.session_id}; "
+            + "; ".join(signal_errors),
+            *signal_surfaces,
+        )
+    else:
+        report.add(
+            "caller identity",
+            "pass",
+            f"provider={caller.provider}; native_session={caller.session_id}",
+            *signal_surfaces,
+        )
+
+    registry_payload, registry_error = _load_json(paths.registry)
+    roster_payload, roster_error = _load_json(paths.roster)
+    bindings_payload, bindings_error = _load_json(paths.bindings)
+    for path, error in (
+        (paths.registry, registry_error),
+        (paths.roster, roster_error),
+        (paths.bindings, bindings_error),
+    ):
+        if error is not None:
+            report.source_failures.append(f"{_surface(path)}: {error}")
+
+    identity: dict[str, Any] | None = None
+    expected_display: str | None = None
+    expected_role: str | None = None
+    expected_person: str | None = None
+    if caller is None or registry_error is not None:
+        report.add(
+            "identity registry",
+            "undetermined",
+            registry_error or "caller identity is unavailable",
+            _surface(paths.registry),
+        )
+    else:
+        matches = [
+            row
+            for row in _identity_rows(registry_payload)
+            if row.get("session_id") == caller.session_id
+            and row.get("provider") == caller.provider
+        ]
+        if len(matches) != 1:
+            report.duplicates += max(0, len(matches) - 1)
+            report.add(
+                "identity registry",
+                "undetermined",
+                f"expected one exact caller row; observed={len(matches)}",
+                _surface(paths.registry),
+            )
+        else:
+            identity = matches[0]
+            role = identity.get("role")
+            person = identity.get("person")
+            key = identity.get("key")
+            if not all(isinstance(value, str) and value for value in (role, person, key)):
+                report.add(
+                    "identity registry",
+                    "undetermined",
+                    "the exact row lacks key, role, or person",
+                    _surface(paths.registry),
+                )
+                identity = None
+            else:
+                expected_role = role
+                expected_person = person
+                expected_display = f"{expected_role} ({expected_person})"
+                report.add(
+                    "identity registry",
+                    "pass",
+                    f"key={key}; registry_identity={expected_display}",
+                    _surface(paths.registry),
+                )
+
+    # Registry-only claude or codex resident held from the launcher (Kevin,
+    # 2026-10-23): absence from roster and bindings is then the correct state.
+    # The launcher serves a resident only when both files carry its key, and
+    # presence in one alone makes it reject the whole roster.
+    held = identity is not None and identity.get("launcher") == "held"
+    roster_row: dict[str, Any] | None = None
+    if identity is None or roster_error is not None:
+        report.add(
+            "launcher roster",
+            "undetermined",
+            roster_error or "registry key is unavailable",
+            _surface(paths.roster),
+        )
+    else:
+        rows = [row for row in _resident_rows(roster_payload) if row.get("key") == identity["key"]]
+        if "launcher" in identity and not held:
+            report.add(
+                "launcher roster",
+                "finding",
+                f"registry launcher value {identity['launcher']!r} is not 'held'",
+                _surface(paths.registry),
+            )
+        elif held and not _resident_collection_is_whole(roster_payload):
+            report.add(
+                "launcher roster",
+                "undetermined",
+                "resident collection is missing or malformed, so absence cannot be verified",
+                _surface(paths.roster),
+            )
+        elif held:
+            report.add(
+                "launcher roster",
+                "finding" if rows else "pass",
+                "present although the registry holds it from the launcher (in both roster "
+                "and bindings the launcher would serve it; in one alone it rejects the "
+                "whole roster); "
+                f"observed={len(rows)}"
+                if rows else "registry-only: held from the launcher and absent as required",
+                _surface(paths.roster),
+            )
+        elif len(rows) != 1:
+            report.duplicates += max(0, len(rows) - 1)
+            report.add(
+                "launcher roster",
+                "undetermined",
+                f"expected one exact key; observed={len(rows)}",
+                _surface(paths.roster),
+            )
+        else:
+            roster_row = rows[0]
+            discrepancies = []
+            if roster_row.get("display_name") != expected_display:
+                discrepancies.append(
+                    f"display_name={roster_row.get('display_name')!r}"
+                )
+            if roster_row.get("provider_id") != caller.provider:
+                discrepancies.append(
+                    f"provider_id={roster_row.get('provider_id')!r}"
+                )
+            if roster_row.get("enabled") is not True:
+                discrepancies.append(f"enabled={roster_row.get('enabled')!r}")
+            report.add(
+                "launcher roster",
+                "finding" if discrepancies else "pass",
+                "; ".join(discrepancies) if discrepancies else "key, label, provider, and enabled state agree",
+                _surface(paths.roster),
+            )
+
+    binding_row: dict[str, Any] | None = None
+    session_root: Path | None = None
+    if caller is not None and isinstance(bindings_payload, dict):
+        providers = bindings_payload.get("providers")
+        provider_config = providers.get(caller.provider) if isinstance(providers, dict) else None
+        root_value = provider_config.get("session_root") if isinstance(provider_config, dict) else None
+        if isinstance(root_value, str) and root_value:
+            session_root = Path(root_value).expanduser()
+    if identity is None or bindings_error is not None:
+        report.add(
+            "host bindings",
+            "undetermined",
+            bindings_error or "registry key is unavailable",
+            _surface(paths.bindings),
+        )
+    else:
+        rows = [
+            row
+            for row in _resident_rows(bindings_payload)
+            if row.get("key") == identity["key"]
+        ]
+        if held and not _resident_collection_is_whole(bindings_payload):
+            report.add(
+                "host bindings",
+                "undetermined",
+                "resident collection is missing or malformed, so absence cannot be verified",
+                _surface(paths.bindings),
+            )
+        elif held:
+            # Holding changes which rows may exist, not the file's privacy. A
+            # bindings row under another key that carries the held session
+            # would be served under that key if the roster has it too, and
+            # alone makes the launcher reject the whole roster.
+            discrepancies = []
+            if rows:
+                discrepancies.append(
+                    "present although the registry holds it from the launcher (in both roster "
+                    "and bindings the launcher would serve it; in one alone it rejects the "
+                    "whole roster); "
+                f"observed={len(rows)}"
+                )
+            aliases = sorted(
+                str(row.get("key"))
+                for row in _resident_rows(bindings_payload)
+                if row.get("key") != identity["key"]
+                and row.get("session_id") == identity.get("session_id")
+            )
+            if aliases:
+                discrepancies.append(
+                    "held session is bound under launcher key " + ", ".join(aliases)
+                    + " (with a roster row of that key the launcher would serve it;"
+                    " without one it rejects the whole roster)"
+                )
+            mode_problem = _private_mode_discrepancy(paths.bindings)
+            if mode_problem is not None:
+                discrepancies.append(mode_problem)
+            report.add(
+                "host bindings",
+                "finding" if discrepancies else "pass",
+                "; ".join(discrepancies)
+                if discrepancies
+                else "registry-only: held from the launcher, absent as required, and mode 0600",
+                _surface(paths.bindings),
+            )
+        elif len(rows) != 1:
+            report.duplicates += max(0, len(rows) - 1)
+            report.add(
+                "host bindings",
+                "undetermined",
+                f"expected one exact key; observed={len(rows)}",
+                _surface(paths.bindings),
+            )
+        else:
+            binding_row = rows[0]
+            discrepancies = []
+            if binding_row.get("session_id") != caller.session_id:
+                discrepancies.append("session_id mismatch")
+            if binding_row.get("provider_id") != caller.provider:
+                discrepancies.append("provider_id mismatch")
+            if binding_row.get("project_root") != identity.get("room"):
+                discrepancies.append("project_root does not match registry room")
+            mode_problem = _private_mode_discrepancy(paths.bindings)
+            if mode_problem is not None:
+                discrepancies.append(mode_problem)
+            if session_root is None:
+                discrepancies.append("provider session_root is unavailable")
+            report.add(
+                "host bindings",
+                "finding" if discrepancies else "pass",
+                "; ".join(discrepancies) if discrepancies else "key, provider, session, room, and mode 0600 agree",
+                _surface(paths.bindings),
+            )
+
+    analysis: BodyAnalysis | None = None
+    body_paths: list[Path] = []
+    if caller is None or session_root is None:
+        report.add(
+            "native session body",
+            "undetermined",
+            "caller identity or provider session root is unavailable",
+            _surface(paths.bindings),
+        )
+    else:
+        body_paths = _candidate_bodies(caller.provider, caller.session_id, session_root)
+        if len(body_paths) != 1:
+            report.duplicates += max(0, len(body_paths) - 1)
+            report.add(
+                "native session body",
+                "undetermined",
+                f"expected one exact live native body; observed={len(body_paths)}",
+                _surface(session_root),
+            )
+        else:
+            body_path = body_paths[0]
+            try:
+                analysis = (
+                    analyze_codex_body(body_path)
+                    if caller.provider == "codex"
+                    else analyze_claude_body(body_path)
+                )
+            except (OSError, UnicodeDecodeError) as exc:
+                report.source_failures.append(
+                    f"{_surface(body_path)}: {type(exc).__name__}: {exc}"
+                )
+                report.add(
+                    "native session body",
+                    "undetermined",
+                    f"native body could not be read: {type(exc).__name__}: {exc}",
+                    _surface(body_path),
+                )
+            else:
+                discrepancies = []
+                comparison_gaps = []
+                if analysis.native_session_id != caller.session_id:
+                    discrepancies.append("body-native session identifier mismatch")
+                expected_root = (
+                    binding_row.get("project_root")
+                    if binding_row is not None
+                    and isinstance(binding_row.get("project_root"), str)
+                    else identity.get("room")
+                    if held and isinstance(identity.get("room"), str)
+                    else None
+                )
+                if expected_root is None:
+                    comparison_gaps.append(
+                        "working-directory comparison unavailable because an "
+                        "exact binding project_root is unavailable"
+                    )
+                elif analysis.native_cwd is None:
+                    discrepancies.append("body-native working directory is absent")
+                elif Path(analysis.native_cwd).resolve() != Path(expected_root).resolve():
+                    discrepancies.append("body-native working directory mismatch")
+                if comparison_gaps:
+                    status = "undetermined"
+                    detail = "; ".join(discrepancies + comparison_gaps)
+                elif discrepancies:
+                    status = "finding"
+                    detail = "; ".join(discrepancies)
+                else:
+                    status = "pass"
+                    detail = (
+                        "one exact live body; native session identifier and "
+                        "working directory agree"
+                    )
+                report.add(
+                    "native session body",
+                    status,
+                    detail,
+                    _surface(body_path),
+                    _surface(paths.bindings),
+                )
+
+    if analysis is None:
+        report.add(
+            "body identity",
+            "undetermined",
+            "native body analysis is unavailable",
+            *([_surface(body_paths[0])] if body_paths else [_surface(paths.registry)]),
+        )
+    elif analysis.latest_identity_claim is None:
+        report.add(
+            "body identity",
+            "undetermined",
+            "latest canonical capsule or session-clinic orientation has no "
+            "parseable identity; "
+            f"identity_rows_seen={analysis.identity_rows_seen}; "
+            f"latest_identity_line={analysis.latest_identity_line or 'none'}",
+            _surface(analysis.path),
+        )
+    elif expected_role is None or expected_person is None:
+        report.add(
+            "body identity",
+            "undetermined",
+            "a canonical body identity was observed but registry role or person "
+            "comparison is unavailable",
+            _surface(analysis.path),
+        )
+    else:
+        claim = analysis.latest_identity_claim
+        status, comparison = _compare_body_identity(
+            claim,
+            expected_role,
+            expected_person,
+        )
+        report.add(
+            "body identity",
+            status,
+            f"selected={claim.kind}; line={claim.line_number}; "
+            f"identity_rows_seen={analysis.identity_rows_seen}; {comparison}",
+            _surface(analysis.path),
+            _surface(paths.registry),
+        )
+
+    if analysis is None or analysis.context_tokens is None:
+        report.add(
+            "context pressure",
+            "undetermined",
+            "caller-native context telemetry is unavailable",
+            *([_surface(analysis.path)] if analysis else [_surface(paths.bindings)]),
+        )
+    else:
+        context_surfaces = [_surface(analysis.path)]
+        context_detail = ""
+        if analysis.provider == "claude":
+            window, context_detail = _claude_window(
+                analysis, paths.resource_state, current_time
+            )
+            context_surfaces.append(_surface(paths.resource_state))
+            analysis.context_window = window
+        if analysis.context_window is None or analysis.context_window <= 0:
+            report.add(
+                "context pressure",
+                "undetermined",
+                context_detail or "model context window is unavailable",
+                *context_surfaces,
+            )
+        else:
+            percentage = 100.0 * analysis.context_tokens / analysis.context_window
+            above = percentage >= ROTATION_PERCENT
+            detail = (
+                f"tokens={analysis.context_tokens}; window={analysis.context_window}; "
+                f"pressure={percentage:.1f}%; rotation_line={ROTATION_PERCENT:.1f}%; "
+                f"observed_at={analysis.context_observed_at or 'undetermined'}"
+            )
+            if context_detail:
+                detail += f"; {context_detail}"
+            report.add(
+                "context pressure",
+                "finding" if above else "pass",
+                detail,
+                *context_surfaces,
+            )
+
+    if analysis is None:
+        report.add(
+            "body metrics",
+            "undetermined",
+            "native body analysis is unavailable",
+            _surface(paths.bindings),
+        )
+    else:
+        detail = (
+            f"bytes={analysis.size}; rows={analysis.rows}; "
+            f"native_compactions={analysis.native_compactions}; "
+            f"parse_errors={analysis.parse_errors}"
+        )
+        if analysis.parse_errors:
+            report.source_failures.append(
+                f"{_surface(analysis.path)}: JSON parse errors={analysis.parse_errors}"
+            )
+        report.add(
+            "body metrics",
+            "finding" if analysis.parse_errors else "pass",
+            detail,
+            _surface(analysis.path),
+        )
+
+    if analysis is None:
+        report.add(
+            "timestamp cluster",
+            "undetermined",
+            "native body analysis is unavailable",
+            _surface(paths.bindings),
+        )
+    elif analysis.message_rows == 0 or analysis.missing_message_timestamps:
+        report.add(
+            "timestamp cluster",
+            "undetermined",
+            f"message_rows={analysis.message_rows}; missing_timestamps={analysis.missing_message_timestamps}",
+            _surface(analysis.path),
+        )
+    else:
+        clusters = [
+            (stamp, count)
+            for stamp, count in analysis.timestamp_counts.items()
+            if count >= TIMESTAMP_CLUSTER_MINIMUM
+        ]
+        clusters.sort()
+        maximum = max(analysis.timestamp_counts.values(), default=0)
+        detail = (
+            f"clusters={len(clusters)}; maximum_exact_timestamp_messages={maximum}; "
+            f"threshold={TIMESTAMP_CLUSTER_MINIMUM}"
+        )
+        if clusters:
+            detail += "; detected=" + ",".join(
+                f"{stamp}:{count}" for stamp, count in clusters
+            )
+        report.add(
+            "timestamp cluster",
+            "finding" if clusters else "pass",
+            detail,
+            _surface(analysis.path),
+        )
+
+    return report
+
+
+def render(report: Report) -> str:
+    lines = ["Resident self-check", f"LIMIT: {LIMIT_TEXT}", ""]
+    labels = {
+        "pass": "PASS",
+        "finding": "FINDING",
+        "undetermined": "UNDETERMINED",
+    }
+    for leg in report.legs:
+        lines.append(f"[{labels[leg.status]}] {leg.name}: {leg.detail}")
+        for surface in leg.surfaces:
+            lines.append(f"  surface: {surface}")
+    resolved = len(report.legs) - report.unresolved
+    lines.extend(
+        [
+            "",
+            (
+                f"coverage: observed={len(report.legs)}/{EXPECTED_LEGS}; "
+                f"resolved={resolved}/{EXPECTED_LEGS}; unresolved={report.unresolved}; "
+                f"findings={report.findings}; "
+                f"duplicates={report.duplicates}; "
+                f"source_failures={len(report.source_failures)}"
+            ),
+        ]
+    )
+    for failure in report.source_failures:
+        lines.append(f"  source failure: {failure}")
+    lines.append("result: PASS" if report.exit_code == 0 else "result: FAIL-CLOSED")
+    return "\n".join(lines) + "\n"
+
+
+def main() -> int:
+    if len(sys.argv) != 1:
+        print("check_myself.py accepts no arguments", file=sys.stderr)
+        return 2
+    report = run_check(
+        CheckPaths.live(),
+        environ=os.environ,
+        start_pid=os.getppid(),
+    )
+    print(render(report), end="")
+    return report.exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

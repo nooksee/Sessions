@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 5774df1c52eeff3776aa4adf00760401543035d9ed383061eeb4aed2de16b7e4; rules 8; mode history; words 4; sessions 0 whole, 0 truncated; host paths 5; decisions 0 -->
+<!-- redact: public copy; source sha256 a95aab7bea644ac361890cb731d1d5ef82695be0ee3dfddc54825cab697c82bb; rules 8; mode history; words 5; sessions 0 whole, 0 truncated; host paths 5; decisions 0 -->
 # Technical Specification: gauge
 
 Script: `Sessions/ops/lib/scripts/gauge.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_gauge.py`. Spec writer: Claude Shannon. Status: built in Sessions block 2, 2026-10-30; not on a timer and not wired to any notification. Claudio Freeman reviews it before it is relied on.
@@ -41,6 +41,7 @@ Used only when neither the body nor the status line reports a window. Each row r
 
 ```
 [words sha256=41825676f51fdb967c2dec882b48e2f6c0b4efe2c441bff0f18df4812b91e6b0]
+[words sha256=782736905fd86ac26807554897cdd3f47bfcdfcaccb334cef0c1d6046c2d007c]
 ```
 
 ## Anecdotal Anchor
