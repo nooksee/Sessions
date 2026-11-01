@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ops" / "lib" / "sc
 from successor import count_residue, reid_rows  # noqa: E402
 
 DONOR = "00009fee-0000-4000-8000-000000009fee"
-NEW = "00001d66-0000-4000-8000-000000001d66"
+NEW = "0000f2f2-0000-4000-8000-00000000f2f2"
 
 
 class TestIdentityFields(unittest.TestCase):
@@ -47,7 +47,7 @@ class TestIdentityFields(unittest.TestCase):
             rows[0]["message"]["content"][0]["input"]["session_id"], NEW)
 
     def test_leaves_a_different_identifier_alone(self):
-        other = "0000331a-0000-4000-8000-00000000331a"
+        other = "0000a3a3-0000-4000-8000-00000000a3a3"
         rows = [{"sessionId": other}]
         self.assertEqual(reid_rows(rows, DONOR, NEW), 0)
         self.assertEqual(rows[0]["sessionId"], other)

@@ -23,9 +23,9 @@ ROOT = Path(__file__).resolve().parents[2] / "ops" / "lib" / "scripts"
 ALAN = "0000a1a0-0000-4000-8000-00000000a1a0"
 GEORGE = "0000e0e0-0000-4000-8000-00000000e0e0"
 HELPER = "0000c1c1-0000-4000-8000-00000000c1c1"
-GRANDCHILD = "000074a8-0000-4000-8000-0000000074a8"
-CHILD = "0000cd5d-0000-4000-8000-00000000cd5d"
-SHANNON = "00009feb-0000-4000-8000-000000009feb"
+GRANDCHILD = "0000b4b4-0000-4000-8000-00000000b4b4"
+CHILD = "0000b5b5-0000-4000-8000-00000000b5b5"
+SHANNON = "0000e1e1-0000-4000-8000-00000000e1e1"
 
 
 def load(name):
@@ -106,7 +106,7 @@ class NamingTests(unittest.TestCase):
                          ("Desktop Continuity Manager (George Friend)", "Galileo"))
 
     def test_a_claude_label_resolves_by_its_session_prefix(self):
-        pid = "claude:Sessions (me) / 00009feb-0000-4000-8"
+        pid = "claude:Sessions (me) / 0000e1e1-0000-4000-8"
         self.assertEqual(diff.describe(pid, self.names, self.home),
                          ("Session Continuity Manager (Claude Shannon)", None))
 
@@ -156,7 +156,7 @@ class PopupTests(NamingTests):
 
     def test_several_residents_are_counted(self):
         g = rollout(self.home, GEORGE, None, None)
-        s = "claude:Sessions (me) / 00009feb-0000-4000-8"
+        s = "claude:Sessions (me) / 0000e1e1-0000-4000-8"
         a = diff.build_alert([(g, "rotate-soon"), (s, "rotate-soon")], self.names, self.home)
         self.assertEqual(a["headline"], "2 residents need attention")
         self.assertFalse(a["critical"])
