@@ -1,27 +1,84 @@
-<!-- redact: public copy; source sha256 17f2b77f35b9d8acd5eb8f8a6c4a584688aae5b49166f9af6cbbcbf5e963bea7; rules 8; mode history; words 1; sessions 0 whole, 1 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 96754c78e9db93e1c35d3c307ce9e3bb4e1e0861cfa391c2d1bad04158f43374; rules 8; mode history; words 1; sessions 0 whole, 1 truncated; host paths 1; decisions 0 -->
 # Landing, stage A: the code and the documents (2026-11-01)
 
 Written 2026-11-01 11:57:01 EST by the Session Continuity Manager (Claude Shannon), writer of the landing branch `agent/landing-a-20261101`. Plan: `storage/landing-plan.md` (working copy; its text is quoted in the pull request). Direction: Kevin, 2026-11-01 02:2x EST, "[words sha256=cf0305b3aee64c76a193153db4e3b6f037929985ee590d484ea6b17e12a44881]".
 
 **Source:** the port `[host path 1]` at the hashes of Claudine section 14 and Joe's pinned manifest (2026-11-01 02:03 to 02:13 EST), after Claudio sections 134 to 137.
 
-**Lanes replaced whole from the port:** `ops/bin`, `ops/lib`, `ops/src`, `tools`, `docs`. **Single files from the port:** `README.md`, `INDEX.md`, `START-HERE.md`, `AGENTS.md`, `DOCTRINE.md`, `logs/.gitkeep`, `ops/etc/.gitkeep`. **Untouched:** `CLAUDE.md` (the live door, PR #1), `PoT.md` (`[session prefix 1]`, RoR-12), `RoR.md`, `NOW.md`, `Scripts/`, `Evidence/`, `Receipts/`, `Config/`, `Resident-Center/`, `storage/`, every body and mind. **Not landed on purpose:** `ops/etc/*.json` (stage B), `archives/receipts/` and `archives/legacy/` (stage D), `.github/workflows/` (the connection cannot push workflows).
+**Lanes replaced whole from the port:** `ops/bin`, `ops/lib`, `ops/src`, `tools`, `docs`. **Single files from the port:** `logs/.gitkeep`, `ops/etc/.gitkeep`; the five root pointers were copied and then restored (see Deferred). **Untouched:** `CLAUDE.md` (the live door, PR #1), `PoT.md` (`[session prefix 1]`, RoR-12), `RoR.md`, `NOW.md`, `Scripts/`, `Evidence/`, `Receipts/`, `Config/`, `Resident-Center/`, `storage/`, every body and mind. **Not landed on purpose:** `ops/etc/*.json` (stage B), `archives/receipts/` and `archives/legacy/` (stage D), `.github/workflows/` (the connection cannot push workflows).
 
-**Counts:** files landed 163, each verified by sha256 against the port; live files removed from the replaced lanes 41 (every one has a port counterpart or a legacy home in the port); unlinked outside those lanes 0; services, timers, hooks, settings, registry changed 0.
+**Counts (corrected 2026-11-01 12:14:17 EST after Claudine section 19):** rows copied from the port 163; in the commit 152; on disk only 5; Control-tracked files restored to their recorded bytes and deferred to stage D 6; live files removed from the replaced lanes 41, each listed below with its pre-removal sha256 and disposition; unlinked outside those lanes 0; services, timers, hooks, settings, registry changed 0.
 
 **Interim rule until stage B:** the landed tools default to a registry at `ops/etc/`, which does not exist in the live room yet; run them with `--registry Evidence/resident-identities.json`.
 
-## Manifest (path | sha256)
+## Deferred to stage D: Control-tracked files (restored; port version not landed)
 
-- `AGENTS.md` | `14d34b4dae49167f5a9d5985ccc3b71efc37a7104e52e70778ce7daaf1cf2d0c`
-- `DOCTRINE.md` | `6e0455dadb5520e42f1a6bdca5dee305d9a6a41142d64dd281cb30c2072eacf5`
-- `INDEX.md` | `2b2693816cd635d8061e5c4aa017c382b16375516b0f6cea5bfe4f18aaeafe19`
-- `README.md` | `3922c5323f0252e6139a928bde1aebc3741ed701d544e2816fa7ff40ff2fec39`
-- `START-HERE.md` | `18dd35e6113db2f926e16c032732a7d319fb7fd64e9d2f0dea18905260732975`
+Control tracks these; they change only through Control's writer process (PoT 6.1.4). Each is back at the bytes recorded below.
+
+- `DOCTRINE.md` | recorded `69d1fa2bf6b3fb6f0e2224462d615329b60cd1ea96347757f21b5cc980c98c40` | port `6e0455dadb5520e42f1a6bdca5dee305d9a6a41142d64dd281cb30c2072eacf5`
+- `INDEX.md` | recorded `6589b752b447e0df1d906885558bd8fcd292d601667ff56a9aada5931aeb72b6` | port `2b2693816cd635d8061e5c4aa017c382b16375516b0f6cea5bfe4f18aaeafe19`
+- `START-HERE.md` | recorded `fdf0fd95539793ac66e7ef33f611a7044f07192ebbb9b29d7c5d727bbe8d5669` | port `18dd35e6113db2f926e16c032732a7d319fb7fd64e9d2f0dea18905260732975`
+- `AGENTS.md` | recorded `14d34b4dae49167f5a9d5985ccc3b71efc37a7104e52e70778ce7daaf1cf2d0c` | port `14d34b4dae49167f5a9d5985ccc3b71efc37a7104e52e70778ce7daaf1cf2d0c`
+- `README.md` | recorded `3922c5323f0252e6139a928bde1aebc3741ed701d544e2816fa7ff40ff2fec39` | port `3922c5323f0252e6139a928bde1aebc3741ed701d544e2816fa7ff40ff2fec39`
+- `docs/resource-state-contract.md` | recorded `9a984c6a54ad1b6cdeb8d797b1f54e990b31fac3f5a50ddb0f4b6e41dd338bf8` | port `a486ac5e624c9c95ca5db8bb64c5080c0504f766b4baf65b85a17f01bd53980f`
+
+## On disk only (copied, not in the commit)
+
+- `docs/clinic-aggregate-contract.md` | `a6c1bf09ecba8e2d333101a976ebc5658dbb46372fa2874537edd1821eb96634` | Control-tracked and byte-identical to Control's copy; not tracked here
+- `docs/session-clinic-integration-review-response.md` | `f6e252d0f590de4a1b296aa753ed66c2b117ac50c9b937814407287346732bf1` | Control-tracked and byte-identical to Control's copy; not tracked here
+- `docs/session-continuity-apprentice-field-guide.md` | `a0641485c2ad3c476ea995289b8875c214c131674c20e24c3d4f1effe8707a45` | Control-tracked and byte-identical to Control's copy; not tracked here
+- `docs/tray-session-clinic-watchdog-20260724.patch` | `b61ad1b53a6411eda41ccd24fc8eaeb220e9fbcd3d5cfd536f45dba70cbfa8e6` | Control-tracked and byte-identical to Control's copy; not tracked here
+- `ops/src/runbook/agents/registry-key-goes-here.yaml` | `2bcf98bcf7cc6688579922ab12bd1a306b3bcbcf439e3637bf1b49a50065be6f` | Kevin's placeholder sketch; committed when it has content
+
+## Removed from the replaced lanes before the copy (41)
+
+- `ops/bin/help` | nooksee/sessions main | before `039967c7b4aea2d48be979a6cd537c8bf443c67d940a759ddbe3990d283d8106` | now `d19293026e3a0cb34fd8bd545df9fedf5bd52bf13907127623c44555a4c26dd3` | replaced by the port version
+- `ops/bin/template` | nooksee/sessions main | before `309415a0c67b13c190957bc38d395200ff00fe65f6d498c4b7b93d062d9d57f9` | now `309415a0c67b13c190957bc38d395200ff00fe65f6d498c4b7b93d062d9d57f9` | replaced by identical bytes
+- `ops/lib/scripts/closeout.py` | nooksee/sessions main | before `ca1135811aa4e9533bbcdfac1aa38f1307c93a18bbfa61bfad7cf941f06b0dca` | now `c2177b6ee466bef6b5e8d09e38866d2a42339928535ff66bb1deba22e31012aa` | replaced by the port version
+- `ops/lib/scripts/mind.py` | nooksee/sessions main | before `4159b57fc52cb923bbe2e3f248416fc32d2c5da1d6127a93df97b55eaadfe836` | now `16fcce28fbbc27e96d853faeccabe53a004f0b0c7016792969cf5244e73d603c` | replaced by the port version
+- `ops/lib/scripts/gauge.py` | nooksee/sessions main | before `d86b3c8fa2450088e4a4231d0bb1283a91ca0f56ef2f2a77b81acaf0d174e58b` | now `1887099ce638a0936c277a3a4f559a8e8e7c5fe532c6179ad68874affeb3f2b5` | replaced by the port version
+- `ops/src/docs/readme.md.tpl` | nooksee/sessions main | before `8c83b6e1eaaaf9b29a2af4a9a1b50698774c0bb48df7d2aef7b03f5143858af6` | now `8c83b6e1eaaaf9b29a2af4a9a1b50698774c0bb48df7d2aef7b03f5143858af6` | replaced by identical bytes
+- `ops/src/docs/spec.md.tpl` | nooksee/sessions main | before `7cc75efd270d1173212a55fa12771c28b1dbec258e386ffed657e9596e6adf6c` | now `ea02a1798b0d982a0a24c602eac24589efbf624acb65be48c7ec06adeb87e453` | replaced by the port version
+- `ops/src/reports/receipt.md.tpl` | nooksee/sessions main | before `12bf91bb4d5cefe8e8a171c5224962f8ba9ab2502402203a7c8ff2d9cf721121` | now `62d6bc881c2300208376dc2746c30d518a7d8adb20b83394d806806afab83f90` | replaced by the port version
+- `ops/src/reports/ror.md.tpl` | nooksee/sessions main | before `ead427d1b3c23e1b833f932f978537fa3f3abfd70059f336819ca9458feb7070` | now `ead427d1b3c23e1b833f932f978537fa3f3abfd70059f336819ca9458feb7070` | replaced by identical bytes
+- `ops/src/reports/closeout.md.tpl` | nooksee/sessions main | before `fa38f6cc64dfb7934582367b0e85fed8159c193960c63bac828ed7ded7aad245` | now `fa38f6cc64dfb7934582367b0e85fed8159c193960c63bac828ed7ded7aad245` | replaced by identical bytes
+- `ops/src/reports/custody.md.tpl` | nooksee/sessions main | before `8178f51c626ea9cdcce033b2d8ae0f24dfca487a8baa337ba5f3b1edd9f8be9d` | now `8178f51c626ea9cdcce033b2d8ae0f24dfca487a8baa337ba5f3b1edd9f8be9d` | replaced by identical bytes
+- `ops/src/reports/validation.md.tpl` | nooksee/sessions main | before `e939d8aa7b49fd3aebbb9e4bd36f29fc4e070efe7a691f9d073f4e1da8066911` | now `e939d8aa7b49fd3aebbb9e4bd36f29fc4e070efe7a691f9d073f4e1da8066911` | replaced by identical bytes
+- `ops/src/reports/packet.md.tpl` | nooksee/sessions main | before `f8595276d8c064a878c685cf1c7cb8367fd7aa496bb9ad240cf62aa8f398cbf4` | now `f8595276d8c064a878c685cf1c7cb8367fd7aa496bb9ad240cf62aa8f398cbf4` | replaced by identical bytes
+- `ops/src/scripts/script.py.tpl` | nooksee/sessions main | before `804ea32dec17e4a81ce7ea1a86bfcae2f5f066ae097d52a639439ee8d713c883` | now `4ee4ff1539692c648dd37773a932c2f47f7bab9191246beb750f67a739c8a4f4` | replaced by the port version
+- `ops/src/tests/test.py.tpl` | nooksee/sessions main | before `f42aa1f7b355809145ffc9c8d6b83e201ff4071965e4275b0603be5fee58d3f5` | now `f42aa1f7b355809145ffc9c8d6b83e201ff4071965e4275b0603be5fee58d3f5` | replaced by identical bytes
+- `ops/src/runbook/agent-input.yaml` | nooksee/sessions main | before `2bcf98bcf7cc6688579922ab12bd1a306b3bcbcf439e3637bf1b49a50065be6f` | now `2bcf98bcf7cc6688579922ab12bd1a306b3bcbcf439e3637bf1b49a50065be6f` | replaced by identical bytes
+- `tools/test/test_gauge.py` | nooksee/sessions main | before `eba948412185fa2e1c453899d922f8a8a37af765ac4dab3ed47319002540f05f` | now `eba948412185fa2e1c453899d922f8a8a37af765ac4dab3ed47319002540f05f` | replaced by identical bytes
+- `tools/test/test_mind.py` | nooksee/sessions main | before `9a4b6c8cfade74bd8c321edd772a77daf75cc599de72a74663509adcc9013433` | now `bc9dd5ec1c0c5be7ebebb47a4122039b5a70431f08552fbfaad818e2fcb732ab` | replaced by the port version
+- `tools/test/test_closeout.py` | nooksee/sessions main | before `7a80812a9687b89bde0f45d51d9328aee03e3ff9ba1957c54edfa04cbeb69ab3` | now `7a80812a9687b89bde0f45d51d9328aee03e3ff9ba1957c54edfa04cbeb69ab3` | replaced by identical bytes
+- `docs/clinic-aggregate-contract.md` | Control HEAD | before `a6c1bf09ecba8e2d333101a976ebc5658dbb46372fa2874537edd1821eb96634` | now `a6c1bf09ecba8e2d333101a976ebc5658dbb46372fa2874537edd1821eb96634` | replaced by identical bytes
+- `docs/tray-session-clinic-watchdog-20260724.patch` | Control HEAD | before `b61ad1b53a6411eda41ccd24fc8eaeb220e9fbcd3d5cfd536f45dba70cbfa8e6` | now `b61ad1b53a6411eda41ccd24fc8eaeb220e9fbcd3d5cfd536f45dba70cbfa8e6` | replaced by identical bytes
+- `docs/resource-state-contract.md` | Control HEAD | before `9a984c6a54ad1b6cdeb8d797b1f54e990b31fac3f5a50ddb0f4b6e41dd338bf8` | now `9a984c6a54ad1b6cdeb8d797b1f54e990b31fac3f5a50ddb0f4b6e41dd338bf8` | Control-tracked; restored to its recorded bytes; the port version waits for stage D
+- `docs/session-clinic-integration-review-response.md` | Control HEAD | before `f6e252d0f590de4a1b296aa753ed66c2b117ac50c9b937814407287346732bf1` | now `f6e252d0f590de4a1b296aa753ed66c2b117ac50c9b937814407287346732bf1` | replaced by identical bytes
+- `docs/MANUAL.md` | nooksee/sessions main | before `fe2941477da97a7ff2fb63df336807360c050ef9dab40073beb6f75a5bfeb826` | now `de73043834a760eb7b182e2673a5f18cde8edc29add992a85786973be84854d1` | replaced by the port version
+- `docs/session-continuity-apprentice-field-guide.md` | Control HEAD | before `a0641485c2ad3c476ea995289b8875c214c131674c20e24c3d4f1effe8707a45` | now `a0641485c2ad3c476ea995289b8875c214c131674c20e24c3d4f1effe8707a45` | replaced by identical bytes
+- `docs/INDEX.md` | nooksee/sessions main | before `b1519cea4109160fa19253ac135b5bd03cbc7aed116f09d545c4bd09108d401b` | now `ab5752daba0b43bb7e0f3eb36c61eeffb27f67823af1b4aa3e0e83a069dee3e7` | replaced by the port version
+- `docs/ops/README.md` | nooksee/sessions main | before `b5a3cac9decc8a8527f735c8bf12219d67af96c88a0b96f04891050e954b2e69` | now `8ea5ac16811cb624dd472ffa96bd34ca5058047cc8455be1d20e76c1ac117667` | replaced by the port version
+- `docs/ops/registry/scripts.md` | nooksee/sessions main | before `93a82d2b48a75ddbaf64f1154546cf1aefde8e1030b719b6b9ca682b0dc61cd4` | now `9bf42e15ff4594f6d242b5642143ad03dfa0e5045192fe8b354eb4853fd13bf3` | replaced by the port version
+- `docs/ops/registry/test.md` | nooksee/sessions main | before `8f1e152b188e96c7fba2c136588dddef5d57a3fe75e371de79f027f0c2e9c0d3` | now `a085df1df6189431cbf9fc5379bef43b3002ca5d89944c88a6e82701efe7184f` | replaced by the port version
+- `docs/ops/registry/runbook.md` | nooksee/sessions main | before `7fe07c89b017e5510bffaf517772985034d295c2c62e68980173fd9992d0cfef` | now `2d8a18a91ab8365e0700b02942b354a8333329c89a099c689d48c818c3b45ab1` | replaced by the port version
+- `docs/ops/registry/binaries.md` | nooksee/sessions main | before `5d628cdea588f7c6dbd698d315af805608310a4875dc9248e3f4e695b1e942aa` | now `5d628cdea588f7c6dbd698d315af805608310a4875dc9248e3f4e695b1e942aa` | replaced by identical bytes
+- `docs/ops/specs/scripts/mind.md` | nooksee/sessions main | before `423e6620c93645332649b0826c3515c2510ab1817a972db99cc5cdc8bcf460af` | now `58cfe241607992a3a5710c0120ff61020ee531075699f7589760a24b79c376ae` | replaced by the port version
+- `docs/ops/specs/scripts/rotate.md` | nooksee/sessions main | before `7ec9646330c24d58930c49c6badccbae1f9b76468885c1b74bce830157389407` | now `c7555fe2bd1e0d337ee8216aca24e30982d57180a4c4b196654f27085f4c6a3d` | replaced by the port version
+- `docs/ops/specs/scripts/closeout.md` | nooksee/sessions main | before `68a080a778b6f559ed45ce49c7d6c8bc6e1cd0347ffede4acd481563d25d0125` | now `68a080a778b6f559ed45ce49c7d6c8bc6e1cd0347ffede4acd481563d25d0125` | replaced by identical bytes
+- `docs/ops/specs/scripts/gauge.md` | nooksee/sessions main | before `5774df1c52eeff3776aa4adf00760401543035d9ed383061eeb4aed2de16b7e4` | now `a95aab7bea644ac361890cb731d1d5ef82695be0ee3dfddc54825cab697c82bb` | replaced by the port version
+- `docs/ops/specs/tools/test/mind.md` | nooksee/sessions main | before `40e48c16b2576475ae746dce17ae2c9ce1184bcc1eba924bad83ce190ca9ebd4` | now `40e48c16b2576475ae746dce17ae2c9ce1184bcc1eba924bad83ce190ca9ebd4` | replaced by identical bytes
+- `docs/ops/specs/tools/test/gauge.md` | nooksee/sessions main | before `d11328b66be0442706ce180051374276880d61ce603a32e5ebb4660e5d9aa4e5` | now `d11328b66be0442706ce180051374276880d61ce603a32e5ebb4660e5d9aa4e5` | replaced by identical bytes
+- `docs/ops/specs/binaries/template.md` | nooksee/sessions main | before `39867ca92e82b7dd346447c37bf18ad2f7797bea10e8fd0062a6ff34a1a008e0` | now `a0831851659baf42309cdaa7054d363273539be92890664cd891b21e00f40a6a` | replaced by the port version
+- `docs/ops/specs/binaries/help.md` | nooksee/sessions main | before `80c375a304f03720b016a2c1516bb92db6b203af03299d63ae34ab3a0f6fc172` | now `5852fbfe42dbe01252a0e8f04d5625a34958aa401f707cf9acf0e990d4cde9ae` | replaced by the port version
+- `docs/ops/specs/runbook/agent-input.md` | nooksee/sessions main | before `990946309155e6b63da1e2919d4fa189e0c12a0d2cf35c4f898e4bbaf58dbc86` | now `b0f98358e3333ae7a771aa3489d2075d4de03b022f072dabc8d05d103520024d` | replaced by the port version
+- `docs/ops/specs/runbook/repository.md` | nooksee/sessions main | before `96f195f62ef67be85d8045878f86eaea79bb73ad1a894d76dd8711eb83df0aa5` | now `96f195f62ef67be85d8045878f86eaea79bb73ad1a894d76dd8711eb83df0aa5` | replaced by identical bytes
+
+## Manifest of the commit (path | sha256)
+
 - `docs/INDEX.md` | `ab5752daba0b43bb7e0f3eb36c61eeffb27f67823af1b4aa3e0e83a069dee3e7`
 - `docs/MANUAL.md` | `de73043834a760eb7b182e2673a5f18cde8edc29add992a85786973be84854d1`
 - `docs/START-HERE.md` | `ede014b20fe4527387d23f62c1649eaf8fc55f5400ff276637af0402990509ee`
-- `docs/clinic-aggregate-contract.md` | `a6c1bf09ecba8e2d333101a976ebc5658dbb46372fa2874537edd1821eb96634`
 - `docs/ops/README.md` | `8ea5ac16811cb624dd472ffa96bd34ca5058047cc8455be1d20e76c1ac117667`
 - `docs/ops/registry/binaries.md` | `5d628cdea588f7c6dbd698d315af805608310a4875dc9248e3f4e695b1e942aa`
 - `docs/ops/registry/runbook.md` | `2d8a18a91ab8365e0700b02942b354a8333329c89a099c689d48c818c3b45ab1`
@@ -74,10 +131,6 @@ Written 2026-11-01 11:57:01 EST by the Session Continuity Manager (Claude Shanno
 - `docs/ops/specs/scripts/workers.md` | `108f72e06c5dd4df00d7a69583aa0ef4cef1226635c33f54a3c6511348341e3d`
 - `docs/ops/specs/tools/test/gauge.md` | `d11328b66be0442706ce180051374276880d61ce603a32e5ebb4660e5d9aa4e5`
 - `docs/ops/specs/tools/test/mind.md` | `40e48c16b2576475ae746dce17ae2c9ce1184bcc1eba924bad83ce190ca9ebd4`
-- `docs/resource-state-contract.md` | `a486ac5e624c9c95ca5db8bb64c5080c0504f766b4baf65b85a17f01bd53980f`
-- `docs/session-clinic-integration-review-response.md` | `f6e252d0f590de4a1b296aa753ed66c2b117ac50c9b937814407287346732bf1`
-- `docs/session-continuity-apprentice-field-guide.md` | `a0641485c2ad3c476ea995289b8875c214c131674c20e24c3d4f1effe8707a45`
-- `docs/tray-session-clinic-watchdog-20260724.patch` | `b61ad1b53a6411eda41ccd24fc8eaeb220e9fbcd3d5cfd536f45dba70cbfa8e6`
 - `logs/.gitkeep` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
 - `ops/bin/help` | `d19293026e3a0cb34fd8bd545df9fedf5bd52bf13907127623c44555a4c26dd3`
 - `ops/bin/template` | `309415a0c67b13c190957bc38d395200ff00fe65f6d498c4b7b93d062d9d57f9`
@@ -131,7 +184,6 @@ Written 2026-11-01 11:57:01 EST by the Session Continuity Manager (Claude Shanno
 - `ops/src/reports/ror.md.tpl` | `ead427d1b3c23e1b833f932f978537fa3f3abfd70059f336819ca9458feb7070`
 - `ops/src/reports/validation.md.tpl` | `e939d8aa7b49fd3aebbb9e4bd36f29fc4e070efe7a691f9d073f4e1da8066911`
 - `ops/src/runbook/agent-input.yaml` | `2bcf98bcf7cc6688579922ab12bd1a306b3bcbcf439e3637bf1b49a50065be6f`
-- `ops/src/runbook/agents/registry-key-goes-here.yaml` | `2bcf98bcf7cc6688579922ab12bd1a306b3bcbcf439e3637bf1b49a50065be6f`
 - `ops/src/scripts/script.py.tpl` | `4ee4ff1539692c648dd37773a932c2f47f7bab9191246beb750f67a739c8a4f4`
 - `ops/src/tests/test.py.tpl` | `f42aa1f7b355809145ffc9c8d6b83e201ff4071965e4275b0603be5fee58d3f5`
 - `tools/test/test_alerts.py` | `7883b806aec8e9fe26552b26c8e1580dabc1029e1dadb3700e926250e4fb8811`

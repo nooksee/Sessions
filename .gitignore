@@ -16,6 +16,7 @@
 /docs/*
 !/docs/INDEX.md
 !/docs/MANUAL.md
+!/docs/START-HERE.md
 !/docs/ops/
 !/archives/
 /archives/*

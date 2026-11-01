@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 6e0455dadb5520e42f1a6bdca5dee305d9a6a41142d64dd281cb30c2072eacf5; rules 8; mode history; words 24; sessions 2 whole, 1 truncated; host paths 5; decisions 0 -->
+<!-- redact: public copy; source sha256 69d1fa2bf6b3fb6f0e2224462d615329b60cd1ea96347757f21b5cc980c98c40; rules 8; mode history; words 24; sessions 2 whole, 1 truncated; host paths 5; decisions 0 -->
 # Session Continuity Doctrine
 
 The durable canon for keeping AI coding sessions (Codex rollouts, Claude
@@ -119,7 +119,7 @@ receipt** — not by a mechanism we do not control.
    a name, a room, and a capsule, making it a resident — or let its parent
    finish and retire it. Drifting into residency without a decision is exactly
    the shadow this section exists to end.
-5. **Workers are counted.** `ops/lib/scripts/workers.py` classifies
+5. **Workers are counted.** `Scripts/inventory_worker_threads.py` classifies
    the store into resident / worker / unknown, attributes each worker to its
    parent, and flags outliers. `unknown` should be `0`; anything else means a
    new session shape has appeared and the model needs updating again.
@@ -129,7 +129,7 @@ receipt** — not by a mechanism we do not control.
 Promotion does not rewrite history. The `session_meta.source` subagent marker
 records where a thread **came from** and is never edited — origin is a fact.
 Current status is a **decision**, and lives separately in
-`ops/etc/promoted-workers.json`, which the inventory reads. A promoted
+`Evidence/promoted-workers.json`, which the inventory reads. A promoted
 resident therefore never has to pretend it was always one, and its listing
 shows both: `Ray Codex ... <- [session prefix 1] (promoted, was Locke)`.
 
@@ -138,7 +138,7 @@ promoted resident keeps its `subagent` origin marker, every classifier that
 reads that marker alone will see a disposable worker. On 2026-08-01 an ad-hoc
 purge deleted Ray Codex for exactly this reason; he survived only because a
 backup existed. Any tool that deletes or archives workers **must** consult
-`ops/etc/promoted-workers.json` first. `workers.py` does this
+`Evidence/promoted-workers.json` first. `inventory_worker_threads.py` does this
 in both its archive and purge paths. A one-off shell loop does not, which is why
 sweeps go through the tool.
 
@@ -190,7 +190,7 @@ evidence is gone; name it and the system gets more honest. Prefer naming.
 
 - Every rollout self-reports truth: `event_msg`/`token_count` rows carry
   `last_token_usage.input_tokens` and `model_context_window`. Read that;
-  do not estimate. Tool: `ops/lib/scripts/telemetry.py` (scans host
+  do not estimate. Tool: `Scripts/check_codex_token_health.py` (scans host
   + VM roots).
 - **The window is model-specific — read it, do not hardcode.** Observed:
   gpt-5.5 = 258,400 effective (272k × 95%); GPT-5.6-Sol = 353,400.
@@ -509,26 +509,26 @@ automatic launches, permanent deletes — all `0` unless explicitly approved.
 
 ---
 
-## 9. Toolbox (ops/lib/scripts/)
+## 9. Toolbox (Scripts/)
 
-- `telemetry.py` — fleet health from telemetry (host + VM).
-- `watch.py` — timer watcher, tokens primary (warn 70%,
+- `check_codex_token_health.py` — fleet health from telemetry (host + VM).
+- `watch_codex_session_size.py` — timer watcher, tokens primary (warn 70%,
   critical 90%), bytes secondary; outputs local-only.
-- `reid.py` — structural re-ID (id/session_id/
+- `build_codex_session_reid_candidate.py` — structural re-ID (id/session_id/
   thread_id only).
-- `pressure.py`, `estimate.py`,
-  `history.py`, `miner.py` —
+- `analyze_codex_compact_context_pressure.py`, `analyze_codex_token_context_pressure.py`,
+  `inspect_compacted_history.py`, `mine_codex_logs_compaction_events.py` —
   diagnostics.
-- `workers.py` — classifies the store into resident / worker /
+- `inventory_worker_threads.py` — classifies the store into resident / worker /
   unknown per §1A, attributes each worker to its parent, flags outliers, and
   archives idle workers with `--archive-idle N --apply`. Run it before any
   orphan sweep; a session with no capsule is not automatically junk.
-- `elide.py` — Tier B elision for Codex: strips oversized
+- `elide_codex_tool_outputs.py` — Tier B elision for Codex: strips oversized
   tool-call payloads while preserving every turn and every `call_id` pairing.
-- `rotation.py`, `successor.py` — the two build paths.
+- `build_codex_rotation.py`, `build_claude_resident.py` — the two build paths.
   The Claude one carries the dual-field re-ID and mandatory orientation row
   described in the 2026-07-16 addendum; do not hand-roll either again.
-- `resources.py` — Resource Governor collector; runs as a
+- `resident_resource_collector.py` — Resource Governor collector; runs as a
   Claude Code `statusLine`, costs zero API tokens, writes an identifier-free
   state file. Contract: `docs/resource-state-contract.md`.
 - Claude Code patients use the same principles (measure the active branch;
