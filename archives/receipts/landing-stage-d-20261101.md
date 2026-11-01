@@ -1,0 +1,403 @@
+<!-- redact: public copy; source sha256 d824e10f55871e8ff248a7267bf78d1bd030fb882771a40b8ec10c2a69f1cbfd; rules 8; mode history; words 0; sessions 0 whole, 1 truncated; host paths 0; decisions 0 -->
+# Landing, stage D: the records and the retired lanes (2026-11-01)
+
+Written 2026-11-01 13:52:40 EST by the Session Continuity Manager (Claude Shannon), writer of `agent/landing-d-20261101`. Plan: `storage/landing-plan.md`, stage D, the Sessions side, after Control PR #119 (`[session prefix 1]`, 320 paths released, audited by the Independent Reviewer, section 146) and Control's finding that nothing scheduled or running reads `Receipts/` by path.
+
+**Moved by copy, sha256 verify and unlink:** 328 files: `Receipts/` to `archives/receipts/` and `Plans/`, `Intake/`, `Attic/`, `Archived/` to `archives/legacy/<Name>/`. **Renamed within the volume:** `Lab/` to `storage/lab/` (665 files, 6 bodies verified by hash before and after); `Candidates/` to `storage/candidates/` (379 files, 38 bodies verified by hash before and after). **Root pointers from the port:** `AGENTS.md`, `INDEX.md`, `START-HERE.md`, `DOCTRINE.md`; `README.md` written through `ops/src/docs/readme.md.tpl`. **Untouched:** `CLAUDE.md`, `PoT.md`, `RoR.md`, `Scripts/`, `Evidence/`, `Config/`, `Resident-Center/`, every body and mind, the paths Control retained (764 after PR #119; 55 of them under Lab/ and Candidates/, see the correction below). **Git:** receipts and legacy stay ignored until the redaction pass; the three records named in `.gitignore` are admitted.
+
+**Counts:** moved 328; renamed lanes 2; unlinked after verify 328; deleted without a copy 0; services, timers, hooks, settings, registry changed 0.
+
+## Root pointers (path | sha256)
+
+- `AGENTS.md` | `14d34b4dae49167f5a9d5985ccc3b71efc37a7104e52e70778ce7daaf1cf2d0c`
+- `INDEX.md` | `2b2693816cd635d8061e5c4aa017c382b16375516b0f6cea5bfe4f18aaeafe19`
+- `START-HERE.md` | `18dd35e6113db2f926e16c032732a7d319fb7fd64e9d2f0dea18905260732975`
+- `DOCTRINE.md` | `6e0455dadb5520e42f1a6bdca5dee305d9a6a41142d64dd281cb30c2072eacf5`
+- `README.md` | `f4aa34a1cada15fb9949307ee38c7e33cd4c425ef247b52402976811a11fc6f0`
+
+## Moved (from | to | sha256)
+
+- `Receipts/personal-project-consolidation-20260802.md` | `archives/receipts/personal-project-consolidation-20260802.md` | `d77a83462ebf639dbfe6d3fd218332a82cd77a3d082dee60ddae0365a1355479`
+- `Receipts/pycharm-resident-agent-table-preparation-20260714.md` | `archives/receipts/pycharm-resident-agent-table-preparation-20260714.md` | `1d90018e331158d9e223f780af7a06ce97b7f7fa6ed4060d7a52f3e83cde84fb`
+- `Receipts/clinic-timer-silent-failure-20260724.md` | `archives/receipts/clinic-timer-silent-failure-20260724.md` | `fab3de48a53c10611f35ee3ab505490adf7fb3baac63fcc454efc8d85f9cc72e`
+- `Receipts/four-claude-rotations-20260805.md` | `archives/receipts/four-claude-rotations-20260805.md` | `fb879648185a8ad644fb696cd0b2d31785fce6071d2ee7bab5a29672f9b172a8`
+- `Receipts/managed-archive-offline-place-enrichment-v1-20260720.md` | `archives/receipts/managed-archive-offline-place-enrichment-v1-20260720.md` | `d52842cbdf178d33bebcfa5760453d58c2d4dcf5ff0bf3746376ecd85ded57ea`
+- `Receipts/landing-stage-a-20261101.md` | `archives/receipts/landing-stage-a-20261101.md` | `96754c78e9db93e1c35d3c307ce9e3bb4e1e0861cfa391c2d1bad04158f43374`
+- `Receipts/registry-reconciliation-cruft-sweep-20260717.md` | `archives/receipts/registry-reconciliation-cruft-sweep-20260717.md` | `e6289c387cf48c984f5f26889586d8f012b9a2cb512b54bde1fd2d8fa588000f`
+- `Receipts/nine6-resurrection-20260717.md` | `archives/receipts/nine6-resurrection-20260717.md` | `9b15db44d07e47f288128fe4e3a9d070634f64f17d9afb65e974e4871c3f1fc2`
+- `Receipts/worker-purge-and-rounds-20260805.md` | `archives/receipts/worker-purge-and-rounds-20260805.md` | `c8955a506b25150f88ac401fb2cd80278af6e6c4d46bd1337233644e7f35d824`
+- `Receipts/resource-aware-delegation-control-canon-20260716.md` | `archives/receipts/resource-aware-delegation-control-canon-20260716.md` | `2f0238fe9123126240fef4d0f1c17d19a0220c16044f34a7df37f129d8e3e4de`
+- `Receipts/codex-always-on-remote-restoration-20260808.md` | `archives/receipts/codex-always-on-remote-restoration-20260808.md` | `1972ab83566ca7abd2d2d0cf50026bf4d39ba32ed8427ae1b348baecc3024727`
+- `Receipts/cloud-estates-phased-roadmap-20260810.md` | `archives/receipts/cloud-estates-phased-roadmap-20260810.md` | `cb2a13a6ab7df46e46deeec3622e062c48e2ab4761d62110062986174d633e8e`
+- `Receipts/resident-center-staffing-20260805.md` | `archives/receipts/resident-center-staffing-20260805.md` | `161366b20df65a29a5d2eb4bceb5f10475a3d5c38471b7111307a0aea5081609`
+- `Receipts/pycharm-2026-2-controlled-update-20260807.md` | `archives/receipts/pycharm-2026-2-controlled-update-20260807.md` | `1b6d79da6bb7f5a50979b39a9322878a06343dfca5880f3ea60573ff1bff51ee`
+- `Receipts/session-control-reconciliation-20260714.md` | `archives/receipts/session-control-reconciliation-20260714.md` | `fcd4009f2891651802243de7161f3f129c69f5b9ac8f5a6bd74cd4c4638e62e4`
+- `Receipts/resident-center-rc1-copy-first-migration-20260805.md` | `archives/receipts/resident-center-rc1-copy-first-migration-20260805.md` | `d6e53762bf23413cfd2c85c9e779e42a6d5853136c8588cceed0caa526c8d1d7`
+- `Receipts/luce-rotation-20260717.md` | `archives/receipts/luce-rotation-20260717.md` | `89ae917ca1f7056d4ce96bcca1f5fabc538b4c119b911f2cc83489f282458e6f`
+- `Receipts/stela-fresh-clean-branch-reset-20260731.md` | `archives/receipts/stela-fresh-clean-branch-reset-20260731.md` | `7e3c603d9001d54bf0c530b78b7fba382c38aeece6afd3080e108a26f1eb85de`
+- `Receipts/current-continuity-image-externalization-round4-2g-20260627.md` | `archives/receipts/current-continuity-image-externalization-round4-2g-20260627.md` | `67e7492f29f3b48789fcb5384ce6c2e56ca395401e79e6322ffee8a04049f509`
+- `Receipts/resident-label-map-20261030.md` | `archives/receipts/resident-label-map-20261030.md` | `65da54b69e8e550289e91e2045da080a60c9b5c1fbd824efcfdc66955f0a31d0`
+- `Receipts/managed-archive-metadata-projection-lab-v1-20260719.md` | `archives/receipts/managed-archive-metadata-projection-lab-v1-20260719.md` | `298482a00c0ba759508aaf7f4f655e29d8e2a210f31cfba222e695fb4501f470`
+- `Receipts/eight-project-resident-welcome-rollout-20260716.md` | `archives/receipts/eight-project-resident-welcome-rollout-20260716.md` | `1a46b97f19613b5fc4ba158ccf088844da90d1ec357d21a4043550c6ef0e3119`
+- `Receipts/resident-center-shield-icon-provenance-determination-20260727.md` | `archives/receipts/resident-center-shield-icon-provenance-determination-20260727.md` | `4bac54ea3c5887b4302220f01eacc74a34224b49a90cfd018d2c193d39b17051`
+- `Receipts/control-git-work-session-rollout-closeout-20260804.md` | `archives/receipts/control-git-work-session-rollout-closeout-20260804.md` | `2adab5619f33bc0f1e769afc2194e108efe6ec8072faddb8605d83c85285ae75`
+- `Receipts/luce-unsorted-sidecar-health-v1-20260720.md` | `archives/receipts/luce-unsorted-sidecar-health-v1-20260720.md` | `23bd2329d4ed99b0df88c97c4bb433ed48f5d38c49557d1e51af4e951a975412`
+- `Receipts/managed-archive-strong-date-accession-batch-0250-20260719.md` | `archives/receipts/managed-archive-strong-date-accession-batch-0250-20260719.md` | `b2c946eba50b09c6503f5c2ce7f64bdba915549524ec5bdc4d2c9fecc1408fcb`
+- `Receipts/luce-unsorted-maximal-sidecar-lab-v1-20260720.md` | `archives/receipts/luce-unsorted-maximal-sidecar-lab-v1-20260720.md` | `80ba0f92c73e6adb7f9fc8af71fe62294a39666094133e61752529054eb1a67f`
+- `Receipts/control-room-gpt-to-codex-transplant-20260727.md` | `archives/receipts/control-room-gpt-to-codex-transplant-20260727.md` | `e37e16585c9d8304ce87fddb8ef74f4009e345a46b57283382ab8a71c3f3c3c7`
+- `Receipts/stela-successor-migration-rescission-20260730.md` | `archives/receipts/stela-successor-migration-rescission-20260730.md` | `5de859afb7aaf1a34e935d63dff1c04b21fa7813a7efe18438de4666dd422edc`
+- `Receipts/host-rescue-ventoy-install-20260721.md` | `archives/receipts/host-rescue-ventoy-install-20260721.md` | `91a8ddb7c3036960f72a136141e8686bd580a07daa2708f4402a1b3506c38990`
+- `Receipts/control-housekeeping-reconciliation-20260808.md` | `archives/receipts/control-housekeeping-reconciliation-20260808.md` | `43b7f244409b907221faffc30663cfb3783147e69ed0606ecb796eb4b8562f80`
+- `Receipts/current-continuity-image-externalization-round2-1g-20260624.md` | `archives/receipts/current-continuity-image-externalization-round2-1g-20260624.md` | `0c8ba3e6efed16fc9b3caef97d5fa2536b8991fe2a1bf280a374df971844b2da`
+- `Receipts/tablet-plex-library-consolidation-handoff-20260721.md` | `archives/receipts/tablet-plex-library-consolidation-handoff-20260721.md` | `e1de6919170b371e14a2fcd5375a4bd224828d8d705db5eafdde049b47d110ed`
+- `Receipts/digikam-workbench-rehome-20260715.md` | `archives/receipts/digikam-workbench-rehome-20260715.md` | `32f330a8075d01d5e4bce581f3c228b44abe3b02e98c8d361c81275e3a9eed49`
+- `Receipts/osai-independent-repository-groundwork-20260725.md` | `archives/receipts/osai-independent-repository-groundwork-20260725.md` | `f9abdbc8e90d3e6ecb6a967f09d3e695de8fcbe0a8369d1da4111b73376ea6e1`
+- `Receipts/project-command-center-rollout-1-20260715.md` | `archives/receipts/project-command-center-rollout-1-20260715.md` | `baa5c2505d9501045e3afd84850003fafdc847c80dbb191afbb3a8eda6930119`
+- `Receipts/control-duplicate-session-and-sweep-20260806.md` | `archives/receipts/control-duplicate-session-and-sweep-20260806.md` | `f8c7626a3a642a0a14b30b275386bc43843845d1505906a5f2d6e0b64ebc8e33`
+- `Receipts/managed-archive-metadata-gap-pilot-20260719.md` | `archives/receipts/managed-archive-metadata-gap-pilot-20260719.md` | `f09227b64f1a2695352a2f0c30d5837cf8fa9f6c314a26c2609af448b42d8848`
+- `Receipts/resident-center-independent-naming-and-service-cutover-20260727.md` | `archives/receipts/resident-center-independent-naming-and-service-cutover-20260727.md` | `61bd48996e973f7999839360d573e36ae44bd76ae4d884e7788854b83cad041c`
+- `Receipts/attic-deletion-20260704.md` | `archives/receipts/attic-deletion-20260704.md` | `c9a90860654acccb5224a2cb684517e1cc75cb64b0271a335d1aea7e7e9b8889`
+- `Receipts/luce-place-review-gthumb-place-split-20260720.md` | `archives/receipts/luce-place-review-gthumb-place-split-20260720.md` | `48c74b342f9bcba5b5f3b918d1199984abae5c7677991a3ec87c52299856e450`
+- `Receipts/registered-convergence-rc1-20260908.md` | `archives/receipts/registered-convergence-rc1-20260908.md` | `990e8067c4d5fe65bc40bb26b483a18bb21e79f8574b333edc657926f3f607b4`
+- `Receipts/pycharm-claude-gui-install-20260714.md` | `archives/receipts/pycharm-claude-gui-install-20260714.md` | `76327dc1f89a07e9511f26533a53dfb56a8f46489042d96db32bfe56f3b962fb`
+- `Receipts/control-routing-retirement-succession-and-pycharm-osai-cleanup-20260727.md` | `archives/receipts/control-routing-retirement-succession-and-pycharm-osai-cleanup-20260727.md` | `b3ce88b0a55cf80542f3f725297ca9ecbc31e0118e0ec1ed9fd66a36cb829a2f`
+- `Receipts/stela-pretransition-rewind-20260730.md` | `archives/receipts/stela-pretransition-rewind-20260730.md` | `21df74511ea716417395af05ef4109ad40e8753230a3fb9c57adfa7554f365cf`
+- `Receipts/george-method-vs-round11-differential-20260703.md` | `archives/receipts/george-method-vs-round11-differential-20260703.md` | `3737155525a1729fe3f1cb3e9fc42d1b4f5017b2521796c5614b6519985b18b4`
+- `Receipts/sessions-retention-and-label-restore-20260808.md` | `archives/receipts/sessions-retention-and-label-restore-20260808.md` | `80ce0dece4857827fac409ac9bc10fe448fb4b5ab8649cdb399e7dfa49ba9ecf`
+- `Receipts/rollback-quarantine-and-day-closeout-20260805.md` | `archives/receipts/rollback-quarantine-and-day-closeout-20260805.md` | `51834188e353a02a925b723df248ce958dd441dd3fabf068ec6a28ce4644ea37`
+- `Receipts/pycharm-upgrade-downgrade-after-action-20260808.md` | `archives/receipts/pycharm-upgrade-downgrade-after-action-20260808.md` | `33ed2a3c6c4ed524b7a573e7b76e4b6420b103b85c4baeeef261d297d78cf019`
+- `Receipts/joy-anne-enrollment-and-shannon-plant-reconciliation-20260812.md` | `archives/receipts/joy-anne-enrollment-and-shannon-plant-reconciliation-20260812.md` | `37a853f441b9112c17f6939ad67f99f40a8bf6b801beee64f308e92e4b3c5f47`
+- `Receipts/codex-index-titles-and-david-strays-20261012.md` | `archives/receipts/codex-index-titles-and-david-strays-20261012.md` | `d601e0423e927d2ae0949cc0a58ecb0aa09cffbe78ca167574552704edbf9639`
+- `Receipts/current-continuity-image-externalization-round3-1g-20260624.md` | `archives/receipts/current-continuity-image-externalization-round3-1g-20260624.md` | `5d8c54f7f968583d7455fd2c1143d6751a1493aca8607dc6ea020a1b244db666`
+- `Receipts/living-gpt-exterior-memory-export-and-retirement-intent-20260803.md` | `archives/receipts/living-gpt-exterior-memory-export-and-retirement-intent-20260803.md` | `8102997317cd3c7bfe5eb6c8e4a8b95528e86a35dd7b75f0c0891b39b03197f0`
+- `Receipts/claude-osai-twin-staged-20260724.md` | `archives/receipts/claude-osai-twin-staged-20260724.md` | `6980b0305fbf5c174237c5a5915689ae06dde05a6d863a4fa110e0e1d722cdf3`
+- `Receipts/luce-unsorted-maximal-sidecar-promotion-v1-20260721.md` | `archives/receipts/luce-unsorted-maximal-sidecar-promotion-v1-20260721.md` | `7fc8248bb205d950deb8c45b04e866b9261429dffe072a632bef81b8c4ad7fbd`
+- `Receipts/pycharm-2026-1-restoration-and-2026-2-withdrawal-20260808.md` | `archives/receipts/pycharm-2026-1-restoration-and-2026-2-withdrawal-20260808.md` | `ad38b4c24c01392376494743a4cb3c29459265431e01118f81a146c5a7ad79d7`
+- `Receipts/jojo-git-admission-20261023.md` | `archives/receipts/jojo-git-admission-20261023.md` | `f692e6c14bab13d71892f1cb15227f49f48a34f68206e088a266f2ad42aa50b3`
+- `Receipts/backup-recovery-rollout-3-discovery-20260715.md` | `archives/receipts/backup-recovery-rollout-3-discovery-20260715.md` | `e7595070344d1b8ffd3248a9a7948fd14aea2fdb27553a322b63567c27d1a093`
+- `Receipts/builder-reid-scoping-20260810.md` | `archives/receipts/builder-reid-scoping-20260810.md` | `dd4d35c3cf8f917ebbbf0b56cb81d45591404ec88b3d5f350d5b54d712ed58dc`
+- `Receipts/session-lab-migration-20260623.md` | `archives/receipts/session-lab-migration-20260623.md` | `d0e42eb67a92929295fad266d30512c9947b1267e85b43b2de5028699d27dce1`
+- `Receipts/first-connected-finances-checkin-20260804.md` | `archives/receipts/first-connected-finances-checkin-20260804.md` | `d399ed4c9d79cff6d6da40969c596b2d7ca02d618113e5c1d4d200b618b5abb2`
+- `Receipts/control-git-bootstrap-reconciliation-20260804.md` | `archives/receipts/control-git-bootstrap-reconciliation-20260804.md` | `b2430e4007156a5290afcfb60a6b0a4a94b3024b3b5d251219139fa6a6d8d132`
+- `Receipts/george3-lineage-candidate-20260704.md` | `archives/receipts/george3-lineage-candidate-20260704.md` | `8f343815b997339274247bdf3e81e1254b77d26d9bebb382643254e55aa8574c`
+- `Receipts/local-ollama-deepseek-pycharm-lab-preparation-20260806.md` | `archives/receipts/local-ollama-deepseek-pycharm-lab-preparation-20260806.md` | `c1337cfc3f403c50ae6a637bf751b54d7650e838b6d6722113f5ff3f5117768d`
+- `Receipts/current-continuity-round11-human-loadtest-failure-20260703.md` | `archives/receipts/current-continuity-round11-human-loadtest-failure-20260703.md` | `390e282e0702433ac8f9a59dc7db2c1e34c9b7f1f3d34ade958db2e892a3bc64`
+- `Receipts/control-staff-alan-and-claudio-20260808.md` | `archives/receipts/control-staff-alan-and-claudio-20260808.md` | `5e2af227387ef1b7bf8edb9ad3dc221bd716e04017ce0dae66db625fbbf85f31`
+- `Receipts/jojo-git-policy-reconciliation-20261020.md` | `archives/receipts/jojo-git-policy-reconciliation-20261020.md` | `8a9966f1cb0b012a5c9289da8a21b21f87a33eb8bc6a747ca0a720fd044c1b5a`
+- `Receipts/managed-archive-metadata-capability-engine-v1-20260719.md` | `archives/receipts/managed-archive-metadata-capability-engine-v1-20260719.md` | `0885b760277ce2bb8f8cc17f91b1a40df3995b0d0e1f97e4356b81837e023cc9`
+- `Receipts/codex-rotation-replacement-history-recovery-20260808.md` | `archives/receipts/codex-rotation-replacement-history-recovery-20260808.md` | `c261753caf4a0b58c8a26a06940ccdcf4d307115fa01ffd9d891b49b8b8ae509`
+- `Receipts/shannon-rotation-20260908.md` | `archives/receipts/shannon-rotation-20260908.md` | `345dde8f50cd9369e79621f809ac1526a649d09788b1b9ffe87468cae57e613a`
+- `Receipts/resident-center-explicit-control-root-20260805.md` | `archives/receipts/resident-center-explicit-control-root-20260805.md` | `c8cfd474b245bc822bed3cf310c672d4ff618a07702e6cb0f304d7192574a79e`
+- `Receipts/sessions-repo-housekeeping-offload-20260717.md` | `archives/receipts/sessions-repo-housekeeping-offload-20260717.md` | `c18014afc8d34a41c17052ff023e820841f55586539109d225ed5f28726f621a`
+- `Receipts/control-git-work-session-model-implementation-20260804.md` | `archives/receipts/control-git-work-session-model-implementation-20260804.md` | `1f85ae54651e1cb16b8b480a620f7ac3fa7541b0e96eeca82990380233744fe1`
+- `Receipts/osai-physical-live-test-review-20260721.md` | `archives/receipts/osai-physical-live-test-review-20260721.md` | `8b70bff0806bd4fdf968842282a0c04bbfcb6046e1f1625913601fc5d3cec0ad`
+- `Receipts/session-store-sweep-20260908.md` | `archives/receipts/session-store-sweep-20260908.md` | `14102fa42e38796efb93b0acbebe3b5bd67ad888a2f75c669defcab64063312f`
+- `Receipts/personal-counterpart-title-and-container-update-20260803.md` | `archives/receipts/personal-counterpart-title-and-container-update-20260803.md` | `9095d78043c1e1c06133f7ea0cf54a6f9dbd20c0dcce3214e66000b1492ed295`
+- `Receipts/virtualbox-7-2-kernel-7-0-repair-20260718.md` | `archives/receipts/virtualbox-7-2-kernel-7-0-repair-20260718.md` | `84be8c9cb5fdcc10f848cb148b2f4d343494917e80111ca7256a9acd456f1d61`
+- `Receipts/shannon-rotation-3-20261013.md` | `archives/receipts/shannon-rotation-3-20261013.md` | `a562b67d5ee0aa060e0c31c30e3134c4285dac4c9e0ef7b1f6940005b5556f42`
+- `Receipts/worker-thread-doctrine-20260731.md` | `archives/receipts/worker-thread-doctrine-20260731.md` | `d8e0d38a4db86528c7d2357b2c94469119b36ea8ac4d49e16f629f2f0d512514`
+- `Receipts/managed-archive-place-tag-promotion-packet-v1-20260720.md` | `archives/receipts/managed-archive-place-tag-promotion-packet-v1-20260720.md` | `d171676f29d61ac83640b46f027f6eb3ad9cf1a999d24a3b91f71fb5eff5c7bc`
+- `Receipts/remote-operations-cloud-matrices-roadmap-20260810.md` | `archives/receipts/remote-operations-cloud-matrices-roadmap-20260810.md` | `2865eaaedecc86c41b79c3cc4affcbb8cd588ddcc0d5223f451e78e774cc9b4b`
+- `Receipts/athol-claude-session-treatment-20260706.md` | `archives/receipts/athol-claude-session-treatment-20260706.md` | `b30a98c4f64dc515432e773b4dc4471fe449ac3a116f6e57ef56ddc968fa8377`
+- `Receipts/legacy-ide-active-surface-cleanup-20260715.md` | `archives/receipts/legacy-ide-active-surface-cleanup-20260715.md` | `2177fa534192d8030ca9fe94ac4f4312fcc3bfcc790dffeacf077073d58964f1`
+- `Receipts/managed-archive-orientation-promotion-pilot-v1-20260719.md` | `archives/receipts/managed-archive-orientation-promotion-pilot-v1-20260719.md` | `cb0b95207099a56ed3ed1de6b09cf39a9d3822cd394d046ae47036d85b57bd8f`
+- `Receipts/resident-launcher-registry-sync-20260725.md` | `archives/receipts/resident-launcher-registry-sync-20260725.md` | `3f66c5cc7c351e9aa0bbbbf7c248641a329f13a276f9601f018992528fcb7309`
+- `Receipts/liveusb-team-transplant-20260726.md` | `archives/receipts/liveusb-team-transplant-20260726.md` | `05131df43239431ec3b731edbcbfb06942e099b3316163b6ba839015abf08169`
+- `Receipts/osai-retirement-and-resident-center-transfer-20260727.md` | `archives/receipts/osai-retirement-and-resident-center-transfer-20260727.md` | `7c5f0a21c52435d5b71a1a6489b9d636f618a8b823e7780de3777d452344c91e`
+- `Receipts/codex-remote-control-service-grade-20260724.md` | `archives/receipts/codex-remote-control-service-grade-20260724.md` | `817a59b60752c0c109a59247fb4c359f69e9c54976640f62994a62208a28c11e`
+- `Receipts/control-single-active-branch-invariant-20260804.md` | `archives/receipts/control-single-active-branch-invariant-20260804.md` | `eb6cae33d7e7f1b7f1754f6d124e04604fb3ee48a3c0c560baa2f232ef0a332d`
+- `Receipts/user-vol-one-click-safe-release-20260715.md` | `archives/receipts/user-vol-one-click-safe-release-20260715.md` | `6eb4fc4df36e7f6d97f887f72663638adde2c63917da2de94f7fc9959819524a`
+- `Receipts/shannon-rotation-2-20261008.md` | `archives/receipts/shannon-rotation-2-20261008.md` | `77457a383327d96cabca803f29134e7568dcd0381db55dd56dfce5415305de49`
+- `Receipts/session-store-sweep-and-remote-control-20261008.md` | `archives/receipts/session-store-sweep-and-remote-control-20261008.md` | `bcfd44e6846b340651e9555bd1513258f876d5cbb2a018a285b9bd3a63399b09`
+- `Receipts/resident-center-original-icon-system-20260727.md` | `archives/receipts/resident-center-original-icon-system-20260727.md` | `7c4a918a560ae546d82082c4ac58ee24c61135c00fc71d1cc7bc8e718ce78292`
+- `Receipts/github-copilot-and-main-ruleset-rollout-20260828.md` | `archives/receipts/github-copilot-and-main-ruleset-rollout-20260828.md` | `5569f7b95422af13b2269abc025241ae70ff1a033bcc9abc242e46369a1da7ed`
+- `Receipts/pycharm-leg-closed-and-pairs-unswapped-20260808.md` | `archives/receipts/pycharm-leg-closed-and-pairs-unswapped-20260808.md` | `c433a6863d91e5dbfd7c82e4cd96ce69058ee1299b2e0a220c4a657c49713695`
+- `Receipts/resident-center-documentation-layer-rename-closeout-20260727.md` | `archives/receipts/resident-center-documentation-layer-rename-closeout-20260727.md` | `dcf3de1a6a6d061b1c5f65bb562924cddee0d787f64097007a1c2f7aa11a44ea`
+- `Receipts/clinic-treadmill-verdict-and-scanner-repair-20260729.md` | `archives/receipts/clinic-treadmill-verdict-and-scanner-repair-20260729.md` | `9a5e0d4004a74357d8a55ab9529e3157c040e1b91f6e549e9af821959a31c698`
+- `Receipts/digikam-calendar-taxonomy-restoration-20260717.md` | `archives/receipts/digikam-calendar-taxonomy-restoration-20260717.md` | `2192a499e2f07c09fd82e2ec1c76425ade42fe377d068636f7fb4f182e6910da`
+- `Receipts/dropbox-post-reboot-startup-repair-20260718.md` | `archives/receipts/dropbox-post-reboot-startup-repair-20260718.md` | `043ab37d68740de529fd690d9fb1d56e7fce94e0622e3e61f59a3ce55f55028f`
+- `Receipts/managed-archive-strong-date-accession-batch-1000-02-20260719.md` | `archives/receipts/managed-archive-strong-date-accession-batch-1000-02-20260719.md` | `7418b7c962cc3dac47a2c38ae1edae82d074d2e71df933a95742a068d2809b5d`
+- `Receipts/hard-vol1-reregistration-20260722.md` | `archives/receipts/hard-vol1-reregistration-20260722.md` | `5ad7848721dae175830865942867a8cecc9945f9da2b0c78e3ed9df17a76bef8`
+- `Receipts/ez-claude-rotation-20261008.md` | `archives/receipts/ez-claude-rotation-20261008.md` | `71799400960e82bd62e853ede1ed4b4a54b36382e34821b3026cd5507ca8002b`
+- `Receipts/shannon-rebuild-20261029.md` | `archives/receipts/shannon-rebuild-20261029.md` | `84d1365c5734e1c541b254418abea8b0ee409ed7256c41f0768cec843e517be0`
+- `Receipts/current-continuity-image-externalization-1g-20260624.md` | `archives/receipts/current-continuity-image-externalization-1g-20260624.md` | `593d5b21eaf4cf07e5f9ef864104fbb137ed7f8021f59fbc1a2c831e6397e5e5`
+- `Receipts/managed-archive-intake-lifecycle-stage1-20260719.md` | `archives/receipts/managed-archive-intake-lifecycle-stage1-20260719.md` | `30ccbe13886548790ffdbfab621665074ea15b9891a737a6400063322dcd9695`
+- `Receipts/reference-shelf-onboarding-and-rollout-20260807.md` | `archives/receipts/reference-shelf-onboarding-and-rollout-20260807.md` | `f2eaeeb4a7ad2049f36c081adf4f053547d75b88edcee5dd651c46a4c4e15e68`
+- `Receipts/session-clinic-rounds-monitoring-20260717.md` | `archives/receipts/session-clinic-rounds-monitoring-20260717.md` | `7339cb8e122b77d208bcfc8f5bc0dec02a23d169d37f358a458f9f825e926f8d`
+- `Receipts/pycharm-project-opening-preference-20260714.md` | `archives/receipts/pycharm-project-opening-preference-20260714.md` | `57ecde61ae9fd28108ca7511e7156a215889db565e45367226111b49922f87f6`
+- `Receipts/shannon-rotation-5-20261029.md` | `archives/receipts/shannon-rotation-5-20261029.md` | `f575094620ee5295dc9edd54ab2e43bb3c6dbc31b9e41c0e7ffb0aa0f1e2900c`
+- `Receipts/joy-anne-rotation-5-20261017.md` | `archives/receipts/joy-anne-rotation-5-20261017.md` | `f259d2653beb43f5297b1614c3d2a78597eee004a0830115bdcd9136d350dd05`
+- `Receipts/seven-rotations-and-instrument-repair-20260805.md` | `archives/receipts/seven-rotations-and-instrument-repair-20260805.md` | `5b154ced9edffc1cd917d3d1080e53d1de9236089734515ca2b1edcec7030907`
+- `Receipts/script-custody-housekeeping-20260804.md` | `archives/receipts/script-custody-housekeeping-20260804.md` | `aeadf1fb3eb6ae157e99b56a47f89e6c6bbf75defb6f17b34fe1990f123e626d`
+- `Receipts/part3-lineage-candidate-20260704.md` | `archives/receipts/part3-lineage-candidate-20260704.md` | `2fd267ba6d058b3a57fdf406d6338e013e8ca09f13fae814955d06b59dd25375`
+- `Receipts/hot-drive-generic-release-and-format-intake-20260715.md` | `archives/receipts/hot-drive-generic-release-and-format-intake-20260715.md` | `67b9ccb042e9224d61e6d48f92902ea0551aa52a08897fa28408ae62898b2af5`
+- `Receipts/project-resident-repository-state-refresh-20260725.md` | `archives/receipts/project-resident-repository-state-refresh-20260725.md` | `0bed64217926cd82100533eeb0ca31bd765d9447c16987969831021d04da9338`
+- `Receipts/george-retirements-and-donor-cleanup-20260716.md` | `archives/receipts/george-retirements-and-donor-cleanup-20260716.md` | `12862240b8551a3dd5db1984d5fff1bc6f83fd001760e4a1cf17ed8718cfe88c`
+- `Receipts/winslow-fresh-and-osai-removal-20260805.md` | `archives/receipts/winslow-fresh-and-osai-removal-20260805.md` | `d97c0324621f76fe37cfccfcaef399d927f8910c356bc07ce6ed6077fb3344e2`
+- `Receipts/george-x-registry-correction-20261026.md` | `archives/receipts/george-x-registry-correction-20261026.md` | `425d1ff3f32ad08a31c43657f88064d920df65dd484cb04a6172a63542972584`
+- `Receipts/george-king-tool-output-elision-20260729.md` | `archives/receipts/george-king-tool-output-elision-20260729.md` | `6012b94ad31a144cfef244577f739b9ba30855e737f1d285e03d59088f55030f`
+- `Receipts/control-staff-routing-and-incident-closure-20260810.md` | `archives/receipts/control-staff-routing-and-incident-closure-20260810.md` | `4e2e3854b156ea6086b8babb8e0483359c7eead227d8b0fe83ab6bb312eccfea`
+- `Receipts/luce-redwall-resident-table-preparation-20260715.md` | `archives/receipts/luce-redwall-resident-table-preparation-20260715.md` | `9519d1fedae372fdb422fe5fb5096cc24dded698cb9cc9056d22bc3db586e35a`
+- `Receipts/desktop-continuity-part-ii-target7000-protect1000-20260704.md` | `archives/receipts/desktop-continuity-part-ii-target7000-protect1000-20260704.md` | `2f9f8b8c32bbf8b9878bfce068e37b3ea513a6cd983accc88d82e61466537a9d`
+- `Receipts/remote-experiment-cleanup-20260811.md` | `archives/receipts/remote-experiment-cleanup-20260811.md` | `3875f152db7b45dc4ebd6afa294926d4681ecb4a1c5e8c51610501bf261b8784`
+- `Receipts/luce-face-seed-refresh-v1-20260721.md` | `archives/receipts/luce-face-seed-refresh-v1-20260721.md` | `7508a4e938a397cdb7df12ffcd4999b9c50ea83e95cb6b8b5edc9e3af4b2da1b`
+- `Receipts/codex-remote-control-socket-chain-20261008.md` | `archives/receipts/codex-remote-control-socket-chain-20261008.md` | `28d58a1746e6c071173f29985c1b3ea8ab37816731b441a002b2b7833928727c`
+- `Receipts/george-iv-heal-transplant-20260712.md` | `archives/receipts/george-iv-heal-transplant-20260712.md` | `d8886b8d086335e3389d7e50872cec12ba5d2c8dd3b57eba2c72b8fc1bdf80a0`
+- `Receipts/editor-bound-sweep-20260908.md` | `archives/receipts/editor-bound-sweep-20260908.md` | `0cb3b3fc06fb529f1bf9d49720f27fcc973933e366f90d1adb631493e1e2b1b9`
+- `Receipts/pycharm-gold-profile-restore-20260713.md` | `archives/receipts/pycharm-gold-profile-restore-20260713.md` | `3e7d98c86282919a2344122f72b71d28f91f4890c70ebb2a8f1bcc49387e64aa`
+- `Receipts/missing-residents-review-20261008.md` | `archives/receipts/missing-residents-review-20261008.md` | `127b5c017d56154d39278015abe1dc9e63d4783bf98f878a8a5a4e8af88571f0`
+- `Receipts/managed-archive-orientation-promotion-full-v3-20260720.md` | `archives/receipts/managed-archive-orientation-promotion-full-v3-20260720.md` | `6fdadd4332a23967c3d4c5dca5a16b4796b16f19871d45e5196a31ac91de0705`
+- `Receipts/joy-anne-rotation-20260908.md` | `archives/receipts/joy-anne-rotation-20260908.md` | `419ab1614701f101651d807aa8103d44fff2740e01475d1db61dae210a9fdf0d`
+- `Receipts/batch-rotation-20260725.md` | `archives/receipts/batch-rotation-20260725.md` | `f071b23bd5afd5ab3612d5ff66f81f107993667540690f335d1a4762d354f00c`
+- `Receipts/digikam-calendar-parallel-branch-removal-rollout-20260718.md` | `archives/receipts/digikam-calendar-parallel-branch-removal-rollout-20260718.md` | `b45a11ce66bcfd4edb3d9bafa6cef2be83e79e8fad60837e26434b0e09211d40`
+- `Receipts/restoration-and-staffing-batch-20260730.md` | `archives/receipts/restoration-and-staffing-batch-20260730.md` | `6532e60785f6bbe328fe1fb6d85b4272a9aaef9433a5557d8430ccf1301b989c`
+- `Receipts/luce-unsorted-pictures-catalog-refresh-v1-20260721.md` | `archives/receipts/luce-unsorted-pictures-catalog-refresh-v1-20260721.md` | `ef03f385404bbc10203e8c14143952b6d7cf3526f0668f5496069dbe3ebc5667`
+- `Receipts/sessions-folder-offload-and-david-halt-20261008.md` | `archives/receipts/sessions-folder-offload-and-david-halt-20261008.md` | `2e3f5d349f312b66f02f8133d0757c1d757e9b21c0db96b83559d90629f65f55`
+- `Receipts/current-continuity-round6-loader-limit-failure-20260627.md` | `archives/receipts/current-continuity-round6-loader-limit-failure-20260627.md` | `ba4b187ca3e6d90e4130bf15bf6d43aa46e892da194403a6392fbd06c164e465`
+- `Receipts/personal-addition-update-jean-luc-handoff-20260804.md` | `archives/receipts/personal-addition-update-jean-luc-handoff-20260804.md` | `1eb771b1b868dfa8d8d273a9dcb6c1d582f4fb609883e4184a7ac268bf5cd98e`
+- `Receipts/recovery-baseline-001-dropbox-half-20260715.md` | `archives/receipts/recovery-baseline-001-dropbox-half-20260715.md` | `d85ac8217a7cf408d93e7e0b7ffc381be8390de2d0d2b1adee09f555f9788e5d`
+- `Receipts/pycharm-codex-claude-coassignment-20260714.md` | `archives/receipts/pycharm-codex-claude-coassignment-20260714.md` | `a861692e63e736cc2a9cc1533bfe56c9ee4ccf653247c6c68b8620255795ac3c`
+- `Receipts/store-cleanup-and-gemini-survey-20260805.md` | `archives/receipts/store-cleanup-and-gemini-survey-20260805.md` | `43f0bd63c3e26496ea1a0acdffb5324b82d58aa49c9bd76d7b84f255776981f1`
+- `Receipts/jojo-git-continuity-inventory-20261014.md` | `archives/receipts/jojo-git-continuity-inventory-20261014.md` | `5c675ff7e285f9e5295b507378c5370b22ad3c34c896118d89663f91095f2c6d`
+- `Receipts/joy-anne-rotation-6-20261030.md` | `archives/receipts/joy-anne-rotation-6-20261030.md` | `17e8d2789ddcdfc84cfc64fae409899685f05d266411818b0f97cd2a172a13dd`
+- `Receipts/onedrive-phase-1c-20260811.md` | `archives/receipts/onedrive-phase-1c-20260811.md` | `1b6bd72a7f1caf28e3815a9ad7572c5d7041d698f117b0a94cecaca55fe43c31`
+- `Receipts/george2-human-loadtest-pass-and-shrink-candidate-20260703.md` | `archives/receipts/george2-human-loadtest-pass-and-shrink-candidate-20260703.md` | `3993888951d7b7f15529f8df36947ee4b93a9443e939f89cd1a12788b2f35128`
+- `Receipts/george-tool-output-reduction-20260828.md` | `archives/receipts/george-tool-output-reduction-20260828.md` | `b5c8f0a22f97adb52ae8f5d3b56f01a6e21522e129a97d187deb6d340a21461f`
+- `Receipts/plex-media-deletion-setting-enabled-20260725.md` | `archives/receipts/plex-media-deletion-setting-enabled-20260725.md` | `e8eca9bdd13a037e820bb9d9ced814356d3fb7c8f6263ab892117f5aa8f75bb9`
+- `Receipts/finances-connected-surface-and-exterior-retirement-20260803.md` | `archives/receipts/finances-connected-surface-and-exterior-retirement-20260803.md` | `8d601bbd496f1be0630fdfdad95fd6449a9c549634867eaf38714c910d728460`
+- `Receipts/luce-place-review-gthumb-catalog-reset-20260720.md` | `archives/receipts/luce-place-review-gthumb-catalog-reset-20260720.md` | `1a671dafeea37dbcc5e87f2988a8190d50b87e180db738945b8232ad5db743b1`
+- `Receipts/david-codex-restoration-20260912.md` | `archives/receipts/david-codex-restoration-20260912.md` | `2a86797ec60d9eac3d9eb9e58cfedf45c7ebd61034a1d951e91ac23ecb829200`
+- `Receipts/osai-independent-repository-review-reconciliation-20260725.md` | `archives/receipts/osai-independent-repository-review-reconciliation-20260725.md` | `5c24eaa95e1f6514ec090dc031fe8ca4b9445a8efaad70c34efa1673a93c7f8d`
+- `Receipts/desktop-continuity-part-ii-candidate-20260703.md` | `archives/receipts/desktop-continuity-part-ii-candidate-20260703.md` | `5745791339da5032180dc1bc3c32ef7a2548b1459c7042b5c2cfbdf075316930`
+- `Receipts/osai-ii-founder-clone-20260723.md` | `archives/receipts/osai-ii-founder-clone-20260723.md` | `0966d65ea0c0d28037a070c6bd0c360bb657b3ddd6b7c60d066b3e4e2636c8bf`
+- `Receipts/managed-archive-strong-date-accession-batch-1000-20260719.md` | `archives/receipts/managed-archive-strong-date-accession-batch-1000-20260719.md` | `18c8ed0cdcd826f29cc5e26954f94c5d3a9cbbde9392e8bff33b309c229e5c72`
+- `Receipts/codex-remote-control-cross-surface-service-20260723.md` | `archives/receipts/codex-remote-control-cross-surface-service-20260723.md` | `1e113f138f9bf213bb0c5f7ccff5308f4d531abd29e27a8827bb96e0c099afd7`
+- `Receipts/george-v-transplant-20260713.md` | `archives/receipts/george-v-transplant-20260713.md` | `6acc7f4b3b1d2292e67f34c67b3f08448c0ce2196f6c828ab4c2ad03eba636b8`
+- `Receipts/github-codex-review-canary-20260828.md` | `archives/receipts/github-codex-review-canary-20260828.md` | `fee41ae0676747ab52537fcdcb37663de02cd771da89736d17fc99afca2fe480`
+- `Receipts/current-continuity-tool-transcript-condensation-round7-20260627.md` | `archives/receipts/current-continuity-tool-transcript-condensation-round7-20260627.md` | `6fc676702db19797d70bf9ad8646833ed419ef68c93f5f1fd82d8909149a29bf`
+- `Receipts/luce-native-registration-and-html5-boilerplate-quarantine-20260715.md` | `archives/receipts/luce-native-registration-and-html5-boilerplate-quarantine-20260715.md` | `caaa6e747ccb94f5a82af8169eed84a442bde2626172a4adcaf8efa2a0b02c42`
+- `Receipts/session-jsonl-retention-audit-20260703.md` | `archives/receipts/session-jsonl-retention-audit-20260703.md` | `883ece6e7edeb2a5d1689e8f03fd536e48be3140eb1c0bd5fd6d0e570e7e0855`
+- `Receipts/current-continuity-round7-vm-load-test-environment-20260627.md` | `archives/receipts/current-continuity-round7-vm-load-test-environment-20260627.md` | `54514b6e8785d0486c4f520ecb9c49b676792b3b60590ead30bc2e9b41c20ad1`
+- `Receipts/living-gpt-home-dodge-retirement-20260803.md` | `archives/receipts/living-gpt-home-dodge-retirement-20260803.md` | `3350fb7b2c472aa418c4b92a5b87aff930d79f06380b7ae34f1fc5bb6804d922`
+- `Receipts/python-environment-rebuild-rehome-20260715.md` | `archives/receipts/python-environment-rebuild-rehome-20260715.md` | `5a90880bc3215102451f0344361d563e354d75919e2f02fe64602f5a9fa7dbb0`
+- `Receipts/addition-claude-image-elision-20260716.md` | `archives/receipts/addition-claude-image-elision-20260716.md` | `d71177c764e6102e46a70d90c5d4c3118f837ecec07ea3704236bdda9c2eb452`
+- `Receipts/resident-center-explicit-control-root-review-correction-20260805.md` | `archives/receipts/resident-center-explicit-control-root-review-correction-20260805.md` | `4eefd0e05abafafb8293db3fe3971e64cf80384293374c7aa5d599b9f12b6974`
+- `Receipts/george-vi-control-project-preparation-20260713.md` | `archives/receipts/george-vi-control-project-preparation-20260713.md` | `93a509ea414fe282e16a69a2ec04c8a3955185ae50f266c7d2275ac52d73191f`
+- `Receipts/osai-ii-death-moment-clone-20260723.md` | `archives/receipts/osai-ii-death-moment-clone-20260723.md` | `c80c6335ac146e7d2b18ecfc311116f04a5401315e379df6c5dc93b0903cad4f`
+- `Receipts/tray-session-clinic-integration-20260724.md` | `archives/receipts/tray-session-clinic-integration-20260724.md` | `7f3185d78c66dbe8b78a16eec9f8d78031ef45da86f9ec268c21c00f20d1569f`
+- `Receipts/joy-anne-birth-20260812.md` | `archives/receipts/joy-anne-birth-20260812.md` | `108fe79f94aa28ffde3ff79231666f324a5b16efe16aa8276ed8cc4743a49bff`
+- `Receipts/resident-center-hardening-baseline-reconciliation-20260727.md` | `archives/receipts/resident-center-hardening-baseline-reconciliation-20260727.md` | `d945180ca37122a39bfb8011481425121fec2c9ef2e5e5532f4a0f578a567fd1`
+- `Receipts/joy-anne-imagectomy-20260828.md` | `archives/receipts/joy-anne-imagectomy-20260828.md` | `100857fd4502967aa9978e5c65bff67c9b21712b59fef677c5cb81e74c67457b`
+- `Receipts/joy-anne-rotation-4-20261013.md` | `archives/receipts/joy-anne-rotation-4-20261013.md` | `eaa16183250491805b79fe4ad34b0dde19b19192e6701b555252c30595e57dc9`
+- `Receipts/tablet-continuity-manager-admission-20260722.md` | `archives/receipts/tablet-continuity-manager-admission-20260722.md` | `63702d07600c083f96c46800d30be34f80822a8790d5032fdf47dfeba89f1b20`
+- `Receipts/clinic-alert-names-20261019.md` | `archives/receipts/clinic-alert-names-20261019.md` | `166302d04ef1bed589401c70e9c3f7682ab0b10c0bc7636eeb08acf8249db15b`
+- `Receipts/sessions-custody-review-and-correction-20260805.md` | `archives/receipts/sessions-custody-review-and-correction-20260805.md` | `e2939de3077b8ca1339565205f39adde011315a681c985b3583c0daf071e7b9e`
+- `Receipts/cross-rollout-final-validation-20260715.md` | `archives/receipts/cross-rollout-final-validation-20260715.md` | `b6a9adc1995d4cc28fbad03cb0ba94a4d50ef094a2e582380f73c5a73eaf64cf`
+- `Receipts/remote-device-unified-intake-sentinel-20260722.md` | `archives/receipts/remote-device-unified-intake-sentinel-20260722.md` | `4f300a1b30d93e41e4d597a05d4387e849ffef62e811cfb37b1711d011c47767`
+- `Receipts/pycharm-upgrade-roadmap-and-universal-lessons-20260808.md` | `archives/receipts/pycharm-upgrade-roadmap-and-universal-lessons-20260808.md` | `6c54a41998c5d144b687b8d6c566326be80f33738bac8fe95de0a0a1ee6cae55`
+- `Receipts/served-residents-background-remote-control-20261008.md` | `archives/receipts/served-residents-background-remote-control-20261008.md` | `dbe3cd0ba2a7e95c0c1ca594f160046e79d8eaed42809f89ff6a658c058c196c`
+- `Receipts/session-continuity-apprentice-orientation-20260730.md` | `archives/receipts/session-continuity-apprentice-orientation-20260730.md` | `703092d4c0bbf8d23fde975586f8a8bd9087f9db621c8e0f3b3b52bd8dc32992`
+- `Receipts/pycharm-2026-1-retirement-20260807.md` | `archives/receipts/pycharm-2026-1-retirement-20260807.md` | `660fce02f576404d2c0365622830113e51a2adbb61bd5eea57c66846674a80e9`
+- `Receipts/served-residents-soak-and-boot-timer-20261008.md` | `archives/receipts/served-residents-soak-and-boot-timer-20261008.md` | `b8fc7c29db18aa8e30708d0762616544bde8c4102df687cd0c4f7ed1bc63c786`
+- `Receipts/resident-launcher-guided-add-resident-v0.2.0-20260727.md` | `archives/receipts/resident-launcher-guided-add-resident-v0.2.0-20260727.md` | `ea2975ec13bbd5480394ed95caa848d82854b43b87edd9721af5453a325e4d4e`
+- `Receipts/clinic-alert-edge-triggering-20260722.md` | `archives/receipts/clinic-alert-edge-triggering-20260722.md` | `f83fc43b52c8210d3c1250918c25e23f14760979f9c97af2c48511c2e2d28a83`
+- `Receipts/claude-self-rotation-tierB-20260716.md` | `archives/receipts/claude-self-rotation-tierB-20260716.md` | `9116e1b01bab9a0f26f4151ea7825766509bd5f848bc8a124d929af9b7989608`
+- `Receipts/addition-document-extraction-20260717.md` | `archives/receipts/addition-document-extraction-20260717.md` | `fec7697f125a4faa45a88208e90046b8449c1001d91f02c70c253073d52fb0cd`
+- `Receipts/toolbox-login-startup-20260807.md` | `archives/receipts/toolbox-login-startup-20260807.md` | `fbb543509caae5720dd7fcaa42fb1851e93553b7d778d6ae80becf70c7b39be0`
+- `Receipts/gemini-removal-and-shared-ancestry-20260805.md` | `archives/receipts/gemini-removal-and-shared-ancestry-20260805.md` | `110a1c180eadbd6f3e5e2ea961873f65e250abd28659659369679205aa497676`
+- `Receipts/session-store-cleanup-20260731.md` | `archives/receipts/session-store-cleanup-20260731.md` | `c1f686191aba559f5fdb0079435294adc8f1c624458f2bebdd616f63d32f9021`
+- `Receipts/managed-archive-place-review-packet-v1-20260720.md` | `archives/receipts/managed-archive-place-review-packet-v1-20260720.md` | `bf96d3410908514dae48682485117819abfec544f1a776f889e7128bd04a44d6`
+- `Receipts/sessions-rotation-reconciliation-20260808.md` | `archives/receipts/sessions-rotation-reconciliation-20260808.md` | `8153e462631af498053c92125de4321871d77a175892269c62753014f9ed38fe`
+- `Receipts/joy-anne-home-advisor-birth-20260812.md` | `archives/receipts/joy-anne-home-advisor-birth-20260812.md` | `108fe79f94aa28ffde3ff79231666f324a5b16efe16aa8276ed8cc4743a49bff`
+- `Receipts/sessions-and-nukece-staffing-20260727.md` | `archives/receipts/sessions-and-nukece-staffing-20260727.md` | `fc9c5333380bfc3dcd8306f53f8311df0c52d679ba51d83dd9409e9a1f1c2448`
+- `Receipts/systemrescue-ventoy-replacement-20260721.md` | `archives/receipts/systemrescue-ventoy-replacement-20260721.md` | `ed6c6fe19c77e67f9d6c28b19381d453befaa7c48762e2f49d2e6e53adeb7dc0`
+- `Receipts/current-continuity-round7-vm-human-loadtest-failure-20260702.md` | `archives/receipts/current-continuity-round7-vm-human-loadtest-failure-20260702.md` | `ca569e59d03ecde3eac55b4ccb20c292927dac7ed82c257ff16c2d6c1e98481a`
+- `Receipts/identity-lock-and-claude-rains-20260805.md` | `archives/receipts/identity-lock-and-claude-rains-20260805.md` | `3e290262d6dc0f378fc03c517091e45cd2f95df06799f306f4224106afe4b226`
+- `Receipts/fork-loadtest-failure-20260704.md` | `archives/receipts/fork-loadtest-failure-20260704.md` | `b68db941d96f46e588b63ee92fd35b2773675171d96867efc9378e5cb489618b`
+- `Receipts/sessions-canon-custody-20261030.md` | `archives/receipts/sessions-canon-custody-20261030.md` | `fcd2380ec73f1fa4369688534b79d094f7923ebd94f691eaeb1fd52c13c4f3d8`
+- `Receipts/provider-backed-resident-space-skeleton-20260810.md` | `archives/receipts/provider-backed-resident-space-skeleton-20260810.md` | `5a4a6134fd5280d7648fda911e2c6e9fbccdb869246a92c7e1ed82c2a50bddf2`
+- `Receipts/desktop-plex-pia-qbittorrent-transition-phase1-20260721.md` | `archives/receipts/desktop-plex-pia-qbittorrent-transition-phase1-20260721.md` | `38f791a058c4179ca900d7e85d017d3fa5c21f3b03ded3ee11ac23f9be12db86`
+- `Receipts/managed-archive-location-census-v1-20260720.md` | `archives/receipts/managed-archive-location-census-v1-20260720.md` | `59f2c4a1723caf2723a659fcfd3696350ba417ce7408f01c818e211ac773c908`
+- `Receipts/joy-anne-rotation-2-20260914.md` | `archives/receipts/joy-anne-rotation-2-20260914.md` | `8305164222e66ef74386331a967c2ddaa85ba8c2e830280c738df1961080ffd4`
+- `Receipts/desktop-continuity-part-ii-staging-correction-20260704.md` | `archives/receipts/desktop-continuity-part-ii-staging-correction-20260704.md` | `1825c7ba8af9619b3d7ab6236821a2b75b7761bd5925711d0999452bd181c5f2`
+- `Receipts/pycharm-install-script-20260713.md` | `archives/receipts/pycharm-install-script-20260713.md` | `fcd780dca77e7d518e14b9fadeca3effbf89a7b673e47eb7dc4e47203648e3d0`
+- `Receipts/codex-log-compaction-trigger-forensics-20260704.md` | `archives/receipts/codex-log-compaction-trigger-forensics-20260704.md` | `6d7fb99bcf7ff01e5360a9feb044f164effb04577b13505ac82589bd409f9bb5`
+- `Receipts/personal-project-staffing-20260802.md` | `archives/receipts/personal-project-staffing-20260802.md` | `e48d1def6ccf02e815d79c858d1380653a893859b62de4fe4cae85094c5e21be`
+- `Receipts/jojo-control-alignment-20261022.md` | `archives/receipts/jojo-control-alignment-20261022.md` | `506930b3c0e5a337b0928189ede8c317658c285d8084d426fd9d77420371ea46`
+- `Receipts/claude-session-health-handoff-20260706.md` | `archives/receipts/claude-session-health-handoff-20260706.md` | `b04708411cf6de5005f0bc9650af7c5eca17bb28571dcdfab250956debfcdffa`
+- `Receipts/control-refresh-and-repository-tidy-20260729.md` | `archives/receipts/control-refresh-and-repository-tidy-20260729.md` | `24f8550ed29145562078af1de1ca8da527e365ca7e08b0398b2d5e00851ade91`
+- `Receipts/personal-share-checkpoint-and-finances-entry-20260803.md` | `archives/receipts/personal-share-checkpoint-and-finances-entry-20260803.md` | `e1bf89eae3ba404ff02e39b0e87b0a0a06538114ee524c84e3e9902fc0544fef`
+- `Receipts/resident-closeout-standard-and-git-baseline-20260716.md` | `archives/receipts/resident-closeout-standard-and-git-baseline-20260716.md` | `fdd095ee640892dfc045fbf1b1af833935395994b7975084172e7f3c5b76928e`
+- `Receipts/morning-rounds-20260817.md` | `archives/receipts/morning-rounds-20260817.md` | `6a0b081cb88d3bc506f987a530e822c651b0961b6ee1cadc4ab4bdfcc159b85f`
+- `Receipts/jsonl-inventory-and-drift-sweep-20260723.md` | `archives/receipts/jsonl-inventory-and-drift-sweep-20260723.md` | `4e92a129367df8aee037936a34c507779da7fe7a2381d3187d9dde61c97a1bff`
+- `Receipts/pycharm-2026.2-carryover-and-nesting-fix-20261012.md` | `archives/receipts/pycharm-2026.2-carryover-and-nesting-fix-20261012.md` | `0feb39705fb7e9599624c15d3e9c960c810795904e9260d482c8bc4c2efbae4a`
+- `Receipts/current-continuity-response-item-pressure-20260627.md` | `archives/receipts/current-continuity-response-item-pressure-20260627.md` | `13060961bcc410de5a2cdde4e4677f791a54ded0fe0252cdd3c06e72d7dadcdd`
+- `Receipts/liveusb-exact-root-host-rebind-20260725.md` | `archives/receipts/liveusb-exact-root-host-rebind-20260725.md` | `6ae1c6051eab8c33884216a2ab1d189b97738e0bb54fc87c8bfd26fa91302c18`
+- `Receipts/served-residents-restoration-20261016.md` | `archives/receipts/served-residents-restoration-20261016.md` | `04dc3c0b9186b82acea5e347c9ab5f8ced9aaa96e2b7d518bbdb9c0d97f8cf6a`
+- `Receipts/managed-archive-orientation-packet-v2-20260720.md` | `archives/receipts/managed-archive-orientation-packet-v2-20260720.md` | `5798c402e690056b1f29a46137ba5f5b09e421e5263d4f997c53c04617b9ac62`
+- `Receipts/shannon-self-rotation-20260809.md` | `archives/receipts/shannon-self-rotation-20260809.md` | `752b15583c223b0577824c0cd71d54d913a7cd90eb53051e5138c7311c46e28b`
+- `Receipts/control-to-osai-codex-remote-control-donor-20260724.md` | `archives/receipts/control-to-osai-codex-remote-control-donor-20260724.md` | `4bb022defb63b3cfeec0423bbe0930f7156ed6afd2b2823e38bdcd7acf0ee9d6`
+- `Receipts/stela-three-restoration-20261026.md` | `archives/receipts/stela-three-restoration-20261026.md` | `6131660cfc546d5588225d3cfa9fd7df990812b5e98309cbc1dd9297439382aa`
+- `Receipts/digikam-pictures-calendar-reabsorption-20260718.md` | `archives/receipts/digikam-pictures-calendar-reabsorption-20260718.md` | `f38bc8bfe1120e1866bdca907b8434116b40c61f6789b0fde6491cc9caa0c3f0`
+- `Receipts/claudine-rotation-and-sanchez-retirement-20260805.md` | `archives/receipts/claudine-rotation-and-sanchez-retirement-20260805.md` | `99195d5881560593431dfed9e36b5dadc25c48aeb5440a29addda9df6cee0377`
+- `Receipts/resident-center-source-authority-drift-20260805.md` | `archives/receipts/resident-center-source-authority-drift-20260805.md` | `4dcca0f02e28a9da5b7d74584c43b47f405bdba3eda9f9ca68d344ea230a461e`
+- `Receipts/george-family-wave2-transplant-20260716.md` | `archives/receipts/george-family-wave2-transplant-20260716.md` | `b3086d39486df83d9025b15f97efb85ae133d302709b32773af7ac1aa86045c0`
+- `Receipts/repository-bootstrap-20261031.md` | `archives/receipts/repository-bootstrap-20261031.md` | `3d8168a2c666195d0ec36408470f128d2da8d8dde95e1e5040c0f6d7426c3c15`
+- `Receipts/resident-launcher-enrollment-20260727.md` | `archives/receipts/resident-launcher-enrollment-20260727.md` | `3e4f9221e1ad821e847e109cba9806c062626e9b2e1af9c744fc7ed896db4c8c`
+- `Receipts/sessions-git-reconciliation-20260805.md` | `archives/receipts/sessions-git-reconciliation-20260805.md` | `0ee57e749f4805a42455c5ee124332ad23640e94cd7117be8e5923e5ca8f7539`
+- `Receipts/codex-exclusive-surface-handoff-20260808.md` | `archives/receipts/codex-exclusive-surface-handoff-20260808.md` | `4cbad4d4ab281334893c77f2690cc03972b2eb3fe6f39132bcc951d10235dc1e`
+- `Receipts/joy-wire-bell-20261018.md` | `archives/receipts/joy-wire-bell-20261018.md` | `652fcdb92e923d49ea641af78a2d3072d29eef1ad755be9f79ef154a73e832a0`
+- `Receipts/resident-center-cold-boot-baseline-20260727.md` | `archives/receipts/resident-center-cold-boot-baseline-20260727.md` | `80af9e41791f24bb013a4eea1ee4ff62a19a2e839d3257e24f91918bf6d4a5df`
+- `Receipts/finances-on-demand-hybrid-and-counterpart-retirement-20260803.md` | `archives/receipts/finances-on-demand-hybrid-and-counterpart-retirement-20260803.md` | `90c1c3f54bc5b189125591c4cf83613fb0fc63fe92a36588f1d3c0f6fe99d512`
+- `Receipts/README.md` | `archives/receipts/README.md` | `a001b7e8a889836f602c7bf5fab904ecdf4684631ad64cf18e602d4c5b338bb8`
+- `Receipts/luce-unsorted-merged-intake-readme-refresh-20260716.md` | `archives/receipts/luce-unsorted-merged-intake-readme-refresh-20260716.md` | `ab7f895bd85efe252478fe62eab061dd8718ab7952e341c070f5492b4cd1c781`
+- `Receipts/thirteen-resident-reseed-20260808.md` | `archives/receipts/thirteen-resident-reseed-20260808.md` | `0a86c6c2912428f3f2ff0a33ce93202f2fb7dffd8ce13063a10d5f5276495425`
+- `Receipts/control-state-of-play-reconciliation-20260728.md` | `archives/receipts/control-state-of-play-reconciliation-20260728.md` | `588c4be975fa74fdaad47a42ce303665d858c12d2bac26ff2da1618183d31235`
+- `Receipts/digikam-calendar-parallel-branch-removal-pilot-20260718.md` | `archives/receipts/digikam-calendar-parallel-branch-removal-pilot-20260718.md` | `59020a4e5e6ffb166187cacf48d38568bb820eb166062fdbf59029bad0d2816a`
+- `Receipts/live-usb-phase1c2-root-free-acceptance-20260728.md` | `archives/receipts/live-usb-phase1c2-root-free-acceptance-20260728.md` | `2a3bdb69f1faea60749402ff50790d606b01a6fcb3895019176f3b8b43201a89`
+- `Receipts/shannon-rotation-4-20261013.md` | `archives/receipts/shannon-rotation-4-20261013.md` | `695e94553628bc0e23142c6f13039f89a0d706c6285b4c98044749ca0be8b88a`
+- `Receipts/batch-sequester-20260725.md` | `archives/receipts/batch-sequester-20260725.md` | `f06ff441ee94879cb04b784ca0e49d4cc832e54dca07b92ece5b823db98e3b5b`
+- `Receipts/managed-archive-strong-date-accession-pilot-20260719.md` | `archives/receipts/managed-archive-strong-date-accession-pilot-20260719.md` | `abbce2dd0430887fc65712482d55a6be0837a7ee03680395a13bf917092ee1f8`
+- `Receipts/always-connected-storage-core-20260715.md` | `archives/receipts/always-connected-storage-core-20260715.md` | `27b97798ae225e6b5c0b51ff52e1029ee526bb04082187847ca0cda37a77051e`
+- `Receipts/retention-editor-bound-restore-20260808.md` | `archives/receipts/retention-editor-bound-restore-20260808.md` | `ef62062ac8b92ae4a5b8e396efe1c1c97d6ab90543a7f4c96fa5b67b0093f02e`
+- `Receipts/george-viii-family-transplant-20260716.md` | `archives/receipts/george-viii-family-transplant-20260716.md` | `0cd76f0f504ffddd0c1f307a53b970fe8656aeda45396398f03ef8605a4c97a6`
+- `Receipts/pycharm-chat-ghost-cleanup-20261008.md` | `archives/receipts/pycharm-chat-ghost-cleanup-20261008.md` | `825cce7ed405106f1fed5e4cce7df61335badb8e53857f6cd21142af64260709`
+- `Receipts/living-gpt-counterpart-standard-and-plugin-rollout-20260717.md` | `archives/receipts/living-gpt-counterpart-standard-and-plugin-rollout-20260717.md` | `695ac9125afd91a88c68321cf4fcf12f13a5d87b9eeaa1fbb4e4a8c5f1d4dc8b`
+- `Receipts/shannon-freshen-20260809.md` | `archives/receipts/shannon-freshen-20260809.md` | `490da2cf82491286fd87f0bfe0a394dcdc7967d3c9a1463048a621662536499d`
+- `Receipts/desktop-iv-rotation-20260712.md` | `archives/receipts/desktop-iv-rotation-20260712.md` | `2ebc51b108853715d87d74899c62ad4faae6a7f08787f52f44f1cf46186525af`
+- `Receipts/current-continuity-round9-number9-vm-staging-20260702.md` | `archives/receipts/current-continuity-round9-number9-vm-staging-20260702.md` | `bf160a3a43e6d91fcdec85a365b6cc9880062cedc2db87c177189cc269c1ed56`
+- `Receipts/george-body-policing-20260704.md` | `archives/receipts/george-body-policing-20260704.md` | `5ba91c2d0633d93e3559b877a39e6641b31b856e04003d1041b13dad799dd2c0`
+- `Receipts/redwall-curated-layout-20260809.md` | `archives/receipts/redwall-curated-layout-20260809.md` | `652127d1bb6e30b7e4926c3cc3f9dd0529f8d4121baca205def5be76e67a3387`
+- `Receipts/desktop-continuity-hygiene-lockdown-20260703.md` | `archives/receipts/desktop-continuity-hygiene-lockdown-20260703.md` | `d77907d03caecbb86ecd8dc52d9047da3f1cd51f5511d99e9a77d8f3c748247e`
+- `Receipts/remote-device-current-name-reconciliation-20260715.md` | `archives/receipts/remote-device-current-name-reconciliation-20260715.md` | `72954ad2ccf4dfbb711e1e88d7ae7965b0eabad0db2fba9bb1c2451d9181157c`
+- `Receipts/managed-archive-strong-date-accession-batch-0491-final-20260719.md` | `archives/receipts/managed-archive-strong-date-accession-batch-0491-final-20260719.md` | `6d59599c23245dee65f994cdaf7429024a313ff6c46fcf46085e1e1aa1f50fea`
+- `Receipts/onedrive-phase-1c-resumption-20260814.md` | `archives/receipts/onedrive-phase-1c-resumption-20260814.md` | `49ddde4a8cd65d6ddcf700daaceea91e31359294c09d150aa6184ec5581bdc13`
+- `Receipts/resident-working-rounds-closeout-20261026.md` | `archives/receipts/resident-working-rounds-closeout-20261026.md` | `685e9ec14d694cc5cc40b91a547acdce71d807b2a55a806ae90bc5def6727d2f`
+- `Receipts/joy-anne-rotation-3-20261008.md` | `archives/receipts/joy-anne-rotation-3-20261008.md` | `164193e9d6e0646b2e99ab8a6f2b7d1e0cdbab7d43b9b0f221d40a3c934350de`
+- `Receipts/george2-donor-george-reid-candidate-20260703.md` | `archives/receipts/george2-donor-george-reid-candidate-20260703.md` | `09862f66cbdf959153887a0c28253274521fa44429269e047bf557ae812961a8`
+- `Receipts/standing-media-treatment-decision-20260908.md` | `archives/receipts/standing-media-treatment-decision-20260908.md` | `fd0d2f330116a16bf67178581a967b7083f621ba9c843f743d2a1661de30ea16`
+- `Receipts/compacted-history-inspection-20260623.md` | `archives/receipts/compacted-history-inspection-20260623.md` | `363db768f3d786b5d0f85dd9191a40a90f4afcd46784aa28dca4d595e98c0fb2`
+- `Receipts/hard-vol1-dirty-volume-repair-20261029.md` | `archives/receipts/hard-vol1-dirty-volume-repair-20261029.md` | `eddaf744ac7174ae21d0e45f7a8cac8568bfe461485610bdcdafa5275bedec33`
+- `Receipts/jarod-tablet-successor-20260810.md` | `archives/receipts/jarod-tablet-successor-20260810.md` | `779911a67e66d21a3be9d7be2c2972adf63b3f5ad6fbaf7e3830b977a8b1ec63`
+- `Receipts/george-friend-exact-thread-resume-review-20260808.md` | `archives/receipts/george-friend-exact-thread-resume-review-20260808.md` | `577fb8c9d436825c90e3e256167b99143b18d372f6a96b61fa84060535bf057a`
+- `Receipts/current-continuity-round10-menu-container-failure-20260703.md` | `archives/receipts/current-continuity-round10-menu-container-failure-20260703.md` | `0baf5aa09aaf263ea71838b2de9a47087b4cf441e2ae12dc80683913b22c0b9c`
+- `Receipts/osai-unborn-git-boundary-retirement-20260715.md` | `archives/receipts/osai-unborn-git-boundary-retirement-20260715.md` | `7649918d90653dedd8286c1bedc35d7d5550b168784214bf32795aea3f0144c2`
+- `Receipts/current-continuity-round11-april26-big-brother-condensation-20260703.md` | `archives/receipts/current-continuity-round11-april26-big-brother-condensation-20260703.md` | `e396e5634414a952c2c505ec69d16cfee71acf630781679a78889adab6666dfe`
+- `Receipts/served-residents-daemon-ownership-20261008.md` | `archives/receipts/served-residents-daemon-ownership-20261008.md` | `7a9daf074afda690a74ff9468efd6494de0fa88c0a195aff61d37895775c1e25`
+- `Receipts/launcher-containment-runtime-patch-20261018.md` | `archives/receipts/launcher-containment-runtime-patch-20261018.md` | `d75d4845bef97f64022d297cf0d75fd91a778797c0e1d6a44ef3d24b9c8eca90`
+- `Receipts/george-fusion-and-claude-custody-20260809.md` | `archives/receipts/george-fusion-and-claude-custody-20260809.md` | `19ed9e3094f9e82ae9718e2ca5378c41fe012083d11f89a6ea430c250d570541`
+- `Receipts/onedrive-phase-1b-20260810.md` | `archives/receipts/onedrive-phase-1b-20260810.md` | `ef3fed268dd47657341988648dfa679b5eab8f405a7eda37186fa83956c88fb4`
+- `Receipts/desktop-jetbrains-cutover-20260713.md` | `archives/receipts/desktop-jetbrains-cutover-20260713.md` | `6f8674a9659ff0473b38fc9053efc6caf3a602c416a1a122b3bffca723669764`
+- `Receipts/all-claude-residents-served-20261008.md` | `archives/receipts/all-claude-residents-served-20261008.md` | `4d357d561fdcc332aa63e1e3574148c4abf73939a228cf1460ba64e9d1bf8582`
+- `Receipts/ward-recovery-and-instrument-repair-20260908.md` | `archives/receipts/ward-recovery-and-instrument-repair-20260908.md` | `51b2cdf189c69d7a374e516b43d522d5d40922ab5a9884e8f88f606c8e3ad2ea`
+- `Receipts/tablet-remote-device-successor-20260807.md` | `archives/receipts/tablet-remote-device-successor-20260807.md` | `bd86087033e49ceaa3f5c5c2f52279f44654915469b5ce3244e300724a0887c0`
+- `Receipts/leonard-codex-reseat-20260809.md` | `archives/receipts/leonard-codex-reseat-20260809.md` | `f97f9d26caebf4522be62105919a5e1d1ba5261116d493e10c92c589464ed10b`
+- `Receipts/digikam-faceted-calendar-sidecar-and-fresh-db-rollout-20260718.md` | `archives/receipts/digikam-faceted-calendar-sidecar-and-fresh-db-rollout-20260718.md` | `7c0d8f1d802e4b1e63c09f5d6fa81bcfe8124213609171bdc81175e9011e12f1`
+- `Receipts/shared-hygiene-and-desktop-cleanup-20260713.md` | `archives/receipts/shared-hygiene-and-desktop-cleanup-20260713.md` | `1bf7ab2104458a44869de1caf9b24c9b601f75c09a79317115215287393c10d2`
+- `Receipts/control-dirty-tree-integration-20260716.md` | `archives/receipts/control-dirty-tree-integration-20260716.md` | `b8183f6f27a3c60e71da0bf309d091b091f8f22d1aab6768c2b5aac7b9125f48`
+- `Receipts/resident-launcher-validation-handoff-20260809.md` | `archives/receipts/resident-launcher-validation-handoff-20260809.md` | `2a65184d55c1624034bd4f40ed25e3bae2c4325ea932364546a9a8b8265a4e05`
+- `Receipts/vscode-netbeans-complete-retirement-20260716.md` | `archives/receipts/vscode-netbeans-complete-retirement-20260716.md` | `20524ca05a75ea93b3a3620cf4529c411bf9f91a2546db9e6a1f6fa373de1e36`
+- `Receipts/stela-george-transplant-20260716.md` | `archives/receipts/stela-george-transplant-20260716.md` | `7950f52bbd7b0dd2edcb3f5e249d56b6883249458cc21cf56d00e2559966537a`
+- `Receipts/retired-april-thread-offload-20260704.md` | `archives/receipts/retired-april-thread-offload-20260704.md` | `3f77a6d0fa4083a70599f7a6d9efb5ba1184f73a1153857c16f0b3eb854f3f28`
+- `Receipts/luce-calendar-years-recurrence-audit-20260717.md` | `archives/receipts/luce-calendar-years-recurrence-audit-20260717.md` | `5e7628c0afef80e0fa2f19eb002877ed3d77066b1386b9dac56486712001ed9c`
+- `Receipts/stela-staffing-20260801.md` | `archives/receipts/stela-staffing-20260801.md` | `7d458756b159a5bbffc1353148dad11670c0473127a642c969984090a7e3ffeb`
+- `Receipts/plex-media-deletion-acl-functional-validation-20260725.md` | `archives/receipts/plex-media-deletion-acl-functional-validation-20260725.md` | `c567ae95219a15034c4389cd35a7cbbde386e082bcb72c4a740102ba8f3fc474`
+- `Receipts/current-continuity-image-externalization-round5-6-final-20260627.md` | `archives/receipts/current-continuity-image-externalization-round5-6-final-20260627.md` | `0690e0b9ee0bed0bf3658d6b6081f9f828af03e10930280782845eb57be78034`
+- `Receipts/five-residents-restored-20261008.md` | `archives/receipts/five-residents-restored-20261008.md` | `22bd5fe53e31f4a5a4713b0db5877473c6653cd4e04d8f21672983060b4150d9`
+- `Receipts/liveusb-customizer-lineage-and-support-cleanup-20260725.md` | `archives/receipts/liveusb-customizer-lineage-and-support-cleanup-20260725.md` | `bef4ca3c8deb02d59c9da58689fb79afe48d29e5f8968137801a72cbb91c6bb9`
+- `Receipts/desktop-continuity-part-ii-images-only-isolation-20260703.md` | `archives/receipts/desktop-continuity-part-ii-images-only-isolation-20260703.md` | `4db36e2c606a607afc422038b0c7a2bbd44220cc845071a80d1973a4d1eb1f41`
+- `Receipts/full-codex-rotation-and-relabel-20260808.md` | `archives/receipts/full-codex-rotation-and-relabel-20260808.md` | `fb1be0b28366cc30deded2495ae1cd8f8992725e57dc57ad77fe5134225142a1`
+- `Receipts/project-retirement-and-uninstall-standard-20260727.md` | `archives/receipts/project-retirement-and-uninstall-standard-20260727.md` | `caa70efdb0c09c1f1b97fa9e0b165a1a20bff49246e1b7dec3d6c6f92af53907`
+- `Receipts/resident-self-check-canary-20260809.md` | `archives/receipts/resident-self-check-canary-20260809.md` | `99891f93eaa1cdd5ccca789550bdaf876a94eb561ab5ce613782ffd31f89de25`
+- `Receipts/managed-archive-strong-date-planner-stage2-20260719.md` | `archives/receipts/managed-archive-strong-date-planner-stage2-20260719.md` | `1d3291f3f1bf234daae5214a30ccaf6c966b5789c6d66e4bcda829a1c4c4305d`
+- `Receipts/current-continuity-round8-vm-staging-20260702.md` | `archives/receipts/current-continuity-round8-vm-staging-20260702.md` | `0cd20b37c1363939b0cddd353997d4280d3abc7b5fcdf4d7d3fdcc8ca4d834e4`
+- `Receipts/claudine-orientation-date-correction-20260808.md` | `archives/receipts/claudine-orientation-date-correction-20260808.md` | `c3af292678064a95850cef6e9d9058062d9bdc66e33b4d8c05317faaeebd505c`
+- `Receipts/universal-raw-intake-standard-20260722.md` | `archives/receipts/universal-raw-intake-standard-20260722.md` | `1fb6f0ef37932dd0b2c5b5486e87c1fbb0cb642ae6adba435b5b0587bdd333bd`
+- `Receipts/managed-archive-place-tag-promotion-live-v1-20260720.md` | `archives/receipts/managed-archive-place-tag-promotion-live-v1-20260720.md` | `f7c429302c396efceb618bd6e36def967960d5ad1b4750be72f9de0eaa71739c`
+- `Receipts/managed-archive-strong-date-accession-batch-1000-03-20260719.md` | `archives/receipts/managed-archive-strong-date-accession-batch-1000-03-20260719.md` | `e9a4e5f93a991020cee8f0b023fd5f84f968cc517013d490544e8e10605dd3c1`
+- `Receipts/central-repository-staffing-record-20261026.md` | `archives/receipts/central-repository-staffing-record-20261026.md` | `016c3cd5e541ab308ebfc1291226eaf216cfe3b7ccd22c1dcb58896dffe62080`
+- `Receipts/onedrive-phase-1c-claudio-exact-head-review-20260818.md` | `archives/receipts/onedrive-phase-1c-claudio-exact-head-review-20260818.md` | `dc6ac47c2de234faf279a936f5a5986c16fe182f8fcb7f63d06080bc5f2ac78a`
+- `Receipts/current-session-adjacent-candidate-copy-20260703.md` | `archives/receipts/current-session-adjacent-candidate-copy-20260703.md` | `f7e0fa16d1a644f89678cae5625702b4a90f1b3b6a2df286121c27c21e313b00`
+- `Receipts/stela-main-return-and-branch-prune-20260731.md` | `archives/receipts/stela-main-return-and-branch-prune-20260731.md` | `e6a9fb554425b54963a85ab3978a8a48e154db55e9b7a107bb378cc3b905ab7d`
+- `Receipts/pycharm-project-scaffold-cleanup-20260715.md` | `archives/receipts/pycharm-project-scaffold-cleanup-20260715.md` | `e15b9fc190a9500c5a8e21c641aea8e94ca0ce57503d42a5e738df9e04c45c3b`
+- `Receipts/platform/pycharm-gold-profile-export-20260713.md` | `archives/receipts/platform/pycharm-gold-profile-export-20260713.md` | `92c0773342f1325dda1f7b1e2f158627070096fc4bbb422f210055fad3091fa5`
+- `Receipts/platform/george-v-to-george-vi-final-migration-receipt-20260713.md` | `archives/receipts/platform/george-v-to-george-vi-final-migration-receipt-20260713.md` | `62a3f2fc0042efc9427055deb2ecfa7e9403bf47d6fa00929cecf92257b0cf1d`
+- `Plans/george-vi-to-control-project-transplant-20260713.md` | `archives/legacy/Plans/george-vi-to-control-project-transplant-20260713.md` | `b938b53536e85d19f4df4e5f9bc8b72cb0b9bbb99218fafad50a9ed776e3b08e`
+- `Plans/liveusb-donors-to-sessions-residents-20260727.md` | `archives/legacy/Plans/liveusb-donors-to-sessions-residents-20260727.md` | `878077ce18e91e80b7990537df4cd349163a2b882b7cdf8ef31a894a16ddf47a`
+- `Plans/pycharm-resident-agent-project-layout-20260714.md` | `archives/legacy/Plans/pycharm-resident-agent-project-layout-20260714.md` | `2cf4559d14cdd57d504f0b26d3cda2cde4d7caab0c356cae0f7c960356269661`
+- `Plans/README.md` | `archives/legacy/Plans/README.md` | `34b3183369e58bcd55e2aae2ca1b5c64cb3e4826d4451b5869c52b46e0af253d`
+- `Plans/luce-redwall-resident-project-layout-20260715.md` | `archives/legacy/Plans/luce-redwall-resident-project-layout-20260715.md` | `4eb0dda93d1576a7188bc95aace9a2f27ea8f076a13c6ce7e5526d209647fc30`
+- `Plans/superseded/session-jsonl-sandbox-load-test.md` | `archives/legacy/Plans/superseded/session-jsonl-sandbox-load-test.md` | `9a7ac5168f28dfa1e70bdd83b723691d20e6bf7252f9714998dcc9992d62e195`
+- `Plans/superseded/prime-session-candidate-standard.md` | `archives/legacy/Plans/superseded/prime-session-candidate-standard.md` | `b7b727a4f2a7231b60dfde60f79541686344161abcbd31c4b8bc184eabcbf313`
+- `Plans/superseded/session-vm-loadtest-standard.md` | `archives/legacy/Plans/superseded/session-vm-loadtest-standard.md` | `13f9a2cab07f463e8b4b418997a75f17476fbc15e291ad4e90c3eae3a0aaeb25`
+- `Plans/superseded/session-succession-management.md` | `archives/legacy/Plans/superseded/session-succession-management.md` | `19c8903fa333e1ba42430fb4e47d86fcdf9d0a9826b11b322148e0a3013e85a0`
+- `Plans/superseded/session-asset-management.md` | `archives/legacy/Plans/superseded/session-asset-management.md` | `352b503c12b82bb4002241226ea12cfc5347dcf3f6a700e1d0056e1155b3ce2e`
+- `Plans/superseded/session-condensation.md` | `archives/legacy/Plans/superseded/session-condensation.md` | `31ea7ab97d7398d79443a6be81fda5747312fd5bcb8cc13b0656d6806c7ea452`
+- `Plans/superseded/session-reduction-and-pruning.md` | `archives/legacy/Plans/superseded/session-reduction-and-pruning.md` | `72aa2918eeab064ec8fa01824d95cc100447b298f4f70001d895ec54d1036e9d`
+- `Intake/2026-10-09-from-joy-claude-desktop-linux-question.md` | `archives/legacy/Intake/2026-10-09-from-joy-claude-desktop-linux-question.md` | `2609bb51cd23941fb33a3092a2b3559bee17ae84a03e7b6215c2cdb9f2ec7c12`
+- `Intake/2026-10-08-from-joy-branch-gates-headsup.md` | `archives/legacy/Intake/2026-10-08-from-joy-branch-gates-headsup.md` | `75d3f640a318a25812be84cac5c7d0c73f882e70e2146646c8cf74a67031015b`
+- `Intake/2026-10-13-joy-rotation-4-container.md` | `archives/legacy/Intake/2026-10-13-joy-rotation-4-container.md` | `6490db7c390128849ceb422e337eef2627c04ea6a5b156ef9bb63605da49370e`
+- `Intake/2026-10-10-from-joy-session-health-check.md` | `archives/legacy/Intake/2026-10-10-from-joy-session-health-check.md` | `6ba5e04d9f737a7750ea0c872a6d9215eb665111a794c5c812b39b2009699438`
+- `Intake/2026-10-13-from-shannon-donor-handoff-addendum.md` | `archives/legacy/Intake/2026-10-13-from-shannon-donor-handoff-addendum.md` | `3ff2d21d875488ce998566f693c29bb5bdc5d54e5bcaf1b261c8af8ac04f9aa2`
+- `Attic/README.md` | `archives/legacy/Attic/README.md` | `e6a85716d65c797f4776ee462dbfb3aae71ade17baf9b3c8d947da0ddfb6f2a5`
+- `Attic/superseded-scripts-20260717/README.md` | `archives/legacy/Attic/superseded-scripts-20260717/README.md` | `3bed774907a8b4ad6745a9ce5a6e478f2c14b46e11fa1b33b41832a749c793ad`
+- `Attic/superseded-scripts-20260717/install_codex_session_size_watch_timer.sh` | `archives/legacy/Attic/superseded-scripts-20260717/install_codex_session_size_watch_timer.sh` | `92d385990e80d67ea8b8dbde0ce73fb224b120d081885b52a6cdeb534112a3b5`
+- `Archived/OFFLOADED.md` | `archives/legacy/Archived/OFFLOADED.md` | `ac2dc104bcbebee389cd602c8e55511061fca9f967d4273da1f0284c92af1c2e`
+- `Archived/README.md` | `archives/legacy/Archived/README.md` | `c302b9d6a54826c4cb69e64d88cb6b777ca967fd16ffa22f066db00604a4aa08`
+- `Archived/claude-code-sessions/README.md` | `archives/legacy/Archived/claude-code-sessions/README.md` | `2773b83c41613ebb06154c3b3bdcad382d290bd8e77e5b6716a9789493c49bad`
+
+## Correction appended 2026-11-01 13:59:55 EST, after the Independent Reviewer's review (claudio.md sections 147, 148)
+
+- **C1.** Control still tracked 55 paths under `Lab/` and `Candidates/`; the rename had made them read as deleted to Control. Each is restored at its old path from Control's recorded bytes (every one byte-identical to its copy under `storage/`) until Control's separation part 2 releases them; the old copies are then unlinked. Deviation, the writer's: 1 (Control-tracked files changed outside Control's process, undone).
+- **C2.** `archives/legacy/INDEX.md` and `archives/legacy/HANDOFF.md` are placed as the port placed them, and the root `HANDOFF.md` is the port's pointer (private, ignored). The legacy `HANDOFF.md` equals the root file it replaces.
+
+## Second correction appended 2026-11-01 14:43:42 EST, after the Assistant's audit (claudine.md section 24)
+
+- **C1, wording:** the untouched set is the 764 paths Control retains after PR #119, not 36; the 55 under `Lab/` and `Candidates/` are the ones the rename affected, restored above until Control's part 2 releases them.
+- **C2, the 303 receipts in no repository: decision.** Owner: the Session Continuity Manager. They enter the Sessions repository after the redaction pass (quoted operator words and host details removed or digested), which is the block after Amendment 2; until then they are kept out by the allowlist, and a two-tier custody copy exists from this hour: batch `sessions-receipts-20261101` (`custody-sessions-receipts-20261101.md`), 306 files verified on both tiers. This amends decision 2 of 01:46, under the operator's deferral of 12:4x.
+- **Observations taken:** the root `HANDOFF.md` is now the pointer (first correction); the placeholder yaml under `ops/src/runbook/agents/` is ignored by name until it has content; the remainder of row D (`Evidence/`, `Config/`, `Resident-Center/`) is owned by stages B and C (George for Control's side, the Session Continuity Manager for the room's).
+- **The 44 bodies under `storage/`, by hash (files only, never content):**
+  - `storage/candidates/joy-anne-rotation-20261013/donor-snapshot.jsonl` | `3c9bd093fb8cd91526034fdf389a53d0fc3cef0d4a6455d1708d09c4e742082e`
+  - `storage/candidates/joy-anne-rotation-20261013/successor-treated.jsonl` | `abdac7c04505a90f1745c207005d2418677e77446337591afc187cfb10e38d63`
+  - `storage/candidates/joy-anne-rotation-20261013/successor.jsonl` | `75e602b253f60530462242b43c84bfb6edb8f788bf078cafbff3b5cedcc0c358`
+  - `storage/candidates/joy-anne-rotation-20261016/donor-snapshot-20261016T1717.jsonl` | `e3796814439c03e4dd67a8e2c1abadb4fec484de1a0e7228fa3cd0de9d8a172c`
+  - `storage/candidates/joy-anne-rotation-20261016/donor-snapshot.jsonl` | `e02dc8f6a7dec616508c101c6ec84fb87bdd6a1bb0540cfbd5581f51c5aa21c9`
+  - `storage/candidates/joy-anne-rotation-20261016/donor-window-20261016T1717.jsonl` | `3d691f2a9220910de1c7ef694a9749712ec36b4c006092b26de8d009a1aa51e3`
+  - `storage/candidates/joy-anne-rotation-20261016/donor-window.jsonl` | `6ea50a9bd6f78443dca63d3a547ea40f2c77ff2e00bafd9baaea28da469a271b`
+  - `storage/candidates/joy-anne-rotation-20261016/successor-20261016T1717-stale.jsonl` | `b5ded9c0de2c44dbbb2fc66b21cfa20853a9427e9ae126949a5696fc04dc3b5b`
+  - `storage/candidates/joy-anne-rotation-20261016/successor-treated-20261016T1717-stale.jsonl` | `b5ded9c0de2c44dbbb2fc66b21cfa20853a9427e9ae126949a5696fc04dc3b5b`
+  - `storage/candidates/joy-anne-rotation-20261016/successor-treated.jsonl` | `7bd167cee60fe55f954a4c67295f15ecb69cb9ae44f468fbbc6c723c767ca392`
+  - `storage/candidates/joy-anne-rotation-20261016/successor.jsonl` | `23e29723d18adb355b370f250bea6051f89ea1cf72c8238c58cc9324204dc4de`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt1-path-not-text/successor-final.jsonl` | `448689f390666999b48ae33f5148491d953eb0e76fcd5b21f865c5f87ce036d6`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt1-path-not-text/successor-treated.jsonl` | `b9af086fcd91af710b0d1111d31b1950a88cb366b736325c6414725f6dd27024`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt1-path-not-text/successor.jsonl` | `dd0189623ae305154e19061902b7a948ecff61f70006e38f3596e1af712792d0`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt2-relative-media-hint/successor-final.jsonl` | `87084383f1e9ded99454e5445ef2c4e0c8894829f0e952945701d800b5e17db0`
+  - `storage/candidates/joy-anne-rotation-20261030/attempt2-relative-media-hint/successor-treated.jsonl` | `bd522b3497daf7bd5cad83c212d8aab45bfe254f7c8451ae2fc9eae45f9bbafd`
+  - `storage/candidates/joy-anne-rotation-20261030/spliced-window.jsonl` | `87ca5369b084d3ae58b0e46a8504332167aa79c87f93811ac4c48d5980d7311d`
+  - `storage/candidates/joy-anne-rotation-20261030/successor-final.jsonl` | `028f63c431d116c4a65dc1f12f1ebfdc9e878f0db0142d5c936a16523c3d152c`
+  - `storage/candidates/joy-anne-rotation-20261030/successor-treated.jsonl` | `71108bc6e268e1f0901c3a9c5b03102f30b813ae11710ddb0367a24574097741`
+  - `storage/candidates/joy-anne-rotation-20261030/successor.jsonl` | `39613fe233b8c04424ba685526ab0bbd43e9e3e238149f1f8c16f1f4b52bcd54`
+  - `storage/candidates/mind-manifest-20261029/package/storage/sessions/active/mind.manifest.jsonl` | `d5edbfdea7973da887dfd771314354d9b3922a7058013fb36e374a4589ebeb0e`
+  - `storage/candidates/shannon-rebuild-20261029/spliced-window.jsonl` | `41b5925f0a6ff218bce1075d6199d2da032c7d0536a8a27e8648a9ed0c9bf87e`
+  - `storage/candidates/shannon-rebuild-20261029/successor-final.jsonl` | `faeea9c7bf03eee875667c083aa910956559e0a89371319838db983deafa1873`
+  - `storage/candidates/shannon-rebuild-20261029/successor-treated.jsonl` | `8ed8b3c3607f7fcb393eeae9ec5a626a469600a7107c26e4f4305f139fe17264`
+  - `storage/candidates/shannon-rebuild-20261029/successor.jsonl` | `c1f76ae668a2b395f8fce2382a71e5a0f79601d06067c78aa3847078ec288c8d`
+  - `storage/candidates/shannon-rebuild-20261029/v2/spliced-window.jsonl` | `303f723261f373301ce8b1ca6b4b8535cad956f1ecce9c03fe32ea3951a83fdc`
+  - `storage/candidates/shannon-rebuild-20261029/v2/successor-final.jsonl` | `33d5b0621f46961107bb81f5d2d7e25865e838930321f9e70e16bff8001370ec`
+  - `storage/candidates/shannon-rebuild-20261029/v2/successor-treated.jsonl` | `6aff0515349514be8befa21897d27c4b709e05733be173be363597f81fe14a48`
+  - `storage/candidates/shannon-rebuild-20261029/v2/successor.jsonl` | `8ce69bdf4065c18fe95f9ead9fb85dc065d34e999ec44201be8bc144188fab35`
+  - `storage/candidates/shannon-rotation-20261012/DRYRUN.jsonl` | `a64f9f6bdbf28d6bc87074baf2ad27d55fd6a68c3db03f8defdb38772e19524d`
+  - `storage/candidates/shannon-rotation-20261012/donor-snapshot.jsonl` | `f940823f7d804f3ce6abb60880cf409a859468c7985438042a85ed107ed49bf4`
+  - `storage/candidates/shannon-rotation-20261012/donor-window.jsonl` | `c5d5463cb1b8ae488ef565192bdcf8eb4359a2400402eb93e63868257515baad`
+  - `storage/candidates/shannon-rotation-20261012/successor-treated.jsonl` | `0ef992546395ee2b56744a73e5e8fc5b4fae3ce7d5667923133cf57a416f0d16`
+  - `storage/candidates/shannon-rotation-20261012/successor.jsonl` | `ca96a5f84b086a7f455f6f625aa1d4afc45edadef7fec92910ccd322090fa464`
+  - `storage/candidates/shannon-rotation-20261013/donor-snapshot.jsonl` | `ac23b0c1cac36f9d2e720eb620d28a6134c1730bd9da970348e55c2dbf390d45`
+  - `storage/candidates/shannon-rotation-20261013/donor-window.jsonl` | `857a13e1cc7765cdceede62726ed8700453240970480234d4bcf507479037b12`
+  - `storage/candidates/shannon-rotation-20261013/successor-treated.jsonl` | `554e875a1b29c2110eaf4ac864165c7e129fa40538f3921360bc3583f726ca45`
+  - `storage/candidates/shannon-rotation-20261013/successor.jsonl` | `554e875a1b29c2110eaf4ac864165c7e129fa40538f3921360bc3583f726ca45`
+  - `storage/lab/george-king-elision-20260729/candidate-v2.jsonl` | `a84838aa5a8421022eb0509e98880204362e0d4588e57a72085fda2715d7dd0d`
+  - `storage/lab/george-king-elision-20260729/candidate.jsonl` | `ee4415f3a96806f4ff46a511bf9fdb4503deb76dfb6049e83ceece89fa4c7141`
+  - `storage/lab/rotation-batch-20260730/george-king.jsonl` | `ac1acdc471077950f9499447a7b2936cebdc11e59af29845cee3eb83d3a7c740`
+  - `storage/lab/rotation-batch-20260730/george-prince.jsonl` | `11331dcbaf0ca8ca2f2c0b57a081a7e868972178368cd0f1db35e2eb257687f6`
+  - `storage/lab/rotation-batch-20260730/jerry-codex.jsonl` | `605054647d1af27d40c51e7655bf5486b4f4bfb6c8e3c4b69f94cf54860e449b`
+  - `storage/lab/stela-source-study-20261028/journal-wf_700181ba-531.jsonl` | `b170a80685ee07f2a69e9e6f0e9c2d9b9a2cc3122d00e2f7ca56400bbf036bcf`

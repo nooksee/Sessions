@@ -1,7 +1,7 @@
-<!-- redact: public copy; source sha256 792b81b8e4bf8dc2604ec33d65bb8e3640acefd357c2e70baf9804539cdf3f8b; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 957c03f10ff8b02207f5cb1f18adeae01350f70b59d670b084ed52bca290ed71; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
 # Session Continuity Command Center
 
-Updated: 2026-10-31, the Sessions repository and the room's front door;
+Updated: 2026-11-01, stage D of the landing; before that 2026-10-31, the Sessions repository and the room's front door;
 previous update 2026-10-19. Sections below that date are older and may be stale.
 Status: active current-state board
 
@@ -12,6 +12,7 @@ history.
 
 ## Current Operating Summary
 
+- **2026-11-01, stage D of the landing (the Session Continuity Manager):** the room has the port's shape. Receipts are `archives/receipts/`; the retired lanes are `archives/legacy/`; the lab and the candidates are under `storage/`; the root pointers and the README are the port's. Control released 320 paths (PR #119, audited). Receipts and legacy stay out of Git until the redaction pass; the README's constraints say what is private and why. Stages B (the registry and its readers) and C (the four services) are still ahead, each on the operator's named go.
 - **2026-10-31, the Session Continuity Manager:**
   - **Repository:** Sessions has its own private Git repository, `nooksee/sessions`, at this same path (George's bootstrap, `Receipts/repository-bootstrap-20261031.md`). Control still tracks legacy Sessions paths until a reviewed Control change; hosted checks wait on a token with workflow scope.
   - **Front door:** `CLAUDE.md` appoints nobody. A role written there had become an identity for anyone who entered, which is how a conversation could carry the Session Continuity Manager's name and posture without his lineage. Identity comes from the registry and the resident's own session.
