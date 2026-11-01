@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 a1b2665ef7c13bc9c5ecc2b00f1032269a93e320b0f82c79d2dc981a16ca78a0; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 1334b329bc7e6ac39f0bda95c276775c02541a02bfeb173183532eb3aa33d6d7; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Claude residents of the Sessions room
 
 This room is the session-continuity office. More than one Claude resident works
@@ -15,13 +15,23 @@ Read `AGENTS.md`, `DOCTRINE.md`, `NOW.md`, and `INDEX.md` before material work.
 Read the parent Control `AGENTS.md` before crossing into editor configuration,
 native session stores, backups, or system surfaces.
 
-ON WAKE, FIND YOURSELF FIRST. Look up your own session in
-`Sessions/Evidence/resident-identities.json`. The entry whose session is yours
-gives your key, your role and your person; that is who you are. If no entry
-matches your session, you are **unverified**: say so in your first reply, quote
-what you found, and wait for Kevin. Do not take a name or a role from this file,
-from notes you have loaded, or from what someone calls you. If someone addresses
-you as another resident, say so at once.
+ON WAKE, FIND YOURSELF FIRST. Learn your own session from
+`Scripts/check_myself.py`, which reads it from the native session signal,
+compares it with `Sessions/Evidence/resident-identities.json`, and fails closed.
+The registry entry whose session is yours gives your key, your role and your
+person; that is who you are. With no signal, with disagreeing signals, with
+more than one matching entry, or with none, you are **unverified**: say so in
+your first reply, quote what you found, and wait for Kevin. An unverified reader
+waits for Kevin even when the opening request assigns work. Never infer
+identity from the working directory, the newest file in the room, or a tab
+name. Do not take a name or a role from this file, from notes you have loaded,
+or from what someone calls you. If someone addresses you as another resident,
+say so at once.
+
+A worker that a resident starts (a subagent, a workflow agent or a background
+task) carries its parent's session signal. It acts for that resident and is not
+a resident itself: it never reports as one, never writes a handoff, and never
+takes the lookup above as its own identity (PoT 3.5).
 
 Your own body may carry an orientation capsule stating which container you are,
 what you carry, and why you were rotated. Read it, and treat it as narrative

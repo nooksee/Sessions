@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 2193db59eee8c3ad0a6559129402c547e96f371c79181c1fc3cb3385cbfed6cf; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 792b81b8e4bf8dc2604ec33d65bb8e3640acefd357c2e70baf9804539cdf3f8b; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
 # Session Continuity Command Center
 
 Updated: 2026-10-31, the Sessions repository and the room's front door;
@@ -15,7 +15,7 @@ history.
 - **2026-10-31, the Session Continuity Manager:**
   - **Repository:** Sessions has its own private Git repository, `nooksee/sessions`, at this same path (George's bootstrap, `Receipts/repository-bootstrap-20261031.md`). Control still tracks legacy Sessions paths until a reviewed Control change; hosted checks wait on a token with workflow scope.
   - **Front door:** `CLAUDE.md` appoints nobody. A role written there had become an identity for anyone who entered, which is how a conversation could carry the Session Continuity Manager's name and posture without his lineage. Identity comes from the registry and the resident's own session.
-  - **Posture:** keep what is built and add no new machinery. One thing at a time.
+  - **Working posture of the Session Continuity Manager** (his practice, not a rule; rules live in `PoT.md`): keep what is built; add nothing without a reason; one thing at a time.
   - **Open, not urgent:**
     - Live test 1 is prepared but not run; its live run needs Claudio's review of the runbook.
     - PoT Amendment 1 revision 4 waits.
