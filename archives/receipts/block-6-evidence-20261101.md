@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 7f910ac577fbddc8e0eba9a429fe354280b64060e00cdee9a7c1eba1bf8ba407; rules 8; mode history; words 1; sessions 0 whole, 39 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 91ab1ce2015fcb9820cd48be30ca17f88a281a2a67c69f3b3a4e326db0bacdb6; rules 8; mode history; words 1; sessions 0 whole, 76 truncated; host paths 0; decisions 0 -->
 # Block 6: Evidence/ retired (2026-11-01)
 
 Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shannon). The operator's go: "[words sha256=4910b6ba712b10abaf3968ddb9d38104ccea88cb07800a05cca2089d4134dc96]" (22:32 EST), to the sentence of 22:31. Reviews: Claudio sections 160 and 161; George's Control text (george.md 19:13:43 and 19:22:56); Joe's before and after.
@@ -518,3 +518,497 @@ Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shanno
 - `resident-center-drift-state.json` | `31f5c5de19c1f02686b10445115806595b77963f7ec5b40b5ded43cd9e41de84` | 0o600
 - `resident-identities.json` | `2b2b8b12ebbc4f9c5a5b355a50aeb15fd7342e15548877840d29f41ff9367bfb` | 0o664
 - `resource-state.json` | `7682f4fb013c5baba0d79a7cadfe0b3529e2d8a0fe92c4476d7b21d37c925534` | 0o664
+
+## Correction appended 2026-11-01 23:46:02 EST, after the Independent Reviewer's section 162 (PR #14, 1 condition)
+
+The list of 11 untracked files above is wrong in composition: the two identity sources were Control-tracked and released (their disposition stands: archived, byte-equal to the ops/etc copies), and two July size-watch outputs were untracked and omitted. The 11 untracked files, measured as the archive's 489 names minus the 478 Control released in PR #123, are:
+
+- `.clinic-claude-raw.txt`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `.clinic-codex-raw.txt`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `README.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `claude-code-session-relocation-20260624.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `clinic-aggregate.json`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `clinic-alert-state.json`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `clinic-rounds-latest.txt`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `clinic-rounds.log`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `codex-archive-drafts-20260731.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-archive-manifest-20260731.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-current-continuity-round8-context-pressure-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-current-continuity-round8-context-pressure-20260702.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-current-continuity-round8-context-pressure-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-current-continuity-round9-number9-context-pressure-gate-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-current-continuity-round9-number9-context-pressure-gate-20260702.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-current-continuity-round9-number9-context-pressure-gate-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-current-continuity-round9-number9-final-context-pressure-gate-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-current-continuity-round9-number9-final-context-pressure-gate-20260702.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-current-continuity-round9-number9-final-context-pressure-gate-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-images-only-context-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-images-only-context.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-images-only-context.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target14000-context-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target14000-context.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target14000-context.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target9000-protect3000-context-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target9000-protect3000-context.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target9000-protect3000-context.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-current-before-target6000-20260704-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-current-before-target6000-20260704.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-current-before-target6000-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-target7000-protect1000-context-20260704-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-target7000-protect1000-context-20260704.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-desktop-continuity-part-ii-target7000-protect1000-context-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-george-current-20260703-strict-baseline-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-george-current-20260703-strict-baseline.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-george-current-20260703-strict-baseline.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-george2-active-shrink-20260703-images-context-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-george2-active-shrink-20260703-images-context.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-george2-active-shrink-20260703-images-context.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-george2-active-shrink-20260703-target14000-context-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-george2-active-shrink-20260703-target14000-context.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-george2-active-shrink-20260703-target14000-context.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target15000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target15000.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target15000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target16000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target16000.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target16000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round10-20260703-images-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round10-20260703-images.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round10-20260703-images.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ompact32-context-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ompact32-context.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ompact32-context.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ontext-protect1000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ontext-protect1000.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ontext-protect1000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compacted-history-condensation-desktop-continuity-part-ii-[session prefix 3]ompact-history-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compacted-history-condensation-desktop-continuity-part-ii-[session prefix 3]ompact-history-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compacted-history-condensation-desktop-continuity-part-ii-[session prefix 3]ompact-history.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compacted-history-condensation-round11-april26-big-brother-[session prefix 3]ompact32-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compacted-history-condensation-round11-april26-big-brother-[session prefix 3]ompact32-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-compacted-history-condensation-round11-april26-big-brother-[session prefix 3]ompact32.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-log-compaction-events-20260704.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-archive-20260609-102051-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-archive-20260609-102051.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-archive-20260609-102051.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260609-102041-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260609-102041.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260609-102041.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260623-024651-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260623-024651.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260623-024651.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260623-131444-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260623-131444.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260623-131444.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260623-215723-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260623-215723.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260623-215723.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260703-005622-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260703-005622.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-20260703-005622.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-current.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-assets-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-024845-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-024845.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-202453-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-202453.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-203119-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-203119.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-203232-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-203232.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-203709-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-203709.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-203817-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-203817.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-204156-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-204156.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-215711-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260623-215711.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260624-021705-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260624-021705.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260624-130608-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260624-130608.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260627-010207-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260627-010207.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260627-010559-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260627-010559.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260627-015359-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260627-015359.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260702-150848-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260702-150848.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260702-230655-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260702-230655.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260703-004423-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260703-004423.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260703-171032-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260703-171032.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260827-222339-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-20260827-222339.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-current.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-analysis-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260623-024845.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260623-202453.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260623-203119.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260623-203232.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260623-203709.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260623-203817.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260623-204156.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260623-215711.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260624-021705.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260624-130608.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260627-010207.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260627-010559.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260627-015359.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260702-150848.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260702-230655.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260703-004423.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260703-171032.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-20260827-222339.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-details-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260623-024845.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260623-202453.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260623-203119.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260623-203232.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260623-203709.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260623-203817.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260623-204156.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260623-215711.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260624-021705.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260624-130608.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260627-010207.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260627-010559.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260627-015359.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260702-150848.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260702-230655.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260703-004423.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260703-171032.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-20260827-222339.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-bloat-largest-lines-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260623-224156-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260623-224156.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260623-231419-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260623-231419.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260624-021746-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260624-021746.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260624-130616-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260624-130616.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260702-152838-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-20260702-152838.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-current.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-largest-items-20260623-224156.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-largest-items-20260623-231419.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-largest-items-20260624-021746.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-largest-items-20260624-130616.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-largest-items-20260702-152838.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-largest-items-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-rows-20260623-224156.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-rows-20260623-231419.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-rows-20260624-021746.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-rows-20260624-130616.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-rows-20260702-152838.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-rows-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-compacted-history-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-concentration-current.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-concentration-files-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-concentration-paths-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-concentration-safety-terms-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-concentration-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-concentration-terms-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-extension-registration-note-20260623.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260609-102051.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260609-102414.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-025131.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-025455.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-093233.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-093439.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-101821.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-102128.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-104319.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-104518.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-132805.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-133158.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-20260623-215826.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-handoff-current.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-20260827-222509-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-20260827-222509.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-20260827-222509.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-oldest-images-1g-20260624-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-oldest-images-1g-20260624.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-oldest-images-1g-20260624.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round2-oldest-images-1g-20260624-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round2-oldest-images-1g-20260624.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round2-oldest-images-1g-20260624.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round3-oldest-images-1g-20260624-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round3-oldest-images-1g-20260624.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round3-oldest-images-1g-20260624.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-1g-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-1g-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-1g-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-2g-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-2g-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-2g-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round5-next-images-1g-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round5-next-images-1g-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round5-next-images-1g-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round6-remaining-images-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round6-remaining-images-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round6-remaining-images-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round9-number9-images-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round9-number9-images-20260702.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round9-number9-images-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round9-number9-remaining-images-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round9-number9-remaining-images-20260702.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current-continuity-round9-number9-remaining-images-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-current.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-desktop-continuity-part-ii-20260703-images-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-desktop-continuity-part-ii-20260703-images.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-desktop-continuity-part-ii-20260703-images.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-george2-active-shrink-20260703-images-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-george2-active-shrink-20260703-images.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-george2-active-shrink-20260703-images.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-round10-[session prefix 3]mergency-hygiene-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-round10-[session prefix 3]mergency-hygiene.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-round10-[session prefix 3]mergency-hygiene.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-round11-april26-big-brother-20260703-images-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-round11-april26-big-brother-20260703-images.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-round11-april26-big-brother-20260703-images.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-image-externalization-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-active-continuity-loader-limit-risk-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-active-continuity-loader-limit-risk-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-active-continuity-loader-limit-risk-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round6-loader-limit-fail-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round6-loader-limit-fail-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round6-loader-limit-fail-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round7-tool-transcript-condense-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round7-tool-transcript-condense-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round7-tool-transcript-condense-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round8-context-pressure-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round8-context-pressure-20260702.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round8-context-pressure-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round9-number9-loader-gate-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round9-number9-loader-gate-20260702.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-current-continuity-round9-number9-loader-gate-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-loader-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-loader.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-loader.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-manual-load-error-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-manual-load-error.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-manual-load-error.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target14000-loader-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target14000-loader.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target14000-loader.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target9000-protect3000-loader-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target9000-protect3000-loader.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target9000-protect3000-loader.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-current-before-target6000-20260704-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-current-before-target6000-20260704.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-current-before-target6000-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-target7000-protect1000-loader-20260704-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-target7000-protect1000-loader-20260704.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-target7000-protect1000-loader-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-images-loader-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-images-loader.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-images-loader.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-target14000-loader-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-target14000-loader.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-target14000-loader.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target15000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target15000.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target15000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target16000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target16000.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target16000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round10-20260703-images-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round10-20260703-images.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round10-20260703-images.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round11-april26-big-brother-[session prefix 3]ompact32-loader-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round11-april26-big-brother-[session prefix 3]ompact32-loader.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round11-april26-big-brother-[session prefix 3]ompact32-loader.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-loader-protect1000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-loader-protect1000.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-loader-protect1000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-verify-part-ii-current-20260704-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-verify-part-ii-current-20260704.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-loader-limit-validation-verify-part-ii-current-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-prior-art-20260623.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260623-203125.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260623-203244.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260623-203714.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260623-203829.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260623-204208.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260623-215728.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260624-021711.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260624-130610.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260627-010218.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260627-010601.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260627-015400.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260703-004426.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260703-171037.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-20260827-222340.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-category-pressure-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-comparison-20260623.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-203125-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-203125.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-203244-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-203244.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-203714-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-203714.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-203829-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-203829.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-204208-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-204208.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-215728-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260623-215728.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260624-021711-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260624-021711.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260624-130610-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260624-130610.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260627-010218-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260627-010218.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260627-010601-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260627-010601.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260627-015400-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260627-015400.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260703-004426-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260703-004426.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260703-171037-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260703-171037.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260827-222340-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-20260827-222340.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-current.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-inventory-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260623-203125.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260623-203244.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260623-203714.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260623-203829.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260623-204208.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260623-215728.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260624-021711.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260624-130610.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260627-010218.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260627-010601.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260627-015400.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260703-004426.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260703-171037.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-20260827-222340.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-reducer-largest-rows-current.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-active-continuity-response-item-pressure-risk-20260627-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-active-continuity-response-item-pressure-risk-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-active-continuity-response-item-pressure-risk-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-active-continuity-response-item-pressure-risk-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-continuity-round6-response-item-pressure-20260627-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-continuity-round6-response-item-pressure-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-continuity-round6-response-item-pressure-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-continuity-round6-response-item-pressure-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-continuity-round7-tool-transcript-condense-20260627-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-continuity-round7-tool-transcript-condense-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-continuity-round7-tool-transcript-condense-20260627.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-continuity-round7-tool-transcript-condense-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-live-before-round9-20260702-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-live-before-round9-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-live-before-round9-20260702.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-current-live-before-round9-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-20260703-images-only-manual-load-error-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-20260703-images-only-manual-load-error-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-20260703-images-only-manual-load-error.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-20260703-images-only-manual-load-error.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-current-before-target6000-20260704-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-current-before-target6000-20260704-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-current-before-target6000-20260704.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-current-before-target6000-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-target7000-protect1000-pressure-20260704-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-target7000-protect1000-pressure-20260704-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-target7000-protect1000-pressure-20260704.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-target7000-protect1000-pressure-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-george2-active-shrink-20260703-images-pressure-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-george2-active-shrink-20260703-images-pressure-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-george2-active-shrink-20260703-images-pressure.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-george2-active-shrink-20260703-images-pressure.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-round10-20260703-images-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-round10-20260703-images-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-round10-20260703-images.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-round10-20260703-images.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-round11-april26-big-brother-20260703-images-pressure-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-round11-april26-big-brother-20260703-images-pressure-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-round11-april26-big-brother-20260703-images-pressure.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-round11-april26-big-brother-20260703-images-pressure.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-verify-part-ii-current-20260704-largest-response-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-verify-part-ii-current-20260704-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-verify-part-ii-current-20260704.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-response-item-pressure-verify-part-ii-current-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-sandbox-baseline-20260623.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-size-watch-current.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-size-watch-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-word-density-sample-[session prefix 4]iles.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-word-density-sample-20260609-105349-paths.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-word-density-sample-20260609-105349-safety-terms.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-word-density-sample-20260609-105349-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-word-density-sample-20260609-105349-terms.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-session-word-density-sample-20260609-105349.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-20260623-025454.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-20260623-093233.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-20260623-093439.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-20260623-101819.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-20260623-102128.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-20260623-104319.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-20260623-104518.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-20260623-133158.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-20260623-215826.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-succession-capsule-current.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-token-context-active-message-key-candidates-20260704-summary.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-token-context-active-message-key-candidates-20260704-top-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-token-context-active-message-key-candidates-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-token-context-pressure-key-candidates-20260704-summary.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-token-context-pressure-key-candidates-20260704-top-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-token-context-pressure-key-candidates-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-token-context-pressure-proxy-key-candidates-20260704-summary.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-token-context-pressure-proxy-key-candidates-20260704-top-rows.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-token-context-pressure-proxy-key-candidates-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-current-continuity-round7-tool-transcript-condense-20260627-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-current-continuity-round7-tool-transcript-condense-20260627-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-current-continuity-round7-tool-transcript-condense-20260627.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-current-continuity-round8-context-pressure-20260702-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-current-continuity-round8-context-pressure-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-current-continuity-round8-context-pressure-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-current-continuity-round9-number9-context-pressure-20260702-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-current-continuity-round9-number9-context-pressure-20260702-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-current-continuity-round9-number9-context-pressure-20260702.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target14000-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target14000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target14000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target9000-protect3000-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target9000-protect3000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target9000-protect3000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-target7000-protect1000-20260704-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-target7000-protect1000-20260704-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-target7000-protect1000-20260704.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-george2-active-shrink-20260703-target14000-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-george2-active-shrink-20260703-target14000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-george2-active-shrink-20260703-target14000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target15000-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target15000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target15000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target16000-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target16000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target16000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-round11-april26-big-brother-20260703-target7000-protect1000-groups.csv`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-round11-april26-big-brother-20260703-target7000-protect1000-summary.txt`: July size-watch output (its timer disabled since; no live reader); archived
+- `codex-tool-transcript-condensation-round11-april26-big-brother-20260703-target7000-protect1000.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `current-moment-marker-20260627-022826.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `george-continuity-audit-20260624.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `george-handoff-to-desktop-continuity-20260624.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `george-ix-remote-control-rotation-handoff-20260723.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `george-ix-service-grade-rotation-gate-20260723.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `george-rescue-payload-overlay-request-20260624.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `george-rescue-stick-prep-20260624.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `george-ubuntude-disc-stack-20260624.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `george-vi-control-handoff-current.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `joy-anne-media-index-20260828.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `jsonl-ecosystem-prior-art-20260623.md`: July size-watch output (its timer disabled since; no live reader); archived
+- `promoted-workers.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `resident-center-drift-alert-state.json`: detector state, superseded by the rounds under logs/; archived
+- `resident-center-drift-state.json`: detector state, superseded by the rounds under logs/; archived
+- `resident-identities.json`: July size-watch output (its timer disabled since; no live reader); archived
+- `resource-state.json`: stale status-line output, frozen at 19:55:22; superseded by logs/resource-state.json; archived
