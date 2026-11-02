@@ -1,0 +1,520 @@
+<!-- redact: public copy; source sha256 7f910ac577fbddc8e0eba9a429fe354280b64060e00cdee9a7c1eba1bf8ba407; rules 8; mode history; words 1; sessions 0 whole, 39 truncated; host paths 0; decisions 0 -->
+# Block 6: Evidence/ retired (2026-11-01)
+
+Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shannon). The operator's go: "[words sha256=4910b6ba712b10abaf3968ddb9d38104ccea88cb07800a05cca2089d4134dc96]" (22:32 EST), to the sentence of 22:31. Reviews: Claudio sections 160 and 161; George's Control text (george.md 19:13:43 and 19:22:56); Joe's before and after.
+
+## What moved, in order
+
+1. 19:55:21: the status-line setting to the landed `resources.py` (Kevin's go of 19:5x; Claudio 160 text 1); `logs/resource-state.json` written from 19:55:33; the old file frozen at 19:55:22 (Joe).
+2. 22:31: the rounds wrapper at `[session prefix 1]` live (PR #12, Claudio 161); the two drift-state files copied to `logs/` at mode 0600.
+3. 22:43:29: George applied the detector's output constant to `logs/` and released the 478 tracked paths (Control PR #123, `[session prefix 2]`); the 22:45 round wrote both drift files under `logs/` at 22:45:17.
+4. 22:5x: custody copy of `Evidence/` whole, two tiers, verified (`custody-sessions-evidence-20261101.md`).
+5. 22:57: `Evidence/` moved whole to `archives/legacy/Evidence/`, 489 files, copy and sha256 verify then unlink; nothing written under `logs/`; the final check before the unlinks: 0 files written into `Evidence/` after 22:43:29, and the two identity sources byte-equal to their `ops/etc` copies.
+
+## The 11 untracked files, each with its disposition
+
+- `.clinic-claude-raw.txt`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `.clinic-codex-raw.txt`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `clinic-aggregate.json`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `clinic-alert-state.json`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `clinic-rounds-latest.txt`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `clinic-rounds.log`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
+- `promoted-workers.json`: identity source, byte-equal to its ops/etc copy (stage B); archived, the ops/etc copy is the live one
+- `resident-center-drift-alert-state.json`: detector state, superseded by the 22:45 round under logs/; archived
+- `resident-center-drift-state.json`: detector state, superseded by the 22:45 round under logs/; archived
+- `resident-identities.json`: identity source, byte-equal to its ops/etc copy (stage B); archived, the ops/etc copy is the live one
+- `resource-state.json`: stale status-line output, frozen at 19:55:22; superseded by logs/resource-state.json; archived
+
+**Counts.** Moved 489 (478 released, 11 untracked); verified 489; unlinked 489 after verify; deleted without a copy 0; overwritten under `logs/` 0; services, timers, hooks, settings changed in this step 0 (the setting change of 19:55 is step 1). `Evidence/` no longer exists. Live readers of the old path after this: `Scripts/check_myself.py`'s health leg (a legacy reader, fails closed on that leg only; retires with `Scripts/` in block 7).
+
+## Manifest (path in archives/legacy/Evidence/ | sha256 | mode)
+
+- `.clinic-claude-raw.txt` | `3c61c091a1d26c8d16ec0dd542fb96d7aad4b882d52ff03c770b979909456f1b` | 0o664
+- `.clinic-codex-raw.txt` | `6d61a9fa62f848858a04fa5e1133f37c801438094059b56b656c69dc9ac6f618` | 0o664
+- `README.md` | `cb5a42098a26cc60680675f9016ff8cbf32e4abc4b4cbb6605bccf69492b3308` | 0o664
+- `claude-code-session-relocation-20260624.md` | `e6d6a87271b6782f556bdb6085b1dafecbdf90a19a6d0b3995ada5429ab771a3` | 0o664
+- `clinic-aggregate.json` | `500d2e25c93ea2d584d858fafc8a6eb41d0fe9f82973bd5b4dce313f14615771` | 0o664
+- `clinic-alert-state.json` | `9bac0136a1238c1b6e5ba087278f32c69c940fdb2daf95b631750ff8a566b0d9` | 0o664
+- `clinic-rounds-latest.txt` | `89dce3d486699a8b22f40ff0b71352120790a0e30e96d42845103344d8025ee4` | 0o664
+- `clinic-rounds.log` | `e39d17bbd6a5cce818f40d74a631525502a99ee16507cc66b2b85cc8a7651c9f` | 0o664
+- `codex-archive-drafts-20260731.json` | `9cdb4c2e5f5ed4dd87f3850f0b862a353243f8f67c1d7b9001e3820ed7a41844` | 0o664
+- `codex-archive-manifest-20260731.json` | `fc8a9203cf2fc7f3b60a1e1f33397c1d7c021124dc88761f5bf277e453927dfb` | 0o664
+- `codex-compact-context-pressure-current-continuity-round8-context-pressure-20260702-summary.txt` | `792a66c330a9d4f666911be449070e4cdd0871fc071f5378b4cab6402f7b8180` | 0o664
+- `codex-compact-context-pressure-current-continuity-round8-context-pressure-20260702.csv` | `88ca2ae38238f0de90df28a45045f4e5cc60ecc2b1a3ce4ae62b6468faefc142` | 0o664
+- `codex-compact-context-pressure-current-continuity-round8-context-pressure-20260702.json` | `723d50d8247e67d032f205ea875c1ae2eeac6594c53b37f796cb64bc78124004` | 0o664
+- `codex-compact-context-pressure-current-continuity-round9-number9-context-pressure-gate-20260702-summary.txt` | `5b286a9f76d62a4ab6f410c3de9bc29f6ee544bf8e314e6384d4f67e01bd603b` | 0o664
+- `codex-compact-context-pressure-current-continuity-round9-number9-context-pressure-gate-20260702.csv` | `934caaf19febf29a0caf9dfe2f7b90a839b944a4a341c93e47914ebd3e4e45a1` | 0o664
+- `codex-compact-context-pressure-current-continuity-round9-number9-context-pressure-gate-20260702.json` | `51bd6a63ce814caee7368166d440e68b0279f426fd5195ea5ff9850618171856` | 0o664
+- `codex-compact-context-pressure-current-continuity-round9-number9-final-context-pressure-gate-20260702-summary.txt` | `a9df5907d6555b785b71ab63805d2718bea7629dbea878b021eb2e5bbf221018` | 0o664
+- `codex-compact-context-pressure-current-continuity-round9-number9-final-context-pressure-gate-20260702.csv` | `d6a070c0a68f56d4baa7c74e47a110519a5f18a84d241f1ad5bc1e4774742c2f` | 0o664
+- `codex-compact-context-pressure-current-continuity-round9-number9-final-context-pressure-gate-20260702.json` | `16d8941798b4614d8843fe1bc75578441819e24466575ddf33f5a78a9303db69` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-images-only-context-summary.txt` | `b0fe02b58deac2969d07b429b3e4400c32472b3af0407db647d3d8caaf6ddcc2` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-images-only-context.csv` | `841dcf608ac77e4cd0b850a219afb4e7d8480114ae1f2a3324c59735813ca210` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-images-only-context.json` | `7b5e7e6a08870923880c3fc8b58f78b9f13eeb2a435b54e31447330cebc80e1a` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target14000-context-summary.txt` | `29d1f76324aa4203e87f498d73f5debfe99140111a572b89f184a2ea67df23ce` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target14000-context.csv` | `e3fe8acfe8be34a1bb3e65c8258cd576c97115cda8fcf53fefeb0ff38c701c9c` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target14000-context.json` | `4c46e8883c01740451ff9b4aeff32d6d412847fe8b6658916233dbdae2b59538` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target9000-protect3000-context-summary.txt` | `513982f23c22a524e9e4e91ed23288a9a38643d73b701409eedade7d1921690f` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target9000-protect3000-context.csv` | `a007d0b37f9e10c6678714252c0a0cc90fc278e2be94600b2febe6bb835ced64` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-20260703-target9000-protect3000-context.json` | `f0a491b05c47cf30b232d0a70083232c44f946ed02c5cbf1cdf8337c67936961` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-current-before-target6000-20260704-summary.txt` | `36ca862c692b7029d52d3a9c37ff493222602a07c3f6cac4143db7cb2d46b50d` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-current-before-target6000-20260704.csv` | `7dfecedf5126f1c2a3a038812e7992dbe48529eac68526a625bdbcf4a4ef550a` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-current-before-target6000-20260704.json` | `5388485c71caa68f61c88d33298211aea3dfcb0070298dcaa975ea1a99d4c78d` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-target7000-protect1000-context-20260704-summary.txt` | `4b0c4b75be0348fdeb740212b8956d004832629e188d7c22733d344ded7ba4f4` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-target7000-protect1000-context-20260704.csv` | `fa0ab88d37aede1a0e126630fe7b2cba9261b910925aa95781333aaa94d65fb9` | 0o664
+- `codex-compact-context-pressure-desktop-continuity-part-ii-target7000-protect1000-context-20260704.json` | `2ae17817af666f5efba77f4dbf6639f4dd1d5a8010c2a26962ef7f2b6f3e9ea0` | 0o664
+- `codex-compact-context-pressure-george-current-20260703-strict-baseline-summary.txt` | `b39f7c6d11e524958845d14b4b282c940613099b7627581eb5e6693b05399de0` | 0o664
+- `codex-compact-context-pressure-george-current-20260703-strict-baseline.csv` | `5504fab408efb5dd5338cc0357be823d75f31b49e13fe2b6502e6509b9c09923` | 0o664
+- `codex-compact-context-pressure-george-current-20260703-strict-baseline.json` | `de788df504bb91487fe13013eea10c6e231d3c9191f048c41a6deef5ef9c4997` | 0o664
+- `codex-compact-context-pressure-george2-active-shrink-20260703-images-context-summary.txt` | `2c372bc03b9a614a9209ecf0f9a1d7dbd9f18424a66cdf88b5c900c55a850889` | 0o664
+- `codex-compact-context-pressure-george2-active-shrink-20260703-images-context.csv` | `3e3a67b66465013f97538a80b0cca02b0d7432651eb3c68e1d2322be3e07d297` | 0o664
+- `codex-compact-context-pressure-george2-active-shrink-20260703-images-context.json` | `4282c39c3191ae8fd04cecc0727f1f64ce251cad34288eb11e4df453db1fd135` | 0o664
+- `codex-compact-context-pressure-george2-active-shrink-20260703-target14000-context-summary.txt` | `6c6c5836db42db6b5254c563d1c60c504e2d3070c633e4ab9c269e4eb6465838` | 0o664
+- `codex-compact-context-pressure-george2-active-shrink-20260703-target14000-context.csv` | `d23aac4782bac6ca97b2933304d0ab06821ca57b7ba82eb77dc3a26dadb3c643` | 0o664
+- `codex-compact-context-pressure-george2-active-shrink-20260703-target14000-context.json` | `1f60940e9ae26c12bb2b0fb9de59fa26ddce8fffbbe0f195423c5ac9ee9ee653` | 0o664
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target15000-summary.txt` | `a8cc52a3759b918d8ba9d443b28da74690ef1776a5562b71be639314b3cfbdc0` | 0o664
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target15000.csv` | `e67c72b63d00e2092cb41dba2a802e44b788ff89de3b4f52933eb2e4f3005096` | 0o664
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target15000.json` | `71691edf3bba5fb1304d2cd5b6ce4cb5fde87580818c4123485485991019a53a` | 0o664
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target16000-summary.txt` | `832e6922259608d868e975edd596c4bf32c86633f6c7caa5311fec4cc7a9b16d` | 0o664
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target16000.csv` | `579e1425c29dd54d512f87a8eb35c359e1c83cae0a88da4832cf4ccf9df9d55c` | 0o664
+- `codex-compact-context-pressure-round10-[session prefix 3]inal-target16000.json` | `59150a816b6f979c52665d4bd9caa820b0b1e522fc2762fb75892668f9c298ff` | 0o664
+- `codex-compact-context-pressure-round10-20260703-images-summary.txt` | `bb076663ba5cabb9ee0e8bf6d088169092312e6f71a88f1243c7ea475875a87c` | 0o664
+- `codex-compact-context-pressure-round10-20260703-images.csv` | `d09cb35f6d0cf9b69954f52dc0a3ed015826c63154012dee50e1891ee147286b` | 0o664
+- `codex-compact-context-pressure-round10-20260703-images.json` | `fa8e51ed3a961eedb6c2e76775a71621d7b382db2d7af83fb614eddb825e96c8` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ompact32-context-summary.txt` | `699bb590046d3e321dbc519b59410b0b73b412d7470aec2306ec49be14360389` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ompact32-context.csv` | `69869d8266a66528d459266cf27fcc3ffc67ee3985feceb68b182f362686239e` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ompact32-context.json` | `0f1de9d18752dfad4d5a366ae84a2db2390779e3ff1eeccced2be681a43ae6c1` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ontext-protect1000-summary.txt` | `83d68ba2b52b644b5de798efaa957afe5c898b9271de5d78cb364086c97c6d83` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ontext-protect1000.csv` | `e50c1c2b7f54ba2d7dc7fb61895b049e3e7630851b3596e11a3c490abad3afc9` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ontext-protect1000.json` | `d9e07986c7f975c2494c63d0be5ee4c5f1509adb9a776f56e2296df845e780ba` | 0o664
+- `codex-compacted-history-condensation-desktop-continuity-part-ii-[session prefix 3]ompact-history-groups.csv` | `1682caffa4028019037119bc91dfb6669b03fcbc2194fc1bcc7575cea7a7d4c7` | 0o664
+- `codex-compacted-history-condensation-desktop-continuity-part-ii-[session prefix 3]ompact-history-summary.txt` | `eb32d1c0b039b667f03f050eaba63d43e07707baf5df23cde6e5042a466c864a` | 0o664
+- `codex-compacted-history-condensation-desktop-continuity-part-ii-[session prefix 3]ompact-history.json` | `18869f0a429883f785ccbf0fad8685d73e171b89522c50b976edb9eba3dae2fe` | 0o664
+- `codex-compacted-history-condensation-round11-april26-big-brother-[session prefix 3]ompact32-groups.csv` | `383bc6caecd4f12598abcfc70d47b4e8145535918c69668647764cd44f06db01` | 0o664
+- `codex-compacted-history-condensation-round11-april26-big-brother-[session prefix 3]ompact32-summary.txt` | `c46b0b53ac6f5c40049a57aa09bb4c0c95a2576458ccf281c38e71c380700c60` | 0o664
+- `codex-compacted-history-condensation-round11-april26-big-brother-[session prefix 3]ompact32.json` | `e4824b8fbb27292e45ab253542fdba9b31b67216b7e8c8451887a6a5f2f13953` | 0o664
+- `codex-log-compaction-events-20260704.md` | `c25cd3d011a65839c1c547271584b63466bf876a21d9511e586dad85969c9cbe` | 0o664
+- `codex-session-archive-20260609-102051-summary.txt` | `81dda8aa9eeac00e1413656d777d71ec6dcf2c388a16f8f79ad4118d747b6e38` | 0o664
+- `codex-session-archive-20260609-102051.csv` | `7b9b720d47021f4f3e94f40d2a36dec6b0455ef9ba7530855d3854760c4f6ca2` | 0o664
+- `codex-session-archive-20260609-102051.json` | `661d4a59be6e0c2c4e26318a943fb39edf11ff859dafeed87be62f3045fd167b` | 0o664
+- `codex-session-assets-20260609-102041-summary.txt` | `bfb2d7ef4bfd00086a98c18c554fadafbd287c894dd1649f8bc4b89bd8e8f7bc` | 0o664
+- `codex-session-assets-20260609-102041.csv` | `1bbd73ca961c3c567d08485478ae7a455789b71094b3a60a5d2850e91d830038` | 0o664
+- `codex-session-assets-20260609-102041.json` | `d0c5ecb31586cf89402c181bed392495c802660be009c40b88d70fecdda94503` | 0o664
+- `codex-session-assets-20260623-024651-summary.txt` | `b87710096b7ce53cbf25894e9423297e1b7d9f35a7ec18d1c2c0f2da9e00e8b8` | 0o664
+- `codex-session-assets-20260623-024651.csv` | `e6be50c7c11806353dd785f3ac157be2c621ab590012d97b4ed3713885955ce0` | 0o664
+- `codex-session-assets-20260623-024651.json` | `7b6344297897c6c400fcbbd0914682f4f12f5c4d491cf79e332b77bb2f48d360` | 0o664
+- `codex-session-assets-20260623-131444-summary.txt` | `9ce930556a73b8e7865dc2fc0b7486a6e9b7d4071cd51cc0db4381b079fc49f8` | 0o664
+- `codex-session-assets-20260623-131444.csv` | `3bd2b2069e2b3d92d5b7dd3bc04e1f2b53aa2aeaebf4147fff9ac231a4a4d026` | 0o664
+- `codex-session-assets-20260623-131444.json` | `8da46607b8868ce35dcf28a60d89837f4bc23696d8520ae16e710e76c243583b` | 0o664
+- `codex-session-assets-20260623-215723-summary.txt` | `42ea3e4d606bc5769c1d4db766eeef207b2da8dfa88e3c947de140c9119b9c7d` | 0o664
+- `codex-session-assets-20260623-215723.csv` | `123b2fd72c3193c15c62dd45c939ae77cb5721dbd57c6763585e7c79fd54153d` | 0o664
+- `codex-session-assets-20260623-215723.json` | `609de4784fb0befc3f59fe27a8dbbb5ced69aa62fe960e8db90aece9070affca` | 0o664
+- `codex-session-assets-20260703-005622-summary.txt` | `c1cdc65a197fd3dec92297d00690cecae008c8c90fdc80d1d076a7a56ce58bd0` | 0o664
+- `codex-session-assets-20260703-005622.csv` | `2f66de589b77a76c8bf6ea14ee6fd5084955b7527addd3b1375eb922f15aed97` | 0o664
+- `codex-session-assets-20260703-005622.json` | `b45b7f35966826e8331fa4e4da414801f334a661684f1192cd501578c7d15f71` | 0o664
+- `codex-session-assets-current.csv` | `47a355a182bf875e00af48dea8cc164c77e4dc78e1a3abc3af5e6ee71f7226fc` | 0o664
+- `codex-session-assets-current.json` | `b45b7f35966826e8331fa4e4da414801f334a661684f1192cd501578c7d15f71` | 0o664
+- `codex-session-assets-summary.txt` | `c1cdc65a197fd3dec92297d00690cecae008c8c90fdc80d1d076a7a56ce58bd0` | 0o664
+- `codex-session-bloat-analysis-20260623-024845-summary.txt` | `a4a69b24452c10fab62449c27e1cfe8af3cd5784909a48a0f611b2062fc87788` | 0o664
+- `codex-session-bloat-analysis-20260623-024845.json` | `ae5cda06183d933d572cb24fd174e50c2a908f8680be256f4a6bd70883f5ba49` | 0o664
+- `codex-session-bloat-analysis-20260623-202453-summary.txt` | `f019e16c874a9eab9efbbda35e9cf1f5cc53629334136b11d709322627364886` | 0o664
+- `codex-session-bloat-analysis-20260623-202453.json` | `fbae67219a6dc4a40312ac3524aa978c91a2c57c4e2878f56022b14ee9414aa6` | 0o664
+- `codex-session-bloat-analysis-20260623-203119-summary.txt` | `b2b3e2bfe3b6ba3aa4ccd52de3e6926abcd30816dd5ccba668defe49e2b0d2be` | 0o664
+- `codex-session-bloat-analysis-20260623-203119.json` | `451215bb413f5649672b734c0d59c0b6b6549618220a00818c5a59986b047938` | 0o664
+- `codex-session-bloat-analysis-20260623-203232-summary.txt` | `989975e08b9b0a31091e593b40c63d64bed15a0a756240edca62ad0e1b856552` | 0o664
+- `codex-session-bloat-analysis-20260623-203232.json` | `48f3f008122fc90996aadc936a87f4ef25f9354b19f2b30dc3145a9c20c1524c` | 0o664
+- `codex-session-bloat-analysis-20260623-203709-summary.txt` | `43be2450e5af29fafe093b3654dbc0ea0f4389e9b2cdd05ca3a82e3ad32919c6` | 0o664
+- `codex-session-bloat-analysis-20260623-203709.json` | `96ba3974e29409c4aa232ee7384e7b4c862c75a5fdfcbb376ccc9cd75e011625` | 0o664
+- `codex-session-bloat-analysis-20260623-203817-summary.txt` | `5e9a667e2bbb8f6dbcbb5df1d08f457b2fd04be55f7ffbc0b7620cdce96b3c75` | 0o664
+- `codex-session-bloat-analysis-20260623-203817.json` | `e6530b158ad025d4441e894dd328ab5d17b00e74311c596fb1dc098f39d1688a` | 0o664
+- `codex-session-bloat-analysis-20260623-204156-summary.txt` | `e26ba73d070f01cfe9cd158085ae4de0441684b1431a19efc1eddf6b05f33f90` | 0o664
+- `codex-session-bloat-analysis-20260623-204156.json` | `91ca3132c19be317509b9e136f7b18d04a5568d623d81a3f84fe0e0ad05b4b3b` | 0o664
+- `codex-session-bloat-analysis-20260623-215711-summary.txt` | `d4800332e505569915af6f814e99dde33e6db158a97922b668cf5ea5a18e066b` | 0o664
+- `codex-session-bloat-analysis-20260623-215711.json` | `929729196d3a3caf90765340cbe0b81929963141c0b90ae41ea6f3acf0bbf679` | 0o664
+- `codex-session-bloat-analysis-20260624-021705-summary.txt` | `be4ec0a3db67254f1bd96017a91643ce91e1e43a95bb6303274d975057e8c741` | 0o664
+- `codex-session-bloat-analysis-20260624-021705.json` | `0589a3bb3f1ffc6a0f621010fc509042abaa5e928fb63ecab0aa769befb3f106` | 0o664
+- `codex-session-bloat-analysis-20260624-130608-summary.txt` | `c8574e04371d356f85a2fdf367c3cc54f43fba0e4a7b4e9accef500238d0b668` | 0o664
+- `codex-session-bloat-analysis-20260624-130608.json` | `46485dde8303bd6f486984c50950bfc0d133b72a4700dd3e6548e44b82d09a38` | 0o664
+- `codex-session-bloat-analysis-20260627-010207-summary.txt` | `cb35307ecda037372a798803a57d6f5e3a50edfdd3499d437e04ffe8e1ef6800` | 0o664
+- `codex-session-bloat-analysis-20260627-010207.json` | `e7ee2536b5884e3e655c6fbcca3ce85d768dcfc565e49d21cebec99e0a561527` | 0o664
+- `codex-session-bloat-analysis-20260627-010559-summary.txt` | `433cf7f2faea18c698262304759edf578e1378816924fb7b9616690561a3c4e7` | 0o664
+- `codex-session-bloat-analysis-20260627-010559.json` | `381588933e3edae4a341c84f240993dbda7af54dcdc3f4a94235e1a3b0dd177f` | 0o664
+- `codex-session-bloat-analysis-20260627-015359-summary.txt` | `04bbe451fdb88fc4eac5c19ad9a99c06698d5e852e043bd32329e3f9a7ce0484` | 0o664
+- `codex-session-bloat-analysis-20260627-015359.json` | `df57160d5f8c9a44a513861f244fcc83a7c4897b140e119f08f001bc5e13337c` | 0o664
+- `codex-session-bloat-analysis-20260702-150848-summary.txt` | `43cf49f959ab18d620a8df333c7f14d8052c7238d8001b26a82f5d8ff6af8246` | 0o664
+- `codex-session-bloat-analysis-20260702-150848.json` | `64e6fd56a2d69890da52d91b9372af935723fea9be8951a12708bf5d11aba6d4` | 0o664
+- `codex-session-bloat-analysis-20260702-230655-summary.txt` | `ea2d7c8939f398301190fdbdc307765ddad254525e484d8984b90a9d0e2a1cee` | 0o664
+- `codex-session-bloat-analysis-20260702-230655.json` | `19afe3bf5ec70fc96160a223e8f000dd75b685918c777d5679c53ef523813f9e` | 0o664
+- `codex-session-bloat-analysis-20260703-004423-summary.txt` | `4e77444bb61ab517369b5cfeb6576a1dc2394c03e63e4e85770712e5bb063b78` | 0o664
+- `codex-session-bloat-analysis-20260703-004423.json` | `ac49e1d7f07b226e1f9dacb08815c4a2c6ad70f2ec6870a1a994fe502c08e329` | 0o664
+- `codex-session-bloat-analysis-20260703-171032-summary.txt` | `ea9a2f22a940ce8f17093ee055f52295005f4af6c56371b2e2a67410a4e06245` | 0o664
+- `codex-session-bloat-analysis-20260703-171032.json` | `8294718cdae98fbeefe4e1013b3cc6a9cefce03fab5720663b86c6b7fa174d0c` | 0o664
+- `codex-session-bloat-analysis-20260827-222339-summary.txt` | `cbccfd12bd5d07ff9ce16bb1a287a44972607cb888ce16eefdfd327ddb33af1d` | 0o664
+- `codex-session-bloat-analysis-20260827-222339.json` | `98f0c7910f9801904f09c6090c4f62e109ed7bd73c55e3ef445f03f570da98d7` | 0o664
+- `codex-session-bloat-analysis-current.json` | `98f0c7910f9801904f09c6090c4f62e109ed7bd73c55e3ef445f03f570da98d7` | 0o664
+- `codex-session-bloat-analysis-summary.txt` | `cbccfd12bd5d07ff9ce16bb1a287a44972607cb888ce16eefdfd327ddb33af1d` | 0o664
+- `codex-session-bloat-details-20260623-024845.csv` | `c85489f07e6e5f7f97f0785ad7d1c8804ebe3cdccc3a302f43a704b4bd0c18c4` | 0o664
+- `codex-session-bloat-details-20260623-202453.csv` | `24e6d7c8af3268ac59fcf067d1facac4242ef98e1c07ff0de3a7a338f3419c5f` | 0o664
+- `codex-session-bloat-details-20260623-203119.csv` | `d9b46a8ebf4929eef40af0a794e9faeaa163fd19d540cfca3d40077c725df76b` | 0o664
+- `codex-session-bloat-details-20260623-203232.csv` | `7bf1a852a913ad8744681363fb9bb36bc14888fd7e091336f4274389a5fca062` | 0o664
+- `codex-session-bloat-details-20260623-203709.csv` | `d9b46a8ebf4929eef40af0a794e9faeaa163fd19d540cfca3d40077c725df76b` | 0o664
+- `codex-session-bloat-details-20260623-203817.csv` | `09c1b6bfb97508f4412bac891479db87ba9153a8605f3a0644d10b6cee2345ac` | 0o664
+- `codex-session-bloat-details-20260623-204156.csv` | `5d609a588cce0f184f2b7f613ff8b90cf9914081797c125880e909bf0ab71ea0` | 0o664
+- `codex-session-bloat-details-20260623-215711.csv` | `baf5a16bb9735e3857f58c79b30c4e8c6a5ea8c000a9fa9123535351c4fc385a` | 0o664
+- `codex-session-bloat-details-20260624-021705.csv` | `61b024b1114aa9bc02994ae0b46f68b3075fb80a26279ebc8a3e7b14b05b9889` | 0o664
+- `codex-session-bloat-details-20260624-130608.csv` | `dc030d0a62fccecb38d4d2658637e976ccbd37c6b751c62f15878f93e61d08ea` | 0o664
+- `codex-session-bloat-details-20260627-010207.csv` | `1ec0d3a1b64eb49379871a31da46be322362e36cee79969900d51a5fab8abdf9` | 0o664
+- `codex-session-bloat-details-20260627-010559.csv` | `41c9a9ecadd0981cb7b3b84269d8c169069249e0e442d00928525a1b7e3528c4` | 0o664
+- `codex-session-bloat-details-20260627-015359.csv` | `59c66f978a38e358dc01333f5d6b07b003ed4c33f5541d2df14c2b720a72a5f6` | 0o664
+- `codex-session-bloat-details-20260702-150848.csv` | `59408eb10fc33831e98693fa6a78ed7f80dcec9b5e688419c36173539ffcc614` | 0o664
+- `codex-session-bloat-details-20260702-230655.csv` | `c8a1a467a98698179e35d127c5e9990c7bfe5b36a3d8103a6d175d8cef9c3974` | 0o664
+- `codex-session-bloat-details-20260703-004423.csv` | `4815b50c1bc2bcef4df0e3033dd2cfcc2ee2a57dcc941ada8f9d71b65bbae3ca` | 0o664
+- `codex-session-bloat-details-20260703-171032.csv` | `5e00084caf5a79e82b0486a4418474faca4983c49bc9eac765bf350a0cd2a773` | 0o664
+- `codex-session-bloat-details-20260827-222339.csv` | `cde95209d52992c4edbafdfc6d1806fe27253c5b212bc5580ffab41d4355f3ef` | 0o664
+- `codex-session-bloat-details-current.csv` | `cde95209d52992c4edbafdfc6d1806fe27253c5b212bc5580ffab41d4355f3ef` | 0o664
+- `codex-session-bloat-largest-lines-20260623-024845.csv` | `599b245ad67912b0ac44391cf116230c3376af92b16b796a22ec528e371301ef` | 0o664
+- `codex-session-bloat-largest-lines-20260623-202453.csv` | `47cf350beda2d8f19333fef4884323d9f93244c0b47fc2d0af2378b5f5c2fc4e` | 0o664
+- `codex-session-bloat-largest-lines-20260623-203119.csv` | `c6b915121d65e051c91a27dca8bc17401a35af1509242e71b930c346283943d1` | 0o664
+- `codex-session-bloat-largest-lines-20260623-203232.csv` | `e4d33b1bfea56f21f894d28c8ccd7211cf9aa5d9fd7322b2bba8d6d181e5293e` | 0o664
+- `codex-session-bloat-largest-lines-20260623-203709.csv` | `c6b915121d65e051c91a27dca8bc17401a35af1509242e71b930c346283943d1` | 0o664
+- `codex-session-bloat-largest-lines-20260623-203817.csv` | `e4d33b1bfea56f21f894d28c8ccd7211cf9aa5d9fd7322b2bba8d6d181e5293e` | 0o664
+- `codex-session-bloat-largest-lines-20260623-204156.csv` | `e4d33b1bfea56f21f894d28c8ccd7211cf9aa5d9fd7322b2bba8d6d181e5293e` | 0o664
+- `codex-session-bloat-largest-lines-20260623-215711.csv` | `442d5df3ab810cf60ec41c6ddec1d40af51d42ee4596876d02aa76f91809b8f5` | 0o664
+- `codex-session-bloat-largest-lines-20260624-021705.csv` | `2be6ace443be6b366e0e7b760061422319bebc7f09201aaee60b800a42540fea` | 0o664
+- `codex-session-bloat-largest-lines-20260624-130608.csv` | `4337e2113092571aa0a638973077b7d1cbf38352c571045834788be3a445fbe6` | 0o664
+- `codex-session-bloat-largest-lines-20260627-010207.csv` | `f9ae13f05f3fb7e275251d36ed7b7daecb1dc1067fb02fe1257d0241caacfcbb` | 0o664
+- `codex-session-bloat-largest-lines-20260627-010559.csv` | `ed032f7a4445022f73d8ae251c1244a9a9c61655b841e6c17194acadb209f451` | 0o664
+- `codex-session-bloat-largest-lines-20260627-015359.csv` | `4778986ad10cc264050511973dad4cef3ed2d52348b173712103e5e62e71ecc0` | 0o664
+- `codex-session-bloat-largest-lines-20260702-150848.csv` | `a98ca35b4755e5a5f1f112ad920794c2038c17f7bb19a33d530fd1b17b502698` | 0o664
+- `codex-session-bloat-largest-lines-20260702-230655.csv` | `001d7309ff47f0675d69bf626f58580091a48102398a578f3e8332a5ecb3d226` | 0o664
+- `codex-session-bloat-largest-lines-20260703-004423.csv` | `d87a6299a9cd9687f752aefac17f523e18c10244ad6431260fb31eb12cd5cce8` | 0o664
+- `codex-session-bloat-largest-lines-20260703-171032.csv` | `5f13c7893c2a2b5b72cac08fb2df44b13f87c226e8a1579d759cfbe40a9f7921` | 0o664
+- `codex-session-bloat-largest-lines-20260827-222339.csv` | `326ac5e5da79d7ade5d4f1a96879f5e2ca23b40b8cb635d7d53411de9afa6764` | 0o664
+- `codex-session-bloat-largest-lines-current.csv` | `326ac5e5da79d7ade5d4f1a96879f5e2ca23b40b8cb635d7d53411de9afa6764` | 0o664
+- `codex-session-compacted-history-20260623-224156-summary.txt` | `fc2565941d991e1bbfad748992bc64a8ee308d3b883f0017a13a221d033fe7c7` | 0o664
+- `codex-session-compacted-history-20260623-224156.json` | `1d65b084aa02c4bab4e4215a4b55b41d7fed47902c991d1024b24987a0eebd0d` | 0o664
+- `codex-session-compacted-history-20260623-231419-summary.txt` | `f515075a493cb6873369e9196383aa1e718d2c01c036eef0505b82feae8ba29d` | 0o664
+- `codex-session-compacted-history-20260623-231419.json` | `af662c5864cee21a5e11d4bfe11f45f657dfeb085cf634dcd07499384052b2f7` | 0o664
+- `codex-session-compacted-history-20260624-021746-summary.txt` | `c7a4ceeb9b0b4a25c277e5897cd6b7dd68864f4240b4efd462a957a0ea321b7f` | 0o664
+- `codex-session-compacted-history-20260624-021746.json` | `78826e1bd6bca0ad953a8162b8c351c54c0bcb8900913fe05e577cd1cd0993fd` | 0o664
+- `codex-session-compacted-history-20260624-130616-summary.txt` | `2d5b011a90ccc8856c3479f6c3d36c30748bbdeb29b31ed9dc6f4addf27c37fc` | 0o664
+- `codex-session-compacted-history-20260624-130616.json` | `8cb2a6895cbdf9f8b5ca031612b3a729fce267211f7db208dbf032d968a637c4` | 0o664
+- `codex-session-compacted-history-20260702-152838-summary.txt` | `a502e4a0c8c6e83ec68441beb88584ac4359299f006986757d8a11827f0837bc` | 0o664
+- `codex-session-compacted-history-20260702-152838.json` | `98b8986161ecb7d4387d6a5339ea715f8311ea617854b3fca5ab0b4f95fcb327` | 0o664
+- `codex-session-compacted-history-current.json` | `98b8986161ecb7d4387d6a5339ea715f8311ea617854b3fca5ab0b4f95fcb327` | 0o664
+- `codex-session-compacted-history-largest-items-20260623-224156.csv` | `8cd01f006e51845cd8923914c6aba81415fa87d242665a22fd5098aa04f9c308` | 0o664
+- `codex-session-compacted-history-largest-items-20260623-231419.csv` | `4b111b0a2a4f1168b9b59624ba19750d8f77efdb51937ae8cf54eff7f0ba3f06` | 0o664
+- `codex-session-compacted-history-largest-items-20260624-021746.csv` | `b7ef1df257477ee73bf880f35501f8977f6b8527f64778207381f40087ae8006` | 0o664
+- `codex-session-compacted-history-largest-items-20260624-130616.csv` | `44f63dac6d1aeed290b4d53e34f4972e478bf4e6edd4050f9a0beb9de117dff6` | 0o664
+- `codex-session-compacted-history-largest-items-20260702-152838.csv` | `7ff19547ec68e7fe4c00ca419e068c8b36b6260be4dfbce39c1e0d97b145cc45` | 0o664
+- `codex-session-compacted-history-largest-items-current.csv` | `7ff19547ec68e7fe4c00ca419e068c8b36b6260be4dfbce39c1e0d97b145cc45` | 0o664
+- `codex-session-compacted-history-rows-20260623-224156.csv` | `ed71c3a9af0717725290d078cf28b7e3f950650535028579e5cd656d5a1d676d` | 0o664
+- `codex-session-compacted-history-rows-20260623-231419.csv` | `3b3b20a5755e199863b8da55da81f448017711b0b9ca6fac458e6d88756d6f46` | 0o664
+- `codex-session-compacted-history-rows-20260624-021746.csv` | `346e3f5c341024e29fafa2c1260f545b4cbf6a951f31272e83266704fc58d1f6` | 0o664
+- `codex-session-compacted-history-rows-20260624-130616.csv` | `a7bf3ce5405bb211674fabd1d3c5de0d683f816882b1515789f61df16303bcb4` | 0o664
+- `codex-session-compacted-history-rows-20260702-152838.csv` | `718bb5fca0184d36e36b0de4905bcc51c70f7c4b64d0014bc7930f475bf5fc9c` | 0o664
+- `codex-session-compacted-history-rows-current.csv` | `718bb5fca0184d36e36b0de4905bcc51c70f7c4b64d0014bc7930f475bf5fc9c` | 0o664
+- `codex-session-compacted-history-summary.txt` | `a502e4a0c8c6e83ec68441beb88584ac4359299f006986757d8a11827f0837bc` | 0o664
+- `codex-session-concentration-current.json` | `245c29f862d3bacfbf2ac732310c2a2ee1809f6e503ebbe95dd9a2b9ff1edf1c` | 0o664
+- `codex-session-concentration-files-current.csv` | `c5ffceebd1c6fc58e6fd10ce4a579f7e57f499f934bda2123ba5ff51f1851d12` | 0o664
+- `codex-session-concentration-paths-current.csv` | `bbb7d820d19d1f929bcd0255349f272b9c6757ce7090179b8b250988c231d760` | 0o664
+- `codex-session-concentration-safety-terms-current.csv` | `147ad0e75f78f5c6c414b4edfac9e1a8d4eee87e561f93dba03e7e7d12c546be` | 0o664
+- `codex-session-concentration-summary.txt` | `6e7ca1ce6363399b2991afe070335f8d67e57e0a51131e47ded837e88790996a` | 0o664
+- `codex-session-concentration-terms-current.csv` | `fa0acc586af60c98f5c4cbecdd848413e4c4236cb64be944a1f5cd52750c0a1b` | 0o664
+- `codex-session-extension-registration-note-20260623.md` | `128e98f324fcb4f9e7542b6e9f7ae6c685e6da25ced28ed97fd7272f89fffd26` | 0o664
+- `codex-session-handoff-20260609-102051.txt` | `280f2755d6ffbcb440d3b42f20fdf5d6e220a9f90539214a88ab2d81bd1536f6` | 0o664
+- `codex-session-handoff-20260609-102414.txt` | `63d416aeefb3156c5413d6e8b9229f69f9ec3bd0d2fd2f513a3beba23f304085` | 0o664
+- `codex-session-handoff-20260623-025131.txt` | `0f0c243ac741a1e705d6c3447e59c25bbbeccc89b214442e6e47d58532b3d700` | 0o664
+- `codex-session-handoff-20260623-025455.txt` | `e1e5a8ed1aa76a8af00e673ab850c98571d86b6eeb66bb723a6256432328af48` | 0o664
+- `codex-session-handoff-20260623-093233.txt` | `bd3a27e0b9448ec4406d005f7c09fa6c0b10e076c08b65b10ab48e36350da9a6` | 0o664
+- `codex-session-handoff-20260623-093439.txt` | `f09fd7a2c03cf0d317bbfdbe935c5805059bc7e403d3cd168ecfead16b59ac6b` | 0o664
+- `codex-session-handoff-20260623-101821.txt` | `e929b2d9a6ba5f00485722ab8f431662649a76e47eb43b204705df1f37be2d0d` | 0o664
+- `codex-session-handoff-20260623-102128.txt` | `7f83f7f902a28f095c9ca1c446fa073174d9b2a7d2167b4a73a7d930bfd8714e` | 0o664
+- `codex-session-handoff-20260623-104319.txt` | `b6421326ebadb7804697f13211bc6931ebda865f66bc0b7bcc6e440decfbf91b` | 0o664
+- `codex-session-handoff-20260623-104518.txt` | `2e72c085fb542ebd79c3378751adacc9e35cae082088526afc8c342f6240eead` | 0o664
+- `codex-session-handoff-20260623-132805.txt` | `e58bdf17c20f812cf2f90f6c9e4072f751e5aafcc20dd45d66be57bba140c91a` | 0o664
+- `codex-session-handoff-20260623-133158.txt` | `4390c16b3a0b811bea9a8aa4724899dfd9f5b6f46c08516ef2c101fd8cbd6fd4` | 0o664
+- `codex-session-handoff-20260623-215826.txt` | `ec4b05ec38fedffb061abee75abd213a2479d857032482e74d0960cd19409fdb` | 0o664
+- `codex-session-handoff-current.txt` | `b6a1e602a2b01fd27ce60e3f74713cf5046dcb877031030ccaafa43fc647ee16` | 0o664
+- `codex-session-image-externalization-20260827-222509-summary.txt` | `62769e948f11c31afde463b8fe80ddc78c8ed502c38783ee791355a2936532aa` | 0o664
+- `codex-session-image-externalization-20260827-222509.csv` | `f3080e11025662011f8d2f84f9e99c7c9a0b24d91313064a643f20cc96e0e240` | 0o664
+- `codex-session-image-externalization-20260827-222509.json` | `70b02ee3c0dcb16f044a3aca5b6867ce20f7951333ae658a46fdc1ef5bcd2333` | 0o664
+- `codex-session-image-externalization-current-continuity-oldest-images-1g-20260624-summary.txt` | `620c5fb0b200dbb5bb58baf590e9a9a3948b184aa4a388666dcd65b81fca7407` | 0o664
+- `codex-session-image-externalization-current-continuity-oldest-images-1g-20260624.csv` | `59c2623d9e60b4a0d1c8bf0f1b788aac1e2d7f7cba1df29047950d6f17be1175` | 0o664
+- `codex-session-image-externalization-current-continuity-oldest-images-1g-20260624.json` | `a0607abb6af5ce6ddc76a83961b50f3189d6a0ec5d9a9ecc955dc4e034a3aa5a` | 0o664
+- `codex-session-image-externalization-current-continuity-round2-oldest-images-1g-20260624-summary.txt` | `0089c613f2fea75c765e80f0b09f4291200ed50ad358e51e6c80f8c4069c5bac` | 0o664
+- `codex-session-image-externalization-current-continuity-round2-oldest-images-1g-20260624.csv` | `07d8e044e706018169742cffea2f918ae72c4ad5efebf4afcf7211c7a4e6bd8a` | 0o664
+- `codex-session-image-externalization-current-continuity-round2-oldest-images-1g-20260624.json` | `2025371363a4645f57d157209aaaa36f2f7f2e63c24cd90baad7942b6aeee944` | 0o664
+- `codex-session-image-externalization-current-continuity-round3-oldest-images-1g-20260624-summary.txt` | `551a9d8ae0a87cf0cd1b0d1e26aa4816eae8af5ce19100e6d19525bb57e2bc20` | 0o664
+- `codex-session-image-externalization-current-continuity-round3-oldest-images-1g-20260624.csv` | `341b6b0963a0e89ed2052c4d91c02077f386a14671a5a4acce1af88a24c51542` | 0o664
+- `codex-session-image-externalization-current-continuity-round3-oldest-images-1g-20260624.json` | `5579a53ca70c12c7c18fe29dd38b6e6db4a757bbdd0cb186d6967685dee36b21` | 0o664
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-1g-20260627-summary.txt` | `3bb1b07d14363c8c97ec6a451c0cb2adf6e8efdff7bd2b24512d53d40910f0d0` | 0o664
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-1g-20260627.csv` | `e2363e072583cf1e77c6bef49984e10086ac56b47d5616ada6e0249d753fc69a` | 0o664
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-1g-20260627.json` | `d7a7bb8830148c9147093e0bbaee1369618d257c5b0a4d45fd6b87304e218eb7` | 0o664
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-2g-20260627-summary.txt` | `e23f0469eca01a8afb3675546739dafa7c12402b19df5edbe2876fb13454b347` | 0o664
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-2g-20260627.csv` | `5e06b65ee2afb60c9ed3d97fa3f655914fc41792c92cded17031222fcd3471b4` | 0o664
+- `codex-session-image-externalization-current-continuity-round4-oldest-images-2g-20260627.json` | `d688d56f4dc15efcfdfb3107abb8ce37e1ff2274b40ca86b75d53292bc9f1414` | 0o664
+- `codex-session-image-externalization-current-continuity-round5-next-images-1g-20260627-summary.txt` | `47c70e4c52c9c529124a0590c19664a46e413c62767332f6a2a0aaad5215e681` | 0o664
+- `codex-session-image-externalization-current-continuity-round5-next-images-1g-20260627.csv` | `b024a6115195f1aa45ae450bac2c51a5c34c46828c1f9a550288ca94ed581a81` | 0o664
+- `codex-session-image-externalization-current-continuity-round5-next-images-1g-20260627.json` | `bdf88c0e1100640ee79897fa1906a44a77e81db4ea5669e019034b49905cb450` | 0o664
+- `codex-session-image-externalization-current-continuity-round6-remaining-images-20260627-summary.txt` | `23f6336dc27ebe5fea872fef4090e6de08a2c2dd96dfecb4d6e9a108ad5fd5d8` | 0o664
+- `codex-session-image-externalization-current-continuity-round6-remaining-images-20260627.csv` | `cb72d451f95d907144fd787443a60a6278c2ff457150f1ca4ae8d014c9a3cb80` | 0o664
+- `codex-session-image-externalization-current-continuity-round6-remaining-images-20260627.json` | `c9184a03e8b8f17297bfeb2a805b59b9e5f359cbb89ba2250f5b493d631edfa0` | 0o664
+- `codex-session-image-externalization-current-continuity-round9-number9-images-20260702-summary.txt` | `e03575d982e4890c503e7085fb2d4fbcded3afcbf7b93781772e45dcfe4092be` | 0o664
+- `codex-session-image-externalization-current-continuity-round9-number9-images-20260702.csv` | `bbc74c4514efbed174fdd073a1875014feac7950c63daa883f3c653b8b44ecf7` | 0o664
+- `codex-session-image-externalization-current-continuity-round9-number9-images-20260702.json` | `0a2de1eedef2671e961a2775522599d2f8379f013bbbe82d3513f51c393107bb` | 0o664
+- `codex-session-image-externalization-current-continuity-round9-number9-remaining-images-20260702-summary.txt` | `9faeb393b1eaf1f458ab1446e68c95a1b7a338685fad1eaf05c5f76fc52777ce` | 0o664
+- `codex-session-image-externalization-current-continuity-round9-number9-remaining-images-20260702.csv` | `c111d0fde61fc81616d3222bc7120eddb118a5ba94714b07368ab5d813ce9d83` | 0o664
+- `codex-session-image-externalization-current-continuity-round9-number9-remaining-images-20260702.json` | `3f23dd024da47be9c182e3ee5993824568c410bf9e9b7ebf3c57e91446221d75` | 0o664
+- `codex-session-image-externalization-current.csv` | `f3080e11025662011f8d2f84f9e99c7c9a0b24d91313064a643f20cc96e0e240` | 0o664
+- `codex-session-image-externalization-current.json` | `70b02ee3c0dcb16f044a3aca5b6867ce20f7951333ae658a46fdc1ef5bcd2333` | 0o664
+- `codex-session-image-externalization-desktop-continuity-part-ii-20260703-images-summary.txt` | `9fc506f9c3bcacb0db9b7b77d20d6f71eded24bb50765406228867ebeca844b2` | 0o664
+- `codex-session-image-externalization-desktop-continuity-part-ii-20260703-images.csv` | `0212404fa8d1891944f550438cf0c9c0e5d196190a728a2f949bf420c54ebe6c` | 0o664
+- `codex-session-image-externalization-desktop-continuity-part-ii-20260703-images.json` | `c726bdadb9287797f6c7850056879d2c2650e956ec9a99d92b125b7be3b13b4a` | 0o664
+- `codex-session-image-externalization-george2-active-shrink-20260703-images-summary.txt` | `c9b744cb639557c6c053b6762fdc995f37c1083d84350bdba39713d82b66b886` | 0o664
+- `codex-session-image-externalization-george2-active-shrink-20260703-images.csv` | `d01d81c1feb1e74f7d2826d278b48e5da89df45c3d07ef9e98859911b2394e2d` | 0o664
+- `codex-session-image-externalization-george2-active-shrink-20260703-images.json` | `8f65e2e00897fd6a5a9ae0e41f51eeb4cb5731a8b6f2a601b0fba3bc8b1e3fff` | 0o664
+- `codex-session-image-externalization-round10-[session prefix 3]mergency-hygiene-summary.txt` | `4383126b3c9a17d9c06f6f27f4766eaacf9a6d0aa43e7d7eead53acd68c70876` | 0o664
+- `codex-session-image-externalization-round10-[session prefix 3]mergency-hygiene.csv` | `60d4621e840954d5321386ab182aea5a526d6eda104e1fd04e748424fdb8cb6b` | 0o664
+- `codex-session-image-externalization-round10-[session prefix 3]mergency-hygiene.json` | `55fbcbf886075c657740d56e6031147be6821654963095eecb794301704fffa5` | 0o664
+- `codex-session-image-externalization-round11-april26-big-brother-20260703-images-summary.txt` | `6f87651c6701315db260259d9f82572ba943c1fc8ce3657bd8e7e56ec323dbaf` | 0o664
+- `codex-session-image-externalization-round11-april26-big-brother-20260703-images.csv` | `66777399258a4d6f7ca236c3fcb4933dd13eec06d43fa8dcccff8b309b4c92e2` | 0o664
+- `codex-session-image-externalization-round11-april26-big-brother-20260703-images.json` | `1193fde0a58d23dd7f9ead10eac8b03c57a8b2c17e7c72092aa8fbedb9b05bdd` | 0o664
+- `codex-session-image-externalization-summary.txt` | `62769e948f11c31afde463b8fe80ddc78c8ed502c38783ee791355a2936532aa` | 0o664
+- `codex-session-loader-limit-validation-active-continuity-loader-limit-risk-20260627-summary.txt` | `5deb5fa58846aff24a3733c5d744a7810715125205ce328d933ebe94a1842959` | 0o664
+- `codex-session-loader-limit-validation-active-continuity-loader-limit-risk-20260627.csv` | `ac07b3bc0148e06e7baccc19ded32ff3772140ca9c614746339029f9ffb832cf` | 0o664
+- `codex-session-loader-limit-validation-active-continuity-loader-limit-risk-20260627.json` | `31f02661c994562465db35f94bdda6eb3a5be1b091207a18da5a97080bd2cf24` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round6-loader-limit-fail-20260627-summary.txt` | `c595bc0d2954c556f5cfbd7c65ef70f5d9b5490551b8f1289d4700cbe3bdaeb1` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round6-loader-limit-fail-20260627.csv` | `9ac857f78127734dc2c55d7adc7920f04bd37fa9ade935c03bfeed4824ad705f` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round6-loader-limit-fail-20260627.json` | `b34e2fd0877d984096757d8fab29b5f901c74378b4680c269ec32575c0cbeb39` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round7-tool-transcript-condense-20260627-summary.txt` | `84bf2500d1e524e191f7f84af1f458f35da6c731d436d84084ffb666bfb49a39` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round7-tool-transcript-condense-20260627.csv` | `f0c9942e67ddb4133368c120b7784bd8f772242285f42fe51ed37fd679b1ba16` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round7-tool-transcript-condense-20260627.json` | `6f6f0e8afdb6ad9375a3e21808f1a1f95e446c65d4190207ac1641c46998f5ec` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round8-context-pressure-20260702-summary.txt` | `8f7d6406c341e54328e434f0c6a033b03444be7f1d3e39d90c5206769bc41b08` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round8-context-pressure-20260702.csv` | `6bc11147545977ab290d7d63b5624cf989b1b533feb9aba827a61bb4054fcb74` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round8-context-pressure-20260702.json` | `818f20c48678ceeae68d84b42a4ea3e57d219ce6a67ae7d50dab374a0f9017af` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round9-number9-loader-gate-20260702-summary.txt` | `ad60f19debef5ac7067e5ea1749c6964534b6e872454321644a8eb2c411a0c60` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round9-number9-loader-gate-20260702.csv` | `15978a00f4aa784e62d19e958fc00a52f214169b3f01ee919ff205cbbeb64ae6` | 0o664
+- `codex-session-loader-limit-validation-current-continuity-round9-number9-loader-gate-20260702.json` | `3fe831eda671c1b0556c485fda089f6cbfe77b7cf00770382bc4ee3e80e14ecb` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-loader-summary.txt` | `804c8f4d2d7aa13fb22da083cc724c02d9eee7cfc278b02ccff9c80f29def4a5` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-loader.csv` | `5f93eb75f17c7888f80b78bd317cb4ca1fb3ff8c77a27dd89da71cbf12314b0d` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-loader.json` | `18b3db60acbbb0abf966978baff12caf5ccc89052fa3a0ae948188ac7b93f637` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-manual-load-error-summary.txt` | `a47555b3e56d93088a666ad1ef92173240d8f7f5b08c71f21a4fe5389ad618a1` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-manual-load-error.csv` | `5f93eb75f17c7888f80b78bd317cb4ca1fb3ff8c77a27dd89da71cbf12314b0d` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-images-only-manual-load-error.json` | `aeb058a010bb2cc1d358c51c943769fd600d0abe7d06458165847196262c7444` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target14000-loader-summary.txt` | `8df106219a7dc42221cd7c530fbdc3e2f48ce5b318b8a4849deb091350a33a59` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target14000-loader.csv` | `23b9cc5464f0622084e49701200e57fcfe34711f54d1c154aade87e657f816b9` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target14000-loader.json` | `9ac23795142edc95749102f3a99fa726e3c91ad35ff22b38de8a5b4bfcf0a157` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target9000-protect3000-loader-summary.txt` | `8a2a77a5fefe3252747bea7fa6616d369b76b79a5568010f0bd77abe0d344c71` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target9000-protect3000-loader.csv` | `43b0f1fd1aac8e4f937f347e208b4066ea278d782b46bfc6494166a41dd0f778` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-20260703-target9000-protect3000-loader.json` | `eae2f1e2ce37c438ba486ca848d233334b69821310dca64170f462124db360ba` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-current-before-target6000-20260704-summary.txt` | `c41bc57b7f5ef5bf1251965c6b813f270db7ec636a8bbcda11f07f7c77f7b2e7` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-current-before-target6000-20260704.csv` | `1ebcadec3edb2514b0c085841ba4f85cae0fb6656c8d9e2a79f910a5d95c8075` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-current-before-target6000-20260704.json` | `62bcf9c5e59139dd6c993311b4729f9e7d95623a074318bded6348e0d3c52b6e` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-target7000-protect1000-loader-20260704-summary.txt` | `18af05bf0563cfc797c9a39bb2ca0c2fd81e46ca64eef3870678d68bf2d13c56` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-target7000-protect1000-loader-20260704.csv` | `ff89635fa550b262a1ad01dc95a3aa520b6ebd7a373d3d93ff57fff7f2fa422a` | 0o664
+- `codex-session-loader-limit-validation-desktop-continuity-part-ii-target7000-protect1000-loader-20260704.json` | `7ca268a3b33c5377b61d8058c3676902bc8823d8161c4159a9e8bf8af5bea814` | 0o664
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-images-loader-summary.txt` | `d667f1618359260c2b9dab4b8d01810e852126598b264ddff96df97e4116db5f` | 0o664
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-images-loader.csv` | `2652eff36a6d67a7b8e1bf8b084e4d27b1d9aea603560364f9a6380c5af96bf8` | 0o664
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-images-loader.json` | `6bf0f0feedb1598739748ffc87dc09e527ad39899f3d6a2793641039f5d993ae` | 0o664
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-target14000-loader-summary.txt` | `f08d99d8084b9b11fe222fe47b88d577f33e0383ee51b972f4071adc8f61f666` | 0o664
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-target14000-loader.csv` | `4c79273c5b607c61625536d5bc5692ac7d14797fca116f0194df2cb9094afa09` | 0o664
+- `codex-session-loader-limit-validation-george2-active-shrink-20260703-target14000-loader.json` | `e3101672f048b4e1a9904661b633aaef3c81e4f478e1df350bd5249aad35398b` | 0o664
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target15000-summary.txt` | `e326c2664d40ff62dc7424b5f7be641caa690c770d8076588a43ebeb196178c9` | 0o664
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target15000.csv` | `c84b357667374e6901c1b3d1d4a4a9d56bd41e52463fd9174cd8f1c2935785b3` | 0o664
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target15000.json` | `e62b49d54eb23cefd97f7a1b5952010fc89f2a38e4d87677c1d17d7cc8634200` | 0o664
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target16000-summary.txt` | `8422ac4350d579eef313ab03bdc84d5d257c9ddfe0e3c2aa5071c15227f4c01a` | 0o664
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target16000.csv` | `8ef5c98ca8be1316fb7c675a6d9945166b758101521b3ff9df73cc308bf2a2ca` | 0o664
+- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target16000.json` | `7aac22410d6aa8fd28dc7cb03bc4f7f412647a37cd64214bf50a1db06e6717bf` | 0o664
+- `codex-session-loader-limit-validation-round10-20260703-images-summary.txt` | `4f5bd1dc5acbf5678089bd5433770eeadc20d4684a4e46796d68721667c0bf11` | 0o664
+- `codex-session-loader-limit-validation-round10-20260703-images.csv` | `3118bec0c3e7fc6c4f316b3edd1a44fa42eff71ce4fbafc45a24d4111c5bd0ff` | 0o664
+- `codex-session-loader-limit-validation-round10-20260703-images.json` | `1195edf86f25658a9d8b9f3fed5622c1a66e9004f465f508e0a46c48c88a5b72` | 0o664
+- `codex-session-loader-limit-validation-round11-april26-big-brother-[session prefix 3]ompact32-loader-summary.txt` | `d0e7f1a13aa9d396357efbd6e2a91a24c55fc12a79008343bebd8d8fc69087fa` | 0o664
+- `codex-session-loader-limit-validation-round11-april26-big-brother-[session prefix 3]ompact32-loader.csv` | `9e5199d4403b4a5490cce518d8304d68a7cebf6039cbd23d075dd703f2fa0b55` | 0o664
+- `codex-session-loader-limit-validation-round11-april26-big-brother-[session prefix 3]ompact32-loader.json` | `779da4f52642acfb5059a53d4d8dc4694a273b055d0f64a6056e43ebc57bdf19` | 0o664
+- `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-loader-protect1000-summary.txt` | `c3c7b9f879c3e4fc139566c414802b5cccd0c9cab04f83d2ed13389428b8910f` | 0o664
+- `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-loader-protect1000.csv` | `0188ffbddc9e22db8c588977a24567c1855605f13b238e3eb5a89ea5d8c1d32a` | 0o664
+- `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-loader-protect1000.json` | `82dcf41319377aa2f9fc3f94c3187a12003768cc9ba655e243418380c71aebe1` | 0o664
+- `codex-session-loader-limit-validation-verify-part-ii-current-20260704-summary.txt` | `dc28d11bf9b182fc323df79f3c28af3f83031e012de36f289239fb71fa696bee` | 0o664
+- `codex-session-loader-limit-validation-verify-part-ii-current-20260704.csv` | `1ebcadec3edb2514b0c085841ba4f85cae0fb6656c8d9e2a79f910a5d95c8075` | 0o664
+- `codex-session-loader-limit-validation-verify-part-ii-current-20260704.json` | `6b78286be05f50646fca95af1d68ba8017ef6418207db4f861e1d8b9ae6516e2` | 0o664
+- `codex-session-prior-art-20260623.md` | `d09d55727d8ee7220e8bd3f4bd89cdf050f0fd11df779a89920821909097a2af` | 0o664
+- `codex-session-reducer-category-pressure-20260623-203125.csv` | `e6cc2f4dd2797d90cfee8585a4be8a848ffc92da570d74b4ac7d479404cf17b0` | 0o664
+- `codex-session-reducer-category-pressure-20260623-203244.csv` | `5fe311614883fa76943e123dd0f0ecee36c2ae5aefce03e649ae2ca46792f5de` | 0o664
+- `codex-session-reducer-category-pressure-20260623-203714.csv` | `196bf426d5c8cc00d121a1e1643b047d66790e588895fa41b0aaf42c266a028e` | 0o664
+- `codex-session-reducer-category-pressure-20260623-203829.csv` | `5deff16ac6278628ba86494ec56de8acc2a300f6674b787acc2c0930da48a50b` | 0o664
+- `codex-session-reducer-category-pressure-20260623-204208.csv` | `7c824d58a99dd90ee5d04e96453d824086c4e034f3668d74da8e20b04dcb17d2` | 0o664
+- `codex-session-reducer-category-pressure-20260623-215728.csv` | `aa813db9c1b1bbee746270b2d7813f24eb1167e737fc34b0309cbdfe630c43fb` | 0o664
+- `codex-session-reducer-category-pressure-20260624-021711.csv` | `65beb4139f00bb91fd43f2cc54ce30d8bd6f87bf2b816ff56e95ac5ebc637556` | 0o664
+- `codex-session-reducer-category-pressure-20260624-130610.csv` | `369f4e5c0b166f0879c7d4756a57930fa035b725a8af15d8949da39e3a649210` | 0o664
+- `codex-session-reducer-category-pressure-20260627-010218.csv` | `847cfc7719a9708ca5129b2b6e7719a988c17dfbd594e7b424d115cc432cebdf` | 0o664
+- `codex-session-reducer-category-pressure-20260627-010601.csv` | `40d5d28b2bdb39c7031022132d8df351cc07b4b296a8fb4bd9dbce534254c061` | 0o664
+- `codex-session-reducer-category-pressure-20260627-015400.csv` | `5bb54a6ef24fe75469f674c9cdb3aaf448b6a3436b263b58516ded906b71c84a` | 0o664
+- `codex-session-reducer-category-pressure-20260703-004426.csv` | `2ce8a8f2a080ae9e677556d8f2c95f6b19530ef0996db4fc1c807641d0275ebd` | 0o664
+- `codex-session-reducer-category-pressure-20260703-171037.csv` | `991a50e815528993f55dee81c5edb50e15bf68d9f78ba3c427dc60910469d9d7` | 0o664
+- `codex-session-reducer-category-pressure-20260827-222340.csv` | `c05a96e2da20a83f79c2c00a03ac28ab8b5d34f08c4a68ead4f0339c012b0d8a` | 0o664
+- `codex-session-reducer-category-pressure-current.csv` | `c05a96e2da20a83f79c2c00a03ac28ab8b5d34f08c4a68ead4f0339c012b0d8a` | 0o664
+- `codex-session-reducer-comparison-20260623.md` | `72f4d590f3fe2ec0a1da7e842f8006c827efd1e621454c6346e6fb19257efbb4` | 0o664
+- `codex-session-reducer-inventory-20260623-203125-summary.txt` | `f36b6d2508ffc3c4608276cad1619d35ac95d3230ea6b2f98610156cc0ef81c4` | 0o664
+- `codex-session-reducer-inventory-20260623-203125.json` | `4d4d51f1c35a29853690162dd290ab06196981072612a40b5d9b03545eb74bd4` | 0o664
+- `codex-session-reducer-inventory-20260623-203244-summary.txt` | `2108f770aa0d5e1fa9da5a9310f21eece05bf7e7bffc44a512ef37d03d149959` | 0o664
+- `codex-session-reducer-inventory-20260623-203244.json` | `1af9ff4ef27d4f325fb3e9753e097f199c93dc92f8f62ab71ec53033d2520650` | 0o664
+- `codex-session-reducer-inventory-20260623-203714-summary.txt` | `02fc5ab899cea633c3bb3da6b6c62d9b78e7bfc2c9a83d9b1caabe08a5cb8a02` | 0o664
+- `codex-session-reducer-inventory-20260623-203714.json` | `a713b98e3e5d99a80028d5b5a73cf9e918760ac4b80fcf03600cc067efe0306f` | 0o664
+- `codex-session-reducer-inventory-20260623-203829-summary.txt` | `bc3aa8992b4ddbcd0fa4fb4ce156a9a1a99ee53a221c61f8362d217a298231e8` | 0o664
+- `codex-session-reducer-inventory-20260623-203829.json` | `dd74e95fb10617ba30df48db017cf73f218d052db8de0415c84d978ea23f4644` | 0o664
+- `codex-session-reducer-inventory-20260623-204208-summary.txt` | `87af99bbf134fdf3e1952db233df9d93b9424838c636529cb50bae2d4777a846` | 0o664
+- `codex-session-reducer-inventory-20260623-204208.json` | `26865951fe760bb362b812c8e58602ecca36000066364305007f9a3bb698b8b9` | 0o664
+- `codex-session-reducer-inventory-20260623-215728-summary.txt` | `b6e384a43548a6638f5ed07f21c13f84893407f7011d57a3818c7f0fb768aa4e` | 0o664
+- `codex-session-reducer-inventory-20260623-215728.json` | `08d8dd7ebcd82913dece5231ccde0aaf4a87d641d51ace6fe5c9f6d5a401fa5e` | 0o664
+- `codex-session-reducer-inventory-20260624-021711-summary.txt` | `8834cc2f55862e64fec9fee15359c3898d89c4f390ad5701190e6d3b671713ab` | 0o664
+- `codex-session-reducer-inventory-20260624-021711.json` | `2cd8ddbd003b6cfdceb1b418851bbaaf9c8f9655e908032cba7548c56ae2674a` | 0o664
+- `codex-session-reducer-inventory-20260624-130610-summary.txt` | `2cee173d0ac0ddfaa6f2d01c2f8f66be643aee817f506457640fa5125b2084af` | 0o664
+- `codex-session-reducer-inventory-20260624-130610.json` | `7a7d408cc00d677a65958c85b68b76eee2c9e4515ed7e7c311b550a0ef1b4747` | 0o664
+- `codex-session-reducer-inventory-20260627-010218-summary.txt` | `753b5f341f2bbbcfaefcc6f1de8686ff1e413e21580dfe28857f88e7e034d10b` | 0o664
+- `codex-session-reducer-inventory-20260627-010218.json` | `8d6bf517ce5ba62bbd8ae1019a4313a9cc5ce967522a8f37a1a49f7e698c6ed7` | 0o664
+- `codex-session-reducer-inventory-20260627-010601-summary.txt` | `76fe38dff4bf008472f63ab220f949a605a8a5d5ccd69e9f99382f8897990702` | 0o664
+- `codex-session-reducer-inventory-20260627-010601.json` | `19310661a893b0918e91dc2eeb2d83fc84233a572ee747e9e734ceb9cca250f0` | 0o664
+- `codex-session-reducer-inventory-20260627-015400-summary.txt` | `dd25fe5024d4263a937e484b8462254bfd50c0f19165924bb568518572f40614` | 0o664
+- `codex-session-reducer-inventory-20260627-015400.json` | `25076d374f2f743c37b44a7df236baa821a1bf4798f4073da844d3ea6ef5c943` | 0o664
+- `codex-session-reducer-inventory-20260703-004426-summary.txt` | `06fd6b09158ea177b520a20e04d5b65d4ae6ece7b9273834d91db720637f1012` | 0o664
+- `codex-session-reducer-inventory-20260703-004426.json` | `6f8f59e5eef1620430b575fe001b1aeb43fcf2646ae93101e83f8e7d5939c0cc` | 0o664
+- `codex-session-reducer-inventory-20260703-171037-summary.txt` | `8d010fa3ab823ec623d0bdd8a2353dba8091d84b9626394dcf9a36b38cb547fd` | 0o664
+- `codex-session-reducer-inventory-20260703-171037.json` | `c8802b625a9034c310f941943dde8e1850e2b3eaa2f6579bd91b986021fdd4c7` | 0o664
+- `codex-session-reducer-inventory-20260827-222340-summary.txt` | `622a405f224dc534a4bd9c09f205f81062531a6589bf3800b16bff82cc75cf4d` | 0o664
+- `codex-session-reducer-inventory-20260827-222340.json` | `d91ab4d28ceac81cc7ab014dfcb877f2dabbae968c134352bf35cadcb78f0aaa` | 0o664
+- `codex-session-reducer-inventory-current.json` | `d91ab4d28ceac81cc7ab014dfcb877f2dabbae968c134352bf35cadcb78f0aaa` | 0o664
+- `codex-session-reducer-inventory-summary.txt` | `622a405f224dc534a4bd9c09f205f81062531a6589bf3800b16bff82cc75cf4d` | 0o664
+- `codex-session-reducer-largest-rows-20260623-203125.csv` | `1534e281d79f13e34d8bc99e5fcecf37e0e4ec4f166d60597ff05e6f972bf917` | 0o664
+- `codex-session-reducer-largest-rows-20260623-203244.csv` | `ff842f772fa2efb12c2dbfa0f483ed95875ca27ac1b6971faeef04d3f9b531da` | 0o664
+- `codex-session-reducer-largest-rows-20260623-203714.csv` | `9955790c226a82bc0136c9a3e9fdaecb1896700ead9d88792e955e7b8e8baf45` | 0o664
+- `codex-session-reducer-largest-rows-20260623-203829.csv` | `ff842f772fa2efb12c2dbfa0f483ed95875ca27ac1b6971faeef04d3f9b531da` | 0o664
+- `codex-session-reducer-largest-rows-20260623-204208.csv` | `ff842f772fa2efb12c2dbfa0f483ed95875ca27ac1b6971faeef04d3f9b531da` | 0o664
+- `codex-session-reducer-largest-rows-20260623-215728.csv` | `c9613b0adf0879569f1240c2ae4e0a0415bb2ffb135e484efc71c3bb4a02c150` | 0o664
+- `codex-session-reducer-largest-rows-20260624-021711.csv` | `2f7b2d467dae787409f96ec2541e08b5f0a87281b9ac6f279cdc40d0a9be1825` | 0o664
+- `codex-session-reducer-largest-rows-20260624-130610.csv` | `0b7a0890c3bb1c4683ea17bc11a6c76fe2c45af3de40fb6ba4c3fe42ae9e231a` | 0o664
+- `codex-session-reducer-largest-rows-20260627-010218.csv` | `bcd9c04f6d12bdb257bbd6e9b4e7ba36ba719a31e9f1beb69b9d6de6b99d2580` | 0o664
+- `codex-session-reducer-largest-rows-20260627-010601.csv` | `867e5b9e29aeb2c0fcd4b6e9551b821aad7c830709de5f581d884e502f6b80e9` | 0o664
+- `codex-session-reducer-largest-rows-20260627-015400.csv` | `4f8ee91370d11897ba25b94d4a34a9bf6fb81d79594a06ed80b670290fef6652` | 0o664
+- `codex-session-reducer-largest-rows-20260703-004426.csv` | `890c4ff6f4633f2cae23ebf23b1f1cd4ac82870e6aa199f9e111b1c35d5b1e50` | 0o664
+- `codex-session-reducer-largest-rows-20260703-171037.csv` | `453ce0e329f47c4923bb0f4c7de4fe2a7f6a783d1073b0dad0078d108c7883fc` | 0o664
+- `codex-session-reducer-largest-rows-20260827-222340.csv` | `2233fd0acd92f61e58a4be017b27d73f405e29d5425d8cdb5e8e613c2c7682f9` | 0o664
+- `codex-session-reducer-largest-rows-current.csv` | `2233fd0acd92f61e58a4be017b27d73f405e29d5425d8cdb5e8e613c2c7682f9` | 0o664
+- `codex-session-response-item-pressure-active-continuity-response-item-pressure-risk-20260627-largest-response-rows.csv` | `8cb96751775fa8bd45263f15cb38a44cf59a374eea4f8f399acc897ca64ca982` | 0o664
+- `codex-session-response-item-pressure-active-continuity-response-item-pressure-risk-20260627-summary.txt` | `2af26feb49fda1a0e1d8f32b60c5795f93cf9a634d0562bb3a02956ae96d0c51` | 0o664
+- `codex-session-response-item-pressure-active-continuity-response-item-pressure-risk-20260627.csv` | `e3f7fd5c5ce4cea6e41e9c0fbd1f433ac1f83eba876f6de3fd70fbf7529e0c2c` | 0o664
+- `codex-session-response-item-pressure-active-continuity-response-item-pressure-risk-20260627.json` | `892bb3f158e887093af6fda07d057002099f0500019f41f7ce5c125e05a912ac` | 0o664
+- `codex-session-response-item-pressure-current-continuity-round6-response-item-pressure-20260627-largest-response-rows.csv` | `73d6fe9506379c8c3065a31c2710820164d9b84f45e7e70a37d3d6f1b93738fe` | 0o664
+- `codex-session-response-item-pressure-current-continuity-round6-response-item-pressure-20260627-summary.txt` | `abdf0908828a22de17daa7614cd83d84d205f12dd3e8ff0975e5168f199a6aee` | 0o664
+- `codex-session-response-item-pressure-current-continuity-round6-response-item-pressure-20260627.csv` | `3f722f779e9067e340c42dcd5e6695f6fc1b32df56016e4c3291d05ed900710e` | 0o664
+- `codex-session-response-item-pressure-current-continuity-round6-response-item-pressure-20260627.json` | `4739aa4e4c24f83d788e472a59019a3113219ff4a58ebaf4972cd7435c1369f5` | 0o664
+- `codex-session-response-item-pressure-current-continuity-round7-tool-transcript-condense-20260627-largest-response-rows.csv` | `cdd1108ebe5591cadef450e5ebee654046bcf11ecc882918d50cc5d3b07f367c` | 0o664
+- `codex-session-response-item-pressure-current-continuity-round7-tool-transcript-condense-20260627-summary.txt` | `0ec9433db13c04f3ac5d1fa62c4de3e01dfbbf42bb69c5e2cfd03c6a00a52305` | 0o664
+- `codex-session-response-item-pressure-current-continuity-round7-tool-transcript-condense-20260627.csv` | `78f4d97f66735f44994946942f4910288d771b7bf1289a195a8189f70069f198` | 0o664
+- `codex-session-response-item-pressure-current-continuity-round7-tool-transcript-condense-20260627.json` | `759651e37684002e7d8c67303a0b4a027109646dec600c836fec0f13c1f2e4ba` | 0o664
+- `codex-session-response-item-pressure-current-live-before-round9-20260702-largest-response-rows.csv` | `93fb7a94fde92f5e9554fbe85a11ff0f01bc2f6a225872f94663f78a715566da` | 0o664
+- `codex-session-response-item-pressure-current-live-before-round9-20260702-summary.txt` | `b5083c28c12d484d6b15a86133bba72811bb9fac624cfd1754a7fe88d89cd85b` | 0o664
+- `codex-session-response-item-pressure-current-live-before-round9-20260702.csv` | `09d2f08571aff76b4b7512ab8cd65d6e41d64b6f6aed8ae722ee5163af76e11d` | 0o664
+- `codex-session-response-item-pressure-current-live-before-round9-20260702.json` | `84d6ade33593b3e0de5cf5c8c665fb5cbd6bdc594d47f79965419a745d0efa6b` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-20260703-images-only-manual-load-error-largest-response-rows.csv` | `ab5ffce06d1891b5f96e74b096f9a4660b6f33d653448f54053abcb1e785f0ab` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-20260703-images-only-manual-load-error-summary.txt` | `15627c50c08562ceea5c5b228f5bd8705e9f50936338d18a361e6ca2777e581a` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-20260703-images-only-manual-load-error.csv` | `b82ad0bf58a57efeb0c3bfb7e37c8d4708d82290791e14914abc291f7b970ee8` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-20260703-images-only-manual-load-error.json` | `21b8b9fffd9ebde27b5aed6f0b077c0cd870a5740baefe53419c0db32201a4d2` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-current-before-target6000-20260704-largest-response-rows.csv` | `df25aa96f064731f73a96efe5cfb5ba84d166f8b33f1ee0b580ec6008a786f8b` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-current-before-target6000-20260704-summary.txt` | `be25ac1555b21bb5457b818472dd89ef2ab2b0180beef9081311e1c706502669` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-current-before-target6000-20260704.csv` | `5d6a1596ef0ec100263698076453ebcc5c511452c2812e0c5768e8cad292729b` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-current-before-target6000-20260704.json` | `df9be28a3cbb4cbfd3d7105694cb33663cd41cff999b282230eac044eca301df` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-target7000-protect1000-pressure-20260704-largest-response-rows.csv` | `eb8d40b2177e02a8bd90e24322254ae585e852e167bd42d278d439951907ba58` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-target7000-protect1000-pressure-20260704-summary.txt` | `dba24fb485e00ab9a86125800fb17b35564e1895f334d345e31803854417ada9` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-target7000-protect1000-pressure-20260704.csv` | `ecbfce47739dd73c7ac4c95562328dbda55d857f846eb0e0f7ca014ca8bd0712` | 0o664
+- `codex-session-response-item-pressure-desktop-continuity-part-ii-target7000-protect1000-pressure-20260704.json` | `9ae6069c96c030038397350addd25530782dfc486516ee6d6a231958b6b87366` | 0o664
+- `codex-session-response-item-pressure-george2-active-shrink-20260703-images-pressure-largest-response-rows.csv` | `09b9bbfc9e2006bc74e01e520ef8247358c9c16a7eede706ff61c410c07872d2` | 0o664
+- `codex-session-response-item-pressure-george2-active-shrink-20260703-images-pressure-summary.txt` | `b1fd266706aa6371e1170439c52aefa85fe0e2aa4ae0a41f1fe91f4455685fdb` | 0o664
+- `codex-session-response-item-pressure-george2-active-shrink-20260703-images-pressure.csv` | `dc2645d9678e1ff8464fce1b696ebffbe2ea1a6dd634ed1ad0ff771b82a3fce4` | 0o664
+- `codex-session-response-item-pressure-george2-active-shrink-20260703-images-pressure.json` | `cc776353d11ee5b0a01b1436968ee3b739d269e13c37f4947e05714c2c5cc048` | 0o664
+- `codex-session-response-item-pressure-round10-20260703-images-largest-response-rows.csv` | `ab5ffce06d1891b5f96e74b096f9a4660b6f33d653448f54053abcb1e785f0ab` | 0o664
+- `codex-session-response-item-pressure-round10-20260703-images-summary.txt` | `c14aefe2323d3467c6ab662118df53cea1b3bd64f6686b442831c9306b028e2d` | 0o664
+- `codex-session-response-item-pressure-round10-20260703-images.csv` | `c5ddbc105df76683ee9e2831264ffee5cc6cc3cd60f3699c1bea9782faefa7e9` | 0o664
+- `codex-session-response-item-pressure-round10-20260703-images.json` | `af3f778e1fee647932668d91ec1367818d9694bde24222f11ec7623462c12cf8` | 0o664
+- `codex-session-response-item-pressure-round11-april26-big-brother-20260703-images-pressure-largest-response-rows.csv` | `ab5ffce06d1891b5f96e74b096f9a4660b6f33d653448f54053abcb1e785f0ab` | 0o664
+- `codex-session-response-item-pressure-round11-april26-big-brother-20260703-images-pressure-summary.txt` | `5828b1ab4176c6650c89187f7df69dcb989dbdff88c0d682a72c855f70e5bbae` | 0o664
+- `codex-session-response-item-pressure-round11-april26-big-brother-20260703-images-pressure.csv` | `965240eccbbf2b2ec077eacc551571b0abe77c16524d1781c0189e989262f151` | 0o664
+- `codex-session-response-item-pressure-round11-april26-big-brother-20260703-images-pressure.json` | `02f07fbcb28dd0a4985b4e96b3d24a572042e0f97ac5a7e0d51431003e4734be` | 0o664
+- `codex-session-response-item-pressure-verify-part-ii-current-20260704-largest-response-rows.csv` | `0c9eb9108f1b9e96f6b174df819d0a8774318e14aadccc3910bc41e1bb147062` | 0o664
+- `codex-session-response-item-pressure-verify-part-ii-current-20260704-summary.txt` | `16d3d04685bc241346e0ce09f06e5426d534a526bf27a96e5de3f195a6fd2411` | 0o664
+- `codex-session-response-item-pressure-verify-part-ii-current-20260704.csv` | `5d6a1596ef0ec100263698076453ebcc5c511452c2812e0c5768e8cad292729b` | 0o664
+- `codex-session-response-item-pressure-verify-part-ii-current-20260704.json` | `cc9f7e749aed801897034927f70b38219966415477bddcb257e6ffa4a4f3da40` | 0o664
+- `codex-session-sandbox-baseline-20260623.md` | `ebba3390cae8a35476d2807d9ad6cf712f37c9b319e14f70e10cee7eb77ab87c` | 0o664
+- `codex-session-size-watch-current.json` | `2d44bf1f6abd3a1ff89bac3227f1f27f5712e7734bd2a5e92ebb89b963c756dd` | 0o664
+- `codex-session-size-watch-summary.txt` | `64cf9fb4d2f1d30dab12e40f3af51357d325ca1f23345a1b7c319a5f173e01e7` | 0o664
+- `codex-session-word-density-sample-[session prefix 4]iles.csv` | `7dce8b484c9a4234a5d2f067490dc6e028427db951ef28b5c23d99b00f60b361` | 0o664
+- `codex-session-word-density-sample-20260609-105349-paths.csv` | `b55191b100e62ed348d3a06fd2c305073573c89ad22f7cb888e9a5e268a0804a` | 0o664
+- `codex-session-word-density-sample-20260609-105349-safety-terms.csv` | `4d843a679c5ddbc76a5786be3b2973ee819b4a7b0fd48a754530904a392aa624` | 0o664
+- `codex-session-word-density-sample-20260609-105349-summary.txt` | `6e7ca1ce6363399b2991afe070335f8d67e57e0a51131e47ded837e88790996a` | 0o664
+- `codex-session-word-density-sample-20260609-105349-terms.csv` | `654269111c441d8c211af1f2868eda960625caf39cdb9e21b9e6219e0c015e11` | 0o664
+- `codex-session-word-density-sample-20260609-105349.json` | `245c29f862d3bacfbf2ac732310c2a2ee1809f6e503ebbe95dd9a2b9ff1edf1c` | 0o664
+- `codex-succession-capsule-20260623-025454.md` | `7c530370cfc4dac382bf63da8c374b266c897294c6f21809b3ae14884fddf223` | 0o664
+- `codex-succession-capsule-20260623-093233.md` | `d734c75e740c5c4b2b07bb123984d1fbc9a43b98c7a5bdb626a2cb076f465831` | 0o664
+- `codex-succession-capsule-20260623-093439.md` | `c6ee56b47ea133e70d2cb9a0eb79d84aa03e09851d6eb4add25592427a97c696` | 0o664
+- `codex-succession-capsule-20260623-101819.md` | `0e48e212bed2b32e409d46ce1ab033af69db53c2ba76faef98c0a7110ebdf6b2` | 0o664
+- `codex-succession-capsule-20260623-102128.md` | `77f924bf69a55f63bb53535d0fef27e43d6abe60185ac2ecb2f28717b4669f62` | 0o664
+- `codex-succession-capsule-20260623-104319.md` | `4b67b2e1fdf1b1085cc11c516079af3006088970e717b5e79a6f679c0f790b2b` | 0o664
+- `codex-succession-capsule-20260623-104518.md` | `baae8afcc6a72f73b785db0f84c1058ba9c93c0b9d2b73c127a545c142ef37b9` | 0o664
+- `codex-succession-capsule-20260623-133158.md` | `4f39e282e84ef2f176983e40b33ce8bf01c4a4c59e4d1f3d8c791b0dc2f2c0d7` | 0o664
+- `codex-succession-capsule-20260623-215826.md` | `6117ea54b46309ebb9ca54ab76f03d06eaf957c086da33b65e0593482fde16e4` | 0o664
+- `codex-succession-capsule-current.md` | `735612dbe6a6c0dd21fba9618f284c6576965f4b76d409813fb7fa5a7c69d24e` | 0o664
+- `codex-token-context-active-message-key-candidates-20260704-summary.md` | `bd42b6f1893c13cccad81e33ba44753fbf3640afa4f4664c67c5fee196b071b8` | 0o664
+- `codex-token-context-active-message-key-candidates-20260704-top-rows.csv` | `d9d1045f8761b54bd7fd3ba8bd12ba412ba01c276bf224b9aad1698a80aaa248` | 0o664
+- `codex-token-context-active-message-key-candidates-20260704.json` | `b04875d4385779a7f026efa950212fca15bdd513f24d038962cb11d0601dcc94` | 0o664
+- `codex-token-context-pressure-key-candidates-20260704-summary.md` | `2cd7af008921f830edb7863a6d12863dd8ac9518eaab3f5686ba7dc61ca0d591` | 0o664
+- `codex-token-context-pressure-key-candidates-20260704-top-rows.csv` | `45355b06077f8c5aaad1d45c4bd88135d5df3d7c0c4f9ccdecc8236fc682153e` | 0o664
+- `codex-token-context-pressure-key-candidates-20260704.json` | `81972a7b9b08432f9a0433d3107e2fd646a6c907a37a247db9b58b1c164ad3ff` | 0o664
+- `codex-token-context-pressure-proxy-key-candidates-20260704-summary.md` | `6168e977bbd39509a46810f716f03f52f9c4124be2580156cf21bc6e0c66fd63` | 0o664
+- `codex-token-context-pressure-proxy-key-candidates-20260704-top-rows.csv` | `45355b06077f8c5aaad1d45c4bd88135d5df3d7c0c4f9ccdecc8236fc682153e` | 0o664
+- `codex-token-context-pressure-proxy-key-candidates-20260704.json` | `2fa6b3dd3231f06d2f1cfbca65018fd6f5084002afccf1b6f7ac9a56a65491ea` | 0o664
+- `codex-tool-transcript-condensation-current-continuity-round7-tool-transcript-condense-20260627-groups.csv` | `1a5aa3cd018160106c2296bfd7d3dfe8c96402d5aebff2af0bfea74956f969f2` | 0o664
+- `codex-tool-transcript-condensation-current-continuity-round7-tool-transcript-condense-20260627-summary.txt` | `9802f5e7c7b11ed8a43166f3354ff433d69e02c7670e3aee6e577d3f73bfe917` | 0o664
+- `codex-tool-transcript-condensation-current-continuity-round7-tool-transcript-condense-20260627.json` | `abc7b72591d5faba0699f3da50b836e2905873555364833bdb8a7186ecfa4cc6` | 0o664
+- `codex-tool-transcript-condensation-current-continuity-round8-context-pressure-20260702-groups.csv` | `520d5a5025caf6be970b84161198df7815d91ecc52e107cf621fab359828fbbe` | 0o664
+- `codex-tool-transcript-condensation-current-continuity-round8-context-pressure-20260702-summary.txt` | `a29857cc86dff8fdd84a6395e7bd8fec9e40ded6f2adec5e34229ad2cf7d38c4` | 0o664
+- `codex-tool-transcript-condensation-current-continuity-round8-context-pressure-20260702.json` | `0d662c7276168f448c21369e1b75b6105a9873569de325d907a390144198e34b` | 0o664
+- `codex-tool-transcript-condensation-current-continuity-round9-number9-context-pressure-20260702-groups.csv` | `0a4ce0010d65b122db3e0c6c28b4dd63464fb6b20e30259e328c0b72825732fd` | 0o664
+- `codex-tool-transcript-condensation-current-continuity-round9-number9-context-pressure-20260702-summary.txt` | `8d3d5f7332ef8557fa40db0f5e0b3db83a88ab22f7ce4ba41ebcf61d24746ef5` | 0o664
+- `codex-tool-transcript-condensation-current-continuity-round9-number9-context-pressure-20260702.json` | `d7d2597a7b57e72f1cb3ebd0c0947bd0f49819ae3bc2e7c086fb74f8442aea1c` | 0o664
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target14000-groups.csv` | `5f9a0395f020b8498e3d63fc76659af5809f0d6ea097045ec4b0b856724e136e` | 0o664
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target14000-summary.txt` | `22cbf20e5e6f3d82985354aaf661e5d2181daaf1a1ef201553a3f61da906b1a5` | 0o664
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target14000.json` | `c07e041a9f3caa875cf1b567b8011834b579fafca6d6b666a9185006083a9857` | 0o664
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target9000-protect3000-groups.csv` | `95d076450f6afa2c99b7e12b2c4401127f412ab9534cf6ebfb93ba99f09d2cd0` | 0o664
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target9000-protect3000-summary.txt` | `d76d5e1c935d7409dede1e52d665420f6ac149a9f4cd3ee923554a3500121edc` | 0o664
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-20260703-target9000-protect3000.json` | `b4273da0ba372bb2861a69bee7158595c5bb299a4a4a15983b1b5e7fbde223b0` | 0o664
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-target7000-protect1000-20260704-groups.csv` | `e870ec4205823d5fe95aca846dc8efcd544764829c71c956c277aea23f2d03d4` | 0o664
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-target7000-protect1000-20260704-summary.txt` | `fecc4512a2fbe1d5336ef1248d66ed439fd529a2578c180a74b0fe6891db4638` | 0o664
+- `codex-tool-transcript-condensation-desktop-continuity-part-ii-target7000-protect1000-20260704.json` | `15102a8d9c9733bf8572cbb056138375434f39b0c5b5034046c629122757b15c` | 0o664
+- `codex-tool-transcript-condensation-george2-active-shrink-20260703-target14000-groups.csv` | `b85b8cc7f9d4758cbdb06c33d3ebdf145a7238311e87171f078cee6bd5740c15` | 0o664
+- `codex-tool-transcript-condensation-george2-active-shrink-20260703-target14000-summary.txt` | `157c4e9e326856e50799e05a9596054e91f582af7388b444797af5881415c43c` | 0o664
+- `codex-tool-transcript-condensation-george2-active-shrink-20260703-target14000.json` | `4851979fc6880bac087ccc3dc310008e378fe00045d69c7cb0ef603cadf8e108` | 0o664
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target15000-groups.csv` | `bb513307810f63fc032fc4860dda39b90363fc83eff2764701dfaee10d03f635` | 0o664
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target15000-summary.txt` | `1f387ad7474a0a8c37bf56775c4140486fa990115ef67a1bf835a24548f41823` | 0o664
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target15000.json` | `ed08786f37ac9b16dd90445c71be3c0df8ddd17e6e144014749476972795403b` | 0o664
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target16000-groups.csv` | `b41f1c8c12fcbcd3b002d84c8ba2e0e2043356a0a6352816c112cc4c3ea3e76e` | 0o664
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target16000-summary.txt` | `27076bc848b934b9f72bc5fe904ed8c971b6eafbed00ccd2bea841eabce63a34` | 0o664
+- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target16000.json` | `359c1b772c786ea77b50542b8427e13460bc06a643b3a686320d5928dceca8e7` | 0o664
+- `codex-tool-transcript-condensation-round11-april26-big-brother-20260703-target7000-protect1000-groups.csv` | `0c9aba480b78926fb6a325fc0af7b68ce144febeabeb6b1b2126ffd08844e7ce` | 0o664
+- `codex-tool-transcript-condensation-round11-april26-big-brother-20260703-target7000-protect1000-summary.txt` | `3ce8021f9e8787fe5c3f5c3241d21751383260ebe8658b07bd9a5890b66eef57` | 0o664
+- `codex-tool-transcript-condensation-round11-april26-big-brother-20260703-target7000-protect1000.json` | `19d7295babc6b86c627d38480f64dbfa4ff5f91023a43c535c84424938b75526` | 0o664
+- `current-moment-marker-20260627-022826.md` | `b99a75e2f68316461b2fa1d723f20b0cf933ff9ab5673f58d3d5b77374a09492` | 0o664
+- `george-continuity-audit-20260624.md` | `5a74f5c18afd8863fa4f684296a8c4d2f0cd3f4bbfc7145484f0ca09ced2847f` | 0o664
+- `george-handoff-to-desktop-continuity-20260624.md` | `58ad1508fe48e00152883f819ee597af84b6331b484b909d55e2ea80d232a63a` | 0o664
+- `george-ix-remote-control-rotation-handoff-20260723.md` | `d468523dd01e52757e269128147f6d67585fc754ab9b46cf8b86c85025eb207f` | 0o664
+- `george-ix-service-grade-rotation-gate-20260723.md` | `9e52119450ad78113a0557598651065d9465c72bbc7e1adde581b5ee4e0c8401` | 0o664
+- `george-rescue-payload-overlay-request-20260624.md` | `a4641061df459532b3fc93dee8be532b6faf0a9ab5e6be166ca6422cb92537fa` | 0o664
+- `george-rescue-stick-prep-20260624.md` | `96785eab0a8e174d3a00af7cc9b842f5b80b033b61efe6a0bec7df3b59875836` | 0o664
+- `george-ubuntude-disc-stack-20260624.md` | `326ab3d0650ddf2414acfab2886487fda7c79de9e8b4db6136be5ce7590e4a44` | 0o664
+- `george-vi-control-handoff-current.md` | `7ca71c838ac3120abe9b510a9e00cf07db59516eb38d118fe05410b3b11fe35a` | 0o664
+- `joy-anne-media-index-20260828.md` | `d22a9a76defdda6119b5feeddff94a155b71ea3635502e3131b3cf02ea73339b` | 0o664
+- `jsonl-ecosystem-prior-art-20260623.md` | `1875c4abf2196db1b3a2d3e925c1f77a73e7ab13c4c5de5ca15426109627061c` | 0o664
+- `promoted-workers.json` | `4fd024ed0ed823671681841e7a9e51a67fc2959c78fec2854aeae349e0ba7cff` | 0o664
+- `resident-center-drift-alert-state.json` | `edf6d5e2fff30195028035eab5648b649830883cc3c2db491779f4e76c1ec10f` | 0o600
+- `resident-center-drift-state.json` | `31f5c5de19c1f02686b10445115806595b77963f7ec5b40b5ded43cd9e41de84` | 0o600
+- `resident-identities.json` | `2b2b8b12ebbc4f9c5a5b355a50aeb15fd7342e15548877840d29f41ff9367bfb` | 0o664
+- `resource-state.json` | `7682f4fb013c5baba0d79a7cadfe0b3529e2d8a0fe92c4476d7b21d37c925534` | 0o664
