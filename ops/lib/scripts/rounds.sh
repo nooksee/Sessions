@@ -81,7 +81,7 @@ fi
 # This is not patient health. It says nothing about any session, it never
 # enters clinic-aggregate.json, and it keeps its own private state so the two
 # signals cannot mask one another. It answers one question: has the frozen
-# Sessions runtime custody diverged from the product repository that now holds
+# Control runtime custody diverged from the product repository that now holds
 # source authority?
 #
 # Edge-triggered like the Clinic: it notifies on a state transition and then
@@ -93,7 +93,7 @@ fi
 # summary, or a missing field means the comparison did not happen, and a
 # comparison that did not happen is not an "aligned" result. Every one of those
 # is forced to critical here rather than defaulting quietly to normal.
-DRIFT_OUT="$("$PY" "/media/nos4r2/user_vol/Sessions/Scripts/check_resident_center_drift.py" --write-state --quiet 2>&1)"
+DRIFT_OUT="$("$PY" "/media/nos4r2/user_vol/Control-Runtime/Scripts/check_resident_center_drift.py" --write-state --quiet 2>&1)"
 DRIFT_RC=$?
 DRIFT_STATE="$(printf '%s\n' "$DRIFT_OUT" | grep -oE '\bSTATE=[a-z-]+' | tail -1 | cut -d= -f2)"
 DRIFT_SEV="$(printf '%s\n' "$DRIFT_OUT" | grep -oE '\bSEVERITY=[a-z]+' | tail -1 | cut -d= -f2)"
@@ -167,15 +167,15 @@ echo "$STAMP | resident-center drift: ${DRIFT_STATE:-unknown} (${DRIFT_SEV:-unkn
 if [ "${DRIFT_ALERT:-0}" = "1" ]; then
   if [ "${DRIFT_SEV:-normal}" = "critical" ]; then
     notify -u critical "📦 Resident Center: source drift" \
-      "State ${DRIFT_STATE}. The frozen Sessions runtime and the product source authority disagree. See Sessions/logs/resident-center-drift-state.json"
+      "State ${DRIFT_STATE}. The frozen Control runtime and the product source authority disagree. See Sessions/logs/resident-center-drift-state.json"
   elif [ "${DRIFT_STATE:-}" = "registered-converged" ]; then
     # A completed registered convergence has both sides equal at the
     # registered target; "product ahead" would be false (PR #64 review).
     notify -u normal "📦 Resident Center: registered convergence complete" \
-      "The registered transition is complete: the frozen Sessions runtime and the product source authority both hold the registered target. Nothing is outstanding. See Sessions/logs/resident-center-drift-state.json"
+      "The registered transition is complete: the frozen Control runtime and the product source authority both hold the registered target. Nothing is outstanding. See Sessions/logs/resident-center-drift-state.json"
   elif [ "${DRIFT_STATE:-}" = "product-ahead" ]; then
     notify -u normal "📦 Resident Center: product ahead" \
-      "The product repository has advanced beyond the frozen Sessions runtime. See Sessions/logs/resident-center-drift-state.json"
+      "The product repository has advanced beyond the frozen Control runtime. See Sessions/logs/resident-center-drift-state.json"
   else
     notify -u normal "📦 Resident Center: drift state ${DRIFT_STATE:-unknown}" \
       "See Sessions/logs/resident-center-drift-state.json"
