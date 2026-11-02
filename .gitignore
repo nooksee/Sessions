@@ -41,6 +41,8 @@
 # Private by design (PoT 5.1, 5.4). These exist on the host and never enter Git:
 #   archives/receipts/*  records that quote the operator and name host paths; admitted one by one after redaction
 #   archives/legacy/     frozen copies of retired lanes, including runtime data that carries session identifiers
+#   archives/RoR-words.md  the ledger's source: each entry with the operator's words in place; RoR.md is its derived copy (PoT 1.2.10, 1.3.2)
+#   archives/words/      the sources of other records that quote the operator; their tracked copies are derived by the redact tool (PoT 1.2.10)
 #   MIND.md, archives/MIND-*, archives/NOTEBOOK-*  minds and sealed notebooks: who a resident is
 #   ops/etc/*.json       the registry, roster, promotions and host bindings: identity
 #   logs/*               telemetry: output, not a record
@@ -51,6 +53,8 @@
 /archives/MIND-*
 /archives/NOTEBOOK-*
 /archives/legacy/
+/archives/RoR-words.md
+/archives/words/
 /ops/etc/*.json
 /HANDOFF.md
 /.venv/
