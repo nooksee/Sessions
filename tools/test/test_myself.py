@@ -27,8 +27,8 @@ sys.modules[SPEC.name] = check_myself
 SPEC.loader.exec_module(check_myself)
 
 NOW = dt.datetime(2026, 8, 9, 23, 0, tzinfo=dt.timezone.utc)
-CODEX_ID = "0000bd76-0000-4000-8000-00000000bd76"
-CLAUDE_ID = "0000b454-0000-4000-8000-00000000b454"
+CODEX_ID = "0000b1b1-0000-4000-8000-00000000b1b1"
+CLAUDE_ID = "0000b2b2-0000-4000-8000-00000000b2b2"
 
 
 def json_line(payload: dict) -> str:

@@ -18,7 +18,7 @@ Three lessons are baked in here because each cost us a real incident:
    rewrote the donor identifier by whole-text replacement across the body. That
    is wrong, and it left a false claim in a live resident: Claudio Freeman's
    carried history was rewritten to read "I am Claude Shannon, session
-   61685fad", binding one resident's identity sentence to another's identifier.
+   0000f6f6", binding one resident's identity sentence to another's identifier.
 
    The donor identifier also legitimately appears in three kinds of preserved
    evidence, all of which must survive untouched:

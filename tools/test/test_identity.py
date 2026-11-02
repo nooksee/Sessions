@@ -23,7 +23,7 @@ from unittest import mock
 SCRIPT = Path(os.environ.get(
     "CANDIDATE", Path(__file__).resolve().parents[2] / "ops" / "lib" / "scripts" / "identity.py"))
 LIVE = os.environ.get("LIVE")
-SID = "0000cf4c-0000-4000-8000-00000000cf4c"
+SID = "0000d1d1-0000-4000-8000-00000000d1d1"
 ORIENT = ("<session_clinic_orientation>\nYou are `Chief Repository Operations Officer (JoJo Git)`, "
           "the continuing GitHub resident.\n</session_clinic_orientation>")
 DOCK_NOTE = "Agent Dock title in the room's window not set by the operator"
@@ -70,7 +70,7 @@ class Office:
     def jojo(self, **over) -> dict:
         row = {"key": "jojo-git", "role": "Chief Repository Operations Officer", "person": "JoJo Git",
                "provider": "copilot", "session_id": SID, "room": self.room,
-               "verified": "kevin", "[words sha256=edb465624291e4053c6c5ea4b7eb320dec773e10a57d26b95dcf0564f8e310f8]": "[words sha256=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08]"}
+               "verified": "kevin", "note": "test"}
         row.update(over)
         return row
 
@@ -118,10 +118,10 @@ def chat(title, sid=SID, user_set=True, adapter="github-copilot-cli", **extra) -
 def legacy_rows() -> list[dict]:
     return [
         {"key": "claude-one", "role": "Lead", "person": "Claude One", "provider": "claude",
-         "session_id": "0000849d-0000-4000-8000-00000000849d", "room": "/x", "verified": "kevin"},
+         "session_id": "0000aaaa-0000-4000-8000-00000000aaaa", "room": "/x", "verified": "kevin"},
         {"key": "codex-one", "role": "Dev", "person": "Codex One", "provider": "codex",
-         "session_id": "00004020-0000-4000-8000-000000004020", "room": "/y",
-         "verified": "unverified", "[words sha256=edb465624291e4053c6c5ea4b7eb320dec773e10a57d26b95dcf0564f8e310f8]": "pending"},
+         "session_id": "0000bbbb-0000-4000-8000-00000000bbbb", "room": "/y",
+         "verified": "unverified", "note": "pending"},
     ]
 
 
@@ -142,7 +142,7 @@ class ExistingRows(OfficeTest):
         o = self.office()
         o.roster["residents"] = [{"key": "claude-one", "display_name": "Lead (Claude One)"}]
         o.bindings["residents"] = [{"key": "claude-one",
-                                    "session_id": "0000849d-0000-4000-8000-00000000849d"}]
+                                    "session_id": "0000aaaa-0000-4000-8000-00000000aaaa"}]
         with mock.patch.object(o.mod, "agent_dock_title", side_effect=AssertionError), \
                 mock.patch.object(o.mod, "copilot_body", side_effect=AssertionError):
             code, out = o.run(*legacy_rows())
@@ -234,7 +234,7 @@ class HealthyRow(OfficeTest):
                 ws = (f"id: {SID}\ncwd: {o.room}\ngit_root: {o.room}\nbranch: main\n"
                       f"client_name: github/acp\nname: {header}\n  <session_clinic_orientation>\n"
                       "  You are `Chief Repository Operations Officer (JoJo Git)`, the lead.\n\n"
-                      "  cwd: /media/nos4r2/user_vol\n    id: 0000ef8b-0000-4000-8000-00000000ef8b\n"
+                      "  cwd: /media/nos4r2/user_vol\n    id: 0000d9d9-0000-4000-8000-00000000d9d9\n"
                       "user_named: false\nsummary_count: 0\nfork_count: 0\n"
                       "created_at: 2026-10-22T17:01:16.583Z\nupdated_at: 2026-10-22T17:01:16.919Z\n")
                 o.body(workspace=ws)
@@ -366,7 +366,7 @@ class Mismatches(OfficeTest):
 
 class FailClosed(OfficeTest):
     def test_unreadable_body(self):
-        other = "0000ef8b-0000-4000-8000-00000000ef8b"
+        other = "0000d9d9-0000-4000-8000-00000000d9d9"
         cases = [
             ("missing", lambda o: None, "container missing"),
             ("no orientation", lambda o: o.body(orientation=None), "no orientation row"),

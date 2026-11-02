@@ -53,8 +53,8 @@ class LiveClaudeSessionRecordTests(unittest.TestCase):
         import json, os
         with tempfile.TemporaryDirectory() as d:
             rec = Path(d) / "sessions"; rec.mkdir(); proj = Path(d) / "projects" / "-room"; proj.mkdir(parents=True)
-            body = proj / "00008b12-0000-4000-8000-000000008b12.jsonl"; body.write_text("{}\n")
-            dead = proj / "00006ea5-0000-4000-8000-000000006ea5.jsonl"; dead.write_text("{}\n")
+            body = proj / "0000a4a4-0000-4000-8000-00000000a4a4.jsonl"; body.write_text("{}\n")
+            dead = proj / "0000dead-0000-4000-8000-00000000dead.jsonl"; dead.write_text("{}\n")
             (rec / "1.json").write_text(json.dumps({"pid": os.getpid(), "sessionId": body.stem}))
             (rec / "2.json").write_text(json.dumps({"pid": 2**22 - 1, "sessionId": dead.stem}))
             held = ret.live_claude_session_bodies(rec, Path(d) / "projects")
