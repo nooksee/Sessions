@@ -1,11 +1,10 @@
-<!-- redact: public copy; source sha256 c614b0157d4d7c9e0d522e17761de7449ed4e5072ce3b67705a825f519522a6c; rules 8; mode history; words 4; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: closeout
 
 Script: `Sessions/ops/lib/scripts/closeout.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_closeout.py`. Card: `Sessions/ops/src/reports/closeout.md.tpl`. Spec writer: Claude Shannon, 2026-10-30, from Kevin's direction. Status: built and tested by its writer; the independent review of the code is pending. Nothing is installed: wiring a hook into any resident's settings needs Claudio's review and Kevin's named go.
 
 ## First Principles Rationale
 
-Kevin, 2026-10-30: "[words sha256=633ec20c58985661e3fc6f7854698a6253d2374ce48dc0161c321e101ad5b83e]"
+Kevin, 2026-10-30: an organism that is to die carries its death process encoded within it; in the same way, a model needs some means of knowing that its time has come, so that the closeout does not depend on him remembering to send the prompt.
 
 Until now, a resident's end was noticed by someone else: a percentage read by hand, a packet carried in late, or never. Joy's closing packet of 2026-10-29 never reached her. The closeout must be built into the resident and triggered by its own measured state, not by anyone's memory.
 
@@ -22,11 +21,11 @@ Input to a resident's mind is solicited by a prompt in conversation and written 
    - **Silence.** Above the reserve it prints nothing.
    - **At the reserve or beyond,** it prints one block that Claude Code adds to the resident's context: the measured figure and the closeout card below. It repeats once per 5 points crossed, recorded in an ignored state file keyed by session. The state re-arms when the figure falls back above the reserve, after a compaction or a rotation.
    - **Kevin's copy.** The same crossing sends Kevin a notification, as the wire bell does.
-   - **Unknown.** With no reading or no known window, it prints nothing to the resident and logs "[words sha256=b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc]". After 3 consecutive unknowns, one notification goes to Kevin, so that an unknown is never silent for everyone. Kevin may decline this.
-   - **Never in the way** (Claudio C3). Claude Code erases the prompt when a `UserPromptSubmit` hook exits with code 2. So the hook catches every error, never uses an argument parser that exits on its own, always exits 0, routes any failure to the "[words sha256=b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc]" path, and runs under an explicit 5-second timeout.
+   - **Unknown.** With no reading or no known window, it prints nothing to the resident and logs "unknown". After 3 consecutive unknowns, one notification goes to Kevin, so that an unknown is never silent for everyone. Kevin may decline this.
+   - **Never in the way** (Claudio C3). Claude Code erases the prompt when a `UserPromptSubmit` hook exits with code 2. So the hook catches every error, never uses an argument parser that exits on its own, always exits 0, routes any failure to the "unknown" path, and runs under an explicit 5-second timeout.
    - **Limit.** A hook fires on a prompt, not during a turn. One long turn can cross both lines with no prompt to carry the card. The backstop is the `gauge` timer's notification to Kevin, on his go.
 4. **The signal (Codex residents).** Codex CLI 0.166 documents the same `UserPromptSubmit` hook, able to add developer context (Joe Codex, `joe.md`, block 3). The PyCharm path is untested, so the route is designed the same way and tested on one Codex resident before relying on it. Until then, and for Copilot, the `gauge` timer notifies Kevin, and he pastes the card.
-5. **The card.** The resident follows the card in order, the same every time. Its text has one source, the template `ops/src/reports/closeout.md.tpl`. `closeout.py` renders that template, filling the measured percent, the window, the reading time and the rotation writer, and this spec does not restate it. A template the hook cannot read or fill is an "[words sha256=b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc]", never a hand-written fallback card. The fields of a mind entry are defined in `mind.md`.
+5. **The card.** The resident follows the card in order, the same every time. Its text has one source, the template `ops/src/reports/closeout.md.tpl`. `closeout.py` renders that template, filling the measured percent, the window, the reading time and the rotation writer, and this spec does not restate it. A template the hook cannot read or fill is an "unknown", never a hand-written fallback card. The fields of a mind entry are defined in `mind.md`.
 6. **The rotation** follows `rotate.md`. The meter's 70 percent is the due point.
 
 ## Anecdotal Anchor

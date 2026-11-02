@@ -1,11 +1,10 @@
-<!-- redact: public copy; source sha256 54d3d70d8622338721880e4804e318b94ddbe01ed8485190254c8c168d00df79; rules 8; mode history; words 8; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: template
 
 Binary: `Sessions/ops/bin/template` (Bash, no library). Templates: `Sessions/ops/src/{scripts,docs,tests,reports}/*.tpl`, 11 files. Self-test: `ops/bin/template --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/template`, its `factory` renderer and its `ops/src/**/*.tpl` form (`Projects/STELA`); rewritten the same day to render from template files instead of inline text. Status: built 2026-10-30; self-test covers all registered templates and the opt-in spec-preserving route. Claudio Freeman reviews it before it is relied on. Map: `docs/ops/README.md`.
 
 ## First Principles Rationale
 
-Kevin, 2026-10-30, on why STELA keeps `.tpl` templates: "[words sha256=d267248c75cf0f1575f7eb5d945cc60b886916d7bcaca6a31ba3bccbb9b9961c]"
+Kevin, 2026-10-30, on why STELA keeps `.tpl` templates: the agent kept revising the form, and at times forgot it altogether, and the templates were his effort to make the form uniform and consistent and the reports better.
 
 A form kept in an agent's memory drifts one use at a time: a receipt without its custody hashes, a packet without a stop condition, a closeout card reworded by whoever pasted it. A form kept in a file, with its required fields declared at the top, cannot be forgotten or quietly revised: the renderer refuses until every field is filled, and refuses anything it does not recognize.
 
@@ -55,10 +54,10 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
 3. **Slots given.** `--slots-file` holds `KEY=VALUE` lines; blank lines and lines starting with `#` are skipped, and any other line that is not `KEY=VALUE` is refused with its line number. The value is everything after the first `=`, verbatim, on one line; a value with line breaks is given with `--slot`. Each of these is refused, and named:
    - a key that is not a slot name;
    - a slot given twice, in the file or on the command line;
-   - an empty value ("[words sha256=140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe]" is written out when a field is empty, as `agent-input.md` asks).
+   - an empty value ("none" is written out when a field is empty, as `agent-input.md` asks).
 4. **Rendering.** One pass over the body: each `{{SLOT}}` is replaced by its value, and a value is never searched for markers itself, so one slot cannot fill another. Afterwards, any `{{...}}` left in the output, from a value that held one, is refused and named. Nothing is written until the render is clean.
 5. **Report mode** (`receipt`, `packet`, `closeout`, `ror`, `custody`, `validation`, `source-change`, `readme`).
-   - Every required slot must be given. Missing slots are listed, each with its note, with the count ("[words sha256=ab4d60115f33210da69dfd3f17c48830714272383c34b7eebdf7f02057c5005f]"); unknown slots are listed too; then it refuses, and renders nothing.
+   - Every required slot must be given. Missing slots are listed, each with its note, with the count ("2 of 17 required slot(s) missing"); unknown slots are listed too; then it refuses, and renders nothing.
    - A value holding `[PLACEHOLDER` is refused: placeholders belong to tool skeletons only.
    - Output goes to standard output, or with `--out PATH` to that file. `--out` refuses an existing path, a link included, and a path whose folder does not exist (it creates no folder); it writes under `noclobber` and prints the path and byte count.
    - These four words are template types, so they are not available as tool names. `closeout` was already refused as a tool name, because its spec exists.
@@ -67,7 +66,7 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
      named case lane. Relative paths and symlink aliases are resolved with
      coreutils `realpath -m`. This is a trusted-writer path guard, not a
      hostile same-user filesystem sandbox.
-   - The closeout card's single source is its template, `ops/src/reports/closeout.md.tpl` (PoT 1.2, SSOT); `closeout.md` points to it and carries no copy. Its slots are `PERCENT`, `WINDOW`, `READING_TIME` and `ROTATION_WRITER`, so each card names one writer: "[words sha256=9b03ea54b2cc6cd4dff84ae7f0f9fdceb3dad3632bf805201a859af447183894]" The self-test renders the card and refuses a second copy of it in the spec.
+   - The closeout card's single source is its template, `ops/src/reports/closeout.md.tpl` (PoT 1.2, SSOT); `closeout.md` points to it and carries no copy. Its slots are `PERCENT`, `WINDOW`, `READING_TIME` and `ROTATION_WRITER`, so each card names one writer: "5. Tell Kevin you are ready for rotation. <ROTATION_WRITER> runs it." The self-test renders the card and refuses a second copy of it in the spec.
 6. **Tool-set mode** (`<word>`).
    - **Name.** One lowercase word: letters `a` to `z` only, 2 to 32 of them.
    - **Root.** By default, the room that contains this `ops/bin` folder, which must hold `AGENTS.md` and `PoT.md`. With `--root=DIR`, an existing directory of any kind, for scratch trees and tests. Templates always come from this room's `ops/src`, whatever the root.
@@ -109,7 +108,7 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
    18. option misuse is refused: `--out` in tool-set mode, `--dry-run` or `--root` in report mode.
 
    The directory is removed when the test exits. Output is `OK: template self-test passed (18/18).`
-   Generated scripts expose `SCRATCH = SESSIONS / "[words sha256=d61d458b83131ff21256321adc4f62606c95b1ef0d5e89ff8f700f0cdffa4718]"`; script,
+   Generated scripts expose `SCRATCH = SESSIONS / "var" / "tmp"`; script,
    specification and packet templates cite PoT 1.1.4 and 1.1.13 instead of
    sending arbitrary rebuildable intermediates into `storage/`. These forms
    affect newly generated artifacts; existing records are not regenerated.
@@ -126,14 +125,14 @@ Dropped from STELA:
 
 ## Anecdotal Anchor
 
-On 2026-10-30, Kevin asked for the rotation to be formalized: "[words sha256=6c0099a746ec66d4a893779fe5b717df7a0483a5aa9590b519ffa886d5b9f54e]" (`rotate.md`). In Joy's rotation 6, three slips came from hand-glued joins:
+On 2026-10-30, Kevin asked for the rotation to be formalized, because to him it always felt haphazard and awkward and was never carried out the same way twice (`rotate.md`). In Joy's rotation 6, three slips came from hand-glued joins:
 - a path passed where text was meant;
 - an image pointer that led nowhere;
 - a chmod in the wrong order.
 
 The same day, the room adopted STELA's convention, and its map lists 42 legacy scripts in `Scripts/` to be moved to `ops/lib/scripts/`, one word each, with a spec each, as each is next touched. That is 42 chances for the same kind of slip at the joins between script, spec, tests and registry. The day `template` was first built, `help specs` showed where hand assembly had already left gaps: `closeout` and `rotate` each have a spec and no script.
 
-Later that day Kevin explained STELA's templates: the agent "[words sha256=18eeb6b42379ecd0426e12cf1a6ceee32a63df32b45d0bfadbaef1503ca3d9b4]" The rotation receipts in `archives/receipts/` show the same drift: Joy's rotation 6 receipt (`joy-anne-rotation-6-20261030.md`) is organized as Why, Close and custody, Build, Gates, Install, Rollback, Not done and Deviations, while `rotate.md` phase 9 asks for tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations, acceptance and its time. `template receipt` holds every future receipt to the phase 9 list.
+Later that day Kevin explained STELA's templates: the agent kept changing the form, or at times forgot it. The rotation receipts in `archives/receipts/` show the same drift: Joy's rotation 6 receipt (`joy-anne-rotation-6-20261030.md`) is organized as Why, Close and custody, Build, Gates, Install, Rollback, Not done and Deviations, while `rotate.md` phase 9 asks for tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations, acceptance and its time. `template receipt` holds every future receipt to the phase 9 list.
 
 ## Integrity Filter Warnings
 
@@ -151,5 +150,5 @@ Later that day Kevin explained STELA's templates: the agent "[words sha256=18eeb
 - A rendered report is only as true as its slots. `template` checks that every field is present and filled; it does not check that a hash is right or a gate really passed. The writer stays answerable for every value.
 - A template change is a form change. Editing a `.tpl` changes every future receipt, packet or card; it is done by the template's owner, Claude Shannon, and the self-test is run after it. Case 17 fails if the closeout card drifts from `closeout.md`.
 - The registry row is text for the registry's writer, who owns that file. Its ID is computed from the registry as it stands at that moment. Two skeletons generated before either row is added receive the same ID; the registry writer resolves that.
-- Every generated tool file is a skeleton that says so: the script refuses with exit 2, and the spec's `Status:` reads "[words sha256=2ac11a92104c4d7d1403c56587d239f7a46d17192a2f2a9d12fda14dfa806574]". Nothing generated is fit to run until its writer replaces every `[PLACEHOLDER]` and Claudio Freeman has reviewed it.
+- Every generated tool file is a skeleton that says so: the script refuses with exit 2, and the spec's `Status:` reads "skeleton". Nothing generated is fit to run until its writer replaces every `[PLACEHOLDER]` and Claudio Freeman has reviewed it.
 - `--test` writes only inside its own temporary directory and removes only that directory. It reads `docs/ops/specs/scripts/closeout.md` for case 17.

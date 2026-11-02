@@ -1,9 +1,9 @@
-<!-- redact: public copy; source sha256 556c6eff85355605fbc7cc45ecc36d2613e82447809294a7887ccc640a34f4d5; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 dca31666b5ce331196cfc4a31d01ff733fb8ba6a717b7a0585a104e5d655526c; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
 # Port of the Sessions room to the STELA base
 
 Owner: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident. Written 2026-11-01. Convention: STELA (`Projects/STELA`).
 
-The operator directed on 2026-11-01: "[words sha256=19f15b9b270766a195600e9add9672f0eb2e63f05963d21654a3d66e2ef1b488]". This tree is that port, done in one pass on a copy of the operator's zip of the room, for the operator to review. The original folder, the nooksee/sessions repository and the nooksee/STELA repository were not changed by it.
+The operator directed on 2026-11-01 that the Sessions room be ported to the STELA framework and that the original STELA be left untouched. Then, when offered a lane-by-lane port, he directed that the legacy material be converted and refactored into a devops-style folder and file structure, that his agents' material be tidied so that it was no longer scattered everywhere, and that the new setup fix those problems and bring discipline to the repository; he added that the devops style he meant is STELA. This tree is that port, done in one pass on a copy of the operator's zip of the room, for the operator to review. The original folder, the nooksee/sessions repository and the nooksee/STELA repository were not changed by it.
 
 ## The rule
 

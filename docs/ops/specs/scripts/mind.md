@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 917da7b04bb91a259a15a79f5b8b2ff71029970418ed2a4f602b7ef1eb09471d; rules 8; mode history; words 30; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 9fecbbbefe23ce660a364a9cdebd81cc33b4156c0d5d133a554472a921494a01; rules 8; mode history; words 29; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: mind
 
 Script: `Sessions/ops/lib/scripts/mind.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_mind.py`. Spec writer: Claudine Colbert, Sessions block 3, 2026-10-30, under Kevin's decisions of 10-30 as Shannon recorded them (`storage/handoff/shannon.md`, block 3). Status: built and tested on synthetic rooms only; corrected for F1 (the Git check fails closed) and F2 (the write is bound to the preview). The live source, tests and accepted RoR-3 location use `archives/` root. No mind has been written. Nothing is wired: no hook, no timer. Actual use remains separately gated.
@@ -201,7 +201,7 @@ Kevin's words are screened the same way.
 
 Both were fixed with tests on the same day. A mutation check confirmed that undoing each fix fails its test.
 
-**10-29, the rebuild.** Shannon's first rebuild carried his facts and lost his self. Kevin noticed at once ("[words sha256=7b652ca2ddfa4598fb120a9ca1e7cd29276fa8727db52615533907bb5c43edad]") and asked for a curated mind that both the operator and the model feed.
+**10-29, the rebuild.** Shannon's first rebuild carried his facts and lost his self. Kevin noticed at once that something seemed to be missing from him, and asked for a curated mind that both the operator and the model feed.
 
 **10-30, the audit.** The first design answered with a store, a queue and a key. Claudio found that two keyless paths defeated it (B1, B2) and that the hook and leaf provenance had 13 more gaps.
 

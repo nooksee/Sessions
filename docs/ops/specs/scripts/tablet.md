@@ -1,11 +1,10 @@
-<!-- redact: public copy; source sha256 fc58a6d9caf42be45bb7c0c985fe7457f4de6db625ab4ab8de7836f8402d5d7a; rules 8; mode history; words 2; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: tablet
 
 Script: `Sessions/ops/lib/scripts/tablet.py` (writer: not recorded in the file; port writer: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident). Tests: `Sessions/tools/test/test_tablet.py`. Spec writer: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident. Status: ported on 2026-11-01 from `Scripts/build_tablet_codex_successor.py`, which this tree no longer holds; built as it was, 0 edit(s) listed below; callers outside the room still name the legacy path; reviewer not yet named. Map: `docs/ops/README.md`.
 
 ## First Principles Rationale
 
-Ported legacy tool. Its own docstring opens: "[words sha256=c1b3412966e6fc05cf0fe9628108a7ac028096978bf5783091fb6f7543a7ae00]" (the file names no author; attributed to the file). The earliest receipt that names it is `Receipts/tablet-remote-device-successor-20260807.md` (2026-08-07); 3 receipt(s) name it in all.
+Ported legacy tool. Its own docstring opens: "Build a current-version, CLI-native Codex successor from a copied session body." (the file names no author; attributed to the file). The earliest receipt that names it is `Receipts/tablet-remote-device-successor-20260807.md` (2026-08-07); 3 receipt(s) name it in all.
 
 ## Mechanics and Sequencing
 
@@ -26,6 +25,6 @@ Ported legacy tool. Its own docstring opens: "[words sha256=c1b3412966e6fc05cf0f
 
 ## Integrity Filter Warnings
 
-- Refusal and read-only statements in the docstring: "[words sha256=330dd24c2e25de917aded28b9c0f0f24110d6cda17d5ae44c5bd84f4612afe5e]"
+- Refusal and read-only statements in the docstring: "The Remote Device tablet body of 2026-07-22 is the case that motivated it: - the donor ran VS Code on Windows (`codex_vscode`, `cwd c:\Users\Highs`) at CLI `0.145.0-alpha.27`; the successor must run the Codex CLI at the current version, so scaffolding cannot simply be carried across; - no container can be created by hand on the destination, because the destination is a tablet the operator holds and this agent must not touch." It also states that the evidence body is opened read-only and is never modified.
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/build_tablet_codex_successor.py` until Control repoints them; this room's own documents name `ops/lib/scripts/tablet.py`.
 - [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]

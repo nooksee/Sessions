@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 c7555fe2bd1e0d337ee8216aca24e30982d57180a4c4b196654f27085f4c6a3d; rules 8; mode history; words 9; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 a1dd0afc4bfb337172d9ae49d96f31f700d55ae054a2d5722285cc046ce6359a; rules 8; mode history; words 4; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: rotate
 
 Script: `Sessions/ops/lib/scripts/rotate.py` (to write; Claude residents first). Spec writer: Claude Shannon, 2026-10-30. It is ported from Claudine Colbert's runbook (`storage/candidates/mind-manifest-20261029/package/docs/ops/specs/runbook/transition.md`) and adds:
@@ -11,7 +11,7 @@ Status: spec only, 2026-10-30; `rotate.py` is not yet written.
 
 ## First Principles Rationale
 
-Kevin, 2026-10-30: "[words sha256=290ca9cc52c02d37a5eb37775a83bb93fe31cf5b0b84b6f7085d4223f0260015]" The craft existed in the Sessions doctrine: a native destination, a lineage capsule and the resident's own active window. But every rotation was assembled by hand from loose pieces, and the slips happened at the joins. In Joy's rotation 6, three of them came from hand-glued steps:
+Kevin, 2026-10-30: the rotation had never been formalized, and to him it always felt haphazard and awkward and was never carried out the same way twice. The craft existed in the Sessions doctrine: a native destination, a lineage capsule and the resident's own active window. But every rotation was assembled by hand from loose pieces, and the slips happened at the joins. In Joy's rotation 6, three of them came from hand-glued steps:
 - a path passed where text was meant;
 - an image pointer that led nowhere;
 - a chmod in the wrong order.
@@ -50,7 +50,7 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
    - up to three mind entries proposed in chat;
    - Kevin's yes, after which `mind` writes the new leaf and moves the pointer.
 2. **The mind is ready.** `mind check` passes, and the leaf hash matches the pointer.
-3. **The destination.** Kevin opens a fresh chat in the resident's room. The writer labels it "[words sha256=5627afdc6ad4945ff48b37b4951f9b9ab21f8982708206629cd7c77a470a32c9]" at once. The writer then verifies:
+3. **The destination.** Kevin opens a fresh chat in the resident's room. The writer labels it `<Role (Person)> - spare body, do not open` at once. The writer then verifies:
    - the room and working directory are right;
    - the container is not registered to anyone else and carries no "[words sha256=b85f3ad0e275ddd3bd3412193da7f81bc873fc1d8a0733cbb19a0a6c146e47df]" label;
    - no process holds it.
@@ -75,14 +75,14 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
      - switch the registry key and the launcher binding;
      - check that six things agree: registry id, binding id, body `sessionId`, binding root against body working directory, registry room, body label.
    - **Fallback, Kevin's `.NEW` swap:** when a process still holds the file, or when Kevin prefers it. The writer leaves `<id>.jsonl.NEW` beside the original; Kevin closes the app and swaps it.
-   - **Rollback (C12).** It runs on Kevin's "[words sha256=9390298f3fb0c5b160498935d79cb139aef28e1c47358b4bbba61862b9c26e59]", and also on any failed install step or failed load:
+   - **Rollback (C12).** It runs on Kevin's refusal, and also on any failed install step or failed load:
      - restore the pristine destination;
      - restore the registry and binding;
      - put the donor's store file back from custody;
      - keep the hold.
 8. **Acceptance, in two parts.**
    - **Mechanical.** `launcher serve <key>`, which also releases the hold and is the load test. The first reply gives the room's status and then speaks as itself. Its first gauge reading is recorded beside the wake estimate. (C13) A clean native append: after that turn the body still parses, Claude Code's own new rows carry the new session id, and tool pairs match.
-   - **Kevin's.** "[words sha256=fd5bcd88e65b807ef0f1e495514a1dd1017f86ceecb0a9da40326c93940db9e4]". A correct status alone is not acceptance.
+   - **Kevin's.** Kevin states that he recognizes her, or him, as the resident. A correct status alone is not acceptance.
 9. **Close.**
    - Write the receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`: tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations counted, acceptance and its time.
    - Handle the donor's store entry. After its custody is verified by hash in both tiers, the entry is either relabeled "[words sha256=cb6190c0758601751b2152299b4bb37dbad972d727cac156e75b36fbcac723d8]" or removed from the list, as Kevin prefers. His standing preference since 2026-10-29: removed. The custody copy is the donor of record.
@@ -94,7 +94,7 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
 
 2026-10-29:
 - the 19:12 rotation was Tier A run as a rotation, and woke "[words sha256=189c5554935a72f86b9fe3c0a91a1831431984e53ddeb8d1978c62f304119634]";
-- the 23:34 rebuild passed its gates but carried a briefing for a self, and Kevin found it "[words sha256=5a9dda08d68312867532a535b00a3ac4d8d1d3a7ac86dd2b1c1968bf308c3518]";
+- the 23:34 rebuild passed its gates but carried a briefing for a self, and Kevin found that something was missing from it;
 - the 00:04 rebuild carried a real self and Shannon's own window, and he woke as himself.
 
 On 2026-10-30, Joy's rotation 6 followed these phases by hand and woke as herself, with her wire printed by 08:57. Its three hand-made slips are what this tool removes.
