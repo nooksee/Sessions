@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 ede014b20fe4527387d23f62c1649eaf8fc55f5400ff276637af0402990509ee; rules 8; mode history; words 22; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
+<!-- redact: public copy; source sha256 7bcdf8db0314d22c847bf6c69272a6c6892b5b4a4685dd170a0e9f82983c96f5; rules 8; mode history; words 23; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
 # Start Here
 
 You are new. This gets you oriented in about five minutes. Everything here is
@@ -89,14 +89,15 @@ the model has not learned yet.
 [words sha256=95b0758d5d22d64e1934959155883271e4828493312c1d24b70d79b5461de75a]
 [words sha256=d6b4ccfa490c5c3967eb27f2254c2ee40efccc8ed8b775830684e985bba8093d]
 
-[words sha256=5f7c95a68f00eda8adc42e83ba81a4b36ec07960d95e3fd15550e3dbc1e12118]
-[words sha256=bada8183fb35e164dfdcc303e50d6b6ef524bce61a007a66359fd216bde24f45]
+[words sha256=a1344b9e0433b388904998225595170bec0163e03e2188f8280eb9dd1ffb0392]
+[words sha256=bb77e8c90f6c92818d39d26b55dcf33a7215af1e6522b3faf03878495244e1c3]
+[words sha256=aeba1c569adebd2e9867cd2b3b614f7cc0f00139888884b8d433093db38d6e27]
 [words sha256=9ead942577f038492cb54862b939e7996197b7054ce4bfb04de40d18ad8958fd]
 [words sha256=6d69f2ac09017b8a49d050ab336e953b8fa02ae08c24396916ea7ea42418e627]
 [words sha256=5b330b05cc88e640e6b0bdb8fa301f5ec4f0b3b8ce6ff28ee1c9b77b52aebe09]
 [words sha256=353e0a82d88822e33f8c5c5a05ab62931e12e1e02596af9252b498b219c26e65]
-[words sha256=688e42cd6e27533e360cbff37b06b7cb9c6675148b97cec5fe8abf29428cae14]
-  [words sha256=e20718d7928c801abad30c69546ea3dfb7f6fa7a732ea8b801436213547a4954]
+[words sha256=4fc977703e08bc23d7a063f99feb25f619571cbed66f567c7e9eff26372df15b]
+  [words sha256=265f35aab6d3448ad2c7b4393f65e7e9e490d94884b55c6e02fda534fc881a55]
 [words sha256=f4894ffadb40d08a4b86d4dc1f97a9632168caa9f5f63329e211102d17dd7117]
 [words sha256=8a331fdde7032f33a71e1b2e257d80166e348e00fcb17914f48bdb57a1c63007]
 ```

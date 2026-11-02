@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 de73043834a760eb7b182e2673a5f18cde8edc29add992a85786973be84854d1; rules 8; mode history; words 58; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
+<!-- redact: public copy; source sha256 4ff206976998bbf25b1e047f5d3a9eca6609181cec19fce4954a0268871ddca4; rules 8; mode history; words 58; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
 # Sessions Operations Manual (Command Console)
 
 Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request ("[words sha256=5b699f7ed115780f2363d3261427967ee430cbc0ed7514b43d295b5965b799dd]"), by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
@@ -360,7 +360,7 @@ From the map (`docs/ops/README.md`), binding on every writer in this room:
 
 Also:
 - The legacy scripts moved from `Scripts/` to `ops/lib/scripts/` on 2026-11-01, one word each with a spec (`docs/ops/specs/runbook/port.md`); the two frozen remains are under `archives/legacy/Scripts/`.
-- `archives/legacy/Archived/`, `archives/legacy/Attic/`, `archives/legacy/Plans/`, `archives/legacy/Intake/` and `archives/legacy/Config/` each get one review for the base or retirement.
+- `archives/legacy/Archived/`, `archives/legacy/Attic/`, `archives/legacy/Plans/` and `archives/legacy/Intake/` each get one review for the base or retirement. `Resident-Center/` and `Config/` left the room in block 7 for Control's frozen runtime custody.
 - Raw session payload never enters Git.
 
 ---

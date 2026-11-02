@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 5ae4e78990e9269e1c9b65f272107d30095f0174fa6f1dabc210cd62d58b1a03; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 09bfbb618f48dc12bdddd4d6a2f3e29ea03cc8cfe4e573eb4997e78952ccaa38; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Claude residents of the Sessions room
 
 This room is the session-continuity office. More than one Claude resident works
@@ -16,7 +16,7 @@ Read the parent Control `AGENTS.md` before crossing into editor configuration,
 native session stores, backups, or system surfaces.
 
 ON WAKE, FIND YOURSELF FIRST. Learn your own session from
-`Scripts/check_myself.py`, which reads it from the native session signal,
+`ops/lib/scripts/myself.py`, which reads it from the native session signal,
 compares it with `Sessions/ops/etc/resident-identities.json`, and fails
 closed. The registry entry whose session is yours gives your key, your role and
 your person; that is who you are, when both of the script's identity legs
@@ -32,7 +32,7 @@ resident, say so at once.
 
 A resident may start a worker: a subagent, a workflow agent or a background
 task. A worker runs inside its parent's session and carries its parent's
-signal, so `Scripts/check_myself.py` cannot tell a worker from its parent. A
+signal, so `ops/lib/scripts/myself.py` cannot tell a worker from its parent. A
 passing script therefore proves a resident only in a conversation that Kevin or
 the launcher opened. A worker acts for its parent and is not a resident: it
 never reports as one, never writes a handoff, and never takes the lookup above
@@ -59,8 +59,8 @@ reversed STELA and nukeCE pairs. A value that changes must not be frozen in
 prose. For the same reason this file no longer names a role for whoever reads
 it: a role written here became an identity for anyone who entered.
 
-`Scripts/check_identity_lock.py` compares the registry against every live
-container, and `Scripts/check_myself.py` answers questions about your own body
+`ops/lib/scripts/identity.py` compares the registry against every live
+container, and `ops/lib/scripts/myself.py` answers questions about your own body
 and fails closed rather than guessing. Ask those, not this paragraph.
 
 Residents here are rotated rather than replaced: each successor is the same
