@@ -1,7 +1,7 @@
-<!-- redact: public copy; source sha256 b0f98358e3333ae7a771aa3489d2075d4de03b022f072dabc8d05d103520024d; rules 8; mode history; words 5; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 f0c103a5b9743fa2a05e6141e19590b59a27dff3eeb4c224c53a198d416d2789; rules 8; mode history; words 5; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: agent-input (the packet for a resident)
 
-Asset: `Sessions/ops/src/runbook/agent-input.yaml` (`[PLACEHOLDER]` on 2026-10-30). Registry entry: `docs/ops/registry/runbook.md` (`RUNBOOK-02`). Spec written 2026-10-30 for Claude Shannon, adapted from the STELA runbook form (the file first held STELA's execution-decision spec, preserved in custody and in `Projects/STELA/docs/ops/specs/runbook/execution-decision.md`). Sources for the fields below: the Control root `CLAUDE.md` ("[words sha256=15b87514b499698e86a243b761548dee834aadb26e930877a64814e1d339cb42]", five steps), `Decisions/control-staff-routing-and-incident-closure.md`, and the Sessions block assignments in `storage/handoff/shannon.md`. Status: spec written 2026-10-30; the packet template asset is a placeholder.
+Asset: `Sessions/ops/src/runbook/agents/agent-input.yaml` (`[PLACEHOLDER]` on 2026-10-30). Registry entry: `docs/ops/registry/runbook.md` (`RUNBOOK-02`). Spec written 2026-10-30 for Claude Shannon, adapted from the STELA runbook form (the file first held STELA's execution-decision spec, preserved in custody and in `Projects/STELA/docs/ops/specs/runbook/execution-decision.md`). Sources for the fields below: the Control root `CLAUDE.md` ("[words sha256=15b87514b499698e86a243b761548dee834aadb26e930877a64814e1d339cb42]", five steps), `Decisions/control-staff-routing-and-incident-closure.md`, and the Sessions block assignments in `storage/handoff/shannon.md`. Status: spec written 2026-10-30; the packet template asset is a placeholder.
 
 ## First Principles Rationale
 A resident works only from what reaches its own conversation. Residents live in separate native containers, and a shared project root does not merge them. So every piece of work handed to a resident travels as a packet: a short, exact text that Kevin carries into that resident's chat. A routing decision is not delivery, and a file left in a room proves no delivery.
@@ -23,7 +23,7 @@ A packet has to stand alone. The resident receiving it may have been rotated, co
 3. **Delivery.** Kevin pastes the packet into the resident's own chat. A packet written to a file is a draft until he does.
 4. **Close.** The owner reports by the stop condition. Results that last are promoted from the team room to `archives/receipts/` or the office handoff.
 
-[PLACEHOLDER: the paste-ready packet template in `ops/src/runbook/agent-input.yaml`, carrying the fields above as blanks to fill. Owner: Claude Shannon.]
+[PLACEHOLDER: the paste-ready packet template in `ops/src/runbook/agents/agent-input.yaml`, carrying the fields above as blanks to fill. Owner: Claude Shannon.]
 [PLACEHOLDER: a packet check (every field present, scope given as paths, a stop condition with a time). Owner: Claude Shannon; nothing is built and none is required before the template exists.]
 
 ## Anecdotal Anchor
