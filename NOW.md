@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 957c03f10ff8b02207f5cb1f18adeae01350f70b59d670b084ed52bca290ed71; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 9bc30a2bd9a03636463736d14790d702775aac70dfba4fba71364264099368f9; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
 # Session Continuity Command Center
 
 Updated: 2026-11-01, stage D of the landing; before that 2026-10-31, the Sessions repository and the room's front door;
@@ -45,7 +45,7 @@ history.
   is the rollback donor, and it is not edited as source. Canon:
   `Decisions/resident-center-source-authority-and-frozen-runtime-custody.md`.
   Drift between the two is reported by
-  `Scripts/check_resident_center_drift.py`, wired into rounds as a signal
+  `Control-Runtime/Scripts/check_resident_center_drift.py` (Control's frozen runtime, relocated in block 7), wired into rounds as a signal
   separate from Clinic patient health. It repairs nothing.
 - Resident Center residents assigned 2026-08-05: EZ Claude, who leads
   continuity, analysis, and adversarial review, and Leonard Codex, who performs
