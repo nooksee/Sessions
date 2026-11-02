@@ -8,6 +8,12 @@ caller-selected custody directory.
 
 This tool deliberately does not archive, delete, move, or rewrite Codex or
 Claude JSONL files. Codex archive state is handled by the supported Codex CLI.
+
+The IDE chat identifiers are host data and are not kept in this file. They are
+read from the chats file, by default ``ops/etc/pycharm-chats.json`` in the room,
+or from the path given by ``--chats``. The tool reads that file before anything
+else and refuses with one message and a nonzero exit when it is absent or
+malformed.
 """
 
 from __future__ import annotations
@@ -15,36 +21,109 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 
-GEORGE_VI_CHAT = "000098fc-0000-4000-8000-0000000098fc"
-TEMP_OSAI_CHAT = "00009b5d-0000-4000-8000-000000009b5d"
-LEGACY_CLAUDE_CHAT = "00008dac-0000-4000-8000-000000008dac"
+ROOM = Path(__file__).resolve().parents[3]
+CHATS = ROOM / "ops" / "etc" / "pycharm-chats.json"
+CHAT_KEYS = ("george_vi_chat", "temp_osai_chat", "legacy_claude_chat", "shell_only_stubs")
+CHAT_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
-SHELL_ONLY_STUBS = (
-    "0000eb8d-0000-4000-8000-00000000eb8d",
-    "0000ed3a-0000-4000-8000-00000000ed3a",
-    "0000f4ee-0000-4000-8000-00000000f4ee",
-    "0000ca56-0000-4000-8000-00000000ca56",
-    "00003095-0000-4000-8000-000000003095",
-    "0000b860-0000-4000-8000-00000000b860",
-    "00001639-0000-4000-8000-000000001639",
-    "0000e960-0000-4000-8000-00000000e960",
-    "00000c3f-0000-4000-8000-000000000c3f",
-    "00004b2f-0000-4000-8000-000000004b2f",
-    "00001b23-0000-4000-8000-000000001b23",
-    "0000f5e8-0000-4000-8000-00000000f5e8",
-    "000028fa-0000-4000-8000-0000000028fa",
-    "00004b15-0000-4000-8000-000000004b15",
-    "00003566-0000-4000-8000-000000003566",
-    "0000fe48-0000-4000-8000-00000000fe48",
-    "00008f47-0000-4000-8000-000000008f47",
-)
 
-RETIRED_TASK_IDS = (*SHELL_ONLY_STUBS, TEMP_OSAI_CHAT, LEGACY_CLAUDE_CHAT)
+class ChatsError(ValueError):
+    """The chats file is absent, unreadable, or malformed."""
+
+
+@dataclass(frozen=True)
+class Chats:
+    george_vi_chat: str
+    temp_osai_chat: str
+    legacy_claude_chat: str
+    shell_only_stubs: tuple[str, ...]
+
+    @property
+    def retired_task_ids(self) -> tuple[str, ...]:
+        return (*self.shell_only_stubs, self.temp_osai_chat, self.legacy_claude_chat)
+
+
+def _kind(value: object) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "a boolean"
+    if isinstance(value, (int, float)):
+        return "a number"
+    if isinstance(value, str):
+        return "a string"
+    if isinstance(value, list):
+        return "a list"
+    return "an object"
+
+
+def _unique_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    seen: dict[str, object] = {}
+    for key, value in pairs:
+        if key in seen:
+            raise ChatsError(f"repeats the key {key!r}")
+        seen[key] = value
+    return seen
+
+
+def load_chats(path: Path) -> Chats:
+    """Read and validate the chats file; raise ChatsError naming the one fault."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise ChatsError("does not exist") from None
+    except UnicodeDecodeError:
+        raise ChatsError("is not UTF-8 text") from None
+    except OSError as exc:
+        raise ChatsError(f"cannot be read ({exc.strerror or type(exc).__name__})") from None
+    except ValueError as exc:
+        raise ChatsError(f"cannot be read ({exc})") from None
+    try:
+        data = json.loads(text, object_pairs_hook=_unique_keys)
+    except json.JSONDecodeError as exc:
+        raise ChatsError(f"is not valid JSON ({exc.msg}, line {exc.lineno} column {exc.colno})") from None
+    if not isinstance(data, dict):
+        raise ChatsError(f"holds {_kind(data)}, not an object")
+    missing = [key for key in CHAT_KEYS if key not in data]
+    if missing:
+        raise ChatsError(f"lacks the key(s) {', '.join(missing)}")
+    extra = sorted(key for key in data if key not in CHAT_KEYS)
+    if extra:
+        raise ChatsError(f"has the unexpected key(s) {', '.join(repr(key) for key in extra)}")
+    places: list[tuple[str, str]] = []
+    for key in CHAT_KEYS[:3]:
+        if not isinstance(data[key], str):
+            raise ChatsError(f"gives {key} as {_kind(data[key])}, not a string")
+        places.append((key, data[key]))
+    stubs = data["shell_only_stubs"]
+    if not isinstance(stubs, list):
+        raise ChatsError(f"gives shell_only_stubs as {_kind(stubs)}, not a list of strings")
+    for index, value in enumerate(stubs):
+        if not isinstance(value, str):
+            raise ChatsError(f"gives shell_only_stubs[{index}] as {_kind(value)}, not a string")
+        places.append((f"shell_only_stubs[{index}]", value))
+    first: dict[str, str] = {}
+    for place, value in places:
+        if not CHAT_ID.fullmatch(value):
+            raise ChatsError(
+                f"gives {place} a value that is not a 36-character lowercase hyphenated hex identifier"
+            )
+        if value in first:
+            raise ChatsError(f"repeats one identifier at {first[value]} and {place}")
+        first[value] = place
+    return Chats(
+        george_vi_chat=data["george_vi_chat"],
+        temp_osai_chat=data["temp_osai_chat"],
+        legacy_claude_chat=data["legacy_claude_chat"],
+        shell_only_stubs=tuple(stubs),
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,6 +137,12 @@ def parse_args() -> argparse.Namespace:
     mode.add_argument("--preview-dir", type=Path)
     mode.add_argument("--apply", action="store_true")
     parser.add_argument("--custody-dir", type=Path)
+    parser.add_argument(
+        "--chats",
+        type=Path,
+        default=CHATS,
+        help="the chats file of IDE chat identifiers (default: ops/etc/pycharm-chats.json in the room)",
+    )
     return parser.parse_args()
 
 
@@ -96,6 +181,7 @@ def split_chat_blocks(lines: list[str]) -> list[tuple[int, int, str]]:
 def transform_workspace(
     text: str,
     *,
+    chats: Chats,
     remove_chat_ids: set[str],
     repair_george_vi: bool,
 ) -> tuple[str, dict[str, int]]:
@@ -114,7 +200,7 @@ def transform_workspace(
             remove_ranges.update(range(start, end))
             removed_chats += len(block_uids)
             continue
-        if repair_george_vi and f'<option name="uid" value="{GEORGE_VI_CHAT}"' in block:
+        if repair_george_vi and f'<option name="uid" value="{chats.george_vi_chat}"' in block:
             old_model = 'value="agent_acp.registry.claude-acp"'
             new_model = 'value="agent_acp.registry.codex-acp"'
             if old_model in block:
@@ -133,7 +219,7 @@ def transform_workspace(
                 george_vi_verified += 1
             lines[start:end] = block.splitlines(keepends=True)
 
-    map_ids = {*SHELL_ONLY_STUBS, *remove_chat_ids}
+    map_ids = {*chats.shell_only_stubs, *remove_chat_ids}
     removed_map_entries = 0
     output: list[str] = []
     for index, line in enumerate(lines):
@@ -153,13 +239,13 @@ def transform_workspace(
     }
 
 
-def inspect_task_history(task_history: Path) -> dict[str, int]:
+def inspect_task_history(task_history: Path, chats: Chats) -> dict[str, int]:
     shell_only_files = 0
     retired_full_files = 0
     task_ids_pending = 0
     task_ids_retired = 0
     deviations = 0
-    for uid in SHELL_ONLY_STUBS:
+    for uid in chats.shell_only_stubs:
         matches = sorted(task_history.glob(f"{uid}.*"))
         expected = [task_history / f"{uid}.agentsession"]
         if matches == expected:
@@ -169,7 +255,7 @@ def inspect_task_history(task_history: Path) -> dict[str, int]:
             task_ids_retired += 1
         else:
             deviations += 1
-    for uid in (TEMP_OSAI_CHAT, LEGACY_CLAUDE_CHAT):
+    for uid in (chats.temp_osai_chat, chats.legacy_claude_chat):
         matches = sorted(task_history.glob(f"{uid}.*"))
         suffixes = {path.suffix for path in matches}
         if suffixes == {".agentsession", ".events", ".lastid", ".usage"}:
@@ -197,11 +283,11 @@ def atomic_write(path: Path, text: str) -> None:
     os.replace(temp_path, path)
 
 
-def move_task_history(task_history: Path, custody_dir: Path) -> int:
+def move_task_history(task_history: Path, custody_dir: Path, chats: Chats) -> int:
     destination = custody_dir / "pycharm-task-history"
     destination.mkdir(parents=True, exist_ok=True)
     moved = 0
-    for uid in RETIRED_TASK_IDS:
+    for uid in chats.retired_task_ids:
         for source in sorted(task_history.glob(f"{uid}.*")):
             target = destination / source.name
             if target.exists():
@@ -213,6 +299,12 @@ def move_task_history(task_history: Path, custody_dir: Path) -> int:
 
 def main() -> int:
     args = parse_args()
+    try:
+        chats = load_chats(args.chats)
+    except ChatsError as exc:
+        raise SystemExit(
+            f"pycharm.py refuses: the chats file {args.chats} {exc}. Nothing else was read or written."
+        ) from None
     if args.apply and args.custody_dir is None:
         raise SystemExit("--apply requires --custody-dir")
     if args.apply:
@@ -220,7 +312,7 @@ def main() -> int:
         if pids:
             raise SystemExit(f"PyCharm must be closed; matching process IDs: {pids}")
 
-    task_report = inspect_task_history(args.task_history)
+    task_report = inspect_task_history(args.task_history, chats)
     if task_report["task_history_deviations"]:
         raise SystemExit(json.dumps(task_report, indent=2))
 
@@ -238,7 +330,8 @@ def main() -> int:
         original = path.read_text(encoding="utf-8")
         transformed, report = transform_workspace(
             original,
-            remove_chat_ids={TEMP_OSAI_CHAT, LEGACY_CLAUDE_CHAT},
+            chats=chats,
+            remove_chat_ids={chats.temp_osai_chat, chats.legacy_claude_chat},
             repair_george_vi=path.name == args.osai_workspace,
         )
         totals["workspace_files_scanned"] += 1
@@ -249,7 +342,7 @@ def main() -> int:
             totals["workspace_files_changed"] += 1
 
     pending = (
-        task_report["task_ids_pending"] == len(RETIRED_TASK_IDS)
+        task_report["task_ids_pending"] == len(chats.retired_task_ids)
         and task_report["task_ids_retired"] == 0
         and totals["removed_chats"] == 2
         and totals["model_repairs"] == 1
@@ -258,7 +351,7 @@ def main() -> int:
     )
     reconciled = (
         task_report["task_ids_pending"] == 0
-        and task_report["task_ids_retired"] == len(RETIRED_TASK_IDS)
+        and task_report["task_ids_retired"] == len(chats.retired_task_ids)
         and totals["removed_chats"] == 0
         and totals["removed_map_entries"] == 0
         and totals["model_repairs"] == 0
@@ -278,7 +371,7 @@ def main() -> int:
         for path, transformed in changed.items():
             atomic_write(path, transformed)
         totals["task_history_files_moved"] = move_task_history(
-            args.task_history, args.custody_dir
+            args.task_history, args.custody_dir, chats
         )
     else:
         totals["task_history_files_moved"] = 0
