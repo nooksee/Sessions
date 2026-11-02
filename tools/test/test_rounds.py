@@ -29,14 +29,14 @@ class SmokeTest(unittest.TestCase):
 
     def test_drift_block_is_the_registered_text(self):
         """The Resident Center drift step (Control's frozen-runtime decision) is present and byte-bound:
-        the wrapper's 6537-byte suffix hashes as George's stage C packet (2026-11-01 15:20) states.
+        the wrapper's 6486-byte suffix hashes as George's companion text (2026-11-01 18:58) states: the drift block with its fault output and its four messages at logs/.
         A static check, never a production run of the detector."""
         import hashlib
-        tail = TOOL.read_bytes()[-6537:]
+        tail = TOOL.read_bytes()[-6486:]
         self.assertIn(b"# Resident Center source drift", tail)
         self.assertIn(b"check_resident_center_drift.py", tail)
         self.assertIn(b"DETECTOR FAULT", tail)
-        self.assertEqual(hashlib.sha256(tail).hexdigest()[:16], "fa54ccf3e0b5f1d6")
+        self.assertEqual(hashlib.sha256(tail).hexdigest()[:16], "03163a6daeea0267")
 
 if __name__ == "__main__":
     unittest.main()

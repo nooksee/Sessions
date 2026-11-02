@@ -140,7 +140,7 @@ if [ -n "$DRIFT_FAULT" ]; then
   # Replace the state file. A fault leaves whatever the last successful run
   # wrote, and a stale "aligned" is exactly the reassurance nobody should get
   # from a detector that just failed.
-  "$PY" - "/media/nos4r2/user_vol/Sessions/Evidence" "$DRIFT_FAULT" "$DRIFT_RC" <<'FAULT'
+  "$PY" - "$EVID" "$DRIFT_FAULT" "$DRIFT_RC" <<'FAULT'
 import json, os, sys, tempfile, datetime as dt
 evid, fault, rc = sys.argv[1], sys.argv[2], sys.argv[3]
 now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
@@ -167,18 +167,18 @@ echo "$STAMP | resident-center drift: ${DRIFT_STATE:-unknown} (${DRIFT_SEV:-unkn
 if [ "${DRIFT_ALERT:-0}" = "1" ]; then
   if [ "${DRIFT_SEV:-normal}" = "critical" ]; then
     notify -u critical "📦 Resident Center: source drift" \
-      "State ${DRIFT_STATE}. The frozen Sessions runtime and the product source authority disagree. See Sessions/Evidence/resident-center-drift-state.json"
+      "State ${DRIFT_STATE}. The frozen Sessions runtime and the product source authority disagree. See Sessions/logs/resident-center-drift-state.json"
   elif [ "${DRIFT_STATE:-}" = "registered-converged" ]; then
     # A completed registered convergence has both sides equal at the
     # registered target; "product ahead" would be false (PR #64 review).
     notify -u normal "📦 Resident Center: registered convergence complete" \
-      "The registered transition is complete: the frozen Sessions runtime and the product source authority both hold the registered target. Nothing is outstanding. See Sessions/Evidence/resident-center-drift-state.json"
+      "The registered transition is complete: the frozen Sessions runtime and the product source authority both hold the registered target. Nothing is outstanding. See Sessions/logs/resident-center-drift-state.json"
   elif [ "${DRIFT_STATE:-}" = "product-ahead" ]; then
     notify -u normal "📦 Resident Center: product ahead" \
-      "The product repository has advanced beyond the frozen Sessions runtime. See Sessions/Evidence/resident-center-drift-state.json"
+      "The product repository has advanced beyond the frozen Sessions runtime. See Sessions/logs/resident-center-drift-state.json"
   else
     notify -u normal "📦 Resident Center: drift state ${DRIFT_STATE:-unknown}" \
-      "See Sessions/Evidence/resident-center-drift-state.json"
+      "See Sessions/logs/resident-center-drift-state.json"
   fi
 fi
 
