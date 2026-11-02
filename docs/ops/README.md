@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 8ea5ac16811cb624dd472ffa96bd34ca5058047cc8455be1d20e76c1ac117667; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 533525cd01f91b4d9b5053faae0750fb14c890a24939bb8213196845ba4e148d; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
 Owner: Claude Shannon. Written 2026-10-30 at Kevin's request for a 30,000-foot view. Convention: STELA (`Projects/STELA`). Base folders and root files are the base; no new specialty folders. Each script is one word, in `ops/lib/scripts/<word>.py`, with a spec of the same name in `docs/ops/specs/scripts/<word>.md` and tests in `tools/test/test_<word>.py`. `storage/` is disposable: empty it and the system still works. Durable records live in `archives/` and `archives/receipts/`, or in custody.
@@ -62,7 +62,7 @@ Owner: Claude Shannon. Written 2026-10-30 at Kevin's request for a 30,000-foot v
 ## Ported later (Kevin: no side path now)
 
 - `Scripts/`: ported 2026-11-01 to `ops/lib/scripts/`, one word each with a spec each (`docs/ops/specs/runbook/port.md`, `archives/receipts/port-20261101.md`); its two frozen remains are under `archives/legacy/Scripts/`.
-- The retired folders Archived, Attic, Plans and Intake were frozen unchanged under `archives/legacy/` on 2026-11-01; `archives/legacy/Config/` stays at the root until Control moves the contract it binds (PoT 3.4).
+- The retired folders Archived, Attic, Plans and Intake were frozen unchanged under `archives/legacy/` on 2026-11-01. `Resident-Center/`, `Config/` and the rest of `Scripts/` left the room in block 7 for Control's frozen runtime custody at `[host path 2]` (Control's decision; PoT 3.4).
 - `HANDOFF.md`, `INDEX.md` and `START-HERE.md` became pointer-first root files on 2026-11-01; their former contents are at `archives/legacy/HANDOFF.md`, `archives/legacy/INDEX.md` and `docs/START-HERE.md`. `NOW.md` stays the present-state board.
 
 ## Rules for every new file
