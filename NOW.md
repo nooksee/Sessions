@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 0b2dd3e8a361a57eedbaf3e5ac493091326825d9153df7d1d10797ae19f6c759; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
 # Session Continuity Command Center
 
 Updated: 2026-11-04, Joe Codex, for the RoR-18 policy and reader adoption.
@@ -30,7 +29,7 @@ body is changed by this policy/read-in source integration.
 
 ## Historical Operating Summary - 2026-11-03
 
-- **Block 7 landing:** the `Scripts/`, `Config/` and `Resident-Center/` runtime roots have moved from Sessions to `[host path 1]`. The independent product source remains `[host path 2]`; private registry, roster and host-binding inputs remain in `ops/etc/`. The landing and its actual-result audit are recorded in George's sealed Control receipt and Joe's audit at `storage/joe-filing-alignment-20261102.3i1Jv2/actual-result-audit-20261103.md`.
+- **Block 7 landing:** the `Scripts/`, `Config/` and `Resident-Center/` runtime roots have moved from Sessions to `/media/nos4r2/user_vol/Control-Runtime/`. The independent product source remains `/media/nos4r2/user_vol/Projects/Resident-Center`; private registry, roster and host-binding inputs remain in `ops/etc/`. The landing and its actual-result audit are recorded in George's sealed Control receipt and Joe's audit at `storage/joe-filing-alignment-20261102.3i1Jv2/actual-result-audit-20261103.md`.
 - **Sessions Git:** at 2026-11-03 00:48 EST, local `main` remains `714c588aa137c39a26bf4c431e9eb386a29e498f` (tree `cc72cc58643501efe406625a0068758479f8aa32`), five commits ahead of `origin/main` at `bfbc83b7c1eb173d752edb21a01ec123e5ed13c2`. The private GitHub repository is `nooksee/sessions`; PRs #16 and #19 remain open, so the accepted local join is not yet integrated on hosted `main`.
 - **Observed health is not cleared:** Joe's 2026-11-03 actual-result audit records the scheduled serve and rounds runs exiting with status 2, and drift still `both-changed` / `critical` with 77 mapped and 71 converged paths and no repairs. These are failures and unresolved drift, not healthy results or a diagnosis. The audit reports the copied contents and checked non-access metadata match, while all 1,560 file access times in each custody tier advanced after the in-window copy verification; original access times remain in the sealed manifest and were not normalized.
 - **Open work and limits:** `hard_vol2` remains the previously recorded failing second custody medium; hash verification does not certify its health, and replacement remains open. The audit also leaves visual interaction, remote connection and provider-generation canaries untested, and reports two archived-container launcher blocks. No new fleet-health claim is made here.
@@ -69,7 +68,7 @@ summary above; their original counts and observations remain historical.
   `Receipts/launcher-containment-runtime-patch-20261018.md`.
 - Assignment split: Codex `15`; Claude `10`.
 - **Resident Center source authority is the independent product repository at
-  `[host path 2]`.** The Sessions tree at
+  `/media/nos4r2/user_vol/Projects/Resident-Center`.** The Sessions tree at
   `Sessions/Resident-Center` is frozen runtime custody: it is what runs and it
   is the rollback donor, and it is not edited as source. Canon:
   `Decisions/resident-center-source-authority-and-frozen-runtime-custody.md`.
@@ -124,7 +123,7 @@ summary above; their original counts and observations remain historical.
 
 The LiveUSB exact-root gap is closed. PyCharm registration, trust, display,
 SDK association, Claude native-room encoding, resident title, and runtime
-load all use `[host path 3]`. The retired project
+load all use `/media/nos4r2/user_vol/Projects/live-usb`. The retired project
 shell and Claude room are absent from live paths and preserved in verified
 rollback custody. Receipt:
 `Receipts/liveusb-exact-root-host-rebind-20260725.md`.
@@ -154,7 +153,7 @@ writer verification. George X production body changes remain `0`.
 | Personal | Codex | David Codex | registered; ready by live `validate` on 2026-10-18; Biography continuity lead |
 | Personal | Codex | Frank Codex | launcher-ready; archive and evidence role |
 | Personal | Claude | Jean-Luc Claude | launcher-ready; Addition continuity |
-| Personal | Claude | Joy Anne Claude | live in her fifth body `[session prefix 1]`, installed 2026-10-17, see `Receipts/joy-anne-rotation-5-20261017.md`; launch-ready under the containment rule since 2026-10-18, see `Receipts/launcher-containment-runtime-patch-20261018.md`; her Morning Wire has the `joy-wire-bell` backstop, see `Receipts/joy-wire-bell-20261018.md`; Home and Exterior lead |
+| Personal | Claude | Joy Anne Claude | live in her fifth body, installed 2026-10-17, see `Receipts/joy-anne-rotation-5-20261017.md`; launch-ready under the containment rule since 2026-10-18, see `Receipts/launcher-containment-runtime-patch-20261018.md`; her Morning Wire has the `joy-wire-bell` backstop, see `Receipts/joy-wire-bell-20261018.md`; Home and Exterior lead |
 | DocumentStudio | Claude | Claude Rains | launcher-ready; Lead Dev |
 | Luce Family Archive | Codex | Steve Codex | launcher-ready; Archivist |
 | Redwall | Codex | Leroy Codex | registered; ready by live `validate` on 2026-10-18; Archivist |
@@ -232,8 +231,8 @@ Receipts:
 ## 2026-07-27 Resident Center Independent Naming, Staffing, And Reconciliation
 
 Same day as the OSAI retirement and intake above, three further passes
-[words sha256=ecbd7a7c222622a654f1051b8ed917eaab0ce2e1d83082bab526b0bdc5d465fd]
-[words sha256=b5276092693ad257809c045261c8b5dd818b77334f5042b34cb3faf9565159be]
+completed under Kevin's direction to "organiz how see fit... have your
+staff do work":
 
 - **Independent naming.** Joe Codex renamed the live product from
   `osai-resident-center` to `resident-center` across the active surface
@@ -281,8 +280,8 @@ Same day as the OSAI retirement and intake above, three further passes
   a derivative of Canonical's Livepatch icon, high confidence, verified
   against the real installed Livepatch package and against genuine Font
   Awesome and Material Symbols reference data as a control; the 2026-07-24
-  "[words sha256=0682c5f2076f099c34cfdd15a9e063849ed437a49677e6fcc5b4198c76575be5]" claim was made about an unrelated, retired seven-file
-  predecessor family. Recommends the AGENTS.md "[words sha256=518646a624b08ee49b0bd5e3df0f12293726da9ddc63531899dace4fd4498791]" line stay
+  "original" claim was made about an unrelated, retired seven-file
+  predecessor family. Recommends the AGENTS.md "do not publish" line stay
   in place. Independently re-verified: the quoted shield path byte-matches
   the file on disk and closely matches the real installed
   `livepatch_warning.svg`. One correction to the receipt as written: it

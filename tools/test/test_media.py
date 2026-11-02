@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Tests for the two media and tool-output reducers.
 
-Every case here is drawn from a real body measured on 2026-08-28, not invented.
+Every case here is drawn from a real body measured on 2026-08-28. One case's prose
+is invented text of the same shape, because the original held the operator's own
+words, which are never published (PoT 1.2.10).
 Both tools shipped a defect that day, and both defects were the same shape: the
 tool knew one of the provider's two payload layouts and silently did nothing
 about the other. `elide.py` reported `0` characters saved on
@@ -81,7 +83,7 @@ class TestClaudeMediaShapes(unittest.TestCase):
         self.assertEqual(self.ex.deduped, 2)
 
     def test_prose_that_is_not_base64_is_left_alone(self):
-        """Row 758 of Joy Anne's body: `data` holding Kevin's own words.
+        """Row 758 of Joy Anne's body: `data` that held Kevin's own words.
 
         The prose here is invented text of the same shape: one plain sentence
         that ends in a non-ASCII dash, repeated, which base64 cannot decode.
