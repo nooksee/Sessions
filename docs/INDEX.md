@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 ab5752daba0b43bb7e0f3eb36c61eeffb27f67823af1b4aa3e0e83a069dee3e7; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 ab042a0d76508beaf3c1e6a1dad3130c7b8fad68026804a4f43a5b84ee684b09; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Documentation Index (Front Door)
 
 Every document in `Sessions/docs/`, one line each, and the root files that point into them. Framework: STELA (`Projects/STELA/docs/INDEX.md`). Updated 2026-10-30. Status of each tool lives in its registry, not here.
@@ -94,4 +94,4 @@ Tests:
 
 ## 5. Templates (not documents; listed so they are found)
 * `../ops/src/docs/spec.md.tpl`: the spec template. `[PLACEHOLDER]` on 2026-10-30.
-* `../ops/src/runbook/agent-input.yaml`: the resident packet template. `[PLACEHOLDER]` on 2026-10-30.
+* `../ops/src/runbook/agents/agent-input.yaml`: the resident packet template. `[PLACEHOLDER]` on 2026-10-30.
