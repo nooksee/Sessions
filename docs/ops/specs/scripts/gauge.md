@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 a95aab7bea644ac361890cb731d1d5ef82695be0ee3dfddc54825cab697c82bb; rules 8; mode history; words 5; sessions 0 whole, 0 truncated; host paths 5; decisions 0 -->
+<!-- redact: public copy; source sha256 6eb453c341d3bb83d925830db015c78b3f4a5246eb1b7190f54f2d6512d9aeda; rules 8; mode history; words 5; sessions 0 whole, 0 truncated; host paths 5; decisions 0 -->
 # Technical Specification: gauge
 
 Script: `Sessions/ops/lib/scripts/gauge.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_gauge.py`. Spec writer: Claude Shannon. Status: built in Sessions block 2, 2026-10-30; not on a timer and not wired to any notification. Claudio Freeman reviews it before it is relied on.
@@ -11,7 +11,7 @@ So `gauge` reads that figure for every registered resident, from the end of the 
 
 ## Mechanics and Sequencing
 
-1. **Residents.** Read `Sessions/Evidence/resident-identities.json`. Each entry's provider and session id locate its body: Claude under `[host path 1]`, Codex under `[host path 2]` (archived bodies under the archived root), Copilot under its Agent Dock store.
+1. **Residents.** Read `Sessions/ops/etc/resident-identities.json`. Each entry's provider and session id locate its body: Claude under `[host path 1]`, Codex under `[host path 2]` (archived bodies under the archived root), Copilot under its Agent Dock store.
 2. **Reading.** Scan from the end of the body, at most 16,000,000 bytes, for the newest genuine reading:
    - **Claude:** the newest main-chain assistant call's `message.usage`, input plus cache read plus cache creation, one reading per `message.id`. Zero-usage, synthetic and sidechain rows are not readings.
    - **Codex:** the newest `token_count` event: its last input figure and its `model_context_window`. The model comes from the nearest turn context before it.
@@ -19,7 +19,7 @@ So `gauge` reads that figure for every registered resident, from the end of the 
 3. **Window,** in order of authority (Claudio section 131, C1):
    - the window the provider reports in the same record (Codex, Copilot);
    - the reviewed table below;
-   - only when the table has no row for that model: Claude Code's status-line record (`Sessions/Evidence/resource-state.json`). This record is written by whichever single session last ran the status line, with no session id, so its source is shown as unverified;
+   - only when the table has no row for that model: Claude Code's status-line record (`Sessions/logs/resource-state.json`). This record is written by whichever single session last ran the status line, with no session id, so its source is shown as unverified;
    - otherwise "[words sha256=b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc]".
 4. **State.** Each row carries one state:
    - `last observed`: a genuine reading, with its age;
@@ -37,7 +37,7 @@ So `gauge` reads that figure for every registered resident, from the end of the 
 
 ### Reviewed windows
 
-Used only when neither the body nor the status line reports a window. Each row records where its figure came from and when it was observed. A model without a reviewed row stays "[words sha256=b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc]".
+Used when the provider record has no window and the model has a reviewed row. A table row takes precedence over a status-line value for the same model; the status line is only a fallback when the table has no row, as described in step 3. Each row records where its figure came from and when it was observed. A model without a reviewed row or status-line fallback stays "[words sha256=b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc]".
 
 ```
 [words sha256=41825676f51fdb967c2dec882b48e2f6c0b4efe2c441bff0f18df4812b91e6b0]

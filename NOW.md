@@ -1,16 +1,29 @@
-<!-- redact: public copy; source sha256 9bc30a2bd9a03636463736d14790d702775aac70dfba4fba71364264099368f9; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 c938392f03b3115e3fc9d1efae9ac0e9f5c22586214e0b4bd1ca085ec024999c; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
 # Session Continuity Command Center
 
-Updated: 2026-11-01, stage D of the landing; before that 2026-10-31, the Sessions repository and the room's front door;
-previous update 2026-10-19. Sections below that date are older and may be stale.
+Updated: 2026-11-03 00:49:40 EST (-0500), JoJo Git, from Joe Codex's
+actual-result audit written at 00:30 EST and read-only GitHub/state checks
+at 00:48 EST.
+The dated board below is retained as historical context, not as current status.
 Status: active current-state board
 
 Durable method lives in [DOCTRINE.md](DOCTRINE.md). Historical changes and
-rollback evidence live in `Receipts/` and ignored backup custody. This file
-records the current operating state rather than repeating full lineage
-history.
+rollback evidence live in `archives/receipts/` and ignored backup custody.
+This file records the current operating state rather than repeating full
+lineage history.
 
-## Current Operating Summary
+## Current Operating Summary - 2026-11-03
+
+- **Block 7 landing:** the `Scripts/`, `Config/` and `Resident-Center/` runtime roots have moved from Sessions to `[host path 1]`. The independent product source remains `[host path 2]`; private registry, roster and host-binding inputs remain in `ops/etc/`. The landing and its actual-result audit are recorded in George's sealed Control receipt and Joe's audit at `storage/joe-filing-alignment-20261102.3i1Jv2/actual-result-audit-20261103.md`.
+- **Sessions Git:** at 2026-11-03 00:48 EST, local `main` remains `714c588aa137c39a26bf4c431e9eb386a29e498f` (tree `cc72cc58643501efe406625a0068758479f8aa32`), five commits ahead of `origin/main` at `bfbc83b7c1eb173d752edb21a01ec123e5ed13c2`. The private GitHub repository is `nooksee/sessions`; PRs #16 and #19 remain open, so the accepted local join is not yet integrated on hosted `main`.
+- **Observed health is not cleared:** Joe's 2026-11-03 actual-result audit records the scheduled serve and rounds runs exiting with status 2, and drift still `both-changed` / `critical` with 77 mapped and 71 converged paths and no repairs. These are failures and unresolved drift, not healthy results or a diagnosis. The audit reports the copied contents and checked non-access metadata match, while all 1,560 file access times in each custody tier advanced after the in-window copy verification; original access times remain in the sealed manifest and were not normalized.
+- **Open work and limits:** `hard_vol2` remains the previously recorded failing second custody medium; hash verification does not certify its health, and replacement remains open. The audit also leaves visual interaction, remote connection and provider-generation canaries untested, and reports two archived-container launcher blocks. No new fleet-health claim is made here.
+
+## Historical Operating Board - 2026-11-01
+
+The following dated entries preserve the board as it stood before Block 7.
+Their references to stages B and C being ahead are superseded by the current
+summary above; their original counts and observations remain historical.
 
 - **2026-11-01, stage D of the landing (the Session Continuity Manager):** the room has the port's shape. Receipts are `archives/receipts/`; the retired lanes are `archives/legacy/`; the lab and the candidates are under `storage/`; the root pointers and the README are the port's. Control released 320 paths (PR #119, audited). Receipts and legacy stay out of Git until the redaction pass; the README's constraints say what is private and why. Stages B (the registry and its readers) and C (the four services) are still ahead, each on the operator's named go.
 - **2026-10-31, the Session Continuity Manager:**
@@ -40,7 +53,7 @@ history.
   `Receipts/launcher-containment-runtime-patch-20261018.md`.
 - Assignment split: Codex `15`; Claude `10`.
 - **Resident Center source authority is the independent product repository at
-  `[host path 1]`.** The Sessions tree at
+  `[host path 2]`.** The Sessions tree at
   `Sessions/Resident-Center` is frozen runtime custody: it is what runs and it
   is the rollback donor, and it is not edited as source. Canon:
   `Decisions/resident-center-source-authority-and-frozen-runtime-custody.md`.
@@ -95,7 +108,7 @@ history.
 
 The LiveUSB exact-root gap is closed. PyCharm registration, trust, display,
 SDK association, Claude native-room encoding, resident title, and runtime
-load all use `[host path 2]`. The retired project
+load all use `[host path 3]`. The retired project
 shell and Claude room are absent from live paths and preserved in verified
 rollback custody. Receipt:
 `Receipts/liveusb-exact-root-host-rebind-20260725.md`.

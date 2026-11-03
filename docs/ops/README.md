@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 533525cd01f91b4d9b5053faae0750fb14c890a24939bb8213196845ba4e148d; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 9b40097aeb196b6361ba97964f3cfacd42afe4e4dbd2c41e73d7fce982b0058b; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
 Owner: Claude Shannon. Written 2026-10-30 at Kevin's request for a 30,000-foot view. Convention: STELA (`Projects/STELA`). Base folders and root files are the base; no new specialty folders. Each script is one word, in `ops/lib/scripts/<word>.py`, with a spec of the same name in `docs/ops/specs/scripts/<word>.md` and tests in `tools/test/test_<word>.py`. `storage/` is disposable: empty it and the system still works. Durable records live in `archives/` and `archives/receipts/`, or in custody.
@@ -38,8 +38,8 @@ Owner: Claude Shannon. Written 2026-10-30 at Kevin's request for a 30,000-foot v
 | --- | --- | --- | --- |
 | gauge | `ops/lib/scripts/gauge.py`, `docs/ops/specs/scripts/gauge.md`, `tools/test/test_gauge.py` | tool | built 10-30; Claudio reviews |
 | gauge ledger | `storage/gauges/ledger.jsonl` | disposable | rebuildable from bodies |
-| closeout | `ops/lib/scripts/closeout.py` (to write), `docs/ops/specs/scripts/closeout.md` | tool | designed 10-30 |
-| mind | `ops/lib/scripts/mind.py` (to port), `docs/ops/specs/scripts/mind.md` (to write) | tool | ported from the Candidates package, simplified to solicited input |
+| closeout | `ops/lib/scripts/closeout.py`, `docs/ops/specs/scripts/closeout.md` | tool | designed 10-30 |
+| mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | ported from the Candidates package, simplified to solicited input |
 | mind pointer | `<room>/MIND.md`, one line per resident in the room | durable, out of Git | first one: `Sessions/MIND.md` |
 | mind leaves | `<room>/archives/surfaces/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | first: Shannon's v2, after Kevin's yes |
 | rotate | `ops/lib/scripts/rotate.py` (to write), `docs/ops/specs/scripts/rotate.md` (from the package runbook) | tool | next |

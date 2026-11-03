@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 094476fb686a7e0f4c3fda7ad6da5e408645157f3a516bcfac4e4307d70fb899; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 c8e073aaf92422574635bb0bd8b7e81f2e97d8135e793f0fd4a104175b55305f; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
 # Port of the Sessions room to the STELA base
 
 Owner: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident. Written 2026-11-01. Convention: STELA (`Projects/STELA`).
@@ -90,3 +90,13 @@ The port landed in stages A to D and blocks 6 and 7 (`storage/landing-plan.md`; 
 - **Past Evidence outputs went to `archives/legacy/Evidence/`** (block 6), not to `logs/`; `logs/` holds what the services write now.
 - **What else landed from the port:** its three receipts (`archives/receipts/port-20261101.md`, `port-stela-homes-20261101.md`, `mind-manifest-integration-20261101.md`), its handoff and review packet (`storage/handoff/port.md`, `storage/packet-port-review.md`) and the mind manifest (`archives/mind-manifest-20261101/`), each byte for byte. The root `PORT-README.md` describes the copy, not the room, and stays with the port.
 - **Of what Control must still do:** item 1 was done in stage C; items 2 and 3 were answered by block 7; item 4 waits for Amendment 3.
+
+## Current law - 2026-11-03
+
+The port-time paragraph above describes the law status observed on
+2026-11-01; it is historical, not the current filing authority. `PoT.md`
+and its retained snapshot `archives/PoT-5b93c454.md` both have SHA-256
+`5b93c454f93e7651e7cb91c834cd84dec8f948f25c22781c8a6ad92a037c1289`.
+`RoR.md` records that ratification as RoR-14. The current law is that
+ratified text; this clarification does not amend it or ratify a later
+proposal.

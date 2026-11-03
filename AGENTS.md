@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 14d34b4dae49167f5a9d5985ccc3b71efc37a7104e52e70778ce7daaf1cf2d0c; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 fdcec576ea34b3b96fe58b307974ccc8101b18b8d21b4ef1c8a7e4cef9a11fe7; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
 # Session Continuity Project Agent Instructions
 
 Date: 2026-07-14
@@ -19,8 +19,8 @@ repository at this same path.
 ## Ownership
 
 - Kevin owns objectives, authority, priorities, and final acceptance.
-- George VIII in Control is the desktop continuity manager and cross-project
-  coordinator.
+- The active Control desktop continuity manager is the cross-project
+  coordinator; current assignments come from Control canon and the registry.
 - The resident Session Continuity Claude owns bounded session diagnosis,
   monitoring, candidate preparation, receipts, and explicitly approved
   continuity operations.
@@ -73,12 +73,14 @@ versioned set is the root canon, modern ops/tools/docs, the two constitutional
 snapshots, and the bootstrap receipt. Private bodies, minds, custody, working
 notes and runtime evidence remain outside this repository.
 
-Control still tracks legacy Sessions files, including the resident registry
-and frozen Resident Center runtime. That ownership split is transitional and
-requires a reviewed Control change; this bootstrap does not remove those
-files from Control. The exact boundary, rollback and remaining work are in
-docs/ops/specs/runbook/repository.md. Make Sessions Git changes from this root;
-check the owning repository before changing a legacy Control-owned path.
+Control owns the frozen runtime custody at
+`[host path 2]`; product source authority remains
+`[host path 3]`. The resident registry and
+host bindings are host-local under `ops/etc/` and stay outside Git.
+Shared Sessions documents can still belong to Control; check the owning
+repository before editing them. The exact boundary and rollback are in
+`docs/ops/specs/runbook/repository.md`. Make Sessions Git changes from this
+root.
 
 ## Session Continuity
 

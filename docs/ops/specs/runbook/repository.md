@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 96f195f62ef67be85d8045878f86eaea79bb73ad1a894d76dd8711eb83df0aa5; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 e95f5edb1175a7c736705d92818e8123203293744215ffc28434f7dcc1aaeb5e; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
 # Sessions repository
 
 Kevin directed "[words sha256=e3c709e933b49ba138e26c6ee4788cbd3f446c8a8c0ddeb235ae305353ef38cf]" on 2026-10-31. George Friend owns this Git bootstrap. The repository root is [host path 1]; it is kept at the same filesystem path so existing room, launcher and runtime references continue to resolve. The GitHub home is private, nooksee/sessions.
@@ -26,3 +26,20 @@ Prior Sessions source history remains in Control; it is not rewritten or importe
 ## Hosted checks
 
 The current GitHub connection cannot upload workflow files. The proposed .github/workflows/sessions-gates.yml stays local and ignored, and the unpublished initial candidate is preserved by local tag bootstrap-with-ci-20261031. No hosted CI is installed by this bootstrap. Local Bash syntax, help self-test and privacy-boundary checks are recorded in the receipt. Enabling CI later needs a connection already authorized for workflow writes; this task changes no account permission.
+
+## Current boundary after Block 7 - 2026-11-03
+
+The bootstrap and transition sections above describe their original state.
+The Block 7 landing moved the frozen `Scripts/`, `Config/` and
+`Resident-Center/` runtime roots to `[host path 2]`.
+Product source authority remains
+`[host path 3]`. The canonical private
+registry, roster and host-binding inputs remain under `Sessions/ops/etc/`;
+they are not duplicated into Git.
+
+At 2026-11-03 00:48 EST, local `main` was at
+`714c588aa137c39a26bf4c431e9eb386a29e498f`, five commits ahead of private
+`origin/main` at `bfbc83b7c1eb173d752edb21a01ec123e5ed13c2`. PRs #16 and #19
+were still open. The accepted local join therefore remained unpublished to
+hosted `main`; this readback does not claim a hosted merge, CI result or
+remote synchronization.
