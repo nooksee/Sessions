@@ -1,7 +1,7 @@
 ---
 template_type: tool
 template_id: script
-template_version: 1
+template_version: 3
 placeholder_owner: the tool's writer
 requires_slots:
   - WORD
@@ -22,10 +22,12 @@ Spec: docs/ops/specs/scripts/{{WORD}}.md. Tests: tools/test/test_{{WORD}}.py.
 
 {{READS_AND_WRITES}}
 
-House rules, fixed by the template: session bodies are read-only, and message
-content is never read or printed. Rebuildable output goes in storage/; anything
-that cannot be rebuilt goes in archives/, archives/receipts/ or custody, never in
-storage/.
+Filing authority: PoT 1.1.4, 1.1.13 and 1.1.14. Task-local intermediates use
+SCRATCH; storage/active/ holds new case payloads; storage/intake/ holds incoming
+data, not installed code or tool state. Existing state has a bounded migration
+hold documented in the map; it is not a pattern for new state.
+Required records use the existing private archive/custody path (PoT 5.3).
+Session bodies are read-only; their message content is never read or printed.
 """
 from __future__ import annotations
 
@@ -34,6 +36,7 @@ import sys
 from pathlib import Path
 
 SESSIONS = Path(__file__).resolve().parents[3]
+SCRATCH = SESSIONS / "var" / "tmp"
 SPEC = SESSIONS / "docs" / "ops" / "specs" / "scripts" / "{{WORD}}.md"
 
 

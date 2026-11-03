@@ -1,0 +1,45 @@
+name: Sessions gates
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: sessions-gates-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sessions-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Synthetic continuity tool suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 0002
+          for suite in tools/test/test_*.py; do
+            python -I -B "$suite"
+          done
+      - name: Wayfinding and template self-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          ops/bin/help --test
+          ops/bin/template --test
+      - name: PoT authorization gate
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -B ops/lib/scripts/constitution.py \
+            --root "$GITHUB_WORKSPACE" \
+            --base "$BASE_SHA" \
+            --head "$GITHUB_SHA"

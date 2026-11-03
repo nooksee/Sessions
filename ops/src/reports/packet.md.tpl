@@ -1,7 +1,7 @@
 ---
 template_type: report
 template_id: packet
-template_version: 1
+template_version: 3
 source: docs/ops/specs/runbook/agent-input.md
 requires_slots:
   - TO
@@ -45,6 +45,7 @@ The owner may write only these; everything else is read-only.
 
 ## Rules
 {{RULES}}
+Filing mechanics (PoT 1.1.1 to 1.1.4, 1.1.13): incoming data uses `storage/intake/`; new case payload uses `storage/active/`; task scratch uses `mktemp -d "<room>/var/tmp/<owner>-<operation>.XXXXXX"`. Keep operational code in ops/tools and its guidance in docs, not under storage. Existing named handoffs remain in place. This template grants no cleanup or custody authority.
 
 ## Stop condition
 {{STOP_CONDITION}}

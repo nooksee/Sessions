@@ -11,9 +11,19 @@
 !/INDEX.md
 !/START-HERE.md
 !/NOW.md
+!/.github/
+!/.github/workflows/
+!/.github/workflows/sessions-gates.yml
 !/ops/
 !/tools/
 !/docs/
+!/var/
+/var/*
+!/var/README.md
+!/var/tmp/
+/var/tmp/*
+!/var/tmp/.gitignore
+!/var/tmp/.gitkeep
 /docs/*
 !/docs/INDEX.md
 !/docs/MANUAL.md
@@ -25,6 +35,9 @@
 !/archives/PoT-draft-v0-de5d6c0c.md
 !/archives/PoT-ef2e16c0.md
 !/archives/PoT-5b93c454.md
+!/archives/PoT-5a2a17a9.md
+!/archives/PoT-457fe859.md
+!/archives/PoT-authority-457fe859.md
 !/archives/receipts/
 /archives/receipts/*
 !/archives/receipts/repository-bootstrap-20261031.md
@@ -46,7 +59,8 @@
 #   MIND.md, archives/MIND-*, archives/NOTEBOOK-*  minds and sealed notebooks: who a resident is
 #   ops/etc/*.json       the registry, roster, promotions and host bindings: identity
 #   logs/*               telemetry: output, not a record
-#   storage/             working and disposable: handoffs, candidates, the lab, bodies in custody
+#   storage/             named working cases and handoffs; no new tool state
+#   var/tmp/             task-local scratch; only the skeleton is admitted
 #   HANDOFF.md           the manager's own handoff
 /storage/
 /MIND.md

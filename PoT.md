@@ -10,17 +10,20 @@ No resident remembers; the room does. A resident brings judgment. The room carri
 ## 1. Physical Laws
 
 ### 1.1 Filing Doctrine
-- **1.1.1** `ops/` = Run: binaries, scripts, templates.
+- **1.1.1** `ops/` = Run: binaries, scripts, templates and host-local manifests in `ops/etc/`.
 - **1.1.2** `docs/` = Explain: the manual, the map, the index, the tool registries, the specifications.
 - **1.1.3** `tools/` = Prove: tests.
-- **1.1.4** `storage/` = Work: the team room and rebuildable output. Ignored by Git and disposable; its loss is accepted. Anything that must survive is promoted out of it (6.2.4).
+- **1.1.4** `storage/` = Work: named active cases, handoffs, drafts and review payloads. Each new case has one owner, one operation and a closeout condition in its handoff or case index. It is not a general scratch area, operational-code home, tool-state home, or retention archive. Temporary work goes to 1.1.13; required durable results are promoted before closeout (6.2.4). Working copies remain ignored by Git.
 - **1.1.5** `archives/` = Keep: write-once records, frozen snapshots of superseded drafts, mind leaves.
-- **1.1.6** `Evidence/` = Data: the resident registry, which is authority (1.3.5), and machine-written records that tools read, which are not.
-- **1.1.7** `Receipts/` = Proof: records of executed work.
+- **1.1.6** [Retired]
+- **1.1.7** [Retired]
 - **1.1.8** Custody = Preserve: the store outside the room (5.3), named in the map.
 - **1.1.9** Root = the canon surfaces of 1.3, and pointers.
 - **1.1.10** Legacy = every other folder of the room. It may be read and used, never extended, and it is ported or retired only as its own assigned change, with custody. A folder that a Control decision governs is not legacy (3.4).
 - **1.1.11** A new folder is created only inside a base folder, and only when none fits (1.2.5).
+- **1.1.12** `logs/` = Data: machine-written telemetry and diagnostics, which are not authority or kept records.
+- **1.1.13** `var/tmp/` = Scratch: ephemeral, task-local work under `var/`; no other `var/` lane is implied. Temporary clones, extraction trees, probes, caches and build or test intermediates go here, not in `storage/`. Each scratch folder identifies its owning role and operation. At closeout its owner removes only verified rebuildable residue; anything required for acceptance, recovery or a record is promoted first (1.2.9, 5.3). This is not custody, a home for persistent state, or permission for an automatic purge. Existing material is reclassified only by an assigned retention pass.
+- **1.1.14** Existing tool state in `storage/` is a bounded migration hold, not a permitted continuing destination or precedent for new state. The map records each existing consumer, owner, path, ending condition and bounded migration action. Until its assigned migration is accepted, its current path is preserved; this source alignment does not move it or place persistent state in `var/tmp/`.
 
 ### 1.2 Axioms
 - **1.2.1 Precedence.** Highest first: Control policy (its root instruction files and all its decisions; the map lists those that bear on this room, 1.3.11); the operator's direction for a named act, and a standing direction within its scope (7.6); this constitution; every other room document. The room documents that Control directs readers to follow, by path or as the room's own agent instruction files, bind as Control directs; following them does not make them Control policy. Where one of them and this constitution would require different actions, the conflict is reported to the operator, the work it affects stops (2.3.1), and it is reconciled through Control's writer process and 7.3; neither is silently set aside. A conflict with Control suspends the conflicting clause to the extent of the conflict: the Control text applies at once, the conflict is reported, and an amendment follows ahead of other work on that clause (7.3). A resident's instruction is routing, not policy, unless it cites its source.
@@ -44,14 +47,14 @@ No resident remembers; the room does. A resident brings judgment. The room carri
 - **1.3.2** `RoR.md`: the ledger (1.2.10), the public derived copy. Its source, `archives/RoR-words.md`, a kept record ignored by name as the minds are, holds each entry with the operator's words in place; it never enters Git or any public surface, and a custody copy of the source, and of the copy about to be replaced, precedes each rendering (5.3). The privacy of the words runs from this rule's ratification; entries made before it keep their words in the companion, and the public ledger is a derived copy rendered by the redact tool, carrying the header that the redact specification defines.
 - **1.3.3** `NOW.md`: room-level present state.
 - **1.3.4** Handoffs: work in flight (1.2.14).
-- **1.3.5** The resident registry, `Evidence/resident-identities.json`: identity. Which body is which resident, and its role, room, and plain name.
+- **1.3.5** The resident registry, `ops/etc/resident-identities.json`: identity. Which body is which resident, and its role, room, and plain name.
 - **1.3.6** Each body: its own fullness (4.4.5).
-- **1.3.7** `Receipts/`: proof of executed work.
+- **1.3.7** `archives/receipts/`: proof of executed work.
 - **1.3.8** `docs/ops/specs/`: each tool's behavior, parameters, thresholds, and status.
 - **1.3.9** `docs/ops/registry/`: the tool registries, an inventory that points to each specification.
 - **1.3.10** `docs/MANUAL.md`: operator mechanics.
 - **1.3.11** `docs/ops/README.md` (the map): where everything lives, including custody, the custody manifest, the handoffs, the tool generator, the worker purge procedure, and the Control documents and surfaces of 1.2.1 and 3.4.
-- **1.3.12** `DOCTRINE.md`: legacy continuity craft, with the force Control gives it while Control directs readers to it (1.2.1, 7.1). Under 7.2, before this entry is retired, its craft moves to the manual and the specifications, each rule it holds moves into this constitution, and each operator standing order it records is entered as 7.6 states.
+- **1.3.12** `DOCTRINE.md`: historical continuity method retained for craft reference only. It is not current policy. Current law is this constitution; current mechanics and craft live in the manual and specifications.
 - **1.3.13** `MIND.md`: the pointer to the current mind leaf, in `archives/`, of each of this room's residents.
 - **1.3.14** `ops/src/`: the templates of every recurring record.
 - **1.3.15** The custody manifest: what custody holds, and where.

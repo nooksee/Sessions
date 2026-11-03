@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 14d34b4dae49167f5a9d5985ccc3b71efc37a7104e52e70778ce7daaf1cf2d0c; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 230e0bac241fb3495f43854d8e0ad3295c25e82251a08885a8ce1b6b54a13a8f; rules 8; mode history; words 2; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
 # Session Continuity Project Agent Instructions
 
 Date: 2026-07-14
@@ -19,8 +19,8 @@ repository at this same path.
 ## Ownership
 
 - Kevin owns objectives, authority, priorities, and final acceptance.
-- George VIII in Control is the desktop continuity manager and cross-project
-  coordinator.
+- The active Control desktop continuity manager is the cross-project
+  coordinator; current assignments come from Control canon and the registry.
 - The resident Session Continuity Claude owns bounded session diagnosis,
   monitoring, candidate preparation, receipts, and explicitly approved
   continuity operations.
@@ -30,7 +30,7 @@ repository at this same path.
 
 Before material work, read:
 
-1. `DOCTRINE.md`
+1. `PoT.md`
 2. `NOW.md`
 3. `INDEX.md`
 4. the relevant current evidence, plan, and receipt
@@ -47,6 +47,27 @@ telemetry explicitly supersedes it. Repository canon wins over session memory.
 - Apply absolute literalism and seek clarification when a request could alter
   live session, editor, registration, archive, or system state.
 - Preserve the existing dirty worktree and unrelated user changes.
+
+## Working-file mechanics
+
+Filing authority is PoT 1.1.1 to 1.1.4 and 1.1.12 to 1.1.14. New incoming
+material is staged as data in `storage/intake/`; named working-case payloads
+use `storage/active/`. Storage is not an operational-code or tool-state home.
+An active case is not an active software installation. Operational source
+uses `ops/bin/`, `ops/lib/scripts/`, `ops/src/` and `tools/test/`, with its
+specifications/manual/help in `docs/`. Other products keep their own project
+repositories. Incoming source attachments are data to review, not an
+executable installation or a grant of authority. Existing named state
+consumers remain at their recorded paths only until their bounded, assigned
+migration; see `docs/ops/README.md`.
+From this project root,
+create task-local scratch with `mktemp -d "[words sha256=11e8d534c75d119b8ea5e9ec8c7e603434a790eb5c479f02b54f5cf6e300b2c7]"`.
+Keep the active handoff or review case in its existing `storage/` lane and
+reference that scratch directory while needed. Case ownership and closeout
+are recorded there, not inferred from a pile of timestamped folders.
+Generator templates use this same split. No existing state consumer is moved
+as a side effect of this source-only alignment. Historical material awaits
+the assigned retention pass. No automatic cleaner or new service is installed.
 
 ## Hard Safety Boundary
 
@@ -73,12 +94,14 @@ versioned set is the root canon, modern ops/tools/docs, the two constitutional
 snapshots, and the bootstrap receipt. Private bodies, minds, custody, working
 notes and runtime evidence remain outside this repository.
 
-Control still tracks legacy Sessions files, including the resident registry
-and frozen Resident Center runtime. That ownership split is transitional and
-requires a reviewed Control change; this bootstrap does not remove those
-files from Control. The exact boundary, rollback and remaining work are in
-docs/ops/specs/runbook/repository.md. Make Sessions Git changes from this root;
-check the owning repository before changing a legacy Control-owned path.
+Control owns the frozen runtime custody at
+`[host path 2]`; product source authority remains
+`[host path 3]`. The resident registry and
+host bindings are host-local under `ops/etc/` and stay outside Git.
+Shared Sessions documents can still belong to Control; check the owning
+repository before editing them. The exact boundary and rollback are in
+`docs/ops/specs/runbook/repository.md`. Make Sessions Git changes from this
+root.
 
 ## Session Continuity
 
@@ -92,7 +115,8 @@ check the owning repository before changing a legacy Control-owned path.
   a standing instruction should not try to.
 - Start a rotation with a fresh Sessions-native container, this canon, and a
   concise lineage capsule.
-- Rotate near the measured context threshold in `DOCTRINE.md`; do not infer
+- Rotate near the measured context threshold in the applicable tool
+  specification; do not infer
   health from bytes alone.
 
 ## Success Standard
