@@ -298,7 +298,7 @@ check_rendered() {
 
 report_mode() {
   local kind="$1" out_path="$2"
-  local slot="" key="" bytes="" dir=""
+  local slot="" key="" bytes="" dir="" storage_root="" resolved_parent=""
   local missing=() unknown=() holding=()
   local -A required=()
 
@@ -353,6 +353,9 @@ report_mode() {
   fi
   dir="$(dirname -- "$out_path")"
   [[ -d "$dir" ]] || die "template ${kind}: the folder for --out does not exist: ${dir}; template creates no folders in report mode"
+  storage_root="$(realpath -m -- "${ROOM_ROOT}/storage")"
+  resolved_parent="$(realpath -m -- "$dir")"
+  [[ "$resolved_parent" != "$storage_root" ]] || die "template ${kind}: refusing a report in the storage root; use storage/active/, storage/intake/ or the existing named case lane"
   # noclobber: a file that appeared since the check above is not overwritten.
   if ! (set -C; printf '%s' "$RENDERED" > "$out_path") 2>/dev/null; then
     die "template ${kind}: refusing to overwrite ${out_path}; it appeared during the run"
@@ -424,7 +427,7 @@ registry_row() {
 toolset_mode() {
   local root="$1"
   local dry_run="$2"
-  local id rel abs bytes key slot
+  local id rel abs bytes key slot storage_root resolved_target
   local existing=() unknown=() auto_given=() rels=()
   local -A known=() content=() filled=()
   local registry=""
@@ -436,11 +439,21 @@ toolset_mode() {
     die "template: root is not a directory: ${root}"
   fi
   root="$(cd "$root" && pwd -P)"
+  storage_root="$(realpath -m -- "${ROOM_ROOT}/storage")"
+  case "$root" in
+    "$storage_root"|"$storage_root"/*)
+      die "template: refusing to generate code under storage; use the canonical source root or var/tmp for a synthetic scratch tree" ;;
+  esac
   registry="${root}/docs/ops/registry/scripts.md"
 
   for id in "${TOOL_IDS[@]}"; do
     rel="${TOOL_TARGET[$id]//@WORD@/$WORD}"
     rels+=("$rel")
+    resolved_target="$(realpath -m -- "${root}/${rel}")"
+    case "$resolved_target" in
+      "$storage_root"|"$storage_root"/*)
+        die "template: refusing to generate code under storage through a target alias: ${rel}" ;;
+    esac
     if [[ -e "${root}/${rel}" || -L "${root}/${rel}" ]]; then
       existing+=("$rel")
     fi
@@ -579,7 +592,7 @@ run_self_test() {
   local self="${SCRIPT_DIR}/template"
   local tpl_count=0
 
-  SELFTEST_FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/sessions-template-test.XXXXXX")"
+  SELFTEST_FIXTURE="$(mktemp -d "${TMPDIR:-${ROOM_ROOT}/var/tmp}/sessions-template-test.XXXXXX")"
   trap cleanup_fixture EXIT
   fx="${SELFTEST_FIXTURE}"
 
@@ -905,7 +918,7 @@ fi
 (( OUT_GIVEN == 0 )) || die "template: --out is for report mode (${REPORT_TYPES[*]}); a tool set writes its three fixed paths"
 
 if (( ROOT_GIVEN == 0 )); then
-  for marker in AGENTS.md DOCTRINE.md; do
+  for marker in AGENTS.md PoT.md; do
     if [[ ! -f "${ROOM_ROOT}/${marker}" ]]; then
       die "template: not a Sessions room (missing ${marker}): ${ROOM_ROOT}"
     fi

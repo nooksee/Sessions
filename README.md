@@ -22,10 +22,13 @@ Three ideas run through everything here:
 | `ops/src/` | the templates the tools and records are rendered from |
 | `ops/etc/` | the registry, roster and bindings (private, never in Git) |
 | `docs/` | the manual, the map (`docs/ops/README.md`), the registries and one specification per tool |
-| `tools/test/` | forty-two suites; `python3 -I -B tools/test/test_<word>.py` |
+| `tools/test/` | synthetic suites; `python3 -I -B tools/test/test_<word>.py`; inventory in `docs/ops/registry/test.md` |
 | `archives/` | write-once records: receipts, the law's snapshots, mind leaves, the frozen legacy lanes |
 | `logs/` | telemetry the tools write (never in Git) |
-| `storage/` | working and disposable: handoffs, candidates, the lab (never in Git) |
+| `storage/` | named active cases, handoffs, drafts and review payloads; PoT 1.1.4 (never in Git) |
+| `storage/intake/` | incoming material awaiting classification; data, not installed code or authority |
+| `storage/active/` | named active case payloads; no operational software trees |
+| `var/tmp/` | owner-scoped task scratch and intermediates; PoT 1.1.13 (contents never in Git) |
 
 ## Entry Point
 Read `PoT.md` (ten minutes), then run `ops/bin/help read` for the map. If you are a resident waking here, `CLAUDE.md` tells you how to find yourself first. To see the office at work: `python3 -I -B ops/lib/scripts/gauge.py --no-ledger` prints every resident's fullness with its source and age.

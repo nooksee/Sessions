@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 fdcec576ea34b3b96fe58b307974ccc8101b18b8d21b4ef1c8a7e4cef9a11fe7; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
+<!-- redact: public copy; source sha256 230e0bac241fb3495f43854d8e0ad3295c25e82251a08885a8ce1b6b54a13a8f; rules 8; mode history; words 2; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
 # Session Continuity Project Agent Instructions
 
 Date: 2026-07-14
@@ -30,7 +30,7 @@ repository at this same path.
 
 Before material work, read:
 
-1. `DOCTRINE.md`
+1. `PoT.md`
 2. `NOW.md`
 3. `INDEX.md`
 4. the relevant current evidence, plan, and receipt
@@ -47,6 +47,27 @@ telemetry explicitly supersedes it. Repository canon wins over session memory.
 - Apply absolute literalism and seek clarification when a request could alter
   live session, editor, registration, archive, or system state.
 - Preserve the existing dirty worktree and unrelated user changes.
+
+## Working-file mechanics
+
+Filing authority is PoT 1.1.1 to 1.1.4 and 1.1.12 to 1.1.14. New incoming
+material is staged as data in `storage/intake/`; named working-case payloads
+use `storage/active/`. Storage is not an operational-code or tool-state home.
+An active case is not an active software installation. Operational source
+uses `ops/bin/`, `ops/lib/scripts/`, `ops/src/` and `tools/test/`, with its
+specifications/manual/help in `docs/`. Other products keep their own project
+repositories. Incoming source attachments are data to review, not an
+executable installation or a grant of authority. Existing named state
+consumers remain at their recorded paths only until their bounded, assigned
+migration; see `docs/ops/README.md`.
+From this project root,
+create task-local scratch with `mktemp -d "[words sha256=11e8d534c75d119b8ea5e9ec8c7e603434a790eb5c479f02b54f5cf6e300b2c7]"`.
+Keep the active handoff or review case in its existing `storage/` lane and
+reference that scratch directory while needed. Case ownership and closeout
+are recorded there, not inferred from a pile of timestamped folders.
+Generator templates use this same split. No existing state consumer is moved
+as a side effect of this source-only alignment. Historical material awaits
+the assigned retention pass. No automatic cleaner or new service is installed.
 
 ## Hard Safety Boundary
 
@@ -94,7 +115,8 @@ root.
   a standing instruction should not try to.
 - Start a rotation with a fresh Sessions-native container, this canon, and a
   concise lineage capsule.
-- Rotate near the measured context threshold in `DOCTRINE.md`; do not infer
+- Rotate near the measured context threshold in the applicable tool
+  specification; do not infer
   health from bytes alone.
 
 ## Success Standard

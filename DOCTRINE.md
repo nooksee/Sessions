@@ -1,5 +1,11 @@
-<!-- redact: public copy; source sha256 6e0455dadb5520e42f1a6bdca5dee305d9a6a41142d64dd281cb30c2072eacf5; rules 8; mode history; words 24; sessions 2 whole, 1 truncated; host paths 5; decisions 0 -->
-# Session Continuity Doctrine
+<!-- redact: public copy; source sha256 8348fd25d9b926489caea09443cdced96294088feb5b6540bdc0cbc0ce7e5da2; rules 8; mode history; words 24; sessions 2 whole, 1 truncated; host paths 5; decisions 0 -->
+# Historical Session Continuity Method
+
+**Status:** Preserved for historical and craft reference only. This file is not
+current policy and does not override `PoT.md`. Read `PoT.md` for law,
+`docs/MANUAL.md` for operator mechanics, and the applicable tool specification
+for implementation details. The current constitutional source of truth is
+`PoT.md`; this historical text has not been re-rendered or modernized.
 
 The durable canon for keeping AI coding sessions (Codex rollouts, Claude
 Code transcripts) healthy, and for migrating a session's *identity and

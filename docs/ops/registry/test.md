@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 05f853791df65cf1eb26149425392647f50e65bc86c5d0ee54ea0ee022c750c3; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 a833afe1ce19055b4a9210886fbe5eee8031cf05b6081db68fc2ba15bec205c3; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
 # Test Registry
 
 Authoritative registry for `Sessions/tools/test/*` executables. Framework: STELA (`Projects/STELA/docs/ops/registry/test.md`). Every test runs on synthetic data in a temporary directory; none reads a real body, registry or mind. Run from the room root with `python3 -I -B`. Updated 2026-11-01. Counts in the Tests column are the suite's own measured count where a count is given; ported and smoke suites give their kind instead, and the port receipt gives the measured totals.
@@ -47,5 +47,8 @@ Authoritative registry for `Sessions/tools/test/*` executables. Framework: STELA
 | TEST-40 | Rounds Test | tools/test/test_rounds.py | supporting | smoke | Tool: `ops/lib/scripts/rounds.sh`. Smoke only: the tool is present and compiles; it is never run. Behavior cases: [PLACEHOLDER: synthetic cases, owner: the writer the Session Continuity Manager names]. |
 | TEST-41 | Identity Held Test | tools/test/test_identity_held.py | supporting | ported | Ported suite from `Scripts/tests/test_check_identity_lock_held.py` with 2 edit(s); its cases are described in its own docstring. |
 | TEST-42 | Alerts Arity Test | tools/test/test_alerts_arity.py | supporting | ported | Ported suite from `Scripts/tests/test_clinic_instrument_arity.py` with 4 edit(s); its cases are described in its own docstring. |
+
+| TEST-43 | Filing Test | tools/test/test_filing.py | supporting | synthetic | Filing boundary, factory defaults, case lanes, root-report/code-placement guards, help, preserved state and synthetic Git fixtures; no body or private record reads. Method: `docs/MANUAL.md` section 10. |
+| TEST-44 | Constitution Test | tools/test/test_constitution.py | critical | 11 | Synthetic Git coverage of unchanged/changed PoT, scoped and unrelated decisions, exact hashes, snapshot and authority requirements, append-only ledger, deletion/rename, regular-file enforcement and clean candidate checkout; no private data. Gate: `ops/lib/scripts/constitution.py`. |
 
 [PLACEHOLDER: `tools/test/test_closeout.py` and `tools/test/test_rotate.py`, with test specs in `docs/ops/specs/tools/test/`, when those tools are written. Owner: the writer Claude Shannon names for each tool.]

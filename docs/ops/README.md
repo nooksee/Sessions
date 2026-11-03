@@ -1,7 +1,7 @@
-<!-- redact: public copy; source sha256 9b40097aeb196b6361ba97964f3cfacd42afe4e4dbd2c41e73d7fce982b0058b; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 a676170c47b5a7fac4cdc36a0bbd5840c2ac97cfac5ca9f6ceb26be9d8ff8ac8; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
-Owner: Claude Shannon. Written 2026-10-30 at Kevin's request for a 30,000-foot view. Convention: STELA (`Projects/STELA`). Base folders and root files are the base; no new specialty folders. Each script is one word, in `ops/lib/scripts/<word>.py`, with a spec of the same name in `docs/ops/specs/scripts/<word>.md` and tests in `tools/test/test_<word>.py`. `storage/` is disposable: empty it and the system still works. Durable records live in `archives/` and `archives/receipts/`, or in custody.
+Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). Filing authority is PoT 1.1: `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each script is one word, in `ops/lib/scripts/<word>.py`, with its specification and tests. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
 
 ## The system: four tools, one loop
 
@@ -37,13 +37,16 @@ Owner: Claude Shannon. Written 2026-10-30 at Kevin's request for a 30,000-foot v
 | Piece | Path | Kind | Status |
 | --- | --- | --- | --- |
 | gauge | `ops/lib/scripts/gauge.py`, `docs/ops/specs/scripts/gauge.md`, `tools/test/test_gauge.py` | tool | built 10-30; Claudio reviews |
-| gauge ledger | `storage/gauges/ledger.jsonl` | disposable | rebuildable from bodies |
+| gauge ledger | `storage/gauges/ledger.jsonl` | existing state held for migration | rebuildable from body counters; see bounded migration inventory below |
 | closeout | `ops/lib/scripts/closeout.py`, `docs/ops/specs/scripts/closeout.md` | tool | designed 10-30 |
 | mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | ported from the Candidates package, simplified to solicited input |
 | mind pointer | `<room>/MIND.md`, one line per resident in the room | durable, out of Git | first one: `Sessions/MIND.md` |
 | mind leaves | `<room>/archives/surfaces/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | first: Shannon's v2, after Kevin's yes |
 | rotate | `ops/lib/scripts/rotate.py` (to write), `docs/ops/specs/scripts/rotate.md` (from the package runbook) | tool | next |
 | team room | `storage/handoff/{shannon,claudine,joe}.md`, and `storage/handoff/port.md` (the port writer's handoff, 2026-11-01) | working notes | results are promoted to `archives/receipts/` or the office handoff |
+| task scratch | `var/tmp/<owner>-<operation>.<unique>/`, skeleton described in `var/README.md` | ephemeral, ignored | owner-scoped; PoT 1.1.13; no persistent state or automatic purge |
+| incoming payload | `storage/intake/` | working data, ignored | awaiting classification, not executable installation or authority |
+| active case payload | `storage/active/` | working data, ignored | owner, operation and closeout; no operational code trees |
 | mind project record | `archives/mind-manifest-20261101/` | durable, tracked | packed 2026-11-01; `MANIFEST.txt` holds every file's source and sha256; integrated by the port (`archives/receipts/mind-manifest-integration-20261101.md`) |
 | receipts | `archives/receipts/<what>-<date>.md` | durable, tracked | unchanged |
 | custody | `[host path 1]>/` mirrored on hard_vol2 | durable | hard_vol2 is failing; a replacement is pending |
@@ -57,7 +60,7 @@ Owner: Claude Shannon. Written 2026-10-30 at Kevin's request for a 30,000-foot v
 
 - `archives/mind-manifest-20261101/`: the whole mind project as of 2026-11-01, packed by the Session Continuity Manager with a hash manifest: the v1 proposal and package, Claudio's audit, the v2 tool as it stands, the law, the handoff excerpts and the notes. It is the durable record. `storage/candidates/mind-manifest-20261029/` and `storage/lab/jojo-production/working-snapshots/claudio-20261030-mind-audit/` are its working duplicates, disposable.
 - `storage/candidates/joy-anne-rotation-20261030/` and `shannon-rebuild-20261029/`: build records of two rotations. `splice_window.py` and the gates are the ingredients of `rotate.py`. The large intermediate bodies are rebuildable from custody.
-- `storage/lab/` (formerly the Lab folder): working snapshots, ignored by Git. Claudio's audit evidence lives there. It is scratch, not a home.
+- `storage/lab/` (formerly the Lab folder): existing working snapshots, ignored by Git. Required audit evidence stays until classified and kept; new task scratch goes to `var/tmp/`. Existing contents await the assigned retention pass, not a blind move or purge.
 
 ## Ported later (Kevin: no side path now)
 
@@ -69,5 +72,34 @@ Owner: Claude Shannon. Written 2026-10-30 at Kevin's request for a 30,000-foot v
 
 1. Before creating a folder, find the existing base folder it belongs in.
 2. One word per script; a spec with the same name; tests beside it in `tools/test`.
-3. Working notes and rebuildable output go in `storage/`. Anything that cannot be rebuilt goes in `archives/`, `archives/receipts/` or custody, never in `storage/`.
+3. Apply PoT 1.1.4 and 1.1.13: the active case references its uniquely allocated `var/tmp/` scratch; use `mktemp -d` as shown in `var/README.md`. Kept results follow PoT 1.1.5 and 5.3 before the scratch is closed.
 4. A root file is a pointer, not a document.
+
+## Existing state consumers held for bounded migration
+
+These are the only operational consumers currently located under `storage/`.
+Their paths remain unchanged in this source-only alignment. Each migration is
+a separate assigned change that preserves existing state and its recovery path.
+
+| Consumer / owner | Existing path | Hold or ending condition | Bounded migration action |
+| --- | --- | --- | --- |
+| `gauge.py`; designated gauge tool writer | `storage/gauges/ledger.jsonl` and sibling lock | Preserve existing readings until a replacement path and required history are verified; future runs append through the tool | In one assigned tool change, identify readers, copy and hash the ledger, update the tool/spec/tests to the accepted telemetry home, test append/locking, then verify both old and new state before releasing the old path |
+| `mind.py`; designated mind tool writer | `storage/mind.lock` | OS lock is held only during a mind operation; lock file may remain after release | In one assigned tool change, verify no mind writer is active, move lock placement to the chosen task-local scratch mechanism, add concurrent-writer and mode tests, and preserve the old path until verified |
+| `closeout.py`; designated closeout tool writer | `storage/closeout/` (`state.json`, `log.jsonl`, lock and temporary state) | Tool is not wired; preserve any existing records and do not activate it in this task | Before wiring, assign one migration, inventory existing files/readers, select a non-disposable telemetry/state destination, copy and hash state, update tool/spec/tests, and verify recovery; no move to `var/tmp/` |
+
+No persistent state moves to `var/tmp/`, and no consumer is switched as a
+side effect of this source-only change. This inventory does not authorize a
+cutover or imply that an unwired consumer is active.
+
+## Case routing mechanics
+
+New incoming data uses `storage/intake/`; accepted working-case payloads use
+`storage/active/`. No new loose files go on the storage root. Existing named
+handoffs remain; operational state is held only as PoT 1.1.14 records.
+Operational code belongs in `ops/bin/`, `ops/lib/scripts/`, `ops/src/` or
+`tools/test/`, with its specifications and operator guidance in `docs/`.
+Independent product code stays in its project repository. STELA's map makes
+the same distinction between operational assets, project code and payload.
+The generator refuses root-level storage report output and tool generation
+beneath storage, including resolved aliases. `var/tmp/` remains the home for
+synthetic code checkouts, probes and intermediates, not a retained deployment.

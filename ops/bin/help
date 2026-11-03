@@ -2,8 +2,8 @@
 # ops/bin/help: wayfinding for the Sessions room (Session Continuity).
 #
 # Adapted from STELA's ops/bin/help (Projects/STELA). Read-only: it writes
-# nothing in the room. --test writes only its own temporary fixture under
-# TMPDIR and removes that fixture when it exits.
+# nothing in normal modes. --test uses explicit TMPDIR or the room's var/tmp,
+# and removes only its own temporary fixture when it exits.
 #
 # Spec: docs/ops/specs/binaries/help.md
 set -euo pipefail
@@ -14,13 +14,13 @@ ROOM_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ROOT="$ROOM_ROOT"
 SELFTEST_FIXTURE=""
 
-# The read-in order: path|why. The first five are the room's own canon
-# (Sessions/CLAUDE.md and AGENTS.md); the last two are the system map and the
-# operator manual.
+# The read-in order: path|why. PoT owns local law; the other files route
+# readers or identify current state and mechanics.
 READ_ORDER=(
   "AGENTS.md|room instructions and the hard safety boundary"
   "CLAUDE.md|who you are: ask the registry and the checkers, not prose"
-  "DOCTRINE.md|continuity doctrine (help doctrine lists its sections)"
+  "PoT.md|the Sessions constitution"
+  "RoR.md|the operator decision ledger"
   "NOW.md|current state; wins over older embedded counts"
   "INDEX.md|room index"
   "docs/ops/README.md|the system map: four tools, one loop"
@@ -62,7 +62,7 @@ color_init() {
 
 require_room() {
   local marker
-  for marker in AGENTS.md DOCTRINE.md; do
+  for marker in AGENTS.md PoT.md; do
     if [[ ! -f "${ROOT}/${marker}" ]]; then
       die "Not a Sessions room (missing ${marker}): ${ROOT}"
     fi
@@ -106,7 +106,7 @@ show_read_order() {
 }
 
 # ---------------------------------------------------------------------------
-# doctrine: an index of DOCTRINE.md, never a substitute for it
+# doctrine: a heading index of the historical DOCTRINE.md
 # ---------------------------------------------------------------------------
 
 show_doctrine() {
@@ -357,7 +357,10 @@ show_menu() {
   printf '  %s--test%s        self-test: fixtures plus a read-only pass over this room\n\n' "$cyan" "$reset"
 
   printf '%sWhere things live%s\n' "$bold" "$reset"
-  printf '  storage/      disposable: empty it and the system still works\n'
+  printf '  storage/      named active cases and handoffs; no new tool state\n'
+  printf '    intake/     incoming data awaiting classification\n'
+  printf '    active/     named case payloads, not operational code\n'
+  printf '  var/tmp/      owner-scoped task scratch (PoT 1.1.13)\n'
   printf '  archives/, archives/receipts/, custody   durable records\n'
   printf '  MIND.md + archives/surfaces/    minds, out of Git\n'
   printf '  Who you are: ops/etc/resident-identities.json, never prose\n'
@@ -390,6 +393,8 @@ write_fixture_room() {
   mkdir -p "$r/docs/ops/specs/scripts" "$r/docs/ops/specs/binaries" "$r/ops/lib/scripts" "$r/tools/test"
   printf '# Agents\n' > "$r/AGENTS.md"
   printf '# Claude\n' > "$r/CLAUDE.md"
+  printf '# PoT\n' > "$r/PoT.md"
+  printf '# RoR\n' > "$r/RoR.md"
   printf '# Doctrine\n\n## 1. First\ntext\n\n## 2. Second\ntext\n' > "$r/DOCTRINE.md"
   printf '# Index\n' > "$r/INDEX.md"
   printf '# Map\n' > "$r/docs/ops/README.md"
@@ -411,18 +416,18 @@ run_self_test() {
   local w
 
   bold=""; dim=""; green=""; cyan=""; reset=""
-  SELFTEST_FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/sessions-help-test.XXXXXX")"
+  SELFTEST_FIXTURE="$(mktemp -d "${TMPDIR:-${ROOM_ROOT}/var/tmp}/sessions-help-test.XXXXXX")"
   trap cleanup_fixture EXIT
   fx="${SELFTEST_FIXTURE}/room"
   bare="${SELFTEST_FIXTURE}/bare"
   mkdir -p "$fx" "$bare/docs"
   write_fixture_room "$fx"
   printf '# Agents\n' > "$bare/AGENTS.md"
-  printf '# Doctrine without sections\n' > "$bare/DOCTRINE.md"
+  printf '# Policy\n' > "$bare/PoT.md"
 
-  # 1. Live room: all seven read-in files are present and numbered 1 to 7.
+  # 1. Live room: all eight read-in files are present and numbered 1 to 8.
   out="$(cd "$ROOM_ROOT" && show_read_order)"
-  expect "live read-in order lists 7 entries" test "$(count_lines_matching "$out" '^[1-7][.] ')" = "7"
+  expect "live read-in order lists 8 entries" test "$(count_lines_matching "$out" '^[1-8][.] ')" = "8"
   passed=$((passed + 1))
 
   # 2. Live room: each loop tool has exactly one row in the spec listing.
@@ -446,7 +451,7 @@ run_self_test() {
   # 5. Fixture: complete read-in order passes and flags the placeholder manual.
   printf '# Now\n' > "$fx/NOW.md"
   out="$(ROOT="$fx"; cd "$ROOT" && show_read_order)"
-  expect "fixture read-in lists 7 entries" test "$(count_lines_matching "$out" '^[1-7][.] ')" = "7"
+  expect "fixture read-in lists 8 entries" test "$(count_lines_matching "$out" '^[1-8][.] ')" = "8"
   expect "fixture manual flagged as placeholder" contains "$out" "1 placeholder line(s)"
   passed=$((passed + 1))
 

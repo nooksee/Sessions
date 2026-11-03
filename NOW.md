@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 c938392f03b3115e3fc9d1efae9ac0e9f5c22586214e0b4bd1ca085ec024999c; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
+<!-- redact: public copy; source sha256 a4b920b22652b133ebb4a30976de90ef8c958bb30b09d5efaeb648fb55614c2a; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
 # Session Continuity Command Center
 
 Updated: 2026-11-03 00:49:40 EST (-0500), JoJo Git, from Joe Codex's
@@ -7,10 +7,23 @@ at 00:48 EST.
 The dated board below is retained as historical context, not as current status.
 Status: active current-state board
 
-Durable method lives in [DOCTRINE.md](DOCTRINE.md). Historical changes and
+Current law lives in [PoT.md](PoT.md); methods live in the manual and tool
+specifications. Historical changes and
 rollback evidence live in `archives/receipts/` and ignored backup custody.
 This file records the current operating state rather than repeating full
 lineage history.
+
+## Scratch integration - operator-directed 2026-11-03
+
+The operator directed immediate filing-law and default integration without
+waiting for the normal amendment process. Current authority is `PoT.md` and
+RoR-16: `var/tmp/` is task scratch; `storage/` is named case work and specified
+tool state. Generator templates, help and agent instructions use that split.
+Existing data and operational state have not been migrated. Retention cleanup
+remains the separate final pass. Prior policy hashes in dated landing notes
+describe their own read time, not the current law after this direction.
+The finite source change and pending Git integration are in Joe's handoff;
+JoJo retains the Git lifecycle. No live service or native body is changed.
 
 ## Current Operating Summary - 2026-11-03
 

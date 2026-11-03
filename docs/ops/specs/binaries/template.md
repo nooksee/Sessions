@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 a0831851659baf42309cdaa7054d363273539be92890664cd891b21e00f40a6a; rules 8; mode history; words 7; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 4e38639a38b0e541d9491da4565e01d6560d592e2674c9bc24071ccb59837456; rules 8; mode history; words 8; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: template
 
 Binary: `Sessions/ops/bin/template` (Bash, no library). Templates: `Sessions/ops/src/{scripts,docs,tests,reports}/*.tpl`, 10 files. Self-test: `ops/bin/template --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/template`, its `factory` renderer and its `ops/src/**/*.tpl` form (`Projects/STELA`); rewritten the same day to render from template files instead of inline text. Status: built 2026-10-30, self-test 18 of 18 passing; it has written no tool and no report in the room. Claudio Freeman reviews it before it is relied on. Map: `docs/ops/README.md`.
@@ -61,10 +61,21 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
    - A value holding `[PLACEHOLDER` is refused: placeholders belong to tool skeletons only.
    - Output goes to standard output, or with `--out PATH` to that file. `--out` refuses an existing path, a link included, and a path whose folder does not exist (it creates no folder); it writes under `noclobber` and prints the path and byte count.
    - These four words are template types, so they are not available as tool names. `closeout` was already refused as a tool name, because its spec exists.
+   - An output whose resolved parent is the room's storage root is refused
+     before creation; use `storage/active/`, `storage/intake/` or an existing
+     named case lane. Relative paths and symlink aliases are resolved with
+     coreutils `realpath -m`. This is a trusted-writer path guard, not a
+     hostile same-user filesystem sandbox.
    - The closeout card's single source is its template, `ops/src/reports/closeout.md.tpl` (PoT 1.2, SSOT); `closeout.md` points to it and carries no copy. Its slots are `PERCENT`, `WINDOW`, `READING_TIME` and `ROTATION_WRITER`, so each card names one writer: "[words sha256=9b03ea54b2cc6cd4dff84ae7f0f9fdceb3dad3632bf805201a859af447183894]" The self-test renders the card and refuses a second copy of it in the spec.
 6. **Tool-set mode** (`<word>`).
    - **Name.** One lowercase word: letters `a` to `z` only, 2 to 32 of them.
-   - **Root.** By default, the room that contains this `ops/bin` folder, which must hold `AGENTS.md` and `DOCTRINE.md`. With `--root=DIR`, an existing directory of any kind, for scratch trees and tests. Templates always come from this room's `ops/src`, whatever the root.
+   - **Root.** By default, the room that contains this `ops/bin` folder, which must hold `AGENTS.md` and `PoT.md`. With `--root=DIR`, an existing directory of any kind, for scratch trees and tests. Templates always come from this room's `ops/src`, whatever the root.
+     A resolved root equal to or beneath this room's storage directory is
+     refused, including aliases: operational code is not installed there.
+     Each planned target is also resolved before any write, so a child
+     source-directory alias cannot redirect generated code back into storage.
+     Synthetic source trees in `var/tmp/` remain supported, as do unrelated
+     directories whose names merely share the storage prefix.
    - **Refusals, all before any write.** Any of the three target files existing, as a file or a link (all three are named; it writes all three or none; a tool whose spec was written first, as `rotate` was, is refused, and its writer creates the script and tests by hand). A name `docs/ops/registry/scripts.md` already lists. A slot none of the three templates declares. `WORD` or `DATE` given: `template` sets those from the word and the clock.
    - **Placeholders.** Every slot not given is filled with `[PLACEHOLDER: <its note>, owner: <placeholder_owner>]`. This is the only mode that allows placeholders. A given slot replaces its placeholder in every file that uses it; a given `PURPOSE` also fills the registry row's purpose.
    - **Write.** All three are rendered first. It creates the three folders if they are absent, then writes each file under `noclobber`. A file that appears between the check and the write is not overwritten; that is the one case where fewer than three files can be written, and the error says so.
@@ -76,7 +87,7 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
    - **Status.** `skeleton`.
    - **Notes.** The spec and test paths, the date, and the purpose or a placeholder for it.
    - **No registry.** The row uses the Sessions form of 2026-10-30 (ID, Name, File Path, Status, Notes), with a placeholder ID.
-8. **`--test`.** Eighteen cases in a temporary directory under `TMPDIR`, never in the room:
+8. **`--test`.** Eighteen cases in a unique temporary directory under an explicit `TMPDIR`, or the room's `var/tmp/` by default (PoT 1.1.13); only that fixture is removed:
    1. nine bad names refused, nothing written;
    2. a dry run writes nothing and shows three files;
    3. a real run writes exactly three files and prints a row;
@@ -97,6 +108,10 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
    18. option misuse is refused: `--out` in tool-set mode, `--dry-run` or `--root` in report mode.
 
    The directory is removed when the test exits. Output is `OK: template self-test passed (18/18).`
+   Generated scripts expose `SCRATCH = SESSIONS / "[words sha256=d61d458b83131ff21256321adc4f62606c95b1ef0d5e89ff8f700f0cdffa4718]"`; script,
+   specification and packet templates cite PoT 1.1.4 and 1.1.13 instead of
+   sending arbitrary rebuildable intermediates into `storage/`. These forms
+   affect newly generated artifacts; existing records are not regenerated.
 
 Dropped from STELA:
 - the `render` call form and STELA's template types (`agent`, `task`, `skill`, `dp`, `results`, `spec` and the stance types);
@@ -129,7 +144,7 @@ Later that day Kevin explained STELA's templates: the agent "[words sha256=18eeb
   - any `{{...}}` left in rendered output;
   - `[PLACEHOLDER` in a report;
   - a template that is malformed, is not the type and id expected, or whose body and `requires_slots` disagree;
-  - a `--root` that is not a directory, and a default room without `AGENTS.md` and `DOCTRINE.md`;
+  - a `--root` that is not a directory, and a default room without `AGENTS.md` and `PoT.md`;
   - unknown options, two names, or none, and an option used in the wrong mode.
 - It never overwrites (checked first, then `noclobber` at the write), never deletes, never writes a registry, never commits, and wires no hook or timer.
 - A rendered report is only as true as its slots. `template` checks that every field is present and filled; it does not check that a hash is right or a gate really passed. The writer stays answerable for every value.

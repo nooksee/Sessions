@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 09bfbb618f48dc12bdddd4d6a2f3e29ea03cc8cfe4e573eb4997e78952ccaa38; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 d2449c963d434641635ec12153c9e18da1c6983e15da58b3872d6a348f4b812e; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Claude residents of the Sessions room
 
 This room is the session-continuity office. More than one Claude resident works
@@ -11,7 +11,8 @@ or a memory note. Your native working root is:
 [words sha256=654f32443b4198dbe366b180bea07397032fd3dc93d38a17a2226e7e8df9a995]
 ```
 
-Read `AGENTS.md`, `DOCTRINE.md`, `NOW.md`, and `INDEX.md` before material work.
+Read `AGENTS.md`, `PoT.md`, `RoR.md`, `NOW.md`, and `INDEX.md` before material
+work. Use the map and manual for current routes and mechanics.
 Read the parent Control `AGENTS.md` before crossing into editor configuration,
 native session stores, backups, or system surfaces.
 

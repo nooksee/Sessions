@@ -1,10 +1,12 @@
-<!-- redact: public copy; source sha256 4ff206976998bbf25b1e047f5d3a9eca6609181cec19fce4954a0268871ddca4; rules 8; mode history; words 58; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
+<!-- redact: public copy; source sha256 f976ae0b5681f1c23aca8507cc26b9e23f067a744899a6098eb64ff04aa8b103; rules 8; mode history; words 59; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
 # Sessions Operations Manual (Command Console)
 
 Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request ("[words sha256=5b699f7ed115780f2363d3261427967ee430cbc0ed7514b43d295b5965b799dd]"), by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
 
-Authority order, unchanged by this manual:
-- **Method:** `DOCTRINE.md` wins over this manual.
+Authority order:
+- **Law:** `PoT.md` is the single Sessions constitution, below Control policy.
+- **Craft and mechanics:** this manual and the specifications explain how to
+  carry out PoT; neither restates or overrides it.
 - **Identity:** `ops/etc/resident-identities.json` (the registry) wins over any prose, including this manual.
 - **Behavior of a tool:** its spec in `docs/ops/specs/` wins over the summary here.
 - **Decisions:** Kevin decides; this manual records how his decisions are carried out.
@@ -26,7 +28,9 @@ This room owns:
 
 The resident bodies themselves (`[host path 1]`, `[host path 2]`, `[host path 3]`) are evidence, not canon. The repository is canon. When they disagree, the repository wins.
 
-This manual is the operator console: what runs, in what order, who decides, and where things live. It does not repeat the method; read `DOCTRINE.md` for that.
+This manual is the operator console: what runs, in what order, who decides,
+and where things live. Historical method prose is preserved as such;
+current mechanics live here and in the tool specifications.
 
 ---
 
@@ -350,11 +354,12 @@ Notes:
 
 ## 10. Rules for New Files
 
-From the map (`docs/ops/README.md`), binding on every writer in this room:
+Filing authority: PoT 1.1. The map (`docs/ops/README.md`) locates the lanes;
+these are the mechanics, not a second source of law.
 
-1. Before creating a folder, find the existing base folder it belongs in. The base is `archives/`, `docs/`, `ops/`, `storage/` and `tools/`, plus the root files. No new specialty folders.
+1. Locate the existing case or base lane first (PoT 1.1.11). The scratch lane is `var/tmp/`; from the project root, `mktemp -d "[words sha256=11e8d534c75d119b8ea5e9ec8c7e603434a790eb5c479f02b54f5cf6e300b2c7]"` allocates a unique task directory. The active case records that path and its owner/closeout condition.
 2. One word per script, in `ops/lib/scripts/<word>.py`; a spec with the same name in `docs/ops/specs/scripts/<word>.md`, in STELA's sections (First Principles Rationale, Mechanics and Sequencing, Anecdotal Anchor, Integrity Filter Warnings); tests beside it in `tools/test/test_<word>.py`, with a test spec in `docs/ops/specs/tools/test/<word>.md`. `ops/bin/template <word>` writes the first three as skeletons.
-3. Working notes and rebuildable output go in `storage/`. Anything that cannot be rebuilt goes in `archives/`, `archives/receipts/` or custody, never in `storage/`. `storage/` can be emptied and the system still works.
+3. Route new incoming payloads to `storage/intake/` and working cases to `storage/active/` (PoT 1.1.4). Leave the storage root clear of new loose files. These are data lanes, not homes for operational source or software installations: code and its documentation use the `ops/`, `tools/` and `docs/` homes of 1.1.1 to 1.1.3. Existing named state remains only under the bounded migration holds in the map (1.1.14). Clones, extraction trees and intermediates use `var/tmp/` (1.1.13). Required results are kept before scratch closeout (1.2.9, 5.3); the final retention pass classifies existing material separately.
 4. A root file is a pointer, not a document.
 5. Every new script, binary, test or runbook gets a row in its registry under `docs/ops/registry/`.
 
@@ -378,10 +383,12 @@ Also:
 | `tools/test/` | tests |
 | `storage/gauges/ledger.jsonl` | gauge ledger (disposable) |
 | `storage/handoff/` | team room (working notes) |
+| `storage/intake/`, `storage/active/` | new incoming payloads and named case work; no operational code trees |
+| `var/tmp/<owner>-<operation>.<unique>/` | task scratch; allocate with `mktemp -d`, contents ignored |
 | `MIND.md`, `archives/surfaces/` | minds (out of Git) |
 | `archives/receipts/` | one receipt per action (durable, tracked) |
 | `Backup/Codex-Session-Preservation/<batch>/` (under `[host path 6]`) | tier-1 custody |
-| `storage/candidates/`, `storage/lab/` | proposal records and scratch; not homes for tools |
+| `storage/candidates/`, `storage/lab/` | existing cases awaiting classification; new ephemeral work uses `var/tmp/` |
 
 ---
 

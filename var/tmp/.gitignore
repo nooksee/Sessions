@@ -1,0 +1,4 @@
+# Task-local scratch stays private; only this skeleton is versionable.
+*
+!.gitignore
+!.gitkeep

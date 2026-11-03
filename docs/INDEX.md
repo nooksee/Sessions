@@ -1,28 +1,30 @@
-<!-- redact: public copy; source sha256 ab042a0d76508beaf3c1e6a1dad3130c7b8fad68026804a4f43a5b84ee684b09; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 caa16b86cf97bc46f9aab15d1395d597b5b0249c3ddb16f7c7cd7c05c4fbf4f1; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Documentation Index (Front Door)
 
 Every document in `Sessions/docs/`, one line each, and the root files that point into them. Framework: STELA (`Projects/STELA/docs/INDEX.md`). Updated 2026-10-30. Status of each tool lives in its registry, not here.
 
 ## 0. Primary Read-in (Start Here)
+* [../PoT.md](../PoT.md): the local constitution; the only current Sessions law.
 * [MANUAL.md](MANUAL.md): the operations manual; people and roles, the four-tool loop, reading a gauge, closeout, minds, rotation, custody, labels, the operator's card, the rules for new files, glossary.
 * [ops/README.md](ops/README.md): the map; the four tools in one loop, where everything lives, and the rules for every new file.
 * [INDEX.md](INDEX.md): this index.
 
 ## 1. Root Files (pointers into the room)
-* [../DOCTRINE.md](../DOCTRINE.md): the method; four identities, failure taxonomy, the transplant recipe, custody tiers. It wins over the manual.
-* [../AGENTS.md](../AGENTS.md): room instructions for every agent; ownership, required reading, hard safety boundary.
-* [../CLAUDE.md](../CLAUDE.md): instructions for the resident Claude; who you are on wake, and where identity is decided (the registry).
+* [../PoT.md](../PoT.md): Sessions law; Control policy remains higher.
+* [../AGENTS.md](../AGENTS.md): room routing and working-file mechanics; PoT owns local law.
+* [../CLAUDE.md](../CLAUDE.md): Claude entry instructions; identity comes from the native session and registry.
 * [../START-HERE.md](../START-HERE.md): five-minute orientation for a newcomer; pointers only.
 * [../README.md](../README.md): the room charter and its older map of lanes.
 * [../INDEX.md](../INDEX.md): the room's catalog of lanes and current surfaces.
-* [../NOW.md](../NOW.md): the live board of residents and open items (last updated 2026-10-19).
+* [../NOW.md](../NOW.md): current room state and open items; no rules.
 * [../HANDOFF.md](../HANDOFF.md): the resident's durable handoff and wake note.
 * `../MIND.md`: the room's mind pointer, one line per resident; written only by `mind.py`, out of Git. Not yet created on 2026-10-30.
 
-Per the map, `HANDOFF.md`, `NOW.md`, `INDEX.md` and `START-HERE.md` are to become pointer-first root files.
+The former broad method document is preserved in place as historical source;
+current craft and mechanics are in the manual and specifications.
 
 ## 2. Operations: Registries
-* [ops/registry/scripts.md](ops/registry/scripts.md): the tools in `ops/lib/scripts/` (gauge, closeout, mind, rotate) and their status.
+* [ops/registry/scripts.md](ops/registry/scripts.md): the tools in `ops/lib/scripts/` and their status.
 * [ops/registry/binaries.md](ops/registry/binaries.md): the entry points in `ops/bin/` (help, template) and their status.
 * [ops/registry/test.md](ops/registry/test.md): the test suites in `tools/test/` and their counts.
 * [ops/registry/runbook.md](ops/registry/runbook.md): operator-run procedures (rotation, the resident packet).
@@ -88,7 +90,7 @@ Tests:
 ## 4. Contracts and Guides (earlier clinic work)
 * [clinic-aggregate-contract.md](clinic-aggregate-contract.md): the public clinic health file (`logs/clinic-aggregate.json`) for consumers outside Sessions.
 * [resource-state-contract.md](resource-state-contract.md): the Resource Governor state file (`logs/resource-state.json`) written by the status-line collector; gauge's last-resort window source.
-* [session-continuity-apprentice-field-guide.md](session-continuity-apprentice-field-guide.md): orientation for apprentices and reviewers; separates resident health, provider capacity, mechanism health and activation authority.
+* [session-continuity-apprentice-field-guide.md](session-continuity-apprentice-field-guide.md): historical orientation for apprentices and reviewers; its legacy authority wording is not current policy.
 * [session-clinic-integration-review-response.md](session-clinic-integration-review-response.md): the clinic's 2026-07-24 answer to OSAI's integration review request; ownership split and adapter contract.
 * [tray-session-clinic-watchdog-20260724.patch](tray-session-clinic-watchdog-20260724.patch): a 2026-07-24 diff adding clinic status to the Control remote-control tray script; a record, not a document to apply.
 
