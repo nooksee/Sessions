@@ -23,7 +23,14 @@ SCRATCH = SESSIONS / "var" / "tmp"
 SPEC = SESSIONS / "docs" / "ops" / "specs" / "scripts" / "constitution.md"
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 COMMIT = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
-ENTRY = re.compile(r"(?m)^### RoR-([0-9]+):[^\n]*$")
+ENTRY_START = re.compile(r"(?m)^### RoR-")
+ENTRY_NUMBER = re.compile(r"^### RoR-([0-9]+):[^\r\n]+$")
+FIELD_LINE = re.compile(r"(?m)^-[ \t]+\*\*([^*]+):\*\*[ \t]*(.*?)\s*$")
+AUTHORITY_LINE = re.compile(r"^([A-Za-z][A-Za-z0-9 -]*):[ \t]*(.*?)\s*$")
+DECISION_ACT = re.compile(
+    r"Decision: Operator\. Scope: PoT\.md\. Target policy SHA-256: "
+    r"([0-9a-f]{64})\. (.+)\Z"
+)
 
 
 class Refused(Exception):
@@ -62,24 +69,53 @@ def resolve_commit(root: Path, revision: str) -> str:
 
 
 def appended_entries(text: str) -> list[tuple[int, str]]:
-    matches = list(ENTRY.finditer(text))
-    return [
-        (int(match.group(1)),
-         text[match.start():matches[index + 1].start()
-              if index + 1 < len(matches) else len(text)])
-        for index, match in enumerate(matches)
-    ]
+    starts = list(ENTRY_START.finditer(text))
+    entries = []
+    previous = 0
+    for index, start in enumerate(starts):
+        end = text.find("\n", start.start())
+        heading = text[start.start():end if end >= 0 else len(text)]
+        match = ENTRY_NUMBER.fullmatch(heading)
+        if not match:
+            raise Refused("RoR ledger contains a malformed entry heading")
+        number = int(match.group(1))
+        if number <= previous:
+            raise Refused("RoR entry numbers must be unique and strictly increasing")
+        previous = number
+        entry_end = starts[index + 1].start() if index + 1 < len(starts) else len(text)
+        entries.append((number, text[start.start():entry_end]))
+    return entries
 
 
-def field(entry: str, name: str) -> str | None:
-    match = re.search(rf"(?m)^-[ \t]+\*\*{re.escape(name)}:\*\*[ \t]*(.+)$", entry)
-    return match.group(1).strip() if match else None
+def entry_fields(entry: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for match in FIELD_LINE.finditer(entry):
+        name, value = match.groups()
+        if name in result:
+            raise Refused(f"RoR entry contains duplicate {name!r} fields")
+        result[name] = value.strip()
+    required = {"Given", "Words", "Act", "Record", "Entered by"}
+    if result.keys() != required:
+        raise Refused("latest RoR entry must contain exactly one of each required field")
+    return result
 
 
-def require_line(text: str, name: str, expected: str) -> None:
-    match = re.search(rf"(?m)^{re.escape(name)}:[ \t]*(.+)$", text)
-    if not match or match.group(1).strip() != expected:
-        raise Refused(f"authorization record has missing or inconsistent {name} field")
+def authority_fields(text: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for line in text.splitlines():
+        match = AUTHORITY_LINE.fullmatch(line)
+        if not match:
+            continue
+        name, value = match.groups()
+        if name in result:
+            raise Refused(f"authority leaf contains duplicate {name!r} fields")
+        result[name] = value
+    required = {
+        "Authority", "Scope", "Target policy SHA-256", "Words SHA-256", "Record"
+    }
+    if result.keys() != required:
+        raise Refused("authority leaf must contain exactly one of each required field")
+    return result
 
 
 def check(root: Path, base_ref: str, head_ref: str) -> str:
@@ -141,36 +177,49 @@ def check(root: Path, base_ref: str, head_ref: str) -> str:
     base_entries = appended_entries(base_ror.decode("utf-8"))
     head_entries = appended_entries(head_ror.decode("utf-8"))
     last_base = max((number for number, _ in base_entries), default=0)
-    new_entries = [(number, entry) for number, entry in head_entries if number > last_base]
-    matching = []
-    for number, entry in new_entries:
-        act = field(entry, "Act") or ""
-        if f"Target policy SHA-256: {target_hash}" in act:
-            matching.append((number, entry))
-    if not matching or matching[-1][0] != max(number for number, _ in new_entries):
-        raise Refused("latest new RoR entry is not an operator decision for this exact PoT hash")
-    _, decision = matching[-1]
-    act = field(decision, "Act") or ""
-    words = field(decision, "Words") or ""
-    record = field(decision, "Record") or ""
+    new_entries = head_entries[len(base_entries):]
+    if len(head_entries) != len(base_entries) + 1:
+        raise Refused("changed PoT requires exactly one new RoR decision entry")
+    entry_number, decision = new_entries[0]
+    if entry_number != last_base + 1:
+        raise Refused("new RoR decision number must be the next ledger sequence")
+
+    fields = entry_fields(decision)
+    act = fields["Act"]
+    words = fields["Words"]
+    record = fields["Record"]
     digest_match = re.fullmatch(r'"\[words sha256=([0-9a-f]{64})\]"', words)
     if not digest_match:
         raise Refused("new RoR decision must carry a private-source words SHA-256 digest")
     words_hash = digest_match.group(1)
-    if "Scope: PoT.md" not in act or "Decision: Operator" not in act:
-        raise Refused("new RoR entry is not an operator decision specifically scoped to PoT.md")
-    if snapshot not in record or authority not in record:
-        raise Refused("RoR record pointers do not name the exact snapshot and authority leaf")
-    if f"Words SHA-256: {words_hash}" not in record:
-        raise Refused("RoR entry does not bind its private-source digest in the record")
+    act_match = DECISION_ACT.fullmatch(act)
+    labels = ("Decision:", "Scope:", "Target policy SHA-256:")
+    if (
+        not act_match
+        or act_match.group(1) != target_hash
+        or any(act.count(label) != 1 for label in labels)
+    ):
+        raise Refused("new RoR entry is not an exact operator decision for this PoT hash")
+    expected_record = [
+        "PoT.md", snapshot, authority, "private words source archives/RoR-words.md",
+        f"Words SHA-256: {words_hash}",
+    ]
+    if record.split("; ") != expected_record:
+        raise Refused("RoR record must name exactly the policy, snapshot, authority, and words digest")
 
-    authority_text = blob(root, head, authority).decode("utf-8")
-    require_line(authority_text, "Authority", "Operator decision (protected provenance; not authenticated by this checker)")
-    require_line(authority_text, "Scope", "PoT.md")
-    require_line(authority_text, "Target policy SHA-256", target_hash)
-    require_line(authority_text, "Words SHA-256", words_hash)
-    if re.search(r'(?m)^Words:\s*"', authority_text):
-        raise Refused("authority leaf must not contain raw operator words")
+    authority_leaf = authority_fields(blob(root, head, authority).decode("utf-8"))
+    expected_authority = {
+        "Authority": "Operator decision (protected provenance; not authenticated by this checker)",
+        "Scope": "PoT.md",
+        "Target policy SHA-256": target_hash,
+        "Words SHA-256": words_hash,
+        "Record": (
+            f"RoR.md#RoR-{entry_number}; {snapshot}; {authority}; "
+            f"Words SHA-256: {words_hash}"
+        ),
+    }
+    if authority_leaf != expected_authority:
+        raise Refused("sanitized authority fields do not exactly match the RoR decision")
 
     return f"PASS: PoT change is coupled to operator decision, snapshot, and ledger ({target_hash})"
 

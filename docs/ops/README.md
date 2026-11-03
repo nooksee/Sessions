@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 a676170c47b5a7fac4cdc36a0bbd5840c2ac97cfac5ca9f6ceb26be9d8ff8ac8; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 e23caf9409183b73c3fbf6d144cfa6b4424d9724b41f07fc92db2c9dfbf9e11c; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
 Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). Filing authority is PoT 1.1: `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each script is one word, in `ops/lib/scripts/<word>.py`, with its specification and tests. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
@@ -84,7 +84,7 @@ a separate assigned change that preserves existing state and its recovery path.
 | Consumer / owner | Existing path | Hold or ending condition | Bounded migration action |
 | --- | --- | --- | --- |
 | `gauge.py`; designated gauge tool writer | `storage/gauges/ledger.jsonl` and sibling lock | Preserve existing readings until a replacement path and required history are verified; future runs append through the tool | In one assigned tool change, identify readers, copy and hash the ledger, update the tool/spec/tests to the accepted telemetry home, test append/locking, then verify both old and new state before releasing the old path |
-| `mind.py`; designated mind tool writer | `storage/mind.lock` | OS lock is held only during a mind operation; lock file may remain after release | In one assigned tool change, verify no mind writer is active, move lock placement to the chosen task-local scratch mechanism, add concurrent-writer and mode tests, and preserve the old path until verified |
+| `mind.py`; designated mind tool writer | `storage/mind.lock` | OS lock is held only during a mind operation; lock file may remain after release | In one assigned migration, preserve one shared exclusion object for every room writer; a per-task scratch lock is not equivalent. Select and review a shared private destination separately, test cross-writer exclusion, then preserve the old path until the new shared lock is verified. No path or tool change is authorized by this inventory. |
 | `closeout.py`; designated closeout tool writer | `storage/closeout/` (`state.json`, `log.jsonl`, lock and temporary state) | Tool is not wired; preserve any existing records and do not activate it in this task | Before wiring, assign one migration, inventory existing files/readers, select a non-disposable telemetry/state destination, copy and hash state, update tool/spec/tests, and verify recovery; no move to `var/tmp/` |
 
 No persistent state moves to `var/tmp/`, and no consumer is switched as a

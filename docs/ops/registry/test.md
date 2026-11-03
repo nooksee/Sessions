@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 a833afe1ce19055b4a9210886fbe5eee8031cf05b6081db68fc2ba15bec205c3; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 e2d46253541a87eeb4d9b279b14e518241b61a873d219c67f0904ac1b024cde4; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
 # Test Registry
 
 Authoritative registry for `Sessions/tools/test/*` executables. Framework: STELA (`Projects/STELA/docs/ops/registry/test.md`). Every test runs on synthetic data in a temporary directory; none reads a real body, registry or mind. Run from the room root with `python3 -I -B`. Updated 2026-11-01. Counts in the Tests column are the suite's own measured count where a count is given; ported and smoke suites give their kind instead, and the port receipt gives the measured totals.
@@ -49,6 +49,6 @@ Authoritative registry for `Sessions/tools/test/*` executables. Framework: STELA
 | TEST-42 | Alerts Arity Test | tools/test/test_alerts_arity.py | supporting | ported | Ported suite from `Scripts/tests/test_clinic_instrument_arity.py` with 4 edit(s); its cases are described in its own docstring. |
 
 | TEST-43 | Filing Test | tools/test/test_filing.py | supporting | synthetic | Filing boundary, factory defaults, case lanes, root-report/code-placement guards, help, preserved state and synthetic Git fixtures; no body or private record reads. Method: `docs/MANUAL.md` section 10. |
-| TEST-44 | Constitution Test | tools/test/test_constitution.py | critical | 11 | Synthetic Git coverage of unchanged/changed PoT, scoped and unrelated decisions, exact hashes, snapshot and authority requirements, append-only ledger, deletion/rename, regular-file enforcement and clean candidate checkout; no private data. Gate: `ops/lib/scripts/constitution.py`. |
+| TEST-44 | Constitution Test | tools/test/test_constitution.py | critical | 20 | Synthetic Git coverage of unchanged/changed PoT, exact decisions/scopes/hashes, duplicate and later ledger entries, entry ordering, snapshot and authority requirements, append-only history, deletion/rename, regular-file enforcement and clean candidate checkout; no private data. Gate: `ops/lib/scripts/constitution.py`. |
 
 [PLACEHOLDER: `tools/test/test_closeout.py` and `tools/test/test_rotate.py`, with test specs in `docs/ops/specs/tools/test/`, when those tools are written. Owner: the writer Claude Shannon names for each tool.]

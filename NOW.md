@@ -1,9 +1,9 @@
-<!-- redact: public copy; source sha256 a4b920b22652b133ebb4a30976de90ef8c958bb30b09d5efaeb648fb55614c2a; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
+<!-- redact: public copy; source sha256 0eb008fef6e0494c91e406725d6863bdd8d319f4048d261ab7b353aacc0a57e6; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
 # Session Continuity Command Center
 
-Updated: 2026-11-03 00:49:40 EST (-0500), JoJo Git, from Joe Codex's
-actual-result audit written at 00:30 EST and read-only GitHub/state checks
-at 00:48 EST.
+Updated: 2026-11-03 02:24 EST (-0500), JoJo Git, to reconcile the filing-law
+and current-authority wording below. Other observations retain their stated
+measurement times and were not refreshed in this correction.
 The dated board below is retained as historical context, not as current status.
 Status: active current-state board
 
@@ -15,15 +15,15 @@ lineage history.
 
 ## Scratch integration - operator-directed 2026-11-03
 
-The operator directed immediate filing-law and default integration without
-waiting for the normal amendment process. Current authority is `PoT.md` and
-RoR-16: `var/tmp/` is task scratch; `storage/` is named case work and specified
-tool state. Generator templates, help and agent instructions use that split.
-Existing data and operational state have not been migrated. Retention cleanup
-remains the separate final pass. Prior policy hashes in dated landing notes
-describe their own read time, not the current law after this direction.
-The finite source change and pending Git integration are in Joe's handoff;
-JoJo retains the Git lifecycle. No live service or native body is changed.
+The 2026-11-03 filing alignment is reflected in current `PoT.md`: `var/tmp/`
+is task scratch and `storage/` is named case work, not a tool-state home.
+Existing state remains only under the bounded migration holds recorded in
+`docs/ops/README.md` (PoT 1.1.14); no consumer has moved. RoR-16 records the
+prior, bounded filing act and is not current authority for a storage exception.
+RoR-17 records the operator direction bound to the current law hash.
+Retention cleanup remains a separate final pass. The source successor and
+its pending Git review/integration are recorded in JoJo's handoff; no live
+service or native body is changed.
 
 ## Current Operating Summary - 2026-11-03
 

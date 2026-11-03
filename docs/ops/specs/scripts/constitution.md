@@ -1,8 +1,8 @@
-<!-- redact: public copy; source sha256 846f1d8f59b1725eb327000fcc178e7cb08868b7b24cc4e2aaabcca3dc4286de; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 7f15a3e101193ad4b8b9f4ee1da6a4fc6dea558e11d98802ba5796739f7fb9e5; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: constitution
 
 Script: `ops/lib/scripts/constitution.py`. Tests:
-`tools/test/test_constitution.py`. Status: built; 10 synthetic Git contract
+`tools/test/test_constitution.py`. Status: built; 20 synthetic Git contract
 tests pass locally; hosted CI and independent exact-head review remain pending.
 Map: `docs/ops/README.md`.
 
@@ -27,11 +27,12 @@ pull-request route.
    `archives/PoT-<hash8>.md` byte-identical to the candidate law and
    `archives/PoT-authority-<hash8>.md`, where `hash8` is the prefix of the
    exact SHA-256 of that law.
-5. In the same candidate, `RoR.md` must be append-only and include a newly
-   appended latest operator-decision entry scoped to `PoT.md`. Its full target
-   hash, private-words digest, snapshot and sanitized authority leaf must
-   agree exactly. A standalone approval word, old decision, unrelated entry,
-   stale hash or missing record fails.
+5. In the same candidate, `RoR.md` must be append-only and add exactly one
+   next-numbered entry. Its required fields must occur exactly once, and its
+   decision, `PoT.md` scope, full target hash, private-words digest, snapshot
+   and sanitized authority leaf must agree exactly. A standalone approval
+   word, old decision, unrelated or later entry, duplicate field, suffixed
+   value, stale hash or missing record fails.
 6. This is a structural and consistency check. It cannot authenticate who
    supplied the operator decision or whether protected review occurred.
    Those facts depend on the independent protected review/operator

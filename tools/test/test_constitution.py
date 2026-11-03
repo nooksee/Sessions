@@ -42,7 +42,9 @@ class Fixture:
         return git(self.root, "rev-parse", "HEAD")
 
     def authorize_change(self, *, scope="PoT.md", target_hash=None,
-                         snapshot=True, authority=True, include_decision=True):
+                         snapshot=True, authority=True, include_decision=True,
+                         decision="Operator", hash_suffix="", duplicate_act=False,
+                         act_suffix=""):
         candidate_law = b"synthetic constitutional successor\n"
         actual_hash = hashlib.sha256(candidate_law).hexdigest()
         target_hash = target_hash or actual_hash
@@ -61,21 +63,29 @@ class Fixture:
                     f"Scope: {scope}\n"
                     f"Target policy SHA-256: {target_hash}\n"
                     f"Words SHA-256: {words_hash}\n"
+                    f"Record: RoR.md#RoR-1; archives/PoT-{short}.md; "
+                    f"{authority_path}; Words SHA-256: {words_hash}\n"
                 ).encode(),
             )
         if include_decision:
             act = (
-                f"Decision: Operator. Scope: {scope}. Target policy SHA-256: {target_hash}."
+                f"Decision: {decision}. Scope: {scope}. "
+                f"Target policy SHA-256: {target_hash}{hash_suffix}. "
+                f"Apply the synthetic policy change.{act_suffix}"
             )
-            record = f"PoT.md; archives/PoT-{short}.md; {authority_path}; Words SHA-256: {words_hash}"
+            record = (
+                f"PoT.md; archives/PoT-{short}.md; {authority_path}; "
+                f"private words source archives/RoR-words.md; Words SHA-256: {words_hash}"
+            )
             entry = (
                 "\n### RoR-1: operator direction\n"
                 "- **Given:** synthetic test fixture\n"
                 f'- **Words:** "[words sha256={words_hash}]"\n'
                 f"- **Act:** {act}\n"
-                f"- **Record:** {record}\n"
-                "- **Entered by:** synthetic test writer\n"
             )
+            if duplicate_act:
+                entry += f"- **Act:** {act}\n"
+            entry += f"- **Record:** {record}\n- **Entered by:** synthetic test writer\n"
             with (self.root / "RoR.md").open("ab") as handle:
                 handle.write(entry.encode())
         self.head = self.commit("candidate")
@@ -124,13 +134,89 @@ class ConstitutionTest(unittest.TestCase):
         self.fixture.authorize_change(scope="README.md")
         result = self.fixture.run()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("operator decision", result.stderr)
+        self.assertIn("exact operator decision", result.stderr)
+
+    def test_suffixed_scope_does_not_authorize_policy(self):
+        self.fixture.authorize_change(scope="PoT.md.bak")
+        result = self.fixture.run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exact operator decision", result.stderr)
+
+    def test_suffixed_decision_does_not_authorize_policy(self):
+        self.fixture.authorize_change(decision="Operator-denied")
+        result = self.fixture.run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exact operator decision", result.stderr)
 
     def test_wrong_target_hash_fails(self):
         self.fixture.authorize_change(target_hash="0" * 64)
         result = self.fixture.run()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("latest new RoR entry", result.stderr)
+        self.assertIn("exact operator decision", result.stderr)
+
+    def test_suffixed_target_hash_fails(self):
+        self.fixture.authorize_change(hash_suffix="0")
+        result = self.fixture.run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exact operator decision", result.stderr)
+
+    def test_duplicate_authorization_fields_fail(self):
+        self.fixture.authorize_change(duplicate_act=True)
+        result = self.fixture.run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("duplicate 'Act' fields", result.stderr)
+
+    def test_repeated_scope_inside_act_fails(self):
+        self.fixture.authorize_change(act_suffix=" Scope: README.md.")
+        result = self.fixture.run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exact operator decision", result.stderr)
+
+    def test_later_unrelated_ledger_entry_cannot_be_ignored(self):
+        self.fixture.authorize_change()
+        with (self.root / "RoR.md").open("ab") as handle:
+            handle.write(
+                b"\n### RoR-2: unrelated later entry\n"
+                b"- **Given:** synthetic unrelated event\n"
+            )
+        self.fixture.head = self.fixture.commit("append unrelated later entry")
+        result = self.fixture.run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exactly one new RoR decision entry", result.stderr)
+
+    def test_duplicate_or_lower_new_entry_number_fails(self):
+        self.fixture.authorize_change()
+        with (self.root / "RoR.md").open("ab") as handle:
+            handle.write(
+                b"\n### RoR-1: duplicate numbered entry\n"
+                b"- **Given:** synthetic unrelated event\n"
+            )
+        self.fixture.head = self.fixture.commit("append duplicate-number entry")
+        result = self.fixture.run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unique and strictly increasing", result.stderr)
+
+    def test_new_entry_number_cannot_go_backwards(self):
+        self.fixture.authorize_change()
+        with (self.root / "RoR.md").open("ab") as handle:
+            handle.write(
+                b"\n### RoR-0: lower numbered entry\n"
+                b"- **Given:** synthetic unrelated event\n"
+            )
+        self.fixture.head = self.fixture.commit("append lower-number entry")
+        result = self.fixture.run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unique and strictly increasing", result.stderr)
+
+    def test_duplicate_authority_fields_fail(self):
+        self.fixture.authorize_change()
+        authority_path = next(self.root.glob("archives/PoT-authority-*.md"))
+        with authority_path.open("a") as handle:
+            handle.write("Scope: PoT.md.bak\n")
+        self.fixture.head = self.fixture.commit("append contradictory authority scope")
+        result = self.fixture.run()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("duplicate 'Scope' fields", result.stderr)
 
     def test_missing_immutable_snapshot_fails(self):
         self.fixture.authorize_change(snapshot=False)
