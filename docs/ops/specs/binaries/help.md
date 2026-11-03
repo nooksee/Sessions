@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 e50938d3a3467b178e8f395f52fa0660ca4948a0cb06c5a799632947a8f7510f; rules 8; mode history; words 2; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 bb96de59a77a7fc9442ec89fd0508117e62049bc1134c94497a83934b1a1d4ee; rules 8; mode history; words 2; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: help
 
 Binary: `Sessions/ops/bin/help` (Bash, no library). Self-test: `ops/bin/help --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/help` and its spec (`Projects/STELA`). Status: built 2026-10-30, self-test 14 of 14 passing; read-only, wired to no hook and no timer. Claudio Freeman reviews it before it is relied on. Map: `docs/ops/README.md`.
@@ -27,7 +27,7 @@ STELA's help solved the same problem for STELA: deterministic wayfinding, specs 
      7. `docs/MANUAL.md`
    - The loop: gauge, closeout, Kevin says yes, mind, rotate, gauge.
    - One row per tool, from the union of `docs/ops/specs/scripts/*.md` and `ops/lib/scripts/*.py`, with the same columns as `specs` below.
-   - The two binaries, the help modes, and where things live (`storage/` named working cases and handoffs, with no new tool state; `var/tmp/` task scratch under PoT 1.1.13; archives and custody kept; identity in `ops/etc/resident-identities.json`).
+   - the two binaries, the help modes, and where things live (`storage/` working payload with only its declared skeleton admitted; `var/tmp/` task scratch under PoT 1.1.13; archives and custody kept; identity in `ops/etc/resident-identities.json`).
 4. **`read`.** Checks the eight read-in files in order. For each: present or `MISSING`, its line count, and how many lines carry `[PLACEHOLDER`. Any missing file fails the command after the full list is printed.
 5. **`specs`.** First the tool rows. For each word: spec yes or no, script yes or no, tests yes or no, and the first sentence after `Status:` in the spec's header (the text before its first `## ` section). A spec with no such line prints `[no Status: line before the first section]`. A script with no spec prints `[no spec: convention break]`. Then every other spec under `docs/ops/specs/`, grouped by folder, with its own status the same way.
 6. **`doctrine`.** Prints each level-two heading of `DOCTRINE.md` with its line number. It is an index, never a summary. It fails when the file is missing or has no such heading.
@@ -36,7 +36,7 @@ STELA's help solved the same problem for STELA: deterministic wayfinding, specs 
    - `docs/MANUAL.md`;
    - the rest of `docs/`.
    Files are searched in sorted order. Zero matches prints an explicit no-reference line and exits 0. The bare form is kept from STELA; `term` exists so that a mode word such as `specs` can itself be searched for.
-8. **`curriculum`.** Not built. It prints `[PLACEHOLDER: the wake sequence and the closeout sequence as exact commands, owner Claude Shannon; it waits for ops/lib/scripts/closeout.py and rotate.py.]`, then pointers to the hand procedures (`CLAUDE.md` "[words sha256=4b244a47cb722331e152f2c71202b68cf5b33f9f19fe0e3a3c27ced8d3bc5dfc]", `HANDOFF.md`, `closeout.md`, `rotate.md`).
+8. **`curriculum`.** Not built. It prints a placeholder for the wake/closeout commands and accepted provider routes; closeout source exists but is not installed, and `rotate.py` is not written. It then points to the hand procedures (`CLAUDE.md` "[words sha256=4b244a47cb722331e152f2c71202b68cf5b33f9f19fe0e3a3c27ced8d3bc5dfc]", `HANDOFF.md`, `closeout.md`, `rotate.md`).
 9. **`--test`.** Fourteen cases.
    - Three read-only passes over the live room: eight read-in entries; one row each for gauge, closeout, mind and rotate; a non-empty historical doctrine index.
    - Nine on a fixture room built under explicit `TMPDIR` or project-local `var/tmp/`: a missing read-in file fails; the placeholder manual is flagged; `Status:` is taken from the header only; a spec without one and a script without a spec are each reported; search is case-insensitive and keeps tier order; zero matches is reported; an empty term fails; doctrine without sections fails.
@@ -72,4 +72,4 @@ STELA's own anchor carries over as a design rule. A bolded heading once broke ST
 - `doctrine` fails on a missing `DOCTRINE.md` or one with no level-two heading. It never substitutes prose for doctrine.
 - Status text is the spec writer's own sentence, cut at the first "[words sha256=8dccf256f6d5783e62bba717ef04a6cfcea41d9befffa5ade55235e0b6a0eeb0]" and at 100 characters. `help` reports it and does not judge it. A spec whose status sits after its first section is reported as having none.
 - Search with zero matches is an explicit report, not an inferred answer. Search covers `docs/` only. The root canon files are reached through `read`, not `term`. [PLACEHOLDER: whether `term` should also search the five root canon files, owner Claude Shannon.]
-- Normal `help` modes write nothing, read no session body or registry JSON, and run no tool. `--test` writes only its own unique fixture under explicit `TMPDIR` or project-local `var/tmp/` and removes only that fixture.
+- Normal `help` modes write nothing, read no session body or registry JSON, and run no tool. The storage menu distinguishes the versioned skeleton from ignored payload. `--test` writes only its own unique fixture under explicit `TMPDIR` or project-local `var/tmp/` and removes only that fixture.

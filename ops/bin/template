@@ -8,7 +8,7 @@
 #
 # Two modes:
 #   template <word>                          a new tool's three skeleton files
-#   template receipt|packet|closeout|ror|custody|validation|readme  one report, every slot supplied
+#   template receipt|packet|closeout|ror|custody|validation|source-change|readme  one report, every slot supplied
 #
 # It never overwrites a file, never deletes anything, never writes a
 # registry, and leaves no {{...}} marker in anything it renders.
@@ -23,7 +23,7 @@ SRC_DIR="${ROOM_ROOT}/ops/src"
 SELFTEST_FIXTURE=""
 
 # Report types: name, template file under ops/src, expected template_type.
-REPORT_TYPES=(receipt packet closeout ror custody validation readme)
+REPORT_TYPES=(receipt packet closeout ror custody validation source-change readme)
 declare -A REPORT_FILE=(
   [receipt]="reports/receipt.md.tpl"
   [packet]="reports/packet.md.tpl"
@@ -31,6 +31,7 @@ declare -A REPORT_FILE=(
   [ror]="reports/ror.md.tpl"
   [custody]="reports/custody.md.tpl"
   [validation]="reports/validation.md.tpl"
+  [source-change]="reports/source-change.md.tpl"
   [readme]="docs/readme.md.tpl"
 )
 declare -A REPORT_KIND=(
@@ -40,6 +41,7 @@ declare -A REPORT_KIND=(
   [ror]="report"
   [custody]="report"
   [validation]="report"
+  [source-change]="report"
   [readme]="docs"
 )
 # The tool set: target path (relative to the root, @WORD@ substituted),
@@ -61,7 +63,7 @@ AUTO_SLOTS=(WORD DATE)
 usage() {
   cat <<'USAGE'
 Usage: ops/bin/template [--dry-run] [--root=DIR] [SLOTS] <word>
-       ops/bin/template receipt|packet|closeout|ror|custody|validation|readme [SLOTS] [--out PATH]
+       ops/bin/template receipt|packet|closeout|ror|custody|validation|source-change|readme [SLOTS] [--out PATH]
        ops/bin/template --test
        ops/bin/template -h|--help
 
@@ -79,17 +81,20 @@ ops/src/tests/test.py.tpl,
 and prints a row for docs/ops/registry/scripts.md for the registry writer.
 WORD and DATE are set by template. Every other slot not given is filled with
 "[PLACEHOLDER: <note>, owner: <owner>]"; this is the only mode that allows
-placeholders. It refuses when any of the three files exists (all three or
-none) and when the registry already names ops/lib/scripts/<word>.py.
+placeholders. Existing targets are refused by default. With explicit
+--preserve-spec, a regular non-link spec is kept byte for byte and only the
+missing script and test are written. A registry name already held is refused.
 
   --dry-run    print what would be written; write nothing
   --root=DIR   write under DIR instead of this room (scratch trees, tests)
+  --preserve-spec  with a tool name, preserve its existing regular spec and
+                   write only the missing script and test
 
-Report mode, receipt|packet|closeout|ror|custody|validation|readme: renders
+Report mode, receipt|packet|closeout|ror|custody|validation|source-change|readme: renders
 ops/src/reports/<type>.md.tpl (readme: ops/src/docs/readme.md.tpl) to
 standard output. Every slot the template requires must be given; missing
 slots are named. A value holding "[PLACEHOLDER" or a {{...}} marker is
-refused. These four words are therefore not available as tool names.
+refused. Report form names are therefore not available as tool names.
 
   --out PATH   write to PATH instead; refuses an existing PATH, and a PATH
                whose folder does not exist
@@ -427,7 +432,8 @@ registry_row() {
 toolset_mode() {
   local root="$1"
   local dry_run="$2"
-  local id rel abs bytes key slot storage_root resolved_target
+  local preserve_spec="$3"
+  local id rel abs bytes key slot storage_root resolved_target target_count
   local existing=() unknown=() auto_given=() rels=()
   local -A known=() content=() filled=()
   local registry=""
@@ -445,6 +451,8 @@ toolset_mode() {
       die "template: refusing to generate code under storage; use the canonical source root or var/tmp for a synthetic scratch tree" ;;
   esac
   registry="${root}/docs/ops/registry/scripts.md"
+  target_count=3
+  [[ "$preserve_spec" != "1" ]] || target_count=2
 
   for id in "${TOOL_IDS[@]}"; do
     rel="${TOOL_TARGET[$id]//@WORD@/$WORD}"
@@ -454,12 +462,18 @@ toolset_mode() {
       "$storage_root"|"$storage_root"/*)
         die "template: refusing to generate code under storage through a target alias: ${rel}" ;;
     esac
+    if [[ "$preserve_spec" == "1" && "$id" == "spec" ]]; then
+      if [[ ! -f "${root}/${rel}" || -L "${root}/${rel}" ]]; then
+        die "template: --preserve-spec requires an existing regular, non-link spec: ${rel}"
+      fi
+      continue
+    fi
     if [[ -e "${root}/${rel}" || -L "${root}/${rel}" ]]; then
       existing+=("$rel")
     fi
   done
   if (( ${#existing[@]} > 0 )); then
-    die "template: refusing to overwrite; ${#existing[@]} of 3 file(s) already exist under ${root}: ${existing[*]}"
+    die "template: refusing to overwrite; ${#existing[@]} of ${target_count} target file(s) already exist under ${root}: ${existing[*]}"
   fi
   if [[ -f "$registry" ]] && grep -qF "ops/lib/scripts/${WORD}.py" "$registry"; then
     die "template: the registry already names ops/lib/scripts/${WORD}.py: ${registry}"
@@ -520,6 +534,10 @@ toolset_mode() {
   fi
 
   for id in "${TOOL_IDS[@]}"; do
+    if [[ "$preserve_spec" == "1" && "$id" == "spec" ]]; then
+      printf '  preserving existing %s (not written)\n' "${TOOL_TARGET[$id]//@WORD@/$WORD}"
+      continue
+    fi
     rel="${TOOL_TARGET[$id]//@WORD@/$WORD}"
     abs="${root}/${rel}"
     bytes="$(printf '%s' "${content[$id]}" | wc -c | tr -d ' ')"
@@ -535,6 +553,10 @@ toolset_mode() {
 
   if [[ "$dry_run" == "1" ]]; then
     for id in "${TOOL_IDS[@]}"; do
+      if [[ "$preserve_spec" == "1" && "$id" == "spec" ]]; then
+        printf '\n----- preserving existing %s (not written) -----\n' "${TOOL_TARGET[$id]//@WORD@/$WORD}"
+        continue
+      fi
       rel="${TOOL_TARGET[$id]//@WORD@/$WORD}"
       printf '\n----- %s -----\n%s' "$rel" "${content[$id]}"
     done
@@ -642,13 +664,26 @@ run_self_test() {
   expect "existing files unchanged" test "$sum1" = "$sum2"
   passed=$((passed + 1))
 
-  # 6. A spec written first (as for closeout and rotate) refuses the whole set.
+  # 6. A spec written first is preserved only through explicit opt-in.
   mkdir -p "$fx/specfirst/docs/ops/specs/scripts"
   printf '# Technical Specification: early\n' > "$fx/specfirst/docs/ops/specs/scripts/early.md"
   before="$(file_count "$fx/specfirst")"
-  refuses "a pre-existing spec was accepted" "$self" --root="$fx/specfirst" early
+  refuses "a pre-existing spec without opt-in was accepted" "$self" --root="$fx/specfirst" early
   after="$(file_count "$fx/specfirst")"
   expect "all or nothing on refusal" test "$before" = "$after"
+  sum1="$(sha256sum < "$fx/specfirst/docs/ops/specs/scripts/early.md")"
+  "$self" --root="$fx/specfirst" --preserve-spec early >/dev/null
+  sum2="$(sha256sum < "$fx/specfirst/docs/ops/specs/scripts/early.md")"
+  expect "explicit route preserves the spec byte for byte" test "$sum1" = "$sum2"
+  expect "explicit route writes script and test only" test "$(file_count "$fx/specfirst")" = "3"
+  mkdir -p "$fx/speclink/docs/ops/specs/scripts" "$fx/speclink/source"
+  printf '# Linked spec\n' > "$fx/speclink/source/early.md"
+  ln -s "$fx/speclink/source/early.md" "$fx/speclink/docs/ops/specs/scripts/early.md"
+  refuses "preserve route accepted a linked spec" "$self" --root="$fx/speclink" --preserve-spec early
+  expect "linked-spec refusal writes no target files" test "$(find "$fx/speclink" -type f | wc -l | tr -d ' ')" = "1"
+  mkdir -p "$fx/nospec"
+  refuses "preserve route without a spec was accepted" "$self" --root="$fx/nospec" --preserve-spec early
+  expect "preserve route without a spec writes nothing" test "$(file_count "$fx/nospec")" = "0"
   passed=$((passed + 1))
 
   # 7. The registry: next id after the highest; a registered name is refused.
@@ -693,9 +728,9 @@ for p in sys.argv[1:]:
     load_template "${REPORT_FILE[$kind]}" "${REPORT_KIND[$kind]}" "$kind"
     tpl_count=$((tpl_count + 1))
   done
-  expect "ten templates load" test "$tpl_count" = "10"
-  expect "ten .tpl files under ops/src/{docs,scripts,tests,reports}" test \
-    "$(find "$SRC_DIR/docs" "$SRC_DIR/scripts" "$SRC_DIR/tests" "$SRC_DIR/reports" -name '*.tpl' -type f | wc -l | tr -d ' ')" = "10"
+  expect "eleven templates load" test "$tpl_count" = "11"
+  expect "eleven .tpl files under ops/src/{docs,scripts,tests,reports}" test \
+    "$(find "$SRC_DIR/docs" "$SRC_DIR/scripts" "$SRC_DIR/tests" "$SRC_DIR/reports" -name '*.tpl' -type f | wc -l | tr -d ' ')" = "11"
   passed=$((passed + 1))
 
   # 11. Every report renders with all of its slots: no marker remains, no
@@ -822,6 +857,7 @@ for p in sys.argv[1:]:
 DRY_RUN=0
 ROOT_ARG="$ROOM_ROOT"
 ROOT_GIVEN=0
+PRESERVE_SPEC=0
 OUT_PATH=""
 OUT_GIVEN=0
 WORD=""
@@ -845,6 +881,9 @@ while (( $# > 0 )); do
       ;;
     --dry-run)
       DRY_RUN=1
+      ;;
+    --preserve-spec)
+      PRESERVE_SPEC=1
       ;;
     --root=*)
       ROOT_ARG="${1#--root=}"
@@ -911,6 +950,7 @@ done
 if [[ -n "$WORD" && -n "${REPORT_FILE[$WORD]+set}" ]]; then
   (( DRY_RUN == 0 )) || die "template ${WORD}: --dry-run is for tool-set mode; without --out, a report only prints"
   (( ROOT_GIVEN == 0 )) || die "template ${WORD}: --root is for tool-set mode; use --out PATH"
+  (( PRESERVE_SPEC == 0 )) || die "template ${WORD}: --preserve-spec is for tool-set mode"
   report_mode "$WORD" "$OUT_PATH"
   exit 0
 fi
@@ -925,4 +965,4 @@ if (( ROOT_GIVEN == 0 )); then
   done
 fi
 
-toolset_mode "$ROOT_ARG" "$DRY_RUN"
+toolset_mode "$ROOT_ARG" "$DRY_RUN" "$PRESERVE_SPEC"

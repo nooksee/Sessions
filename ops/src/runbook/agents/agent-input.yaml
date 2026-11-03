@@ -1,1 +1,17 @@
-[PLACEHOLDER]
+template: sessions-agent-input
+version: 1
+instructions: >
+  Fill every field before delivery. Use "none" for an empty field. Scope is
+  exact paths or surfaces; authority quotes the decision actually given.
+  Delivery occurs only when Kevin pastes this packet into the resident's own
+  conversation.
+fields:
+  to: "Role (Person) and registry key"
+  from: "Packet author; identify relayed words as relayed"
+  owner: "One writer for the scoped work"
+  scope: "Exact writable paths; all other paths are read-only"
+  authority: "Decision authorizing this exact scope, with author and date"
+  inputs: "Ordered paths to read first, beginning with room instructions"
+  rules: "Applicable safety and process constraints"
+  stop_condition: "Deliverable, fixed deadline, and concrete stop triggers"
+  report: "Owner's handoff path and required measured evidence"

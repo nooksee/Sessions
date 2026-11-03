@@ -17,6 +17,7 @@
 !/ops/
 !/tools/
 !/docs/
+!/storage/
 !/var/
 /var/*
 !/var/README.md
@@ -59,10 +60,10 @@
 #   MIND.md, archives/MIND-*, archives/NOTEBOOK-*  minds and sealed notebooks: who a resident is
 #   ops/etc/*.json       the registry, roster, promotions and host bindings: identity
 #   logs/*               telemetry: output, not a record
-#   storage/             named working cases and handoffs; no new tool state
+#   storage/             only its declared skeleton is versioned; payload stays private by default
 #   var/tmp/             task-local scratch; only the skeleton is admitted
 #   HANDOFF.md           the manager's own handoff
-/storage/
+# Storage admission is defined once, in storage/.gitignore.
 /MIND.md
 /archives/MIND-*
 /archives/NOTEBOOK-*

@@ -1,7 +1,7 @@
-<!-- redact: public copy; source sha256 e23caf9409183b73c3fbf6d144cfa6b4424d9724b41f07fc92db2c9dfbf9e11c; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 2382c7351c16004815092785d718a5d69eb7e3d5c17b2fae2585691c582ebacd; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
-Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). Filing authority is PoT 1.1: `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each script is one word, in `ops/lib/scripts/<word>.py`, with its specification and tests. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
+Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). Filing authority is PoT 1.1: `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
 
 ## The system: four tools, one loop
 
@@ -19,7 +19,7 @@ Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: ST
  [words sha256=64323b40d5c620029cabcd43947bf4254d330dc5fe64e3ac4ce031637ef03655]
             [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
             [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=ab6455e0e05338ce2051b8faabc1f5a1af0989d914d527ff8c8df86755b15562]
+ [words sha256=8cdd8d8c7578390804c9d639f0da8a56ba97d34b9c5eda9aa85d0532a6aee593]
          [words sha256=5b0e52261aaf0f76b262c0b8a004e1d74090f607ffb023f31187203e7bf4474d]
             [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
             [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
@@ -38,23 +38,23 @@ Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: ST
 | --- | --- | --- | --- |
 | gauge | `ops/lib/scripts/gauge.py`, `docs/ops/specs/scripts/gauge.md`, `tools/test/test_gauge.py` | tool | built 10-30; Claudio reviews |
 | gauge ledger | `storage/gauges/ledger.jsonl` | existing state held for migration | rebuildable from body counters; see bounded migration inventory below |
-| closeout | `ops/lib/scripts/closeout.py`, `docs/ops/specs/scripts/closeout.md` | tool | designed 10-30 |
+| closeout | `ops/lib/scripts/closeout.py`, `docs/ops/specs/scripts/closeout.md`, `tools/test/test_closeout.py` | tool | implemented; synthetic coverage is not native delivery or installation proof |
 | mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | ported from the Candidates package, simplified to solicited input |
 | mind pointer | `<room>/MIND.md`, one line per resident in the room | durable, out of Git | first one: `Sessions/MIND.md` |
-| mind leaves | `<room>/archives/surfaces/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | first: Shannon's v2, after Kevin's yes |
+| mind leaves | `<room>/archives/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | archives-root layout implemented; an actual write follows PoT 5.1 and 6.4.3 |
 | rotate | `ops/lib/scripts/rotate.py` (to write), `docs/ops/specs/scripts/rotate.md` (from the package runbook) | tool | next |
-| team room | `storage/handoff/{shannon,claudine,joe}.md`, and `storage/handoff/port.md` (the port writer's handoff, 2026-11-01) | working notes | results are promoted to `archives/receipts/` or the office handoff |
+| team room | `storage/handoff/{shannon,claudine,joe}.md`, and `storage/handoff/port.md` (the port writer's handoff, 2026-11-01) | private, ignored working notes | results are promoted to `archives/receipts/` or the office handoff |
 | task scratch | `var/tmp/<owner>-<operation>.<unique>/`, skeleton described in `var/README.md` | ephemeral, ignored | owner-scoped; PoT 1.1.13; no persistent state or automatic purge |
-| incoming payload | `storage/intake/` | working data, ignored | awaiting classification, not executable installation or authority |
-| active case payload | `storage/active/` | working data, ignored | owner, operation and closeout; no operational code trees |
-| mind project record | `archives/mind-manifest-20261101/` | durable, tracked | packed 2026-11-01; `MANIFEST.txt` holds every file's source and sha256; integrated by the port (`archives/receipts/mind-manifest-integration-20261101.md`) |
-| receipts | `archives/receipts/<what>-<date>.md` | durable, tracked | unchanged |
+| incoming payload | `storage/intake/` | working data; only `.gitkeep` admitted | payload ignored; awaiting classification, not executable installation or authority |
+| active case payload | `storage/active/` | working data; only `.gitkeep` admitted | payload ignored; owner, operation and closeout; no operational code trees |
+| mind project record | `archives/mind-manifest-20261101/` | durable, private and ignored | packed 2026-11-01; `MANIFEST.txt` holds every file's source and sha256; integrated by the port (`archives/receipts/mind-manifest-integration-20261101.md`); preservation does not imply Git admission |
+| receipts | `archives/receipts/<what>-<date>.md` | durable; selective Git admission | original/private sources remain kept; only explicitly admitted redacted records enter Git, as `.gitignore` names them |
 | custody | `[host path 1]>/` mirrored on hard_vol2 | durable | hard_vol2 is failing; a replacement is pending |
 | help | `ops/bin/help`, `docs/ops/specs/binaries/help.md` | binary | adapted from STELA 10-30; read-only wayfinding (`docs/ops/registry/binaries.md`) |
 | template | `ops/bin/template`, `docs/ops/specs/binaries/template.md` | binary | adapted from STELA 10-30; new tool skeleton (`docs/ops/registry/binaries.md`) |
 | manual | `docs/MANUAL.md` | document | written 10-30; operator console for the loop |
-| index | `docs/INDEX.md` | document | written 10-30; every document in `docs/` plus the root files |
-| registries | `docs/ops/registry/{scripts,binaries,test,runbook}.md` | document | written 10-30 for Sessions; one row per tool, binary, test suite and runbook |
+| index | `docs/INDEX.md` | document | updated 11-03; maintained pointers to current docs and forms |
+| registries | `docs/ops/registry/{scripts,binaries,test,runbook}.md` | document | maintained inventories; one row per tool, binary, test suite and runbook |
 
 ## What the last two days left, and its place
 
@@ -95,7 +95,11 @@ cutover or imply that an unwired consumer is active.
 
 New incoming data uses `storage/intake/`; accepted working-case payloads use
 `storage/active/`. No new loose files go on the storage root. Existing named
-handoffs remain; operational state is held only as PoT 1.1.14 records.
+handoffs remain private working notes. Git admits only `storage/.gitignore`,
+`storage/README.md` and the direct lane `.gitkeep` files; payload is denied by
+default, including nested notes and code. Check the exact staged path set
+before any commit; do not rely on ignore rules to constrain a forced add.
+Operational state is held only as PoT 1.1.14 records.
 Operational code belongs in `ops/bin/`, `ops/lib/scripts/`, `ops/src/` or
 `tools/test/`, with its specifications and operator guidance in `docs/`.
 Independent product code stays in its project repository. STELA's map makes

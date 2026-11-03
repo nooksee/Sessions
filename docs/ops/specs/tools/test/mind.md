@@ -1,7 +1,6 @@
-<!-- redact: public copy; source sha256 40e48c16b2576475ae746dce17ae2c9ce1184bcc1eba924bad83ce190ca9ebd4; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: tools/test/test_mind.py
 
-Test file: `Sessions/tools/test/test_mind.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Spec written 2026-10-30 from a reading of the test file. Status: 30 of 30 passing at umask 0002, 0022 and 0077 on 2026-10-30.
+Test file: `Sessions/tools/test/test_mind.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Spec written 2026-10-30 and updated for the retained RoR-3 and F1/F2 regressions. Status: 43 tests in the current suite; rerun at umask 0002, 0022 and 0077 for measured results.
 
 ## Purpose
 Prove, in synthetic rooms only, that `mind` writes a leaf only with Kevin's words and a registered writer, that every change is a declared new leaf in a verifiable chain, that a forged, moved or edited leaf is never served, and that each of Claudio Freeman's section 130 items the port fixes stays fixed. Each such item has a test named for it.
@@ -10,7 +9,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with Kevin's word
 - Command, from the room root: `python3 -I -B tools/test/test_mind.py`
 - Required flags: none. Positional arguments: none (standard `unittest` arguments are accepted).
 - Expected exit behavior:
-  - `0` when all 30 tests pass (one test skips if `git` is not installed).
+  - `0` when all 43 tests pass (one test skips if `git` is not installed).
   - `1` when any test fails or errors.
 - Reviewers also run it at umask 0002, 0022 and 0077.
 
@@ -21,17 +20,17 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with Kevin's word
 - No real room, registry, mind or body is read or written.
 
 ## Outputs
-- Stdout: `unittest` progress and a summary line (`Ran 30 tests`, `OK`).
+- Stdout: `unittest` progress and a summary line (`Ran 43 tests`, `OK`).
 - Writes only inside its own temporary directory, which is removed after each test.
 - Exit codes the tests assert on the tool: `0` success, `1` a failed `check`, `2` a refusal.
 
 ## Invariants and failure modes
-30 tests.
+43 tests.
 
 **The basic loop (3).**
 1. `test_write_check_show_round_trip`: write, check and show agree; `show` returns the leaf byte for byte; the leaf records Kevin's words, the writer, `predecessor: none` and the declared change.
 2. `test_c11_show_ref_binds_the_capsule_to_the_leaf_hash`: `show --ref` prints `leaf=<path>|sha256=<digest>` matching the leaf.
-3. `test_write_needs_kevins_words_and_a_registered_writer`: an empty yes, a bare "[words sha256=2689367b205c16ce32ed4200942b8b8b1e262dfc70d9bc9fbc77c49699a4f1df]", or an unregistered `--by` is refused, and 0 files are written.
+3. `test_write_needs_kevins_words_and_a_registered_writer`: an empty yes, a bare "ok", or an unregistered `--by` is refused, and 0 files are written.
 
 **Claudio's blockers (4).**
 4. `test_b1_an_amendment_keeps_the_core_entry_and_carries_the_new_yes`: an amendment keeps the entry's number, carries the new yes, and shows in `history`.
@@ -45,7 +44,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with Kevin's word
 10. `test_c3_a_forged_current_leaf_fails`: an edited current leaf with a re-pointed hash still fails its name hash.
 11. `test_c3_c4_a_leaf_from_another_mind_is_never_served`: a pointer aimed at another resident's leaf fails `check`, and `show` prints nothing.
 12. `test_c3_a_pointer_moved_back_to_an_older_genuine_leaf_fails`: a pointer moved back fails the newest gate.
-13. `test_c3_a_leaf_outside_surfaces_is_refused`: a leaf outside `archives/surfaces/` is refused.
+13. `test_c3_a_leaf_outside_the_archives_root_is_refused`: a leaf outside the current archives-root layout is refused.
 14. `test_c4_a_resident_of_another_room_cannot_write_here`: a key registered to another room is refused, and 0 files are written.
 15. `test_c5_one_resident_has_one_mind`: a duplicated pointer line is refused by `check` and `write`.
 16. `test_c5_a_key_registered_twice_is_refused`: a key registered twice is refused.
@@ -64,7 +63,22 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with Kevin's word
 27. `test_no_first_leaf_while_leaves_exist_without_a_pointer`: a new first leaf is refused while earlier leaves exist without a pointer line.
 28. `test_a_reordered_leaf_is_not_canonical`: a leaf with reordered fields fails to parse.
 29. `test_leaves_and_pointer_are_private`: leaf and pointer are mode 0600.
-30. `test_minds_live_out_of_git`: inside a Git work tree that does not ignore `MIND.md` and `archives/surfaces/`, `write` is refused and creates neither; once ignored, it succeeds. Skips if `git` is absent.
+30. `test_minds_live_out_of_git`: inside a Git work tree that does not ignore `MIND.md` and `archives/MIND-*`, `write` is refused and creates neither; once ignored, it succeeds. Skips if `git` is absent.
+
+**Archives-root and authorization regressions (13).**
+31. `test_ror3_leaves_sit_at_the_archives_root`: new leaves use the accepted archives-root location.
+32. `test_ror3_other_archive_files_are_not_minds`: unrelated archive files are not parsed as leaves.
+33. `test_ror3_a_linked_leaf_name_is_never_read`: a linked leaf is refused.
+34. `test_f1_no_git_on_path_is_a_refusal`: inability to find Git fails closed.
+35. `test_f1_a_git_that_does_not_answer_is_a_refusal`: a failed Git command refuses.
+36. `test_f1_a_check_ignore_that_does_not_answer_is_a_refusal`: failed ignore inspection refuses.
+37. `test_f1_a_broken_repository_is_a_refusal`: a malformed repository is not treated as safe.
+38. `test_f1_only_a_positive_answer_passes`: only a positive ignore result admits a mind write.
+39. `test_f2_write_needs_the_preview_binding`: write requires the reviewed preview binding.
+40. `test_f2_a_change_file_edited_after_the_preview_is_refused`: post-preview edits invalidate approval.
+41. `test_f2_layout_does_not_matter_but_content_does`: equivalent layout is accepted; changed content is not.
+42. `test_f2_changes_from_standard_input`: the supported stdin route is covered.
+43. `test_f2_a_moved_predecessor_is_refused`: a moved predecessor invalidates the binding.
 
 ## Not covered
 - That the words passed to `--yes` are truly Kevin's: the tool cannot know, and the spec says so. The audit is the chain, the declared changes and the words held against the conversation.

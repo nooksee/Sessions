@@ -1,7 +1,7 @@
-<!-- redact: public copy; source sha256 4e38639a38b0e541d9491da4565e01d6560d592e2674c9bc24071ccb59837456; rules 8; mode history; words 8; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 54d3d70d8622338721880e4804e318b94ddbe01ed8485190254c8c168d00df79; rules 8; mode history; words 8; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: template
 
-Binary: `Sessions/ops/bin/template` (Bash, no library). Templates: `Sessions/ops/src/{scripts,docs,tests,reports}/*.tpl`, 10 files. Self-test: `ops/bin/template --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/template`, its `factory` renderer and its `ops/src/**/*.tpl` form (`Projects/STELA`); rewritten the same day to render from template files instead of inline text. Status: built 2026-10-30, self-test 18 of 18 passing; it has written no tool and no report in the room. Claudio Freeman reviews it before it is relied on. Map: `docs/ops/README.md`.
+Binary: `Sessions/ops/bin/template` (Bash, no library). Templates: `Sessions/ops/src/{scripts,docs,tests,reports}/*.tpl`, 11 files. Self-test: `ops/bin/template --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/template`, its `factory` renderer and its `ops/src/**/*.tpl` form (`Projects/STELA`); rewritten the same day to render from template files instead of inline text. Status: built 2026-10-30; self-test covers all registered templates and the opt-in spec-preserving route. Claudio Freeman reviews it before it is relied on. Map: `docs/ops/README.md`.
 
 ## First Principles Rationale
 
@@ -23,20 +23,20 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
 ## Mechanics and Sequencing
 
 1. **Arguments.**
-   - `template [--dry-run] [--root=DIR] [SLOTS] <word>` writes a tool set.
-   - `template receipt|packet|closeout|ror|custody|validation|readme [SLOTS] [--out PATH]` renders one report.
+   - `template [--dry-run] [--root=DIR] [--preserve-spec] [SLOTS] <word>` writes a tool set.
+   - `template receipt|packet|closeout|ror|custody|validation|source-change|readme [SLOTS] [--out PATH]` renders one report.
    - `template --test` runs the self-test; `template -h` prints usage.
    - `SLOTS` are `--slot KEY=VALUE` (also `--slot=KEY=VALUE`, repeatable) and at most one `--slots-file PATH`.
-   An unknown option, a second name, a missing name, `--out` in tool-set mode, and `--dry-run` or `--root` in report mode are refused.
+   An unknown option, a second name, a missing name, `--out` in tool-set mode, and `--dry-run`, `--root` or `--preserve-spec` in report mode are refused.
 2. **The templates.** Each `.tpl` begins with a front matter between two `---` lines, then the body.
-   - **`template_type`:** `tool` (the three tool-set files), `report` (receipt, packet, closeout) or `docs` (readme).
+   - **`template_type`:** `tool` (the three tool-set files), `report` (receipt, packet, closeout, ror, custody, validation, source-change) or `docs` (readme).
    - **`template_id`:** the file's name in the form; `template` refuses a file whose type or id is not the one it expects.
    - **`template_version`:** a whole number.
    - **`requires_slots`:** the slots, one `  - SLOT` line each, in capitals, digits and `_`.
    - **`slot_notes`:** one `  SLOT: what it must hold` line for every required slot. A refusal prints these notes beside the missing slots, and tool-set mode turns them into placeholder text.
    - **`placeholder_owner`** (tool templates only): the owner named in each placeholder.
    - Other keys, such as `source`, are documentation.
-   The grammar is a restricted YAML form, read line by line by `template`; all 10 files also parse as YAML. Every template must use each declared slot in its body and declare each slot its body uses; a template that does not is refused as a defect.
+   The grammar is a restricted YAML form, read line by line by `template`; all 11 files also parse as YAML. Every template must use each declared slot in its body and declare each slot its body uses; a template that does not is refused as a defect.
 
    | Type | File | Slots |
    | --- | --- | --- |
@@ -49,6 +49,7 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
    | report | `ops/src/reports/ror.md.tpl` | ENTRY, KIND, GIVEN, WORDS, ACT, RECORD, ENTERED_BY (7, one entry of the decision ledger `RoR.md`, PoT 1.2.10) |
    | report | `ops/src/reports/custody.md.tpl` | BATCH, DATE, WRITER, AUTHORITY, CONTENTS, TIER1, TIER2, VERIFICATION, EXCLUDED, COUNTS, DEVIATIONS (11, the receipt of a custody operation, PoT 5.3 and 6.4.5) |
    | report | `ops/src/reports/validation.md.tpl` | TEST, DATE, WRITER, AUTHORITY, SUBJECT, SETUP, STEPS, VERDICT, TEARDOWN, REVIEW, COUNTS, DEVIATIONS (12, the receipt of a live validation, PoT 6.1.5 and 6.4.5) |
+   | report | `ops/src/reports/source-change.md.tpl` | CHANGE, DATE, WRITER, AUTHORITY, SCOPE, BASE, CANDIDATE, DIFF, VALIDATION, REVIEW, INTEGRATION, DEVIATIONS, ROLLBACK (13; bounded source/configuration change closeout) |
    | docs | `ops/src/docs/readme.md.tpl` | TITLE, OWNER, DATE, PURPOSE, STRUCTURE_POINTER, ENTRY_POINT, CONSTRAINTS, CANONICAL_POINTER (8, after STELA's `readme.md.tpl`) |
 
 3. **Slots given.** `--slots-file` holds `KEY=VALUE` lines; blank lines and lines starting with `#` are skipped, and any other line that is not `KEY=VALUE` is refused with its line number. The value is everything after the first `=`, verbatim, on one line; a value with line breaks is given with `--slot`. Each of these is refused, and named:
@@ -56,7 +57,7 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
    - a slot given twice, in the file or on the command line;
    - an empty value ("[words sha256=140bedbf9c3f6d56a9846d2ba7088798683f4da0c248231336e6a05679e4fdfe]" is written out when a field is empty, as `agent-input.md` asks).
 4. **Rendering.** One pass over the body: each `{{SLOT}}` is replaced by its value, and a value is never searched for markers itself, so one slot cannot fill another. Afterwards, any `{{...}}` left in the output, from a value that held one, is refused and named. Nothing is written until the render is clean.
-5. **Report mode** (`receipt`, `packet`, `closeout`, `readme`).
+5. **Report mode** (`receipt`, `packet`, `closeout`, `ror`, `custody`, `validation`, `source-change`, `readme`).
    - Every required slot must be given. Missing slots are listed, each with its note, with the count ("[words sha256=ab4d60115f33210da69dfd3f17c48830714272383c34b7eebdf7f02057c5005f]"); unknown slots are listed too; then it refuses, and renders nothing.
    - A value holding `[PLACEHOLDER` is refused: placeholders belong to tool skeletons only.
    - Output goes to standard output, or with `--out PATH` to that file. `--out` refuses an existing path, a link included, and a path whose folder does not exist (it creates no folder); it writes under `noclobber` and prints the path and byte count.
@@ -76,10 +77,10 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
      source-directory alias cannot redirect generated code back into storage.
      Synthetic source trees in `var/tmp/` remain supported, as do unrelated
      directories whose names merely share the storage prefix.
-   - **Refusals, all before any write.** Any of the three target files existing, as a file or a link (all three are named; it writes all three or none; a tool whose spec was written first, as `rotate` was, is refused, and its writer creates the script and tests by hand). A name `docs/ops/registry/scripts.md` already lists. A slot none of the three templates declares. `WORD` or `DATE` given: `template` sets those from the word and the clock.
+   - **Refusals, all before any write.** Any target file existing, as a file or a link, unless the caller explicitly gives `--preserve-spec` and the existing spec is a regular non-link file. That route preserves the spec byte for byte and creates only the missing script and test; other existing targets still refuse. Without the option, any existing target refuses. A name `docs/ops/registry/scripts.md` already lists. A slot none of the three templates declares. `WORD` or `DATE` given: `template` sets those from the word and the clock.
    - **Placeholders.** Every slot not given is filled with `[PLACEHOLDER: <its note>, owner: <placeholder_owner>]`. This is the only mode that allows placeholders. A given slot replaces its placeholder in every file that uses it; a given `PURPOSE` also fills the registry row's purpose.
-   - **Write.** All three are rendered first. It creates the three folders if they are absent, then writes each file under `noclobber`. A file that appears between the check and the write is not overwritten; that is the one case where fewer than three files can be written, and the error says so.
-   - **Dry run.** `--dry-run` runs every check and render, then prints each path with its byte count and template, and the full text of all three files. It writes nothing.
+   - **Write.** All three are rendered first. It creates the three folders if they are absent, then writes each required file under `noclobber`. In preserve mode it leaves the existing spec untouched. A file that appears between the check and the write is not overwritten; the error says which earlier files were written.
+   - **Dry run.** `--dry-run` runs every check and render, then prints each planned path with its byte count and template. In preserve mode it identifies the existing spec without printing a regenerated replacement. It writes nothing.
    - **The skeletons.** The script has the house shape of `gauge.py` and `mind.py` (docstring, `SESSIONS`, `build_parser`, `main`, `raise SystemExit(main())`) and the house rules as fixed text; until built it prints `refused: <word> is a skeleton; nothing is built` and exits 2. The spec has the title, a header line ending in `Status: skeleton generated by ops/bin/template on <date>; nothing built, nothing wired` (`help specs` reads it), and STELA's four sections. The test is standard library `unittest`, run as `python3 -I -B tools/test/test_<word>.py`, with three cases: the tool exists; the skeleton refuses with exit 2 (meant to fail once the tool is built); a skipped behaviour case.
 7. **Registry row.** Printed after a tool set, never written, for the registry's writer.
    - **Columns.** It follows the registry's own `| ID |` header. Known columns are ID, Name, File Path, Status and Notes; any other column becomes `[PLACEHOLDER: <column>]`.
@@ -93,11 +94,11 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
    3. a real run writes exactly three files and prints a row;
    4. the spec has the five headings in order, and a `Status:` header;
    5. a second run refuses, names 3 of 3 files, and leaves them byte for byte;
-   6. a spec written first refuses the whole set;
+   6. a spec written first refuses by default; `--preserve-spec` writes only script and test and proves the spec unchanged; missing spec refuses;
    7. registry numbering, a registered name refused, and a five-column header followed;
    8. the generated Python parses, and the generated test passes with one skip;
    9. everything generated, and every template, is plain ASCII;
-   10. all 10 templates load: type, id, version, a note per slot, and body markers equal to `requires_slots`;
+   10. all 11 templates load: type, id, version, a note per slot, and body markers equal to `requires_slots`;
    11. every report type renders with all its slots: no marker, no placeholder, every value present; `--slot` and `--slots-file` give the same text, and `--out` writes exactly what standard output shows;
    12. a missing slot: a receipt without 2 slots is refused with both named and the count, and writes nothing; a closeout with none names all 4; an empty slot is refused;
    13. an unknown slot is refused and named in both modes; `WORD` given, a slot given twice, and a slots-file line without `=` are refused;

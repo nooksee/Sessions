@@ -300,12 +300,13 @@ search_docs() {
 show_curriculum() {
   say "Curriculum mode is not built."
   cat <<'EOF_CURRICULUM'
-[PLACEHOLDER: the wake sequence and the closeout sequence as exact commands,
-owner Claude Shannon; it waits for ops/lib/scripts/closeout.py and rotate.py.]
+[PLACEHOLDER: the wake and closeout sequences as exact commands and their
+accepted provider routes, owner Claude Shannon; closeout source exists but is
+not installed, and rotate.py is not written.]
 
 Until then, by hand:
 - Wake: Sessions/CLAUDE.md, section "ON WAKE", then HANDOFF.md.
-- Closeout: docs/ops/specs/scripts/closeout.md (design only).
+- Closeout: docs/ops/specs/scripts/closeout.md (source exists; installation is gated).
 - Rotation: docs/ops/specs/scripts/rotate.md (script not written).
 EOF_CURRICULUM
 }
@@ -353,16 +354,18 @@ show_menu() {
   printf '  %sspecs%s         every spec with its own Status: line; tool rows show spec, script and tests\n' "$cyan" "$reset"
   printf '  %sdoctrine%s      section headings of DOCTRINE.md with line numbers\n' "$cyan" "$reset"
   printf '  %sterm <text>%s   fixed-string search, any case: specs, then docs/MANUAL.md, then docs/\n' "$cyan" "$reset"
-  printf '  %scurriculum%s    [PLACEHOLDER: wake and closeout sequences, owner Claude Shannon]\n' "$cyan" "$reset"
+  printf '  %scurriculum%s    [PLACEHOLDER: exact wake/closeout curriculum and rotate tool, owner Claude Shannon]\n' "$cyan" "$reset"
   printf '  %s--test%s        self-test: fixtures plus a read-only pass over this room\n\n' "$cyan" "$reset"
 
   printf '%sWhere things live%s\n' "$bold" "$reset"
-  printf '  storage/      named active cases and handoffs; no new tool state\n'
-  printf '    intake/     incoming data awaiting classification\n'
-  printf '    active/     named case payloads, not operational code\n'
+  printf '  storage/      working payload; only the declared skeleton is versioned\n'
+  printf '    intake/     incoming payload; contents remain ignored\n'
+  printf '    active/     named case payload; contents remain ignored\n'
+  printf '    handoff/    local working notes; contents remain ignored\n'
+  printf '    .gitignore  deny-by-default payload boundary; inspect staged paths\n'
   printf '  var/tmp/      owner-scoped task scratch (PoT 1.1.13)\n'
   printf '  archives/, archives/receipts/, custody   durable records\n'
-  printf '  MIND.md + archives/surfaces/    minds, out of Git\n'
+  printf '  MIND.md + archives/MIND-*    minds, out of Git\n'
   printf '  Who you are: ops/etc/resident-identities.json, never prose\n'
 }
 
@@ -516,6 +519,7 @@ run_self_test() {
   expect "menu lists 7 read-in entries" test "$(count_lines_matching "$out" '^  [1-7][.] ')" = "7"
   expect "menu shows the loop" contains "$out" "$LOOP_LINE"
   expect "menu lists template" contains "$out" "template"
+  expect "menu distinguishes tracked storage skeleton from private payload" contains "$out" "only the declared skeleton is versioned"
   passed=$((passed + 1))
 
   if [[ "$passed" != "$total" ]]; then
