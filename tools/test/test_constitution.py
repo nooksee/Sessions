@@ -44,7 +44,7 @@ class Fixture:
     def authorize_change(self, *, scope="PoT.md", target_hash=None,
                          snapshot=True, authority=True, include_decision=True,
                          decision="Operator", hash_suffix="", duplicate_act=False,
-                         act_suffix=""):
+                         act_suffix="", preceding_entries=()):
         candidate_law = b"synthetic constitutional successor\n"
         actual_hash = hashlib.sha256(candidate_law).hexdigest()
         target_hash = target_hash or actual_hash
@@ -54,6 +54,7 @@ class Fixture:
             self.write(f"archives/PoT-{short}.md", candidate_law)
         words_hash = hashlib.sha256(b"synthetic private operator words").hexdigest()
         authority_path = f"archives/PoT-authority-{short}.md"
+        decision_number = preceding_entries[-1][0] + 1 if preceding_entries else 1
         if authority:
             self.write(
                 authority_path,
@@ -63,11 +64,17 @@ class Fixture:
                     f"Scope: {scope}\n"
                     f"Target policy SHA-256: {target_hash}\n"
                     f"Words SHA-256: {words_hash}\n"
-                    f"Record: RoR.md#RoR-1; archives/PoT-{short}.md; "
+                    f"Record: RoR.md#RoR-{decision_number}; archives/PoT-{short}.md; "
                     f"{authority_path}; Words SHA-256: {words_hash}\n"
                 ).encode(),
             )
         if include_decision:
+            for number, title in preceding_entries:
+                with (self.root / "RoR.md").open("ab") as handle:
+                    handle.write(
+                        f"\n### RoR-{number}: {title}\n"
+                        "- **Given:** synthetic earlier ledger event\n".encode()
+                    )
             act = (
                 f"Decision: {decision}. Scope: {scope}. "
                 f"Target policy SHA-256: {target_hash}{hash_suffix}. "
@@ -78,7 +85,7 @@ class Fixture:
                 f"private words source archives/RoR-words.md; Words SHA-256: {words_hash}"
             )
             entry = (
-                "\n### RoR-1: operator direction\n"
+                f"\n### RoR-{decision_number}: operator direction\n"
                 "- **Given:** synthetic test fixture\n"
                 f'- **Words:** "[words sha256={words_hash}]"\n'
                 f"- **Act:** {act}\n"
@@ -129,6 +136,11 @@ class ConstitutionTest(unittest.TestCase):
         result = self.fixture.run()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("snapshot, and ledger", result.stdout)
+
+    def test_latest_decision_passes_after_prior_new_ledger_entry(self):
+        self.fixture.authorize_change(preceding_entries=((16, "prior filing act"),))
+        result = self.fixture.run()
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_unrelated_decision_does_not_authorize_policy(self):
         self.fixture.authorize_change(scope="README.md")
@@ -182,7 +194,7 @@ class ConstitutionTest(unittest.TestCase):
         self.fixture.head = self.fixture.commit("append unrelated later entry")
         result = self.fixture.run()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("exactly one new RoR decision entry", result.stderr)
+        self.assertIn("latest RoR entry", result.stderr)
 
     def test_duplicate_or_lower_new_entry_number_fails(self):
         self.fixture.authorize_change()

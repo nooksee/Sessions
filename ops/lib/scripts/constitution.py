@@ -178,11 +178,11 @@ def check(root: Path, base_ref: str, head_ref: str) -> str:
     head_entries = appended_entries(head_ror.decode("utf-8"))
     last_base = max((number for number, _ in base_entries), default=0)
     new_entries = head_entries[len(base_entries):]
-    if len(head_entries) != len(base_entries) + 1:
-        raise Refused("changed PoT requires exactly one new RoR decision entry")
-    entry_number, decision = new_entries[0]
-    if entry_number != last_base + 1:
-        raise Refused("new RoR decision number must be the next ledger sequence")
+    if not new_entries:
+        raise Refused("changed PoT requires a newly appended RoR decision entry")
+    entry_number, decision = new_entries[-1]
+    if entry_number <= last_base:
+        raise Refused("new RoR entry numbers must follow the accepted ledger")
 
     fields = entry_fields(decision)
     act = fields["Act"]
