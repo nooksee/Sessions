@@ -1,7 +1,7 @@
-<!-- redact: public copy; source sha256 caa16b86cf97bc46f9aab15d1395d597b5b0249c3ddb16f7c7cd7c05c4fbf4f1; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 4739215c19fdb9480c0c6fe0e366222f0bdc892ff9ad03fe4462df2d12d4211d; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Documentation Index (Front Door)
 
-Every document in `Sessions/docs/`, one line each, and the root files that point into them. Framework: STELA (`Projects/STELA/docs/INDEX.md`). Updated 2026-10-30. Status of each tool lives in its registry, not here.
+Every document in `Sessions/docs/`, one line each, and the root files that point into them. Framework: STELA (`Projects/STELA/docs/INDEX.md`). Updated 2026-11-03. Status of each tool lives in its registry, not here.
 
 ## 0. Primary Read-in (Start Here)
 * [../PoT.md](../PoT.md): the local constitution; the only current Sessions law.
@@ -32,8 +32,9 @@ current craft and mechanics are in the manual and specifications.
 ## 3. Operations: Specifications
 Scripts (STELA's sections: rationale, mechanics, anchor, warnings):
 * [ops/specs/scripts/gauge.md](ops/specs/scripts/gauge.md): how full each resident is, from the provider's own token figures; states, window authority, the reviewed window table, the ledger.
-* [ops/specs/scripts/closeout.md](ops/specs/scripts/closeout.md): the signal from inside a resident at its reserve, and the closeout card (design only).
+* [ops/specs/scripts/closeout.md](ops/specs/scripts/closeout.md): implemented closeout hook behavior, reserve, privacy limits and separate installation gates.
 * [ops/specs/scripts/mind.md](ops/specs/scripts/mind.md): the mind as a chain of immutable leaves, written only with Kevin's words; commands, gates, screens, and Claudio's section 130 dispositions.
+* [ops/specs/scripts/rounds.md](ops/specs/scripts/rounds.md): clinic report and separate Control source-drift wrapper behavior; no deployment authority.
 * [ops/specs/scripts/rotate.md](ops/specs/scripts/rotate.md): the rotation, phase by phase with stop points; tiers, capsule, custody, install, acceptance, close.
 
 Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each spec opening with the script's own first line:
@@ -85,7 +86,9 @@ Runbook:
 
 Tests:
 * [ops/specs/tools/test/gauge.md](ops/specs/tools/test/gauge.md): what `tools/test/test_gauge.py` proves, test by test (21).
-* [ops/specs/tools/test/mind.md](ops/specs/tools/test/mind.md): what `tools/test/test_mind.py` proves, test by test (30).
+* [ops/specs/tools/test/mind.md](ops/specs/tools/test/mind.md): what `tools/test/test_mind.py` proves, test by test (43).
+* [ops/specs/tools/test/closeout.md](ops/specs/tools/test/closeout.md): synthetic behavior and non-deployment limits of `tools/test/test_closeout.py`.
+* [ops/specs/tools/test/rounds.md](ops/specs/tools/test/rounds.md): syntax and static-integrity checks in `tools/test/test_rounds.py`.
 
 ## 4. Contracts and Guides (earlier clinic work)
 * [clinic-aggregate-contract.md](clinic-aggregate-contract.md): the public clinic health file (`logs/clinic-aggregate.json`) for consumers outside Sessions.
@@ -95,5 +98,6 @@ Tests:
 * [tray-session-clinic-watchdog-20260724.patch](tray-session-clinic-watchdog-20260724.patch): a 2026-07-24 diff adding clinic status to the Control remote-control tray script; a record, not a document to apply.
 
 ## 5. Templates (not documents; listed so they are found)
-* `../ops/src/docs/spec.md.tpl`: the spec template. `[PLACEHOLDER]` on 2026-10-30.
-* `../ops/src/runbook/agents/agent-input.yaml`: the resident packet template. `[PLACEHOLDER]` on 2026-10-30.
+* `../ops/src/docs/spec.md.tpl`: the spec template used by `ops/bin/template`.
+* `../ops/src/runbook/agents/agent-input.yaml`: resident packet form fields and delivery boundary.
+* `../ops/src/reports/source-change.md.tpl`: bounded source/configuration change receipt, distinct from rotation and custody receipts.

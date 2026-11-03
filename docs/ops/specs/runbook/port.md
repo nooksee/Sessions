@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 c8e073aaf92422574635bb0bd8b7e81f2e97d8135e793f0fd4a104175b55305f; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 556c6eff85355605fbc7cc45ecc36d2613e82447809294a7887ccc640a34f4d5; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
 # Port of the Sessions room to the STELA base
 
 Owner: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident. Written 2026-11-01. Convention: STELA (`Projects/STELA`).
@@ -7,7 +7,7 @@ The operator directed on 2026-11-01: "[words sha256=19f15b9b270766a195600e9add96
 
 ## The rule
 
-Each legacy lane went to the base folder that PoT 1.1 assigns, and nowhere else: `ops/` Run, `docs/` Explain, `tools/` Prove, `storage/` Work (disposable, ignored), `archives/` Keep, `logs/` Data, `archives/receipts/` Proof, the root for canon surfaces and pointers. A retired folder is frozen unchanged under `archives/legacy/<Name>/`; a working lane is under `storage/`. Records (`archives/receipts/`, `RoR.md`, `archives/`, `logs/`, `archives/legacy/Resident-Center/`) were not reworded (PoT 1.2.13). Maintained documents had their paths rewritten to the new places, each rewrite counted in the receipt.
+At the time of the port, each legacy lane went to the base folder that PoT 1.1 assigns: `ops/` Run, `docs/` Explain, `tools/` Prove, `storage/` Work (payload ignored), `archives/` Keep, `logs/` Data, `archives/receipts/` Proof, the root for canon surfaces and pointers. A retired folder is frozen unchanged under `archives/legacy/<Name>/`; a working lane is under `storage/`. Since W2a, Git admits only the storage skeleton (`storage/.gitignore`, `storage/README.md` and the direct lane `.gitkeep` files); payload remains ignored. Records (`archives/receipts/`, `RoR.md`, `archives/`, `logs/`, `archives/legacy/Resident-Center/`) were not reworded (PoT 1.2.13). Maintained documents had their paths rewritten to the new places, each rewrite counted in the receipt.
 
 ## Where each lane went
 

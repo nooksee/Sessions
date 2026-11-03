@@ -47,6 +47,13 @@ def packet_slots():
 
 
 class FilingTest(unittest.TestCase):
+    def test_resident_packet_form_has_every_required_field(self):
+        source = text("ops/src/runbook/agents/agent-input.yaml")
+        for field in ("to", "from", "owner", "scope", "authority", "inputs",
+                      "rules", "stop_condition", "report"):
+            self.assertIn(f"  {field}:", source)
+        self.assertNotIn("[PLACEHOLDER]", source)
+
     def test_storage_is_a_named_owned_case_not_general_scratch(self):
         clause = next(line for line in text("PoT.md").splitlines()
                       if line.startswith("- **1.1.4**"))
@@ -102,29 +109,39 @@ class FilingTest(unittest.TestCase):
                 self.assertIn("${TMPDIR:-${ROOM_ROOT}/var/tmp}", source)
                 self.assertNotIn("${TMPDIR:-/tmp}", source)
 
-    def test_git_admits_only_skeleton_not_temporary_payloads(self):
+    def test_git_admits_only_storage_skeleton_not_payloads(self):
         with tempfile.TemporaryDirectory(prefix="filing-test-",
                                          dir=ROOT / "var/tmp") as directory:
             fixture = Path(directory)
-            (fixture / "var/tmp").mkdir(parents=True)
+            (fixture / "storage").mkdir(parents=True)
             shutil.copyfile(ROOT / ".gitignore", fixture / ".gitignore")
-            shutil.copyfile(ROOT / "var/tmp/.gitignore",
-                            fixture / "var/tmp/.gitignore")
+            shutil.copyfile(ROOT / "storage/.gitignore",
+                            fixture / "storage/.gitignore")
             subprocess.run(["git", "-c", "init.templateDir=", "init", "-q",
                             str(fixture)], check=True, capture_output=True)
             cases = {
-                "var/README.md": False,
-                "var/tmp/.gitignore": False,
-                "var/tmp/.gitkeep": False,
-                "var/other/output.txt": True,
-                "var/tmp/worker-case/result.txt": True,
-                "var/tmp/worker-case/nested/result.txt": True,
-                "var/tmp/worker-case/.gitkeep": True,
-                "var/tmp/worker-case/private.jsonl": True,
-                "storage/handoff/example.md": True,
+                "storage/.gitignore": False,
+                "storage/README.md": False,
+                "storage/active/.gitkeep": False,
+                "storage/intake/.gitkeep": False,
+                "storage/handoff/.gitkeep": False,
+                "storage/loose.md": True,
+                "storage/.gitkeep": True,
+                "storage/active/README.md": True,
+                "storage/active/case.md": True,
+                "storage/active/case/nested.txt": True,
+                "storage/active/case/.gitkeep": True,
+                "storage/intake/incoming.txt": True,
+                "storage/intake/nested/private.jsonl": True,
+                "storage/active/.gitignore": True,
+                "storage/handoff/jojo.md": True,
+                "storage/handoff/nested/.gitkeep": True,
+                "storage/handoff/nested/review.md": True,
+                "storage-lookalike/payload.txt": True,
                 "ops/etc/host-bindings.json": True,
                 "MIND.md": True,
             }
+            self.assertEqual(len(cases), 20)
             for path, expected_ignored in cases.items():
                 with self.subTest(path=path):
                     result = subprocess.run(["git", "-C", str(fixture),

@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 f976ae0b5681f1c23aca8507cc26b9e23f067a744899a6098eb64ff04aa8b103; rules 8; mode history; words 59; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
+<!-- redact: public copy; source sha256 df6f11e882c0d884b75d13a33fbc20f462d0271b78567d72df3eaf14a2820ee1; rules 8; mode history; words 61; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
 # Sessions Operations Manual (Command Console)
 
 Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request ("[words sha256=5b699f7ed115780f2363d3261427967ee430cbc0ed7514b43d295b5965b799dd]"), by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
@@ -71,7 +71,7 @@ The authority for who each resident is lives only in the registry. A resident ch
  [words sha256=903ed26ca272fb6251242b505d1426164a0533da4417a841dd2d7272ad06f3cf]
       [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
       [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=8f0f6322c824c9bea3f5de9ebc60d1fcae68bfa44ae56193bdabafc7b833d6fd]
+ [words sha256=05344c2fa23c2d8568497e3a2b36dabb8d93c40112fa9613b371f43d411916f6]
       [words sha256=444379a4b85256d8c60cdc7fd3b4aedbe783223baa49defe19798ce3389adf99]
       [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
  [words sha256=e9f4850e40b4b38c01c98d80b1871937dcb5b1d7f636962200beae4231772920]
@@ -80,11 +80,11 @@ The authority for who each resident is lives only in the registry. A resident ch
  [words sha256=027380aeaeaa2904936f13df1c10b03b53790b440ee1f28e526055ec557844a2]
 ```
 
-| Tool | Script | Spec | Tests | Status (2026-10-30) |
+| Tool | Script | Spec | Tests | Implementation and installation |
 | --- | --- | --- | --- | --- |
-| gauge | `ops/lib/scripts/gauge.py` | `docs/ops/specs/scripts/gauge.md` | `tools/test/test_gauge.py` (21) | built; reviewed by Claudio (section 131: 0 blockers, 3 conditions); no timer, no notification |
-| closeout | `ops/lib/scripts/closeout.py` (not written) | `docs/ops/specs/scripts/closeout.md` | none yet | designed only; no hook wired |
-| mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` (30) | built and tested on synthetic rooms; under Claudio's review; no mind written yet |
+| gauge | `ops/lib/scripts/gauge.py` | `docs/ops/specs/scripts/gauge.md` | `tools/test/test_gauge.py` | built; see its specification for measurement behavior and installed scope |
+| closeout | `ops/lib/scripts/closeout.py` | `docs/ops/specs/scripts/closeout.md` | `tools/test/test_closeout.py` | implemented and synthetically tested; current-hash review and native delivery proof precede installation (PoT 6.1.2) |
+| mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; actual use and notebook integration have separate acceptance |
 | rotate | `ops/lib/scripts/rotate.py` (not written) | `docs/ops/specs/scripts/rotate.md` | none yet | spec only; rotations still run by hand, by the spec |
 
 Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.md`.
@@ -124,7 +124,10 @@ Run from the room root, `[host path 4]`. Python runs isolated (`-I -B`) so that 
 Reviewers also run each suite at the host umasks 0002 and 0022 as well as 0077; a suite that passes only under one umask is not green.
 
 ### Closeout and rotate
-[PLACEHOLDER: commands for `closeout.py` (hook entry point) and `rotate.py` (phase runner), once written. Owner: Claude Shannon assigns the writer; Claudio reviews before any wiring.]
+`closeout.py` is an implemented hook entry point, not an interactive phase
+runner; its specification defines JSON input and the staged validation route.
+`rotate.py` remains unimplemented. These facts do not authorize hook wiring
+or a native canary (PoT 6.1.2, 6.1.5).
 
 ### Help and template (entry points; registry `docs/ops/registry/binaries.md`)
 ~~~bash
@@ -139,16 +142,24 @@ Reviewers also run each suite at the host umasks 0002 and 0022 as well as 0077; 
 [words sha256=538ba8dad15b6e71d9892d481b91983df8413bcb340192c85416148fb0bcfe3e]
 [words sha256=ad138350324521cc5b55f9b071660c04557a2e72dfd9a7f26f119b125ed3a66b]
 [words sha256=c16607e02ca957527be9b6e3a73c3b126483939db5c9b90630ee5656e91dc2b7]
+[words sha256=8a8b37ebcc283344d5b342d12b0ee4cba2de93dfcfef1d9082134bbe23b948a2]
 
 [words sha256=586c21943eb6e906ba9e6525e60f73bf0908c13f1accbe67079a2bcee7fbeef6]
 [words sha256=4d517bb3b682d043b685a67dd3c76f28389eff8773da08db4425cfe75db9faa3]
 [words sha256=833fcf08d7ce53d1a43c72b4e77d37a4917472bc987c2e74e378130bdd32cc05]
 [words sha256=8cc5b94fc409a5b365a9e7497ae5e748e7104ff05dccc65cdf3419f87c023b83]
 [words sha256=783853d13b652edcc43f9096169b4095dad79e7920dc5c4359106d6ebc2fbf77]
+[words sha256=038c4e81b73052b6dfb686930220b5ca822fe510158e2c91dd9936dea9be056f]
 ~~~
-The forms live in `ops/src/` as `.tpl` files (Kevin, 2026-10-30: "[words sha256=8b072e0141134e57dc4354cc57b142dfd8416fb161cc4f0cdddaa9349c0b2962]"). A slots file holds `KEY=VALUE` lines. Report mode refuses a missing, unknown or empty slot, a `[PLACEHOLDER`, any `{{...}}` left in the output, and an existing `--out` file. `receipt`, `packet`, `closeout` and `readme` are form names, not tool names.
+The forms live in `ops/src/` as `.tpl` files (Kevin, 2026-10-30: "[words sha256=8b072e0141134e57dc4354cc57b142dfd8416fb161cc4f0cdddaa9349c0b2962]"). A slots file holds `KEY=VALUE` lines. Report mode refuses a missing, unknown or empty slot, a `[PLACEHOLDER`, any `{{...}}` left in the output, and an existing `--out` file. Report forms are not tool names. The rotation `receipt` remains distinct from `source-change`, which records bounded source/configuration work, exact heads, validation, review, integration and rollback.
 
-Every spec carries a `Status:` line before its first section, so that `help` can show it. `ops/bin/help curriculum` is a placeholder until `closeout.py` and `rotate.py` exist.
+The storage root is not an output directory. Only `storage/.gitignore`,
+`storage/README.md` and the lane `.gitkeep` files are admitted; all case and
+handoff payload stays ignored. Before a storage commit, verify the exact staged
+path set rather than relying on ignore rules alone. Use `var/tmp/` for
+disposable scratch.
+
+Every spec carries a `Status:` line before its first section, so that `help` can show it. `ops/bin/help curriculum` remains a placeholder: closeout source exists, but the exact wake/closeout curriculum and rotate script are not complete.
 
 ---
 
@@ -203,7 +214,9 @@ The meter already exists: after every working turn, the provider writes the exac
 
 ## 4. Closeout
 
-Spec: `docs/ops/specs/scripts/closeout.md`. Status: design only. Nothing is installed.
+Spec: `docs/ops/specs/scripts/closeout.md`. Source and synthetic tests exist;
+installation and native context delivery are separate acceptance steps. The
+specification records the implementation boundary; PoT 6.1.2 governs wiring.
 
 **Why.** A resident's end used to be noticed by someone else, late or never. Joy's closing packet of 2026-10-29 was left on the Desktop and never reached her. The closeout is built into the resident and triggered by its own measured state, not by anyone's memory.
 
@@ -224,13 +237,18 @@ Spec: `docs/ops/specs/scripts/closeout.md`. Status: design only. Nothing is inst
 
 **Codex and Copilot residents.** Codex CLI 0.166 documents the same hook (Joe Codex, `joe.md`); the PyCharm path is untested, so it is tried on one Codex resident before anyone relies on it. Until then, and for Copilot, Kevin pastes the card.
 
-[PLACEHOLDER: `ops/lib/scripts/closeout.py`, its tests `tools/test/test_closeout.py`, and its test spec `docs/ops/specs/tools/test/closeout.md`. Owner: Claude Shannon assigns the writer. Wiring the hook into any resident needs Claudio's review and Kevin's named go, Shannon first, then the rest.]
+The implementation and `tools/test/test_closeout.py` already exist. A native
+delivery check and any hook, notification or timer installation follow the
+separately reviewed exact operation (PoT 6.1.2, 6.1.5). The old staged runbook
+does not reopen its expired live window.
 
 ---
 
 ## 5. Writing a Mind
 
-Spec: `docs/ops/specs/scripts/mind.md`. Status: built, 30 of 30 tests passing on synthetic rooms; under Claudio's review. No mind has been written.
+Spec: `docs/ops/specs/scripts/mind.md`. Source and synthetic tests exist;
+current test results belong to their validation receipt, not a frozen count
+here. A first mind write and notebook integration remain separate operations.
 
 **What a mind is.** The small curated record of who a resident is, what it has learned and what it owes. It travels into every successor beside the donor's own summary and window, and never replaces them.
 
@@ -251,11 +269,13 @@ Spec: `docs/ops/specs/scripts/mind.md`. Status: built, 30 of 30 tests passing on
 
 **Where minds live.**
 - Pointer: `<room>/MIND.md`, one line per resident in that room.
-- Leaves: `<room>/archives/surfaces/MIND-<key>-<date>-<hash8>.md`, mode 0600.
+- Leaves: `<room>/archives/MIND-<key>-<date>-<hash8>.md`, mode 0600.
 - Both are out of Git and backed by two-tier custody.
 
-**Before the first mind in Sessions.** On 2026-10-30 the room did not yet ignore `MIND.md` or `archives/surfaces/`, and `write` refuses inside a Git work tree that does not ignore them. An ignore rule (a Control change with its own writer and review) must land first.
-[PLACEHOLDER: the Control ignore rule for `Sessions/MIND.md` and `Sessions/archives/surfaces/`. Owner: the Control writer named for it; Claudio reviews.]
+**Before a mind write.** Verify the target room ignores `MIND.md` and
+`archives/MIND-*`; the tool checks that boundary and refuses exposure
+(PoT 5.1.3). The archives-root leaf location is already implemented. A
+historical missing-ignore observation is not a current permission gate.
 
 **Checking.** `mind check` runs every gate (registered, pointer, leaf, entries, chain, newest) and exits 1 on any blocking failure. `mind show <key> --ref` binds the rotation capsule to the leaf hash.
 
@@ -382,11 +402,11 @@ Also:
 | `docs/ops/registry/` | registries |
 | `tools/test/` | tests |
 | `storage/gauges/ledger.jsonl` | gauge ledger (disposable) |
-| `storage/handoff/` | team room (working notes) |
-| `storage/intake/`, `storage/active/` | new incoming payloads and named case work; no operational code trees |
+| `storage/handoff/` | team room (private working notes; ignored) |
+| `storage/intake/`, `storage/active/` | incoming and named case payloads; only lane `.gitkeep` files admitted; no operational code trees |
 | `var/tmp/<owner>-<operation>.<unique>/` | task scratch; allocate with `mktemp -d`, contents ignored |
-| `MIND.md`, `archives/surfaces/` | minds (out of Git) |
-| `archives/receipts/` | one receipt per action (durable, tracked) |
+| `MIND.md`, `archives/MIND-*` | minds (out of Git) |
+| `archives/receipts/` | durable receipts; only explicitly admitted redacted copies are tracked |
 | `Backup/Codex-Session-Preservation/<batch>/` (under `[host path 6]`) | tier-1 custody |
 | `storage/candidates/`, `storage/lab/` | existing cases awaiting classification; new ephemeral work uses `var/tmp/` |
 

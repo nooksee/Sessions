@@ -1,11 +1,11 @@
-<!-- redact: public copy; source sha256 e95f5edb1175a7c736705d92818e8123203293744215ffc28434f7dcc1aaeb5e; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
+<!-- redact: public copy; source sha256 c66379c28d4fd08ca1fa35a968324bf6bad9cbb48982b00f2c70ca43cfe2cbe1; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
 # Sessions repository
 
 Kevin directed "[words sha256=e3c709e933b49ba138e26c6ee4788cbd3f446c8a8c0ddeb235ae305353ef38cf]" on 2026-10-31. George Friend owns this Git bootstrap. The repository root is [host path 1]; it is kept at the same filesystem path so existing room, launcher and runtime references continue to resolve. The GitHub home is private, nooksee/sessions.
 
 ## Versioned boundary
 
-The first source snapshot contains the root canon and instructions, modern ops/, tools/ and docs/, the two existing constitutional snapshots and the bootstrap receipt. A root allowlist makes unclassified lanes ignored. Minds at MIND.md, archives/MIND-* and archives/surfaces/ are excluded, along with private bodies, working storage, Candidates, Lab, generated Evidence, installed environments and editor state. The current registry remains at its existing local path under Control ownership and is not duplicated into this Git history. A clone alone does not supply host custody or the live registry and is not an activated continuity installation.
+The first source snapshot contains the root canon and instructions, modern ops/, tools/ and docs/, the two existing constitutional snapshots and the bootstrap receipt. A root allowlist makes unclassified lanes ignored. Minds at MIND.md and archives/MIND-* are excluded, along with private bodies, working-storage payload, Candidates, Lab, generated Evidence, installed environments and editor state. W2a later admitted only storage/.gitignore, storage/README.md and the direct lane .gitkeep files; it did not admit case payload or handoffs. The current registry remains at its existing local path under Control ownership and is not duplicated into this Git history. A clone alone does not supply host custody or the live registry and is not an activated continuity installation.
 
 ## Control transition
 
