@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 0102a094d9e5dcd22863192d96d262b2d0f67b07e4790f13f25bc21150cc952e; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
 # Port of the Sessions room to the STELA base
 
 Owner: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident. Written 2026-11-01. Convention: STELA (`Projects/STELA`).
@@ -70,7 +69,7 @@ The operator asked why `Evidence/`, `Receipts/`, `Resident-Center/` and `Config/
 
 - `ops/lib/scripts/rounds.sh` lost its Resident Center drift step (115 lines): the detector's only subject left the room, and a detector that cannot find its subject forces a critical alert every run.
 - Inside the frozen Resident Center, two files are Sessions-operational data, not product: the launcher roster (`config/residents.json`) and the host bindings. `identity.py` and `myself.py` compare the registry against them, so copies now live in `ops/etc/` beside the registry; the frozen originals stay in the archive. The launcher itself runs from the product repository, as the Control decision on source authority says; its path is the operator's wiring.
-- PoT Amendment 3, candidate (`storage/PoT-amendment-3.md`): 1.1.1 gains the manifests, 1.1.6 and 1.1.7 are retired, 1.1.12 adds `logs/`, 1.3.5 and 1.3.7 take the new paths. The tree's `PoT.md` carries the candidate text; the text in force stays `archives/PoT-38854647.md` until the ledger records ratification (PoT 7.1, 7.3).
+- PoT Amendment 3, candidate (`archives/working-records/20261101-policy-a3/PoT-amendment-3.md`): 1.1.1 gains the manifests, 1.1.6 and 1.1.7 are retired, 1.1.12 adds `logs/`, 1.3.5 and 1.3.7 take the new paths. The tree's `PoT.md` carries the candidate text; the text in force stays `archives/PoT-38854647.md` until the ledger records ratification (PoT 7.1, 7.3).
 - Rewrites: 87 counted, in 50 tool and document files; records untouched (`archives/receipts/` keeps every receipt's text, including its old `Receipts/` and `Evidence/` paths).
 - Measured: 344 passed, 2 skipped, 416 subtests passed in 22.05s; room runner: suites=42 failing=0; help --test: OK: help self-test passed (14/14).; template --test: OK: template self-test passed (18/18)..
 
@@ -83,12 +82,12 @@ The operator asked why `Evidence/`, `Receipts/`, `Resident-Center/` and `Config/
 
 ## As landed in the live room (2026-11-01 and 2026-11-02)
 
-The port landed in stages A to D and blocks 6 and 7 (`storage/landing-plan.md`; the receipts in `archives/receipts/`). Where the landing differs from this pass:
+The port landed in stages A to D and blocks 6 and 7 (`archives/working-records/20261101-port-planning/landing-plan.md`; the receipts in `archives/receipts/`). Where the landing differs from this pass:
 
 - **The drift step stayed.** Stage C restored it to `ops/lib/scripts/rounds.sh` under Control's frozen-runtime decision, so the detector, its suite and its contract were not retired to `archives/legacy/drift/`; they left the room with the runtime.
-- **The frozen runtime went to Control, not to `archives/legacy/`.** In block 7, `Resident-Center/`, `Config/` and `Scripts/` moved to Control's frozen runtime custody at `[host path 1]`, with Control's history bridge in the drift detector. The launcher serves from there and reads the roster and bindings in `ops/etc/`. The two `Scripts/` remains are also kept in this room, in `archives/legacy/Scripts/`.
+- **The frozen runtime went to Control, not to `archives/legacy/`.** In block 7, `Resident-Center/`, `Config/` and `Scripts/` moved to Control's frozen runtime custody at `/media/nos4r2/user_vol/Control-Runtime/`, with Control's history bridge in the drift detector. The launcher serves from there and reads the roster and bindings in `ops/etc/`. The two `Scripts/` remains are also kept in this room, in `archives/legacy/Scripts/`.
 - **Past Evidence outputs went to `archives/legacy/Evidence/`** (block 6), not to `logs/`; `logs/` holds what the services write now.
-- **What else landed from the port:** its three receipts (`archives/receipts/port-20261101.md`, `port-stela-homes-20261101.md`, `mind-manifest-integration-20261101.md`), its handoff and review packet (`storage/handoff/port.md`, `storage/packet-port-review.md`) and the mind manifest (`archives/mind-manifest-20261101/`), each byte for byte. The root `PORT-README.md` describes the copy, not the room, and stays with the port.
+- **What else landed from the port:** its three receipts (`archives/receipts/port-20261101.md`, `port-stela-homes-20261101.md`, `mind-manifest-integration-20261101.md`), its handoff and review packet (`storage/handoff/port.md`, `archives/working-records/20261101-port-planning/packet-port-review.md`) and the mind manifest (`archives/mind-manifest-20261101/`), each byte for byte. The root `PORT-README.md` describes the copy, not the room, and stays with the port.
 - **Of what Control must still do:** item 1 was done in stage C; items 2 and 3 were answered by block 7; item 4 waits for Amendment 3.
 
 ## Current law - 2026-11-03
