@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 b8323289c20b363c7690952a515b1f26965cd8c806ed1bb1a0f92e497e935648; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 a39b7681c0f438e700c5c46b489edcb85ba1ba157e0300d80aa430a8ae1c0a4b; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
 Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). PoT 1.1 defines the filing boundaries; CONSTRAINTS C01 gives the filing mechanics. `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
@@ -69,7 +69,7 @@ force until their separately assigned cutover; this adoption moves no state.
 | active case payload | `storage/active/` | working data; only `.gitkeep` admitted | payload ignored; owner, operation and closeout; no operational code trees |
 | mind project record | `archives/mind-manifest-20261101/` | durable, private and ignored | packed 2026-11-01; `MANIFEST.txt` holds every file's source and sha256; integrated by the port (`archives/receipts/mind-manifest-integration-20261101.md`); preservation does not imply Git admission |
 | receipts | `archives/receipts/<what>-<date>.md` | durable; selective Git admission | original/private sources remain kept; only explicitly admitted redacted records enter Git, as `.gitignore` names them |
-| custody | `[host path 1]>/` mirrored on hard_vol2 | durable | hard_vol2 is failing; a replacement is pending |
+| custody | `[host path 1]>/` (tier 1, /dev/sdb1), mirrored on hard_vol2 (tier 2, /dev/sdc1) | durable | hard_vol2 is failing and its replacement stays open (PoT 5.3.3): until a healthy second medium is chosen, each batch's third copy lives on the boot drive under `[host path 2]` (tier 3, /dev/sda2, interim): `Sessions-Custody-Interim-20261104/<batch>/` holds the receipts, evidence and ledger-sources batches of 11-01 and 11-02; `Central-RoR-First-Render-20261104/` and `Sessions-State-Cutover-20261104/` hold the ledger render and the gauge-history preimages of 11-04, each with a sibling under `Backup/` |
 | help | `ops/bin/help`, `docs/ops/specs/binaries/help.md` | binary | adapted from STELA 10-30; read-only wayfinding (`docs/ops/registry/binaries.md`) |
 | template | `ops/bin/template`, `docs/ops/specs/binaries/template.md` | binary | adapted from STELA 10-30; new tool skeleton (`docs/ops/registry/binaries.md`) |
 | manual | `docs/MANUAL.md` | document | written 10-30; operator console for the loop |
@@ -85,7 +85,7 @@ force until their separately assigned cutover; this adoption moves no state.
 ## Ported later (Kevin: no side path now)
 
 - `Scripts/`: ported 2026-11-01 to `ops/lib/scripts/`, one word each with a spec each (`docs/ops/specs/runbook/port.md`, `archives/receipts/port-20261101.md`); its two frozen remains are under `archives/legacy/Scripts/`.
-- The retired folders Archived, Attic, Plans and Intake were frozen unchanged under `archives/legacy/` on 2026-11-01. `Resident-Center/`, `Config/` and the rest of `Scripts/` left the room in block 7 for Control's frozen runtime custody at `[host path 2]` (Control's decision; PoT 3.4).
+- The retired folders Archived, Attic, Plans and Intake were frozen unchanged under `archives/legacy/` on 2026-11-01. `Resident-Center/`, `Config/` and the rest of `Scripts/` left the room in block 7 for Control's frozen runtime custody at `[host path 3]` (Control's decision; PoT 3.4).
 - `HANDOFF.md`, `INDEX.md` and `START-HERE.md` became pointer-first root files on 2026-11-01; their former contents are at `archives/legacy/HANDOFF.md`, `archives/legacy/INDEX.md` and `docs/START-HERE.md`. `NOW.md` stays the present-state board.
 
 ## Rules for every new file
