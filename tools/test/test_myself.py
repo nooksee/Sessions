@@ -14,6 +14,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -918,6 +919,194 @@ class HeldResidentTests(unittest.TestCase):
                 leg = self._leg(report, "launcher roster")
                 self.assertEqual("finding", leg.status, output)
                 self.assertIn(f"registry launcher value {value!r} is not 'held'", leg.detail)
+
+
+class SharedGaugePressureTests(unittest.TestCase):
+    """The eleven synthetic reader cases, with actual caller/registry legs."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        gauge_path = MODULE_PATH.with_name("gauge.py")
+        spec = importlib.util.spec_from_file_location("myself_parity_gauge", gauge_path)
+        self.gauge = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.gauge)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def _fixture(self, provider):
+        fixture = Fixture(self.root, provider)
+        resource = json.loads(fixture.resource.read_text())
+        resource["context"]["window_size"] = 1_000_000
+        fixture.resource.write_text(json.dumps(resource))
+        if provider == "codex":
+            rows = [row for row in fixture.codex_rows() if row["type"] != "event_msg"]
+            rows.append({"timestamp": "2026-08-09T22:10:00Z", "type": "turn_context",
+                         "payload": {"model": "synthetic-codex"}})
+        else:
+            rows = [row for row in fixture.claude_rows() if row["type"] != "assistant"]
+        rows.append(self._usage(provider, 300_000))
+        fixture.body.write_text("".join(json_line(row) for row in rows))
+        return fixture
+
+    @staticmethod
+    def _usage(provider, tokens, stamp="2026-08-09T22:20:00Z", window=1_000_000, side=False):
+        if provider == "codex":
+            return {"timestamp": stamp, "type": "event_msg", "payload": {"type": "token_count",
+                "info": {"last_token_usage": {"input_tokens": tokens}, "model_context_window": window}}}
+        return {"type": "assistant", "isSidechain": side, "timestamp": stamp,
+                "message": {"id": "synthetic-" + stamp, "model": "claude-fixture",
+                    "usage": {"input_tokens": tokens, "cache_read_input_tokens": 0,
+                              "cache_creation_input_tokens": 0, "output_tokens": 1}}}
+
+    @staticmethod
+    def _boundary(provider, side=False):
+        if provider == "codex":
+            return {"timestamp": "2026-08-09T22:30:00Z", "type": "compacted",
+                    "payload": {"message": "", "window_number": 2}}
+        return {"timestamp": "2026-08-09T22:30:00Z", "type": "system",
+                "subtype": "compact_boundary", "isSidechain": side}
+
+    @staticmethod
+    def _append(fixture, row, terminated=True):
+        with fixture.body.open("a") as handle:
+            handle.write(json.dumps(row, separators=(",", ":")) + ("\n" if terminated else ""))
+
+    def _read(self, fixture):
+        if fixture.provider == "claude":
+            if not hasattr(fixture, "synthetic_parent"):
+                fixture.synthetic_parent = fixture.fake_claude_parent()
+            report = fixture.run(environ={}, start_pid=fixture.synthetic_parent)
+        else:
+            report = fixture.run()
+        legs = {leg.name: leg for leg in report.legs}
+        for name in ("caller identity", "identity registry"):
+            self.assertEqual("pass", legs[name].status, check_myself.render(report))
+        measured = self.gauge.measure(
+            {"key": fixture.key, "person": fixture.person, "provider": fixture.provider,
+             "session_id": fixture.session_id}, NOW,
+            {"claude-fixture": {"window": 1_000_000, "source": "synthetic", "observed": "2026-08-09"}},
+            None, fixture.claude_root, [fixture.codex_root / "sessions"],
+            [self.root / "absent-archive"], self.root / "absent-copilot")
+        return report, legs["context pressure"], measured
+
+    def _known(self, fixture, tokens):
+        report, leg, measured = self._read(fixture)
+        self.assertEqual("last observed", measured["state"])
+        self.assertEqual(tokens, measured["tokens"])
+        self.assertEqual("pass", leg.status, check_myself.render(report))
+        self.assertIn(f"tokens={tokens}; window=1000000; pressure={measured['percent']:.1f}%", leg.detail)
+        self.assertEqual(0, report.exit_code, check_myself.render(report))
+
+    def _unknown(self, fixture, state):
+        report, leg, measured = self._read(fixture)
+        self.assertEqual(state, measured["state"])
+        self.assertIsNone(measured["percent"])
+        self.assertEqual("undetermined", leg.status, check_myself.render(report))
+        self.assertNotIn("pressure=", leg.detail)
+        self.assertNotEqual(0, report.exit_code)
+
+    def test_codex_ordinary_reading(self):
+        self._known(self._fixture("codex"), 300_000)
+
+    def test_codex_compaction_invalidates_old_pressure(self):
+        fixture = self._fixture("codex")
+        self._append(fixture, self._boundary("codex"))
+        self._unknown(fixture, "before compaction")
+
+    def test_codex_fresh_reading_after_compaction(self):
+        fixture = self._fixture("codex")
+        self._append(fixture, self._boundary("codex"))
+        self._append(fixture, self._usage("codex", 200_000, "2026-08-09T22:40:00Z"))
+        self._known(fixture, 200_000)
+
+    def test_codex_new_unknown_window_never_reuses_old_reading(self):
+        fixture = self._fixture("codex")
+        self._append(fixture, self._usage("codex", 400_000, "2026-08-09T22:30:00Z", window=None))
+        self._unknown(fixture, "window unknown")
+
+    def test_codex_unterminated_row_is_not_a_reading(self):
+        fixture = self._fixture("codex")
+        self._append(fixture, self._usage("codex", 800_000, "2026-08-09T22:30:00Z"), terminated=False)
+        self._known(fixture, 300_000)
+
+    def test_claude_ordinary_reading(self):
+        self._known(self._fixture("claude"), 300_000)
+
+    def test_claude_sidechain_usage_is_not_resident_pressure(self):
+        fixture = self._fixture("claude")
+        self._append(fixture, self._usage("claude", 900_000, "2026-08-09T22:30:00Z", side=True))
+        self._known(fixture, 300_000)
+
+    def test_claude_zero_usage_never_supersedes_real_reading(self):
+        fixture = self._fixture("claude")
+        self._append(fixture, self._usage("claude", 0, "2026-08-09T22:30:00Z"))
+        self._known(fixture, 300_000)
+
+    def test_claude_compaction_invalidates_old_pressure(self):
+        fixture = self._fixture("claude")
+        self._append(fixture, self._boundary("claude"))
+        self._unknown(fixture, "before compaction")
+
+    def test_claude_sidechain_compaction_does_not_invalidate_main(self):
+        fixture = self._fixture("claude")
+        self._append(fixture, self._boundary("claude", side=True))
+        self._known(fixture, 300_000)
+
+    def test_claude_fresh_reading_after_compaction(self):
+        fixture = self._fixture("claude")
+        self._append(fixture, self._boundary("claude"))
+        self._append(fixture, self._usage("claude", 200_000, "2026-08-09T22:40:00Z"))
+        self._known(fixture, 200_000)
+
+    def test_missing_gauge_fails_closed_without_losing_other_legs(self):
+        fixture = self._fixture("codex")
+        before = fixture.body.read_bytes()
+        with mock.patch.object(check_myself, "GAUGE_PATH", self.root / "absent-gauge.py"):
+            report, leg, _ = self._read(fixture)
+        self.assertEqual("undetermined", leg.status)
+        self.assertIn("FileNotFoundError", leg.detail)
+        self.assertEqual(check_myself.EXPECTED_LEGS, len(report.legs))
+        self.assertEqual("pass", next(x for x in report.legs if x.name == "body metrics").status)
+        self.assertNotEqual(0, report.exit_code)
+        self.assertEqual(before, fixture.body.read_bytes())
+
+    def test_gauge_load_error_is_unknown_not_an_old_reader_fallback(self):
+        fixture = self._fixture("claude")
+        with mock.patch.object(check_myself, "_load_gauge", side_effect=OSError("synthetic fault")):
+            report, leg, _ = self._read(fixture)
+        self.assertEqual("undetermined", leg.status)
+        self.assertIn("OSError", leg.detail)
+        self.assertNotIn("pressure=", leg.detail)
+        self.assertNotEqual(0, report.exit_code)
+
+    def test_codex_tokens_exceeding_window_are_undetermined(self):
+        fixture = self._fixture("codex")
+        self._append(fixture, self._usage("codex", 1_000_001, "2026-08-09T22:30:00Z"))
+        self._unknown(fixture, "invalid")
+
+    def test_repeated_run_refreshes_usage_and_compaction_state(self):
+        fixture = self._fixture("codex")
+        self._known(fixture, 300_000)
+        self._append(fixture, self._boundary("codex"))
+        self._unknown(fixture, "before compaction")
+        self._append(fixture, self._usage("codex", 200_000, "2026-08-09T22:40:00Z"))
+        self._known(fixture, 200_000)
+
+    def test_claude_missing_model_cannot_match_missing_capability_model(self):
+        fixture = self._fixture("claude")
+        row = self._usage("claude", 400_000, "2026-08-09T22:30:00Z")
+        row["message"].pop("model")
+        self._append(fixture, row)
+        resource = json.loads(fixture.resource.read_text())
+        resource["model"].pop("id")
+        fixture.resource.write_text(json.dumps(resource))
+        report, leg, measured = self._read(fixture)
+        self.assertEqual("window unknown", measured["state"])
+        self.assertEqual("undetermined", leg.status)
+        self.assertIn("no verified model", leg.detail)
+        self.assertNotEqual(0, report.exit_code)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ authority 0.
 from __future__ import annotations
 
 import datetime as dt
+import importlib.util
 import json
 import os
 import re
@@ -37,6 +38,7 @@ TIMESTAMP_CLUSTER_MINIMUM = 20
 RESOURCE_FRESHNESS_REFERENCE_SECONDS = 1800
 RESOURCE_FUTURE_TOLERANCE_SECONDS = 300
 EXPECTED_LEGS = 9
+GAUGE_PATH = Path(__file__).resolve().with_name("gauge.py")
 LIMIT_TEXT = (
     "This tool rules out only the known identity, coverage, context-pressure, "
     "native-body, compaction-count, and timestamp-cluster failure classes "
@@ -145,6 +147,7 @@ class BodyAnalysis:
     context_window: int | None = None
     context_observed_at: str | None = None
     model_id: str | None = None
+    context_unavailable_reason: str | None = None
 
 
 def _surface(path: Path) -> str:
@@ -504,9 +507,49 @@ def _record_message_timestamp(analysis: BodyAnalysis, row: dict[str, Any]) -> No
         analysis.missing_message_timestamps += 1
 
 
+def _load_gauge():
+    """Load the sibling canonical counter reader without invoking its CLI."""
+    spec = importlib.util.spec_from_file_location("myself_gauge", GAUGE_PATH)
+    if spec is None or spec.loader is None:
+        raise ImportError("canonical gauge reader is unavailable")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _context_from_gauge(analysis: BodyAnalysis) -> BodyAnalysis:
+    """Share selection/currentness with gauge; keep identity/metrics independent."""
+    try:
+        gauge = _load_gauge()
+        reader = {"codex": gauge.read_codex, "claude": gauge.read_claude}[analysis.provider]
+        reading = reader(analysis.path)
+        if reading.get("compaction_after"):
+            analysis.context_unavailable_reason = (
+                "native usage is before compaction; the next complete native reading is required"
+            )
+            return analysis
+        if "tokens" not in reading:
+            analysis.context_unavailable_reason = reading.get("reason") or "no native context reading"
+            return analysis
+        analysis.context_tokens = reading["tokens"]
+        analysis.context_window = reading.get("window")
+        analysis.model_id = reading.get("model")
+        if analysis.provider == "claude" and (
+            not isinstance(analysis.model_id, str) or not analysis.model_id
+        ):
+            analysis.context_unavailable_reason = "native Claude usage names no verified model"
+            return analysis
+        stamp = reading.get("reading_at")
+        analysis.context_observed_at = stamp if isinstance(stamp, str) else None
+        if analysis.context_window and analysis.context_tokens > analysis.context_window:
+            analysis.context_unavailable_reason = "native token count exceeds its reported window"
+    except Exception as exc:
+        analysis.context_unavailable_reason = f"canonical gauge reader unavailable: {type(exc).__name__}"
+    return analysis
+
+
 def analyze_codex_body(path: Path) -> BodyAnalysis:
     analysis = BodyAnalysis(path=path, provider="codex", size=path.stat().st_size)
-    latest_context: tuple[int, int, str | None] | None = None
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, 1):
             if not line.strip():
@@ -539,26 +582,11 @@ def analyze_codex_body(path: Path) -> BodyAnalysis:
             if row_type == "response_item" and isinstance(payload, dict):
                 if payload.get("type") == "message":
                     _record_message_timestamp(analysis, row)
-            if row_type == "event_msg" and isinstance(payload, dict):
-                if payload.get("type") != "token_count":
-                    continue
-                info = payload.get("info")
-                if not isinstance(info, dict):
-                    continue
-                usage = info.get("last_token_usage")
-                tokens = usage.get("input_tokens") if isinstance(usage, dict) else None
-                window = info.get("model_context_window")
-                if isinstance(tokens, int) and isinstance(window, int) and window > 0:
-                    latest_context = (tokens, window, row.get("timestamp"))
-    if latest_context is not None:
-        analysis.context_tokens, analysis.context_window, observed = latest_context
-        analysis.context_observed_at = observed if isinstance(observed, str) else None
-    return analysis
+    return _context_from_gauge(analysis)
 
 
 def analyze_claude_body(path: Path) -> BodyAnalysis:
     analysis = BodyAnalysis(path=path, provider="claude", size=path.stat().st_size)
-    latest_usage: tuple[int, str, str | None] | None = None
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, 1):
             if not line.strip():
@@ -598,25 +626,7 @@ def analyze_claude_body(path: Path) -> BodyAnalysis:
                     analysis.latest_identity_claim = claim
                     if claim is not None:
                         analysis.identity_claims.append(claim)
-            if row_type == "assistant":
-                message = row.get("message")
-                if not isinstance(message, dict):
-                    continue
-                usage = message.get("usage")
-                model = message.get("model")
-                if not isinstance(usage, dict) or not isinstance(model, str):
-                    continue
-                parts = [
-                    usage.get("input_tokens"),
-                    usage.get("cache_creation_input_tokens"),
-                    usage.get("cache_read_input_tokens"),
-                ]
-                if all(isinstance(value, int) and value >= 0 for value in parts):
-                    latest_usage = (sum(parts), model, row.get("timestamp"))
-    if latest_usage is not None:
-        analysis.context_tokens, analysis.model_id, observed = latest_usage
-        analysis.context_observed_at = observed if isinstance(observed, str) else None
-    return analysis
+    return _context_from_gauge(analysis)
 
 
 def _candidate_bodies(
@@ -1102,15 +1112,16 @@ def run_check(
             _surface(paths.registry),
         )
 
-    if analysis is None or analysis.context_tokens is None:
+    if analysis is None or analysis.context_tokens is None or analysis.context_unavailable_reason:
         report.add(
             "context pressure",
             "undetermined",
-            "caller-native context telemetry is unavailable",
-            *([_surface(analysis.path)] if analysis else [_surface(paths.bindings)]),
+            (analysis.context_unavailable_reason if analysis else None)
+            or "caller-native context telemetry is unavailable",
+            *([_surface(analysis.path), _surface(GAUGE_PATH)] if analysis else [_surface(paths.bindings)]),
         )
     else:
-        context_surfaces = [_surface(analysis.path)]
+        context_surfaces = [_surface(analysis.path), _surface(GAUGE_PATH)]
         context_detail = ""
         if analysis.provider == "claude":
             window, context_detail = _claude_window(
