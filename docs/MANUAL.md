@@ -1,7 +1,7 @@
-<!-- redact: public copy; source sha256 4925e5a192da90c6a4326a7cff14b5871b964d9dd506508262d018fa0ea0117d; rules 8; mode history; words 60; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
+<!-- redact: public copy; source sha256 a5fa3ccbba6a89cc72a1ce19afae80dc8fa25217ed5677bfc5078124ff4ed892; rules 8; mode history; words 57; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
 # Sessions Operations Manual (Command Console)
 
-Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request ("[words sha256=5b699f7ed115780f2363d3261427967ee430cbc0ed7514b43d295b5965b799dd]"), by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
+Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request for a help system and a manual, both taken from the STELA framework, by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
 
 Authority order:
 - **Law:** `PoT.md` is the single Sessions constitution, below Control policy.
@@ -173,7 +173,7 @@ or a native canary (PoT 6.1.2, 6.1.5).
 [words sha256=783853d13b652edcc43f9096169b4095dad79e7920dc5c4359106d6ebc2fbf77]
 [words sha256=038c4e81b73052b6dfb686930220b5ca822fe510158e2c91dd9936dea9be056f]
 ~~~
-The forms live in `ops/src/` as `.tpl` files (Kevin, 2026-10-30: "[words sha256=8b072e0141134e57dc4354cc57b142dfd8416fb161cc4f0cdddaa9349c0b2962]"). A slots file holds `KEY=VALUE` lines. Report mode refuses a missing, unknown or empty slot, a `[PLACEHOLDER`, any `{{...}}` left in the output, and an existing `--out` file. Report forms are not tool names. The rotation `receipt` remains distinct from `source-change`, which records bounded source/configuration work, exact heads, validation, review, integration and rollback.
+The forms live in `ops/src/` as `.tpl` files (Kevin, 2026-10-30: the agent kept changing the form, or at times forgot it). A slots file holds `KEY=VALUE` lines. Report mode refuses a missing, unknown or empty slot, a `[PLACEHOLDER`, any `{{...}}` left in the output, and an existing `--out` file. Report forms are not tool names. The rotation `receipt` remains distinct from `source-change`, which records bounded source/configuration work, exact heads, validation, review, integration and rollback.
 
 The storage root is not an output directory. Only `storage/.gitignore`,
 `storage/README.md` and the lane `.gitkeep` files are admitted; all case and
@@ -329,7 +329,7 @@ Spec: `docs/ops/specs/scripts/rotate.md`. Status: spec only; `rotate.py` is not 
 | 6 Custody and serve-safety | `launcher stop <key>` writes the hold; donor, pristine destination, successor, capsule, gates, media, registry and binding go to both tiers, checked against `SHA256SUMS` | both tiers verified |
 | 6 to 7 Kevin's go | the writer names container, room, size, custody hash and rollback, then waits; a go given at phase 0 does not count | Kevin's go |
 | 7 Install | verified swap (default) or Kevin's `.NEW` swap (fallback); registry and binding switched; six identity checks agree; rollback on any failure | six checks agree |
-| 8 Acceptance | `launcher serve <key>` (load test and hold release); first reply gives room status and speaks as itself; first gauge reading recorded; clean native append; then Kevin's own acceptance | "[words sha256=b7494444967da680678b7a4213860505e8af14fd8a85b960d4bd8374a2a46898]" |
+| 8 Acceptance | `launcher serve <key>` (load test and hold release); first reply gives room status and speaks as itself; first gauge reading recorded; clean native append; then Kevin's own acceptance | Kevin states that he recognizes him, or her |
 | 9 Close | receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`; donor store entry removed or relabeled only after custody is verified in both tiers; the new resident confirms its mind | receipt written |
 
 **Codex residents.** `ops/lib/scripts/rotation.py` does not carry the native compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
