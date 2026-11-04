@@ -1,17 +1,18 @@
-<!-- redact: public copy; source sha256 37d9a07dfd0f60901f58abf7e02d797e307112bbc34a2edaee5c91cfdf1f1fdf; rules 8; mode history; words 2; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: myself
 
-Script: `Sessions/ops/lib/scripts/myself.py` (writer: not recorded in the file; port writer: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident). Tests: `Sessions/tools/test/test_myself.py`. Spec writer: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident. Status: ported on 2026-11-01 from `Scripts/check_myself.py`, which this tree no longer holds; built as it was, 1 edit(s) listed below; callers outside the room still name the legacy path; reviewer not yet named. Map: `docs/ops/README.md`.
+Script: `Sessions/ops/lib/scripts/myself.py` (original writer not recorded; port writer: Claude (Fable 5.1, that session), not a registered resident; shared-counter correction writer: Session Continuity Apprentice (Joe Codex)). Tests: `Sessions/tools/test/test_myself.py`. Original spec writer: the port writer; shared-counter spec correction: Session Continuity Apprentice (Joe Codex). Source status: shared gauge reader with synthetic coverage; independent review and integration are recorded in the owning change receipt. No hook, timer or service is installed by this source change. Map: `docs/ops/README.md`.
 
 ## First Principles Rationale
 
-Ported legacy tool. Its own docstring opens: "[words sha256=a3651b719ee3084d4966966fd10c5bf4f9da29f4c7fab4fb1908ec8db936b7ff]" (the file names no author; attributed to the file). The earliest receipt that names it is `Receipts/resident-self-check-canary-20260809.md` (2026-08-09); 10 receipt(s) name it in all.
+Ported legacy tool. Its own docstring opens: "Measure one resident's native identity and session health, without writes." (the file names no author; attributed to the file). The earliest receipt that names it is `Receipts/resident-self-check-canary-20260809.md` (2026-08-09); 10 receipt(s) name it in all.
 
 ## Mechanics and Sequencing
 
-1. Behavior is the legacy script's, unchanged: `Scripts/check_myself.py` (sha256 `e4b2fad6d0d64d223fe904626374d5b3cbf993cafcbac876b336c2ed3baf3bc8`) was copied to `ops/lib/scripts/myself.py` on 2026-11-01 with 1 edit(s): parents[1] -> parents[3] (1).
+1. Port provenance: `Scripts/check_myself.py` (sha256 `e4b2fad6d0d64d223fe904626374d5b3cbf993cafcbac876b336c2ed3baf3bc8`) was copied to `ops/lib/scripts/myself.py` on 2026-11-01 with one edit: parents[1] -> parents[3]. The later shared-counter correction replaces only the duplicated context-usage selection; identity, row/parse metrics and timestamp-cluster inspection keep their separate body analysis.
 2. Command line: `python3 -I -B ops/lib/scripts/myself.py`; the script declares no argparse options (it reads its inputs from fixed paths or from the environment, as its docstring says).
-3. Reads and writes: as the docstring states (463 characters; the first paragraph is quoted above and the rest remains in the script). The port added no read and no write.
+3. Context selection loads the sibling `gauge.py` and calls its `read_codex` or `read_claude` on the exact selected body. The gauge specification owns the counter-selection and tail bound. Main-chain usage, incomplete final rows, zero usage and later compaction therefore use the same selection as gauge and closeout. The pressure leg reports unknown after compaction until a fresh complete reading; it does not reuse an older Codex window when the newest reading lacks one.
+4. The existing Claude window source remains a model-matched identifier-free resource-state record, with its reported age; this correction does not replace it with gauge's reviewed-window table or claim parity when those capability sources disagree. The rotation threshold is unchanged. The pressure leg names the actual body, gauge source and, when used, resource-state surface.
+5. Missing/unreadable gauge source or reader failure makes pressure undetermined, without a second reader fallback. Other identity/body-metric legs still run. A native Codex count above its reported window is undetermined, not a clean result. Repeated runs read current input; no pressure result is cached. No new output, state, registry, binding or body write is added.
 
 ## Anecdotal Anchor
 
@@ -19,6 +20,7 @@ Ported legacy tool. Its own docstring opens: "[words sha256=a3651b719ee3084d4966
 
 ## Integrity Filter Warnings
 
-- Refusal and read-only statements in the docstring: "[words sha256=d96e83608b65c40f1db5ca030ea3591febd404c82db13310192be97c07c435d5]"
-- Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/check_myself.py` until Control repoints them; this room's own documents name `ops/lib/scripts/myself.py`.
+- Refusal and read-only statements in the docstring: "Measure one resident's native identity and session health, without writes." "A working directory is never identity."
+- Host consumer selection belongs to Control; this source change neither repoints nor restarts a consumer. The module and its sibling gauge reader must remain together in the source layout.
+- The focused regression set covers eleven synthetic agreement/currentness cases plus reader failure, invalid-window and repeated-run checks. Those cases are not a live fleet or provider-version acceptance claim. Claude window-capability disagreement is an explicitly separate source contract, not silently calibrated here.
 - [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
