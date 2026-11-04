@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 85dbeaa396eaf5c11fc68691b392d25faf0ac0dfe0992f42de89ce6c3a865548; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 c781225b815e8e2e7d16e7d818cf1aad9c36eaf473e447e897f1653826f3df1f; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
 Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). PoT 1.1 defines the filing boundaries; CONSTRAINTS C01 gives the filing mechanics. `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
@@ -10,17 +10,16 @@ to these contracts. The map owns current locations, custody/Control ownership
 and bounded migration holds; those holds do not create a permanent storage
 state exception.
 
-## Known constitutional structure defect
+## Foundational policy adoption
 
-Accepted main still mixes foundational authority with operational detail and
-has an overbroad storage-location exception to irreversibility. This is a
-bounded structural correction, not permission to ignore current law or a
-room-wide stop on unrelated work. The candidate PoT and reader integration in
-this scratch are not adopted. The active case and execution order remain in
-`storage/active/pot-foundation-20261103/README.md` and the existing first-wins
-plan. On accepted integration, replace this notice with the adoption receipt
-and exact policy/contract hashes; do not retain a resolved incident as a
-resident warning or extra approval gate.
+RoR-18 adopts the reviewed policy at SHA-256
+`2dc41d8754189cbb52d65bca4bc387ba508eedf1cd2156f2e62f408b86eb21e7`
+with its CONSTRAINTS/CONTEXT read-in contracts and entry-point wiring.
+`storage/active/pot-adoption-20261104/receipt.md` records the actual source
+head, application time, contract hashes, custody and checks. The preserved
+proposal and clause map remain historical preparation evidence, not another
+active policy. Existing operational-state migration holds below remain in
+force until their separately assigned cutover; this adoption moves no state.
 
 ## The system: four tools, one loop
 

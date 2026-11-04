@@ -1,7 +1,7 @@
 # Sessions operational constraints
 
-Proposed home: ops/lib/manifests/CONSTRAINTS.md.
-Authority on adoption: PoT 1.2.3 and 1.3.8. This is a human-consumed contract
+Canonical home: ops/lib/manifests/CONSTRAINTS.md.
+Authority: PoT 1.2.3 and 1.3.8, adopted with the policy by RoR-18. This is a human-consumed contract
 for acting residents and delegated workers, not a second constitution or a
 claim that an installed program parses this Markdown. CONTEXT identifies its
 readers. Tool behavior and numeric parameters remain in each tool's existing
