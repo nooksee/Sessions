@@ -4,12 +4,14 @@
 No session body, registry content, record or mind is read. Fixtures live in
 the project's var/tmp and are removed by TemporaryDirectory, not a sweeper.
 """
+import re
 import shutil
 import subprocess
 import tempfile
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,6 +19,23 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def text(relative):
     return (ROOT / relative).read_text(encoding="utf-8")
+
+
+def filing_contracts():
+    """The current law chooses its named contracts; missing files never pass."""
+    law = text("PoT.md")
+    canon = next(line for line in law.splitlines() if line.startswith("- **1.3.8**"))
+    if "ops/lib/manifests/CONSTRAINTS.md" in canon:
+        constraints = text("ops/lib/manifests/CONSTRAINTS.md")
+        filing = re.search(r"^## C01\n(.*?)(?=^## |\Z)", constraints, re.M | re.S)
+        if filing is None:
+            raise ValueError("the delegated filing contract is missing C01")
+        return law, filing.group(1), text("ops/lib/manifests/CONTEXT.md")
+    filing = "\n".join(next(line for line in law.splitlines() if line.startswith(f"- **{number}**"))
+                       for number in ("1.1.4", "1.1.13"))
+    return law, filing, law
+
+
 
 
 @contextmanager
@@ -55,30 +74,65 @@ class FilingTest(unittest.TestCase):
         self.assertNotIn("[PLACEHOLDER]", source)
 
     def test_storage_is_a_named_owned_case_not_general_scratch(self):
-        clause = next(line for line in text("PoT.md").splitlines()
+        law, contract, _ = filing_contracts()
+        clause = next(line for line in law.splitlines()
                       if line.startswith("- **1.1.4**"))
-        for expected in ("named active cases", "one owner", "one operation",
-                         "closeout condition", "not a general scratch"):
-            self.assertIn(expected, clause)
+        self.assertIn("storage/", clause)
+        for pattern in (r"(?:one owner|one owner, operation)", r"(?:one operation|operation and closeout)",
+                        r"closeout condition", r"(?:not a general scratch|No loose-root dump)"):
+            self.assertRegex(contract, pattern)
 
     def test_scratch_has_owner_closeout_and_recovery_boundary(self):
-        clause = next(line for line in text("PoT.md").splitlines()
+        law, contract, _ = filing_contracts()
+        clause = next(line for line in law.splitlines()
                       if line.startswith("- **1.1.13**"))
-        for expected in ("var/tmp/", "owning role and operation", "At closeout",
-                         "promoted first", "not custody", "automatic purge"):
-            self.assertIn(expected, clause)
+        self.assertIn("var/tmp/", clause)
+        self.assertRegex(clause, r"not custody")
+        self.assertRegex(contract, r"(?:owning role and operation|owned var/tmp scratch)")
+        self.assertIn("At closeout", contract)
+        self.assertRegex(contract, r"(?:promoted first|promote acceptance/recovery/record material before)")
+        self.assertIn("automatic purge", contract)
 
     def test_filing_authority_paths_match_the_landed_shape(self):
-        law = text("PoT.md")
+        law, _, context = filing_contracts()
         self.assertIn("- **1.1.6** [Retired]", law)
         self.assertIn("- **1.1.7** [Retired]", law)
         self.assertIn("- **1.1.12** `logs/`", law)
-        self.assertIn("`ops/etc/resident-identities.json`: identity", law)
-        self.assertIn("- **1.3.7** `archives/receipts/`", law)
+        self.assertIn("ops/etc/resident-identities.json", context)
+        self.assertIn("archives/receipts/", context)
 
     def test_amendment_process_is_not_permanently_waived(self):
-        self.assertIn("- **7.3 Amendment:** a resident proposes in writing.",
-                      text("PoT.md"))
+        clause = next(line for line in text("PoT.md").splitlines()
+                      if re.match(r"^- \*\*7\.3(?:\*\*| Amendment:\*\*)", line))
+        self.assertRegex(clause, r"(?:resident proposes in writing|written amendment)")
+        self.assertIn("ratif", clause.lower())
+        self.assertIn("review", clause.lower())
+
+    def test_declared_contract_cannot_be_missing_or_lack_its_filing_section(self):
+        original = filing_contracts.__globals__["text"]
+        law = "- **1.3.8** `ops/lib/manifests/CONSTRAINTS.md` is delegated\n"
+        for contract in (None, "# Constraints without the declared section\n"):
+            def fake(relative):
+                if relative == "PoT.md":
+                    return law
+                if relative.endswith("CONSTRAINTS.md"):
+                    if contract is None:
+                        raise FileNotFoundError("synthetic missing contract")
+                    return contract
+                return original(relative)
+            with self.subTest(contract=contract), mock.patch.dict(filing_contracts.__globals__, {"text": fake}):
+                with self.assertRaises((FileNotFoundError, ValueError)):
+                    filing_contracts()
+
+    def test_filing_owner_cannot_be_satisfied_by_an_unrelated_clause(self):
+        original = filing_contracts.__globals__["text"]
+        sources = {p: original(p) for p in ("PoT.md",)}
+        if "ops/lib/manifests/CONSTRAINTS.md" in sources["PoT.md"]:
+            sources["ops/lib/manifests/CONSTRAINTS.md"] = original("ops/lib/manifests/CONSTRAINTS.md")
+        sources = {p: value.replace("one owner", "missing-owner-proof") for p, value in sources.items()}
+        with mock.patch.dict(filing_contracts.__globals__, {"text": lambda p: sources[p] if p in sources else original(p)}):
+            with self.assertRaises(AssertionError):
+                self.test_storage_is_a_named_owned_case_not_general_scratch()
 
     def test_script_factory_supplies_the_new_scratch_default(self):
         source = text("ops/src/scripts/script.py.tpl")
@@ -180,12 +234,20 @@ class FilingTest(unittest.TestCase):
                       text("ops/lib/scripts/closeout.py"))
 
     def test_current_instructions_and_map_name_scratch(self):
+        canonical_map = text("docs/ops/README.md")
         for relative in ("README.md", "AGENTS.md", "docs/ops/README.md",
                          "docs/MANUAL.md"):
             with self.subTest(document=relative):
-                self.assertIn("var/tmp/", text(relative))
-                self.assertTrue("storage/active/" in text(relative), relative)
-                self.assertTrue("storage/intake/" in text(relative), relative)
+                source = text(relative)
+                self.assertIn("var/tmp/", source)
+                for lane in ("storage/active/", "storage/intake/"):
+                    if relative == "AGENTS.md" and lane not in source:
+                        self.assertIn("ops/lib/manifests/CONSTRAINTS.md", source)
+                        self.assertIn("docs/ops/README.md", source)
+                        self.assertIn("## C01", text("ops/lib/manifests/CONSTRAINTS.md"))
+                        self.assertIn(lane, canonical_map)
+                    else:
+                        self.assertIn(lane, source, relative)
 
     def test_report_refuses_storage_root_and_its_alias(self):
         for relative in ("storage/report.md", "storage/../storage/report.md",

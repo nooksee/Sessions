@@ -1,10 +1,11 @@
-<!-- redact: public copy; source sha256 0eb008fef6e0494c91e406725d6863bdd8d319f4048d261ab7b353aacc0a57e6; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
+<!-- redact: public copy; source sha256 0b2dd3e8a361a57eedbaf3e5ac493091326825d9153df7d1d10797ae19f6c759; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
 # Session Continuity Command Center
 
-Updated: 2026-11-03 02:24 EST (-0500), JoJo Git, to reconcile the filing-law
-and current-authority wording below. Other observations retain their stated
-measurement times and were not refreshed in this correction.
-The dated board below is retained as historical context, not as current status.
+Updated: 2026-11-04, Joe Codex, for the RoR-18 policy and reader adoption.
+The operation receipt records the actual application time and source head.
+Other observations retain their stated measurement times and were not
+refreshed in this change. The dated boards below are historical context,
+not current Git, telemetry or health measurements.
 Status: active current-state board
 
 Current law lives in [PoT.md](PoT.md); methods live in the manual and tool
@@ -13,19 +14,21 @@ rollback evidence live in `archives/receipts/` and ignored backup custody.
 This file records the current operating state rather than repeating full
 lineage history.
 
-## Scratch integration - operator-directed 2026-11-03
+## Current policy and read-in
 
-The 2026-11-03 filing alignment is reflected in current `PoT.md`: `var/tmp/`
-is task scratch and `storage/` is named case work, not a tool-state home.
-Existing state remains only under the bounded migration holds recorded in
-`docs/ops/README.md` (PoT 1.1.14); no consumer has moved. RoR-16 records the
-prior, bounded filing act and is not current authority for a storage exception.
-RoR-17 records the operator direction bound to the current law hash.
-Retention cleanup remains a separate final pass. The source successor and
-its pending Git review/integration are recorded in JoJo's handoff; no live
-service or native body is changed.
+The 2026-11-03 filing alignment is reflected in accepted main: `var/tmp/` is
+task scratch and `storage/` is named case work, not a tool-state home. The map
+records existing bounded migration holds; CONSTRAINTS C01 gives their filing
+mechanics, with no permanent storage-state exception. RoR-18 adopts the
+reviewed foundational PoT and its CONSTRAINTS/CONTEXT read-in wiring.
+The exact policy hash and actual application evidence are recorded in
+`storage/active/pot-adoption-20261104/receipt.md` and the coupled policy
+snapshot and authority leaf. No tool-state consumer moved in this adoption.
+RoR-16 and RoR-17 remain records of the prior filing acts; retention cleanup
+and the assigned state migration remain separate. No live service or native
+body is changed by this policy/read-in source integration.
 
-## Current Operating Summary - 2026-11-03
+## Historical Operating Summary - 2026-11-03
 
 - **Block 7 landing:** the `Scripts/`, `Config/` and `Resident-Center/` runtime roots have moved from Sessions to `[host path 1]`. The independent product source remains `[host path 2]`; private registry, roster and host-binding inputs remain in `ops/etc/`. The landing and its actual-result audit are recorded in George's sealed Control receipt and Joe's audit at `storage/joe-filing-alignment-20261102.3i1Jv2/actual-result-audit-20261103.md`.
 - **Sessions Git:** at 2026-11-03 00:48 EST, local `main` remains `714c588aa137c39a26bf4c431e9eb386a29e498f` (tree `cc72cc58643501efe406625a0068758479f8aa32`), five commits ahead of `origin/main` at `bfbc83b7c1eb173d752edb21a01ec123e5ed13c2`. The private GitHub repository is `nooksee/sessions`; PRs #16 and #19 remain open, so the accepted local join is not yet integrated on hosted `main`.

@@ -1,7 +1,25 @@
-<!-- redact: public copy; source sha256 2192ede57b4c966bada77fce0dd5980e1d758a2a0217db12c572e06ffffcaff4; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 c781225b815e8e2e7d16e7d818cf1aad9c36eaf473e447e897f1653826f3df1f; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
-Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). Filing authority is PoT 1.1: `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
+Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). PoT 1.1 defines the filing boundaries; CONSTRAINTS C01 gives the filing mechanics. `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
+
+CONTEXT is the canonical read-in and domain-pointer inventory. CONSTRAINTS
+contains human-consumed operating requirements delegated by PoT; neither
+creates a compiler, hook or daemon reader. Each entry point must point readers
+to these contracts. The map owns current locations, custody/Control ownership
+and bounded migration holds; those holds do not create a permanent storage
+state exception.
+
+## Foundational policy adoption
+
+RoR-18 adopts the reviewed policy at SHA-256
+`2dc41d8754189cbb52d65bca4bc387ba508eedf1cd2156f2e62f408b86eb21e7`
+with its CONSTRAINTS/CONTEXT read-in contracts and entry-point wiring.
+`storage/active/pot-adoption-20261104/receipt.md` records the actual source
+head, application time, contract hashes, custody and checks. The preserved
+proposal and clause map remain historical preparation evidence, not another
+active policy. Existing operational-state migration holds below remain in
+force until their separately assigned cutover; this adoption moves no state.
 
 ## The system: four tools, one loop
 
@@ -42,7 +60,7 @@ Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: ST
 | closeout state | `logs/closeout/` by default | private runtime state and diagnostics; unwired | legacy `storage/closeout` blocks default card delivery until reviewed migration; explicit state selection retains its interface |
 | mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | ported from the Candidates package, simplified to solicited input |
 | mind pointer | `<room>/MIND.md`, one line per resident in the room | durable, out of Git | first one: `Sessions/MIND.md` |
-| mind leaves | `<room>/archives/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | archives-root layout implemented; an actual write follows PoT 5.1 and 6.4.3 |
+| mind leaves | `<room>/archives/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | archives-root layout implemented; an actual write follows PoT 5.1 and the mind specification |
 | rotate | `ops/lib/scripts/rotate.py` (to write), `docs/ops/specs/scripts/rotate.md` (from the package runbook) | tool | next |
 | team room | `storage/handoff/{shannon,claudine,joe}.md`, and `storage/handoff/port.md` (the port writer's handoff, 2026-11-01) | private, ignored working notes | results are promoted to `archives/receipts/` or the office handoff |
 | task scratch | `var/tmp/<owner>-<operation>.<unique>/`, skeleton described in `var/README.md` | ephemeral, ignored | owner-scoped; PoT 1.1.13; no persistent state or automatic purge |
@@ -100,7 +118,8 @@ handoffs remain private working notes. Git admits only `storage/.gitignore`,
 `storage/README.md` and the direct lane `.gitkeep` files; payload is denied by
 default, including nested notes and code. Check the exact staged path set
 before any commit; do not rely on ignore rules to constrain a forced add.
-Operational state is held only as PoT 1.1.14 records.
+Operational state consumers remain only under the bounded migration holds
+above and CONSTRAINTS C01; the current location is recorded here, not in law.
 Operational code belongs in `ops/bin/`, `ops/lib/scripts/`, `ops/src/` or
 `tools/test/`, with its specifications and operator guidance in `docs/`.
 Independent product code stays in its project repository. STELA's map makes
