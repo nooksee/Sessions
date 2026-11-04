@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 cb96aff7941c8bb7be42e4b996aed2314aee2521afc22e758b92ad3bc75332fb; rules 8; mode history; words 19; sessions 0 whole, 1 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 13500d054a1795cbc1b2b15a5ad28fe3d5dca601814070d6105c83a47abab588; rules 7; words 21; sessions 0 whole, 0 truncated; host paths 2; decisions 4 -->
 # RoR: the decision ledger of the Sessions room
 
 This is the room's decision ledger (PoT 1.2.10, 1.3.2). Each entry records one operator decision, standing direction, exception, acting holder, or anomaly that needs a decision: the operator's exact words, when they were given, the act they authorize, and a pointer to the record of that act.
@@ -90,7 +90,7 @@ Entries are appended only, generated from `ops/src/reports/ror.md.tpl` (`ops/bin
 - **Given:** 2026-10-31, in conversation with the Session Continuity Manager, shortly before the entry time below, after the reboot and the compactions of RoR-5
 - **Words:** "[words sha256=cac20d3202838584ac9ec8fbabe331b1cb234fe683dab01235bb84a613404cc5]"
 - **Act:** The block Live test 1 now ends at 01:15 EDT, 30 minutes after the direction, instead of 02:00. On the coordinator's reading, the live run itself is not in this block: after Claudio's PASS it needs the operator's named go and about 45 minutes of prompts typed by the operator, more than the block holds, so under the plan's stop condition it moves to the next block. Within the 30 minutes the members prepare: the runbook and the test folder (Claudine), the review of the frozen code and of whatever runbook has arrived (Claudio), the review of Amendment 1 revision 4 and a measurement method (Joe), and the two Control readings or the time they will come (George, by request). The prerequisites of RoR-7 stand. A further direction from the operator overrides this reading.
-- **Record:** storage/handoff/shannon.md, "[words sha256=383ef38320b53e06e1c569d67e48e81c2d3e23566f8cf52d47cc7836ffd94514]"
+- **Record:** storage/handoff/shannon.md, "Block plan: Live test 1, revision 2"
 - **Entered by:** Session Continuity Manager (Claude Shannon), registry key session-doctor, at 2026-10-31 00:42:51 EDT
 
 ### RoR-12: ratification
@@ -98,7 +98,7 @@ Entries are appended only, generated from `ops/src/reports/ror.md.tpl` (`ops/bin
 - **Given:** 2026-11-01, in conversation with the Session Continuity Manager, shortly before the entry time below, after the team reviews (Claudine section 7, Joe) and the Independent Reviewer's PASS on the changed lines (claudio.md section 135, 01:59:57 EST)
 - **Words:** "[words sha256=28a275997a14ecfcfcacee25c1f741afdadaee66bdb0bd42163125ea716d5b8b]"
 - **Act:** Amendment 1 revision 4 is applied under 7.3: PoT.md is now the reviewed text, sha256 ef2e16c0e3baa2312247d349d2b336365d29b82c2c9123451af9c2537b63efed, snapshotted write-once as archives/PoT-ef2e16c0.md. The superseded text 388546477dd9f01f2997d38976f5b6f9fd87f13e3697562687e9340e8766af94 remains as archives/PoT-38854647.md. Applied by the Session Continuity Manager (7.3). The Independent Reviewer audits the applied text next (7.3); the port candidate Amendment 3 rebases on this text.
-- **Record:** PoT.md; archives/PoT-ef2e16c0.md; storage/PoT-amendment-1-delta.diff (the full delta since [session prefix 1]); claudio.md section 135; storage/handoff/claudine.md section 7; storage/handoff/joe.md
+- **Record:** PoT.md; archives/PoT-ef2e16c0.md; storage/PoT-amendment-1-delta.diff (the full delta since b853f7d0); claudio.md section 135; storage/handoff/claudine.md section 7; storage/handoff/joe.md
 - **Entered by:** Session Continuity Manager (Claude Shannon), registry key session-doctor, at 2026-11-01 02:13:53 EST
 
 ### RoR-13: standing direction
@@ -117,10 +117,20 @@ Entries are appended only, generated from `ops/src/reports/ror.md.tpl` (`ops/bin
 - **Record:** PoT.md; archives/PoT-5b93c454.md; storage/PoT-amendment-2.diff (sha256 57ed03c0dc89d6edb032f7e1000a1b34dc4ed48c4f0a88906e7c3b1af5a3bc3e); storage/PoT-amendment-2-notes.md; claudine.md sections 31 to 34; joe.md, the reviews of revisions 1 to 4; claudio.md sections 164 to 169; RoR-13
 - **Entered by:** Session Continuity Manager (Claude Shannon), registry key session-doctor, at 2026-11-02 02:13:01 EST
 
+### RoR-15: standing direction
+
+- **Given:** 2026-11-02 02:51:23 EST, in conversation with the Session Continuity Manager (the session body's row at 2026-11-02T07:51:23.151Z), after the plan passed (claudio.md section 176, 02:34:44 EST)
+- **Words:** "[words sha256=a40ea377e7b9e57d926185ad746c5d41817a3d007ff31389742b89ddca4ee1f6]"
+- **Act:** The public gate, as the plan of part 3 (storage/handoff/shannon.md, revisions 2 to 7, passed by the Independent Reviewer in claudio.md sections 166 to 176) states it, under route B with the repository name nooksee/sessions kept: the rewrite of the history in a scratch clone; the old repository renamed and kept private; a new nooksee/sessions pushed from the rewritten history; the old repository deleted after the Independent Reviewer's post-push audit; protection and scanning; the visibility switch last. Each of these steps runs only after the Independent Reviewer's PASS on its exact inputs, named by hash (the rewritten head, the bundle in custody, the scans), and its receipt cites this entry and that PASS. Not covered: any step the passed plan does not name, any change to the plan itself (a blocker that alters it returns to the operator), any other repository. Ends when the visibility switch is done and the Independent Reviewer's audit of it closes, or when the operator says otherwise. The planned process altered: 6.1.2's named go for each irreversible act, replaced for this programme by one go bounded by the reviewer's PASS on exact hashes. The reasoning: the operator directed that he not be asked for a signature act by act (his words of the same minute, kept in this source); the gates that make each act safe are kept, and only the repetition of the request is removed. The route and the name were decided by the Session Continuity Manager under the operator's deferral of 2026-11-01, with the Independent Reviewer's concurrence (section 167), and are named in the words.
+- **Record:** This entry; storage/handoff/shannon.md, block 9 and the plan's revisions 2 to 7; claudio.md sections 166 to 176; the receipts of each step, each citing RoR-15
+- **Entered by:** Session Continuity Manager (Claude Shannon), registry key session-doctor, at 2026-11-02 02:51:54 EST, in the ledger's source archives/RoR-words.md (1.3.2); RoR.md receives it only by the render
+
+- **Correction to RoR-15, by its writer (2026-11-02 02:52:04 EST):** the Act says the operator's words about signatures are "[words sha256=0d50ad7ec1bb51bebc6c2b20fa291bc6dcb44a25f173f7f6721c379fecac6ed5]"; they were not entered with it. They were given at 02:49:22 EST on 2026-11-02 (the session body's row at 2026-11-02T07:49:22.254Z): "[words sha256=9adf45980192e4a9d3e668e595970b7279896247257eb87cebf8e77ba9e4d8bd]". The entry above is left as written (1.2.13).
+
 ### RoR-16: operator-directed filing amendment and bounded process exception
 
 - **Given:** 2026-11-03 in conversation with Joe Codex; the operator message has no supplied timestamp, so the entry clock below is the nearest recorded write time
-- **Words:** "[words sha256=ce46d9c5145968fcab67590c48134a94fc3dfebd3cb2350462c11378b4ea32d0]"
+- **Words:** "[words sha256=b00282bccaa0549566854ddae3ddaa63cb2c2283c3a3fdc5ea6f2d37f283a15d]"
 - **Act:** Apply the immediate project-local scratch filing update now, without the normal PoT 7.3 pre-application amendment sequence for this named act. The applied PoT SHA-256 is 5a2a17a92cbae0e2d8a187869d04aaf6ee36142c31d04e2b5cbceb7f34d48877. Scope: owned active cases in storage; owner/operation-scoped scratch and its closeout in var/tmp; current filing pointers and retired Evidence/Receipts numbers; supporting instructions, factories and self-test scratch defaults. The existing A3 filing payload is incorporated; accession A4 is not. The exception ends when this exact filing update and its record are applied; PoT 7.3 remains unchanged for future amendments. It waives no privacy, retention, custody, native-body, host/service or protected Git requirement. Joe is the named source writer for this policy/default correction; JoJo retains Git integration. No independent review of Joe's own work is claimed.
 - **Record:** PoT.md and archives/PoT-5a2a17a9.md, sha256 5a2a17a92cbae0e2d8a187869d04aaf6ee36142c31d04e2b5cbceb7f34d48877; private act receipt archives/receipts/var-tmp-policy-20261103.md. Pre-change law and both ledger preimages were copied to two external custody tiers and all six copies passed direct-read hash verification before this entry.
 - **Entered by:** Session Continuity Apprentice (Joe Codex), registry key joe-codex, as Kevin's named writer for this exact act, at 2026-11-03 01:07:00 EST (-0500) / 2026-11-03 06:07:00 UTC
@@ -128,7 +138,7 @@ Entries are appended only, generated from `ops/src/reports/ror.md.tpl` (`ops/bin
 ### RoR-17: operator-directed single-source alignment and gate
 
 - **Given:** Kevin's direct finish-line instruction, received 2026-11-03; no operator timestamp was supplied
-- **Words:** "[words sha256=65235c1aea056b4d8969225e4004f29021af169a641e5e1ee0cda290eb073c35]"
+- **Words:** "[words sha256=6cd97026509801d7f00af3e2a1e090893fd06cdd0182f3a5c9bb2d45cfc8a038]"
 - **Act:** Decision: Operator. Scope: PoT.md. Target policy SHA-256: 457fe85955dad98675e2ed5f6c7a4a5ca409c3b598c7221ef45cd8509c2f04cb. Implement the directed constitutional alignment and exact-base/head authorization gate; do not reinstate the superseded Amendment 3 permission loop.
 - **Record:** PoT.md; archives/PoT-457fe859.md; archives/PoT-authority-457fe859.md; private words source archives/RoR-words.md; Words SHA-256: 6cd97026509801d7f00af3e2a1e090893fd06cdd0182f3a5c9bb2d45cfc8a038
 - **Entered by:** Chief Repository Operations Officer (JoJo Git), registry key jojo-git, at 2026-11-03 02:00:20 EST (-0500)
