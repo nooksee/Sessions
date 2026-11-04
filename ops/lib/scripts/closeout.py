@@ -41,8 +41,9 @@ SESSIONS = HERE.parents[2]
 GAUGE = HERE / "gauge.py"
 DEFAULTS = {"registry": SESSIONS / "ops" / "etc" / "resident-identities.json",
             "spec": SESSIONS / "docs" / "ops" / "specs" / "scripts" / "gauge.md",
-            "state-dir": SESSIONS / "storage" / "closeout",
+            "state-dir": SESSIONS / "logs" / "closeout",
             "template": SESSIONS / "ops" / "src" / "reports" / "closeout.md.tpl"}
+LEGACY_STATE = SESSIONS / "storage" / "closeout"
 LIMIT_SECONDS = 5.0
 SOFT_SHARE = 0.9                   # at 90 percent of the limit the run turns to "unknown"; at the limit it exits 0
 SOFT_MARGIN = 0.25                 # at least this long between the soft and the hard alarm, so the unknown is logged
@@ -214,7 +215,7 @@ def render_card(body: str, values: dict) -> str:
 
 def named(entry: dict, what: str) -> tuple[str, str]:
     """(key, person) of a registry entry, both plain non-empty strings, or unknown."""
-    key, person = entry.get("[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"), entry.get("person")
+    key, person = entry.get("key"), entry.get("person")
     if not isinstance(key, str) or not key.strip() or not isinstance(person, str) or not person.strip():
         raise Unknown(f"the registry's {what} has no key or no name")
     return key, person.strip()
@@ -238,13 +239,15 @@ def rotation_writer(identities: list, key: str) -> str:
 
 
 # --------------------------------------------------------------------------
-# State and log: ignored files under storage/, keyed by session, mode 0600.
+# State and log: ignored files under logs/closeout, keyed by session.
+# Fresh state directories are 0700 and fresh files are 0600.
 # A busy lock is skipped, never waited on.
 # --------------------------------------------------------------------------
 @contextlib.contextmanager
 def state_lock(state_dir: Path):
-    state_dir.mkdir(parents=True, exist_ok=True)
-    with open(state_dir / ".lock", "a") as handle:
+    state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd = os.open(state_dir / ".lock", os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    with os.fdopen(fd, "a") as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         try:
             yield
@@ -276,7 +279,7 @@ def write_state(state_dir: Path, state: dict) -> None:
 
 
 def log(state_dir: Path, now: dt.datetime, **fields) -> None:
-    state_dir.mkdir(parents=True, exist_ok=True)
+    state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     line = json.dumps({"at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), **fields}, sort_keys=True) + "\n"
     fd = os.open(state_dir / "log.jsonl", os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
     try:
@@ -311,7 +314,7 @@ def update(state_dir: Path, session_id: str, change) -> dict | None:
 def record_unknown(opts: dict, now: dt.datetime, ctx: dict, why: str) -> None:
     """Nothing for the resident. A log line, and after 3 in a row, one notice for Kevin (not wired)."""
     sid, state_dir = ctx.get("session_id"), opts["state-dir"]
-    who = {"[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]": ctx["[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"]} if ctx.get("[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]") else {"session_id": sid}
+    who = {"key": ctx["key"]} if ctx.get("key") else {"session_id": sid}
     log(state_dir, now, event="unknown", why=why, **who)
     if not sid:
         return
@@ -321,7 +324,7 @@ def record_unknown(opts: dict, now: dt.datetime, ctx: dict, why: str) -> None:
         return entry
     old = update(state_dir, sid, bump)
     if old is not None and int(old.get("unknown") or 0) + 1 == UNKNOWN_NOTICE:
-        log(state_dir, now, event="kevin-notice", delivered=False, why=f"[words sha256=8b0a59957d549cd7061b42b8fee22c0ac4c31c6172de4dffbc193d190f63f134]",
+        log(state_dir, now, event="kevin-notice", delivered=False, why=f"{UNKNOWN_NOTICE} unknown readings in a row",
             note="notification not wired; needs Kevin's go", **who)
 
 
@@ -350,9 +353,28 @@ def decide(opts: dict, raw: bytes, now: dt.datetime):
             return None, None                             # not a registered resident: always silent
         if len(matches) > 1:
             raise Unknown("the session is registered more than once")
-        ctx["[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"] = matches[0].get("[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]")
-        if not isinstance(ctx["[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"], str) or not ctx["[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"].strip():
+        ctx["key"] = matches[0].get("key")
+        if not isinstance(ctx["key"], str) or not ctx["key"].strip():
             raise Unknown("the session's registry entry has no key")
+        if opts["state-dir"] == DEFAULTS["state-dir"]:
+            try:
+                LEGACY_STATE.lstat()
+            except FileNotFoundError:
+                # ENOENT also occurs through a dangling parent. Only a truly
+                # absent parent or a searchable directory proves absence here.
+                try:
+                    LEGACY_STATE.parent.lstat()
+                except FileNotFoundError:
+                    pass
+                except OSError:
+                    raise Unknown("legacy closeout state parent cannot be inspected; reviewed migration is required") from None
+                else:
+                    if not LEGACY_STATE.parent.is_dir():
+                        raise Unknown("legacy closeout state parent is not a readable directory; reviewed migration is required")
+            except OSError:
+                raise Unknown("legacy closeout state cannot be inspected; reviewed migration is required") from None
+            else:
+                raise Unknown("legacy closeout state requires reviewed migration before using the default destination")
         provider = matches[0].get("provider")
         transcript = own_transcript(provider, session_id, data.get("transcript_path"))
         gauge = load_gauge()
@@ -376,7 +398,7 @@ def decide(opts: dict, raw: bytes, now: dt.datetime):
         if tokens < trigger:
             old = update(state_dir, session_id, lambda entry: None)
             if old and old.get("band") is not None:
-                log(state_dir, now, event="rearmed", key=ctx["[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"], percent=round(100.0 * tokens / window, 3))
+                log(state_dir, now, event="rearmed", key=ctx["key"], percent=round(100.0 * tokens / window, 3))
             return None, None
         band = int((tokens - trigger) // (BAND * window))
         percent = 100.0 * tokens / window
@@ -384,7 +406,7 @@ def decide(opts: dict, raw: bytes, now: dt.datetime):
         card = render_card(card_template(opts["template"]), {    # first: a defect is unknown and uses up no band
             "PERCENT": f"{percent:.1f}", "WINDOW": f"{window:,} tokens",
             "READING_TIME": when.astimezone().strftime("%Y-%m-%d %H:%M %Z") if when else "an unknown time",
-            "ROTATION_WRITER": rotation_writer(identities, ctx["[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"])})
+            "ROTATION_WRITER": rotation_writer(identities, ctx["key"])})
         told = read_state(state_dir).get(session_id)
         if isinstance(told, dict) and isinstance(told.get("band"), int) and band <= told["band"]:
             if told.get("unknown"):
@@ -392,9 +414,9 @@ def decide(opts: dict, raw: bytes, now: dt.datetime):
             return None, None                             # already told within this band
 
         def commit():
-            update(state_dir, session_id, lambda entry: {"band": band, "unknown": 0, "[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]": ctx["[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"]})
-            log(state_dir, now, event="card", key=ctx["[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"], band=band, percent=round(percent, 3), tokens=tokens, window=window)
-            log(state_dir, now, event="kevin-notice", key=ctx["[words sha256=2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683]"], delivered=False,
+            update(state_dir, session_id, lambda entry: {"band": band, "unknown": 0, "key": ctx["key"]})
+            log(state_dir, now, event="card", key=ctx["key"], band=band, percent=round(percent, 3), tokens=tokens, window=window)
+            log(state_dir, now, event="kevin-notice", key=ctx["key"], delivered=False,
                 why=f"closeout card at {percent:.1f} percent", note="notification not wired; needs Kevin's go")
         return json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": card}}), commit
     except Exception as exc:                              # every failure, including the time limit, is unknown

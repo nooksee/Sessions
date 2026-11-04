@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 2382c7351c16004815092785d718a5d69eb7e3d5c17b2fae2585691c582ebacd; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 2192ede57b4c966bada77fce0dd5980e1d758a2a0217db12c572e06ffffcaff4; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
 Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). Filing authority is PoT 1.1: `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
@@ -39,6 +39,7 @@ Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: ST
 | gauge | `ops/lib/scripts/gauge.py`, `docs/ops/specs/scripts/gauge.md`, `tools/test/test_gauge.py` | tool | built 10-30; Claudio reviews |
 | gauge ledger | `storage/gauges/ledger.jsonl` | existing state held for migration | rebuildable from body counters; see bounded migration inventory below |
 | closeout | `ops/lib/scripts/closeout.py`, `docs/ops/specs/scripts/closeout.md`, `tools/test/test_closeout.py` | tool | implemented; synthetic coverage is not native delivery or installation proof |
+| closeout state | `logs/closeout/` by default | private runtime state and diagnostics; unwired | legacy `storage/closeout` blocks default card delivery until reviewed migration; explicit state selection retains its interface |
 | mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | ported from the Candidates package, simplified to solicited input |
 | mind pointer | `<room>/MIND.md`, one line per resident in the room | durable, out of Git | first one: `Sessions/MIND.md` |
 | mind leaves | `<room>/archives/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | archives-root layout implemented; an actual write follows PoT 5.1 and 6.4.3 |
@@ -77,15 +78,15 @@ Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: ST
 
 ## Existing state consumers held for bounded migration
 
-These are the only operational consumers currently located under `storage/`.
-Their paths remain unchanged in this source-only alignment. Each migration is
-a separate assigned change that preserves existing state and its recovery path.
+This inventory distinguishes unchanged existing consumers from the closeout
+source default now under `logs/`. No existing state is moved by a source
+change. Each actual migration preserves the old inputs and recovery path.
 
 | Consumer / owner | Existing path | Hold or ending condition | Bounded migration action |
 | --- | --- | --- | --- |
 | `gauge.py`; designated gauge tool writer | `storage/gauges/ledger.jsonl` and sibling lock | Preserve existing readings until a replacement path and required history are verified; future runs append through the tool | In one assigned tool change, identify readers, copy and hash the ledger, update the tool/spec/tests to the accepted telemetry home, test append/locking, then verify both old and new state before releasing the old path |
 | `mind.py`; designated mind tool writer | `storage/mind.lock` | OS lock is held only during a mind operation; lock file may remain after release | In one assigned migration, preserve one shared exclusion object for every room writer; a per-task scratch lock is not equivalent. Select and review a shared private destination separately, test cross-writer exclusion, then preserve the old path until the new shared lock is verified. No path or tool change is authorized by this inventory. |
-| `closeout.py`; designated closeout tool writer | `storage/closeout/` (`state.json`, `log.jsonl`, lock and temporary state) | Tool is not wired; preserve any existing records and do not activate it in this task | Before wiring, assign one migration, inventory existing files/readers, select a non-disposable telemetry/state destination, copy and hash state, update tool/spec/tests, and verify recovery; no move to `var/tmp/` |
+| `closeout.py`; designated closeout tool writer | Legacy `storage/closeout/`; source default `logs/closeout/` (`state.json`, `log.jsonl`, lock and temporary state) | Tool remains unwired. Any legacy node, including a broken link, makes default delivery unknown; legacy bytes are neither copied nor replaced. The new location may record that diagnostic, never a delivered band. | Before wiring, inventory both actual paths and readers. Preserve/hash legacy state if present; stage and verify the reviewed private copy and deduplication state, then release the old canonical path under the named migration/custody operation. Explicit `--state-dir` remains supported. No automatic move, source activation or persistent state in `var/tmp/`. |
 
 No persistent state moves to `var/tmp/`, and no consumer is switched as a
 side effect of this source-only change. This inventory does not authorize a

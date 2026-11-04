@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 68a080a778b6f559ed45ce49c7d6c8bc6e1cd0347ffede4acd481563d25d0125; rules 8; mode history; words 4; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 c614b0157d4d7c9e0d522e17761de7449ed4e5072ce3b67705a825f519522a6c; rules 8; mode history; words 4; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: closeout
 
 Script: `Sessions/ops/lib/scripts/closeout.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_closeout.py`. Card: `Sessions/ops/src/reports/closeout.md.tpl`. Spec writer: Claude Shannon, 2026-10-30, from Kevin's direction. Status: built and tested by its writer; the independent review of the code is pending. Nothing is installed: wiring a hook into any resident's settings needs Claudio's review and Kevin's named go.
@@ -40,3 +40,41 @@ On 2026-10-29 Joy reached 77.8 percent. A closing packet for her was written and
 - **Advice, not control.** The card tells the resident what to do; it never blocks a prompt, a tool or a compaction.
 - **No self-written mind.** The resident proposes and Kevin decides, in conversation.
 - **Authority.** Wiring the hook into any resident's settings, and any notification, needs Claudio's review and Kevin's named go, one resident first (Shannon), then the rest.
+
+## State destination and legacy boundary
+
+The source default is `<room>/logs/closeout/`, not `storage/`. It contains
+`state.json`, `log.jsonl`, `.lock` and atomic-write temporary files. Fresh
+state directories are mode 0700; fresh state, log and lock files are mode
+0600, including with umask 0000. Existing permissions and state bytes are not
+silently normalized or migrated. The explicit `--state-dir=PATH` interface
+remains available for bounded fixtures or an authorized existing selection;
+that flag does not itself authorize a live state move.
+
+Before using the default for a registered session, the hook checks whether
+`<room>/storage/closeout` exists at all, including an empty directory, file,
+broken symlink or special node. If so, it emits no card and follows the
+existing unknown-recording path in the new default location. That path may
+create a private diagnostic state/log containing unknown counts, but records
+no delivered band, copies no legacy bytes and follows no legacy link. An
+unregistered session remains silent without creating either destination.
+Legacy evidence is not treated as an empty or successfully migrated state.
+An uninspectable legacy path, including an inaccessible or non-directory
+parent, is also unknown, not evidence of absence. Only FileNotFoundError
+permits default operation without a migration hold.
+
+Before wiring the source, the named migration owner inventories the actual
+old/new inputs and consumers. If old state exists, preserve and hash it,
+stage the exact reviewed state at the new location with private modes, verify
+that its delivered bands remain intact, and release the old canonical path
+only under the named custody/migration operation. Retained evidence belongs
+at its approved kept location, not an automatically deleted backup. If the
+old canonical path still exists, default operation remains unknown. The tool
+does not perform that migration or infer its authority. No hook, notification,
+service or live consumer is activated by this source change.
+
+The state-location suite stages the real script and gauge into an invented
+room and exercises the actual default paths in subprocesses. It covers fresh
+defaults, legacy-byte preservation, empty/file/link/FIFO refusal, explicit
+override, reviewed fixture-copy deduplication, unregistered silence and fresh
+privacy modes. This does not prove live native delivery or production custody.
