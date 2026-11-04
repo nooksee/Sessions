@@ -1,9 +1,9 @@
-<!-- redact: public copy; source sha256 dca31666b5ce331196cfc4a31d01ff733fb8ba6a717b7a0585a104e5d655526c; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 0102a094d9e5dcd22863192d96d262b2d0f67b07e4790f13f25bc21150cc952e; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
 # Port of the Sessions room to the STELA base
 
 Owner: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident. Written 2026-11-01. Convention: STELA (`Projects/STELA`).
 
-The operator directed on 2026-11-01 that the Sessions room be ported to the STELA framework and that the original STELA be left untouched. Then, when offered a lane-by-lane port, he directed that the legacy material be converted and refactored into a devops-style folder and file structure, that his agents' material be tidied so that it was no longer scattered everywhere, and that the new setup fix those problems and bring discipline to the repository; he added that the devops style he meant is STELA. This tree is that port, done in one pass on a copy of the operator's zip of the room, for the operator to review. The original folder, the nooksee/sessions repository and the nooksee/STELA repository were not changed by it.
+The operator directed on 2026-11-01 that the Sessions room be ported to the STELA framework and that the original STELA be left untouched. Then, when offered a lane-by-lane port, he directed that the legacy material be converted and refactored into a devops-style folder and file structure, that the agents' material be tidied instead of lying scattered across the tree, and that the new arrangement cure that disorder and make the repository disciplined; the operator added that the devops style meant is STELA. This tree is that port, done in one pass on a copy of the operator's zip of the room, for the operator to review. The original folder, the nooksee/sessions repository and the nooksee/STELA repository were not changed by it.
 
 ## The rule
 

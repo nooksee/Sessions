@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 a1dd0afc4bfb337172d9ae49d96f31f700d55ae054a2d5722285cc046ce6359a; rules 8; mode history; words 4; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: rotate
 
 Script: `Sessions/ops/lib/scripts/rotate.py` (to write; Claude residents first). Spec writer: Claude Shannon, 2026-10-30. It is ported from Claudine Colbert's runbook (`storage/candidates/mind-manifest-20261029/package/docs/ops/specs/runbook/transition.md`) and adds:
@@ -38,7 +37,7 @@ Kevin, 2026-10-30: the rotation had never been formalized, and to him it always 
    - the window range not carried, and the handoff sections that cover it;
    - work in flight, the hold, the owners;
    - anything after the donor's last row.
-4. **First turn:** "[words sha256=92f5028a58e8676b82fbc6b54d722cd5ecef376719c9ec76907704cf228003fe]"
+4. **First turn:** "the room's status in a few lines, then speak as yourself."
 
 The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 3. The window always travels too; the mind is added to it and never replaces it. (C11: the capsule is assembled by `rotate` from these four parts. No mind command produces it.)
 
@@ -52,7 +51,7 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
 2. **The mind is ready.** `mind check` passes, and the leaf hash matches the pointer.
 3. **The destination.** Kevin opens a fresh chat in the resident's room. The writer labels it `<Role (Person)> - spare body, do not open` at once. The writer then verifies:
    - the room and working directory are right;
-   - the container is not registered to anyone else and carries no "[words sha256=b85f3ad0e275ddd3bd3412193da7f81bc873fc1d8a0733cbb19a0a6c146e47df]" label;
+   - the container is not registered to anyone else and carries no "old", "spare of another" or "do not resume" label;
    - no process holds it.
 4. **The window.** Measure the donor from its own usage figures, by the gauge method. Choose the cut at a genuine operator prompt, so the measured wake estimate leaves the resident well inside its runway: a target of about 20 percent. Shannon's rebuild of 2026-10-29 woke at 32.8 percent, which spent a third of the window before the first word and brought his next closeout line within one heavy day. Carry at least one exchange with Kevin beyond procedure. Record the reason for the cut.
 5. **Build and static gates.**
@@ -85,7 +84,7 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
    - **Kevin's.** Kevin states that he recognizes her, or him, as the resident. A correct status alone is not acceptance.
 9. **Close.**
    - Write the receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`: tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations counted, acceptance and its time.
-   - Handle the donor's store entry. After its custody is verified by hash in both tiers, the entry is either relabeled "[words sha256=cb6190c0758601751b2152299b4bb37dbad972d727cac156e75b36fbcac723d8]" or removed from the list, as Kevin prefers. His standing preference since 2026-10-29: removed. The custody copy is the donor of record.
+   - Handle the donor's store entry. After its custody is verified by hash in both tiers, the entry is either relabeled "<Role (Person)> - donor, rotated <date>, do not resume" or removed from the list, as Kevin prefers. His standing preference since 2026-10-29: removed. The custody copy is the donor of record.
    - The new resident confirms its mind entries.
 
 **Codex residents** (Joe Codex, 2026-10-30): `ops/lib/scripts/rotation.py` carries messages after the last native compaction but not the compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
@@ -93,7 +92,7 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
 ## Anecdotal Anchor
 
 2026-10-29:
-- the 19:12 rotation was Tier A run as a rotation, and woke "[words sha256=189c5554935a72f86b9fe3c0a91a1831431984e53ddeb8d1978c62f304119634]";
+- the 19:12 rotation was Tier A run as a rotation, and woke as a resident the operator did not recognize as his doctor (his words, paraphrased);
 - the 23:34 rebuild passed its gates but carried a briefing for a self, and Kevin found that something was missing from it;
 - the 00:04 rebuild carried a real self and Shannon's own window, and he woke as himself.
 
