@@ -2,7 +2,7 @@
 
 Kevin decided on 2026-10-23 that Gordon Bell (codex) and Grace Hopper (claude)
 are to be admitted registry-only at first, held from the launcher until the launcher
-diagnosis returns. A registry row marks that with "[words sha256=ec9a6e9fe278eb1a471fbab6f40367d8548078b651d9c71581c57c2a6ca379e0]": "[words sha256=c20dea4d876b5b8fb0a1814b43017030cea6d4ac30b2d9ae71b404d2faba49b5]".
+diagnosis returns. A registry row marks that with "launcher": "held".
 
 Standard library only, because control-gates runs `python3 -m unittest
 discover` with nothing installed. Every fixture lives in a temporary folder,
@@ -26,8 +26,8 @@ from unittest import mock
 SCRIPT = Path(os.environ.get(
     "CANDIDATE", Path(__file__).resolve().parents[2] / "ops" / "lib" / "scripts" / "identity.py"))
 LIVE = os.environ.get("LIVE")
-GRACE_SID = "00002ba4-0000-4000-8000-000000002ba4"
-GORDON_SID = "0000e583-0000-4000-8000-00000000e583"
+GRACE_SID = "0000e3e3-0000-4000-8000-00000000e3e3"
+GORDON_SID = "0000e4e4-0000-4000-8000-00000000e4e4"
 GRACE_LABEL = "GitHub Reviewer (Grace Hopper)"
 GORDON_LABEL = "GitHub Assistant (Gordon Bell)"
 HELD_NOTE = "although the registry holds it from the launcher"
@@ -51,7 +51,7 @@ def run(mod, *argv: str) -> tuple[int, str]:
 def grace(**over) -> dict:
     row = {"key": "grace-hopper", "role": "GitHub Reviewer", "person": "Grace Hopper",
            "provider": "claude", "session_id": GRACE_SID, "room": "/office",
-           "verified": "kevin", "[words sha256=ec9a6e9fe278eb1a471fbab6f40367d8548078b651d9c71581c57c2a6ca379e0]": "[words sha256=c20dea4d876b5b8fb0a1814b43017030cea6d4ac30b2d9ae71b404d2faba49b5]"}
+           "verified": "kevin", "launcher": "held"}
     row.update(over)
     return row
 
@@ -59,14 +59,14 @@ def grace(**over) -> dict:
 def gordon(**over) -> dict:
     row = {"key": "gordon-bell", "role": "GitHub Assistant", "person": "Gordon Bell",
            "provider": "codex", "session_id": GORDON_SID, "room": "/office",
-           "verified": "kevin", "[words sha256=ec9a6e9fe278eb1a471fbab6f40367d8548078b651d9c71581c57c2a6ca379e0]": "[words sha256=c20dea4d876b5b8fb0a1814b43017030cea6d4ac30b2d9ae71b404d2faba49b5]"}
+           "verified": "kevin", "launcher": "held"}
     row.update(over)
     return row
 
 
 def served() -> dict:
     return {"key": "claude-one", "role": "Lead", "person": "Claude One", "provider": "claude",
-            "session_id": "0000849d-0000-4000-8000-00000000849d", "room": "/x",
+            "session_id": "0000aaaa-0000-4000-8000-00000000aaaa", "room": "/x",
             "verified": "kevin"}
 
 
@@ -77,11 +77,11 @@ class House:
         self.base = base
         self.roster = {"residents": [{"key": "claude-one", "display_name": "Lead (Claude One)"}]}
         self.bindings = {"residents": [{"key": "claude-one",
-                                        "session_id": "0000849d-0000-4000-8000-00000000849d"}]}
+                                        "session_id": "0000aaaa-0000-4000-8000-00000000aaaa"}]}
         self.bodies = {GRACE_SID: "Grace Hopper", GORDON_SID: "Gordon Bell",
-                       "0000849d-0000-4000-8000-00000000849d": "Claude One"}
+                       "0000aaaa-0000-4000-8000-00000000aaaa": "Claude One"}
         self.labels = {GRACE_SID: GRACE_LABEL, GORDON_SID: GORDON_LABEL,
-                       "0000849d-0000-4000-8000-00000000849d": "Lead (Claude One)"}
+                       "0000aaaa-0000-4000-8000-00000000aaaa": "Lead (Claude One)"}
         self.mod = load(SCRIPT, "cand_held")
         self.mod.REGISTRY = base / "registry.json"
         self.mod.ROSTER = base / "roster.json"
@@ -258,7 +258,7 @@ class HeldMismatches(HeldTest):
         self.assertEqual(code, 1)
 
     def test_held_label_uncompared_is_incomplete_not_mismatch(self):
-        # Kevin's decision 4: Grace's label leg is reported "[words sha256=685adafbc232105246930042f8b3fcd88bf04a56ff050a8f634352a7bdf1c930]", a
+        # Kevin's decision 4: Grace's label leg is reported "not compared", a
         # disclosed coverage exception, never a pass and never a mismatch.
         h = self.house()
         del h.labels[GRACE_SID]
@@ -297,7 +297,7 @@ class RealCodexStore(unittest.TestCase):
                     for d in ("claude", "codex/2026/10/24", "copilot", "dock"):
                         (base / d).mkdir(parents=True)
                     (base / "codex/2026/10/24/rollout-2026-10-24T00-00-00-"
-                             "00000e4f-0000-4000-8000-000000000e4f.jsonl").write_text(
+                             "0000e5e5-0000-4000-8000-00000000e5e5.jsonl").write_text(
                         json.dumps({"type": "compacted",
                                     "payload": {"message": "You are `X (Y)`."}}) + "\n")
                     mod = load(SCRIPT, "cand_real_codex")

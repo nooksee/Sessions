@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "ops" / "lib" / "sc
 
 from successor import count_residue, reid_rows  # noqa: E402
 
-DONOR = "00009fee-0000-4000-8000-000000009fee"
+DONOR = "0000f5f5-0000-4000-8000-00000000f5f5"
 NEW = "0000f2f2-0000-4000-8000-00000000f2f2"
 
 
@@ -86,7 +86,7 @@ class TestClaudioFreemanRegression(unittest.TestCase):
     """Whole-text replacement bound one resident's identity to another's id.
 
     Claudio Freeman's body, row 2, was rewritten to read "I am Claude Shannon,
-    Session Continuity Manager, session 61685fad" -- a sentence true of the
+    Session Continuity Manager, session 0000f6f6" -- a sentence true of the
     donor with the donor's identifier, and false of Claudio with his.
     """
 

@@ -5,7 +5,7 @@ Written after the night of 2026-08-07, which cost Kevin a day. One observed
 failure was an active-writer conflict, in Codex's own words from its log:
 
     Failed to create session: thread-store conflict:
-    thread 019fd1b7-… already has an active writer
+    thread 0000d7d7-… already has an active writer
 
 Codex enforces one writer per thread. The remote-control app-server daemon had
 resumed that thread and kept the claim after PyCharm closed, so every later

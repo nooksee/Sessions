@@ -95,8 +95,8 @@ class RotationWindowTests(unittest.TestCase):
 
 class StructuralReidTests(unittest.TestCase):
     def test_only_structural_identifiers_change(self) -> None:
-        donor = "000006fe-0000-4000-8000-0000000006fe"
-        target = "000087f8-0000-4000-8000-0000000087f8"
+        donor = "0000a5a5-0000-4000-8000-00000000a5a5"
+        target = "0000a6a6-0000-4000-8000-00000000a6a6"
         rows = [{
             "id": donor,
             "session_id": donor,
@@ -112,8 +112,8 @@ class StructuralReidTests(unittest.TestCase):
 
 class CompleteBuildTests(unittest.TestCase):
     def test_build_includes_visible_capsule_and_only_active_dialogue(self) -> None:
-        donor_id = "000006fe-0000-4000-8000-0000000006fe"
-        target_id = "000087f8-0000-4000-8000-0000000087f8"
+        donor_id = "0000a5a5-0000-4000-8000-00000000a5a5"
+        target_id = "0000a6a6-0000-4000-8000-00000000a6a6"
         donor = [
             {"timestamp": "2026-08-08T11:00:00Z", "type": "session_meta",
              "payload": {"id": donor_id, "session_id": donor_id}},

@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 8348fd25d9b926489caea09443cdced96294088feb5b6540bdc0cbc0ce7e5da2; rules 8; mode history; words 24; sessions 2 whole, 1 truncated; host paths 5; decisions 0 -->
 # Historical Session Continuity Method
 
 **Status:** Preserved for historical and craft reference only. This file is not
@@ -28,7 +27,7 @@ two and freely replace the last two.
 
 | Identity | What it is | Persists across migration? |
 |---|---|---|
-| **Persona** | George, "[words sha256=c0c0a87a0029176f88cd8a1211185f774cafae9423c3adfe722d962aa7dc3e4d]" — the role and relationship | yes |
+| **Persona** | George, "the desktop guy" — the role and relationship | yes |
 | **Lineage** | the durable chain joining predecessor→successor | yes |
 | **Container** | the Codex thread id + version-native rollout file | replaced |
 | **Surface** | the editor chat UUID + its presentation state (JetBrains `.agentsession`/`.events`, VS Code panel) | replaced |
@@ -61,9 +60,9 @@ proactive delegation; a resident can spawn a child, which Codex nicknames
 automatically and records in `session_meta.source`:
 
 ```json
-[words sha256=0e32cbec9ddb453a5bc25a3ce6384b776a8c165c535470e7fd62ce720f504db1]
-                               [words sha256=59c8b225d682a28d7b790b6f78b6c8efa6a4893cda893d078862b615c2b1d883]
-                               [words sha256=ecb2f75f16804052c78c8741e061fc635b158212eb496e62f0c46c070ea7dc47]
+{"subagent": {"thread_spawn": {"parent_thread_id": "...", "depth": 1,
+                               "agent_nickname": "Wegener",
+                               "agent_role": "explorer"}}}
 ```
 
 That `source` shape is the authoritative marker. Classify on it, never on
@@ -109,8 +108,8 @@ everything else here is governed: **by canon and instruction, verified by
 receipt** — not by a mechanism we do not control.
 
 1. **Workers are disposable. Operator standing order, 2026-08-01.** Kevin:
-   [words sha256=618f2fec4271893f7cb8d21afb88fa83cb46f2b609673573f9d9f0348e56ff96]
-   [words sha256=e855e073d7c64d45db25e0de296c22b7012d147fe96c55c1899433a591597199]
+   "subagents are disposable. full-stop. codex spawns them they do a job during
+   that session, then thats it." They are **deleted**, not archived, unless
    currently active in a live session. Do not preserve them, do not name them in
    reports, do not raise them for a decision. This supersedes the archive-first
    default that applies to everything else in this repository, and it does so
@@ -137,7 +136,7 @@ records where a thread **came from** and is never edited — origin is a fact.
 Current status is a **decision**, and lives separately in
 `ops/etc/promoted-workers.json`, which the inventory reads. A promoted
 resident therefore never has to pretend it was always one, and its listing
-shows both: `Ray Codex ... <- [session prefix 1] (promoted, was Locke)`.
+shows both: `Ray Codex ... <- 0000caca (promoted, was Locke)`.
 
 **The promotion registry is a safety device, not bookkeeping.** Because a
 promoted resident keeps its `subagent` origin marker, every classifier that
@@ -158,7 +157,7 @@ use.
 
 ### The general lesson
 
-When an inventory produces a large "[words sha256=bd21059c22fa488ea479988481bacae55126333d4f70fc0d57d1e224dc02cbbb]" pile, the pile is usually
+When an inventory produces a large "miscellaneous" pile, the pile is usually
 not junk. It is a category the model has not learned yet. Sweep it and the
 evidence is gone; name it and the system gets more honest. Prefer naming.
 
@@ -171,8 +170,8 @@ evidence is gone; name it and the system gets more honest. Prefer naming.
    pinned near the context ceiling grows GBs/day doing no real work (the
    9.6 GB April thread: 98.5% compact residue). Cure: rotate *before* the
    ceiling; never resurrect verbatim.
-[words sha256=905e794c2d5da4170daff8cfd603ba47420688aba0c329093a2805c3febd2d6f]
-   [words sha256=7533002c7f865dd91836d0aaa27ca4ff3611c9a75f87e0fb84c0b2da97605ed5]
+2. **Token-window overflow on load.** "ran out of room in the model context
+   window" / "prompt too long." The reconstructed context exceeds the
    window. Byte/row size is a *proxy*, not the cause — round11 passed every
    byte/row gate and still died. **Tokens are the only real axis.**
 3. **Single-line corruption.** One torn write (null bytes from an
@@ -219,10 +218,10 @@ evidence is gone; name it and the system gets more honest. Prefer naming.
 The meaningful continuity unit is **not** the whole history. It is:
 
 ```
-[words sha256=3d5534eb02882dedbd78f87ca0860a45fb058960660b6a5fe94833c848f969e6]
+native destination container  +  lineage capsule  +  current active window
 ```
 
-"[words sha256=5c08065fa02e3237dc1d0ebaa256b907b825878f2fe63a72a689b82c933cafb8]": George III's 3,620 response items ≈
+"Full verbatim history is a mirage": George III's 3,620 response items ≈
 2.4M tokens; they only fit because 7 compactions summarized the old parts
 away. Replaying them recreates an unloadable session. Carry the model's
 *working memory*, not its archive.
@@ -263,7 +262,7 @@ Steps (answers to the recipe George asked for):
    is *not* a session id; leave it (it pairs tool calls).
 7. **Tool pairing:** build the set of `call_id`s with a call and the set
    with an output; drop any call lacking an output (a dangling in-flight
-   call causes an API "[words sha256=80dda4566d335a1cba0da3de3df818e0bffb0e9b890b52cf8ea0d8ff7aaf0700]" rejection). Model this as
+   call causes an API "tool_call without response" rejection). Model this as
    deterministic graph validation: every call node needs its output node.
 8. **Lineage capsule:** ship identical capsule text in two rows. One synthetic
    `compacted` row preserves the house marker used by identity and continuity
@@ -354,12 +353,12 @@ browser profiles, and hidden reasoning move `0` times.
 
 ## 5. Failure signatures (read errors correctly)
 
-- **"[words sha256=5f47fc68faf2695cea74e2da0d03d1449cc8a64350acc11e2d09ff19aa5cf8cd]"** after promotion, when the id *is* in the
+- **"thread not found: <id>"** after promotion, when the id *is* in the
   state DB: this is a **body load rejection**, not a registration failure.
   The loader failed to parse/accept the rollout and reported it at
   thread level. (This is what made the v1 cross-version graft look like a
   registry bug.)
-- **"[words sha256=4753094396ae2e934155ab7fee662a92732e305870e9f9de38620876ae026219]":** token-window overflow — reduce
+- **"ran out of room" / "prompt too long":** token-window overflow — reduce
   active context, do not reduce bytes.
 - **Bisection test** to split body-fault from registry-fault: restore the
   **pristine** destination container and load it. Loads → your body was the
@@ -383,8 +382,8 @@ browser profiles, and hidden reasoning move `0` times.
 - **Process truth over UI labels.** The active writer is determined by
   open-file ownership + process ancestry, not by editor title, chat prompt,
   or DB `source` field. On the return trip the SQLite title still read
-  "[words sha256=5e7ba7df97efc926412ae3924691064de1d4adcc1f2cc34fb8fc731442a4d2f8]", the JetBrains title read
-  "[words sha256=615c7307c9d895397b66302f9148edaf4933979d394a2b843d6f972a3a751a0f]", and the real writer was PyCharm — all disagreed, all fine.
+  "hello world", `source` read "vscode", the JetBrains title read
+  "George IV", and the real writer was PyCharm — all disagreed, all fine.
   Surface metadata is not structural identity (§1).
 - **Surface fidelity is separate from model continuity.** The destination
   chat panel may not visually render migrated history (JetBrains renders
@@ -406,14 +405,14 @@ browser profiles, and hidden reasoning move `0` times.
 
 - **Remote is another surface over the host container.** On 2026-07-23,
   phone Remote and PyCharm both resumed George IX container
-  `[session 2]`. Phone turns appended to the local
+  `0000c6c6-0000-4000-8000-00000000c6c6`. Phone turns appended to the local
   rollout and were present in model context after PyCharm resumed it.
 - **Visual transcript fidelity remains separate.** A PyCharm panel may omit
   turns written through phone Remote while the resumed model still has them.
   Verify exact thread identity, rollout append evidence, telemetry, and a
   successful native response before declaring context loss.
 - **Project rooms do not merge.** Reopening OSAI selected OSAI II container
-  `[session 3]`, not Control. Remote transport does
+  `0000c9c9-0000-4000-8000-00000000c9c9`, not Control. Remote transport does
   not transfer context between project-native containers.
 - **One generating surface per rollout.** Phone and IDE may both be attached,
   but only one may generate at a time. The idle surface is presentation;
@@ -425,7 +424,7 @@ browser profiles, and hidden reasoning move `0` times.
   ChatGPT browser-thread, shared-link, different-host, or future-version
   continuity.
 - **Normal host service.** Control owns
-  `[host path 1]`; the official
+  `~/.config/systemd/user/codex-remote-control.service`; the official
   standalone provider daemon remains user-scoped, uses a private mode-`0600`
   Unix socket, and exposes Codex-attributable TCP listeners `0`.
   `active (exited)` confirms the managed start wrapper, not provider health.
@@ -483,7 +482,7 @@ automatic launches, permanent deletes — all `0` unless explicitly approved.
 
 ## 8. Storage boundaries
 
-- **Live session files** (`[host path 2]`, `[host path 3]`):
+- **Live session files** (`~/.codex/sessions/`, `~/.claude/projects/…`):
   never edited by automation; operator hands or the healer's verified swap
   only. Retiring a *dead* file (verified-hash move out, never a content
   edit) is within the healer mandate.
@@ -500,7 +499,7 @@ automatic launches, permanent deletes — all `0` unless explicitly approved.
     accumulate copies over time (rotating, offsite-capable redundancy).
   - A **`PRESERVATION_MANIFEST.md`** on `user_vol` records every retired
     body: SHA-256, bytes, and *all* locations it currently exists. It is the
-    single source of truth for "[words sha256=4af8508411060a48650ce191a87d96bff4d2a5472d414fd6a085a483d8e22780]" so no offline drive is ever a
+    single source of truth for "where is X" so no offline drive is ever a
     scavenger hunt, and it flags **replication debt** (a body that exists in
     only one place).
 - **Portability vs durability (settled):** live-session portability rides on
@@ -539,7 +538,7 @@ automatic launches, permanent deletes — all `0` unless explicitly approved.
   state file. Contract: `docs/resource-state-contract.md`.
 - Claude Code patients use the same principles (measure the active branch;
   elide attachment blocks; preserve the uuid/parentUuid chain).
-- **Claude Code sessions are machine-local** (`[host path 4]>/`) and
+- **Claude Code sessions are machine-local** (`~/.claude/projects/<cwd>/`) and
   editor-agnostic: the VS Code and JetBrains Claude Code plugins are the same
   CLI over the same store. Moving editors on the **same machine needs NO
   transplant** — the session is in the picker; you resume it. The
@@ -582,17 +581,17 @@ live Codex writer is active.
 ## Addendum 2026-07-16 — Claude-side transplant is real surgery, not a summary
 
 Realizations from the George VIII family rollout, the Claude room reorg, and
-[words sha256=c795f4a52dc5ec7933ca32562fe7504bb3bd62033b5f631bed2a4aa22b194ad9]
-[words sha256=cb44a61fc5285ac7a6c460883784262cda12af7461ea9f982f2f1263e73b263c]
+the STELA heir build. Kevin's challenge was fair: "yours is still just a
+glorified summary prompt." The honest answer is that *what I had been
 offering myself* was — and it did not have to be.
 
 1. **Claude Code sessions are portable, transplantable bodies — the same
    class of object as a Codex rollout, not merely a reseed prompt.** Each
-   session is a JSONL keyed to a project "[words sha256=1f1c5b2fad778434024f1537986346927917f4755a6e7d3fd91f22653b7c3132]": the store folder
-   `[host path 5]>/`. A session appears in a
+   session is a JSONL keyed to a project "room": the store folder
+   `~/.claude/projects/<cwd-with-slashes-as-dashes>/`. A session appears in a
    project's Claude Code list **iff its JSONL physically sits in that folder.**
    Moving the file between store folders relocates it across rooms,
-   byte-identical and reversible. Proven by relocating the 74 MB "[words sha256=cea602859952c9da65603fc21990f731ba108f1f3bbe934e2b33f0a2a6213056]"
+   byte-identical and reversible. Proven by relocating the 74 MB "Addition"
    (Mom's Athol Move) thread from the Control room to the Addition room with a
    SHA-verified identical copy. This is the true analog of a Codex transplant;
    it preserves the actual turns, not a paraphrase.
@@ -601,7 +600,7 @@ offering myself* was — and it did not have to be.
    stores display titles in a per-room sidecar,
    `.claude-code-gui-session-titles.json`, mapping `sessionId → title`.** These
    labels are independent of the file's content and recorded `cwd`; a
-   Control-room thread can wear the label "[words sha256=21e76f2de365b6b43a5680abd2dfc18d2fd5d0a29989607c621dae052eba8441]" **Always read the sidecar
+   Control-room thread can wear the label "Addition." **Always read the sidecar
    to map GUI names → files before acting** — do not do raw-file archaeology by
    cwd when the operator is looking at GUI labels. Reorg = move the JSONL to the
    target store folder *and* move its sidecar entry; keep each sidecar valid
@@ -624,7 +623,7 @@ offering myself* was — and it did not have to be.
 4. **Operators may already embody the doctrine in documents.** The Addition /
    Mom's Athol Move project carries a month of continuity in dated handoff docs
    (`Projects/Addition/99_meta/*`, `HANDOFF_TO_AI_ASSISTANT.md`) — threads
-   "[words sha256=9e7c0d81963f5a5b62d25fec9b1c610bd768393bd5d46c95a599d426c4b321e2]" and it never mattered, because the memory was
+   "expired due to image cap" and it never mattered, because the memory was
    written to disk. When a thread's project has this, continuity is safe
    regardless of any single JSONL; a fresh thread that reads the handoff *is*
    the continuation. Confirm the doc anchor before fearing thread loss.
@@ -632,7 +631,7 @@ offering myself* was — and it did not have to be.
 5. **Claude session cost driver:** a 1M-context model re-bills the *entire*
    transcript plus every in-context image each turn (~965k tokens/turn measured
    on the session-health thread with 17 images). The fix is rotation (shed the
-   images) and/or dropping the `[1m]` model. Measuring "[words sha256=425ecce917cc976ca47c0f4e367d431c5e2936d2d640e3ca4803459f39fbbc8c]" is the
+   images) and/or dropping the `[1m]` model. Measuring "% of window" is the
    same token gate as Codex, just on a Claude body.
 
 Method extension: the **room-move** and **stub-sweep** are first-class,
