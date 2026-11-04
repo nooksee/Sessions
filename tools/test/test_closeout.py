@@ -10,6 +10,7 @@ is wired. Run:
 """
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -596,6 +597,216 @@ class Closeout(unittest.TestCase):
         sid = self.w.resident("nbsp", 105)
         self.silent(self.w.hook(sid, self.at(sid, 700_000)))
         self.assertIn("is not understood", self.w.log()[-1]["why"])
+
+
+class StateLocation(unittest.TestCase):
+    """Exercise actual defaults in an isolated room, never the live room."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="closeout-location-")
+        self.base = Path(self.tmp.name)
+        self.world = World(self.base / "fixture")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def stage(self, world=None):
+        world = world or self.world
+        room = world.base / "default-room"
+        script = room / "ops/lib/scripts/closeout.py"
+        script.parent.mkdir(parents=True)
+        shutil.copyfile(CLOSEOUT, script)
+        shutil.copyfile(CLOSEOUT.with_name("gauge.py"), script.with_name("gauge.py"))
+        for path, data in ((room / "ops/etc/resident-identities.json", world.registry.read_bytes()),
+                           (room / "docs/ops/specs/scripts/gauge.md", world.spec.read_bytes()),
+                           (room / "ops/src/reports/closeout.md.tpl", world.template.read_bytes())):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        return room, script
+
+    def run_hook(self, script, sid, body, *args):
+        payload = json.dumps({"session_id": sid, "transcript_path": str(body),
+                              "hook_event_name": "UserPromptSubmit", "prompt": SECRET}).encode()
+        return subprocess.run([sys.executable, "-I", "-B", str(script),
+                               "--now=2026-10-30T16:00:00Z", *args],
+                              input=payload, capture_output=True, timeout=10)
+
+    def resident(self, world=None):
+        world = world or self.world
+        sid = world.resident("default-state", 1200)
+        return sid, world.body(sid, [claude_call("m", 660_000, "2026-10-30T15:00:00Z")])
+
+    def assert_silent(self, result):
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (0, b"", b""))
+
+    def test_default_creates_only_logs_closeout_state(self):
+        sid, body = self.resident()
+        room, script = self.stage()
+        result = self.run_hook(script, sid, body)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(json.loads(result.stdout)["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit")
+        self.assertTrue((room / "logs/closeout/state.json").is_file())
+        self.assertTrue((room / "logs/closeout/log.jsonl").is_file())
+        self.assertFalse((room / "storage").exists())
+
+    def test_legacy_state_refuses_default_card_without_rewriting_legacy_bytes(self):
+        sid, body = self.resident()
+        room, script = self.stage()
+        legacy = room / "storage/closeout"
+        legacy.mkdir(parents=True)
+        old = json.dumps({sid: {"band": 9, "unknown": 0}}).encode()
+        (legacy / "state.json").write_bytes(old)
+        self.assert_silent(self.run_hook(script, sid, body))
+        self.assertEqual((legacy / "state.json").read_bytes(), old)
+        self.assertEqual(sorted(p.name for p in legacy.iterdir()), ["state.json"])
+        logs = room / "logs/closeout"
+        report = json.loads((logs / "log.jsonl").read_text().splitlines()[-1])
+        self.assertEqual(report["event"], "unknown")
+        self.assertIn("legacy closeout state", report["why"])
+        self.assertNotIn("band", json.loads((logs / "state.json").read_text())[sid])
+
+    def test_legacy_empty_directory_file_symlink_and_fifo_all_refuse_default(self):
+        for name in ("empty-directory", "file", "broken-symlink", "fifo"):
+            with self.subTest(kind=name):
+                world = World(self.base / name)
+                sid, body = self.resident(world)
+                room, script = self.stage(world)
+                legacy = room / "storage/closeout"
+                legacy.parent.mkdir()
+                if name == "empty-directory":
+                    legacy.mkdir()
+                elif name == "file":
+                    legacy.write_bytes(b"invented legacy evidence")
+                elif name == "broken-symlink":
+                    legacy.symlink_to(room / "absent-target")
+                else:
+                    os.mkfifo(legacy)
+                before = legacy.lstat()
+                self.assert_silent(self.run_hook(script, sid, body))
+                after = legacy.lstat()
+                self.assertEqual((before.st_ino, before.st_mode, before.st_size, before.st_mtime_ns),
+                                 (after.st_ino, after.st_mode, after.st_size, after.st_mtime_ns))
+                self.assertFalse((room / "absent-target").exists())
+
+    def test_explicit_state_override_keeps_its_existing_contract(self):
+        sid, body = self.resident()
+        room, script = self.stage()
+        legacy = room / "storage/closeout"
+        legacy.parent.mkdir()
+        legacy.write_bytes(b"retained legacy evidence")
+        custom = self.base / "explicit-state"
+        result = self.run_hook(script, sid, body, f"--state-dir={custom}")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn(b"hookSpecificOutput", result.stdout)
+        self.assertTrue((custom / "state.json").is_file())
+        self.assertFalse((room / "logs").exists())
+        self.assertEqual(legacy.read_bytes(), b"retained legacy evidence")
+
+    def test_uninspectable_legacy_parent_is_unknown_not_absent(self):
+        if os.geteuid() == 0:
+            self.skipTest("requires ordinary-user permission enforcement")
+        for name in ("parent-file", "parent-unsearchable"):
+            with self.subTest(kind=name):
+                world = World(self.base / name)
+                sid, body = self.resident(world)
+                room, script = self.stage(world)
+                parent = room / "storage"
+                if name == "parent-file":
+                    parent.write_bytes(b"invented parent evidence")
+                else:
+                    parent.mkdir()
+                    parent.chmod(0)
+                try:
+                    self.assert_silent(self.run_hook(script, sid, body))
+                finally:
+                    if name == "parent-unsearchable":
+                        parent.chmod(0o700)
+                report = json.loads((room / "logs/closeout/log.jsonl").read_text().splitlines()[-1])
+                self.assertEqual(report["event"], "unknown")
+                self.assertIn("legacy closeout state", report["why"])
+
+    def test_dangling_legacy_parent_is_unknown_without_touching_the_link_or_target(self):
+        for name in ("absolute-target", "relative-target", "chained-target"):
+            with self.subTest(kind=name):
+                world = World(self.base / name)
+                sid, body = self.resident(world)
+                room, script = self.stage(world)
+                parent = room / "storage"
+                target = room / "absent-legacy-parent"
+                if name == "chained-target":
+                    intermediate = room / "legacy-parent-link"
+                    intermediate.symlink_to(target)
+                    parent.symlink_to(intermediate)
+                else:
+                    parent.symlink_to(target.name if name == "relative-target" else target)
+                before = parent.lstat()
+                link = os.readlink(parent)
+                self.assert_silent(self.run_hook(script, sid, body))
+                after = parent.lstat()
+                self.assertEqual((before.st_dev, before.st_ino, before.st_mode,
+                                  before.st_size, before.st_mtime_ns, before.st_ctime_ns),
+                                 (after.st_dev, after.st_ino, after.st_mode,
+                                  after.st_size, after.st_mtime_ns, after.st_ctime_ns))
+                self.assertEqual(os.readlink(parent), link)
+                self.assertFalse(target.exists())
+                logs = room / "logs/closeout"
+                events = [json.loads(line) for line in (logs / "log.jsonl").read_text().splitlines()]
+                self.assertEqual([event["event"] for event in events], ["unknown"])
+                self.assertIn("legacy closeout state", events[0]["why"])
+                self.assertNotIn("band", json.loads((logs / "state.json").read_text())[sid])
+
+    def test_existing_empty_legacy_parent_is_true_absence(self):
+        sid, body = self.resident()
+        room, script = self.stage()
+        parent = room / "storage"
+        parent.mkdir()
+        before = parent.stat()
+        result = self.run_hook(script, sid, body)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn(b"hookSpecificOutput", result.stdout)
+        self.assertEqual(list(parent.iterdir()), [])
+        self.assertEqual(parent.stat().st_ino, before.st_ino)
+
+    def test_reviewed_fixture_copy_and_legacy_release_preserve_deduplication(self):
+        sid, body = self.resident()
+        room, script = self.stage()
+        legacy = room / "storage/closeout"
+        legacy.mkdir(parents=True)
+        state = json.dumps({sid: {"band": 0, "unknown": 0, "key": "default-state"}}).encode()
+        (legacy / "state.json").write_bytes(state)
+        self.assert_silent(self.run_hook(script, sid, body))
+        current = room / "logs/closeout"
+        retained = room / "storage/closeout-retained"
+        # This is the test's explicitly staged copy, not a production migrator.
+        shutil.copyfile(legacy / "state.json", current / "state.json")
+        legacy.rename(retained)
+        self.assert_silent(self.run_hook(script, sid, body))
+        self.assertEqual((retained / "state.json").read_bytes(), state)
+        self.assertEqual((current / "state.json").read_bytes(), state)
+        self.assertNotIn('"event": "card"', (current / "log.jsonl").read_text())
+
+    def test_unregistered_session_does_not_create_state_even_with_legacy_residue(self):
+        room, script = self.stage()
+        legacy = room / "storage/closeout"
+        legacy.mkdir(parents=True)
+        self.assert_silent(self.run_hook(script, cid(1201), self.base / "not-a-body"))
+        self.assertFalse((room / "logs").exists())
+        self.assertEqual(list(legacy.iterdir()), [])
+
+    def test_new_state_directory_and_files_are_private_even_with_open_umask(self):
+        sid, body = self.resident()
+        room, script = self.stage()
+        previous = os.umask(0)
+        try:
+            result = self.run_hook(script, sid, body)
+        finally:
+            os.umask(previous)
+        self.assertEqual(result.returncode, 0)
+        state = room / "logs/closeout"
+        for path, mode in ((state, 0o700), (state / ".lock", 0o600),
+                           (state / "state.json", 0o600), (state / "log.jsonl", 0o600)):
+            with self.subTest(path=path.name):
+                self.assertEqual(path.stat().st_mode & 0o777, mode)
 
 
 if __name__ == "__main__":
