@@ -1,18 +1,21 @@
-<!-- redact: public copy; source sha256 4739215c19fdb9480c0c6fe0e366222f0bdc892ff9ad03fe4462df2d12d4211d; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Documentation Index (Front Door)
 
 Every document in `Sessions/docs/`, one line each, and the root files that point into them. Framework: STELA (`Projects/STELA/docs/INDEX.md`). Updated 2026-11-03. Status of each tool lives in its registry, not here.
 
 ## 0. Primary Read-in (Start Here)
 * [../PoT.md](../PoT.md): the local constitution; the only current Sessions law.
+* [../ops/lib/manifests/CONTEXT.md](../ops/lib/manifests/CONTEXT.md): canonical read-in order, reader classes and domain pointers.
+* [../ops/lib/manifests/CONSTRAINTS.md](../ops/lib/manifests/CONSTRAINTS.md): delegated operational requirements; not a second constitution or a daemon parser.
 * [MANUAL.md](MANUAL.md): the operations manual; people and roles, the four-tool loop, reading a gauge, closeout, minds, rotation, custody, labels, the operator's card, the rules for new files, glossary.
 * [ops/README.md](ops/README.md): the map; the four tools in one loop, where everything lives, and the rules for every new file.
 * [INDEX.md](INDEX.md): this index.
 
 ## 1. Root Files (pointers into the room)
 * [../PoT.md](../PoT.md): Sessions law; Control policy remains higher.
-* [../AGENTS.md](../AGENTS.md): room routing and working-file mechanics; PoT owns local law.
-* [../CLAUDE.md](../CLAUDE.md): Claude entry instructions; identity comes from the native session and registry.
+* [../AGENTS.md](../AGENTS.md): room routing and parent authority; filing mechanics are in CONSTRAINTS C01.
+* [../CLAUDE.md](../CLAUDE.md): Claude entry instructions; identity/read-in follow CONTEXT X01 and the native session and registry.
+* [../ops/lib/manifests/CONTEXT.md](../ops/lib/manifests/CONTEXT.md): required reader context and canonical domain pointers.
+* [../ops/lib/manifests/CONSTRAINTS.md](../ops/lib/manifests/CONSTRAINTS.md): human-consumed operating contract.
 * [../START-HERE.md](../START-HERE.md): five-minute orientation for a newcomer; pointers only.
 * [../README.md](../README.md): the room charter and its older map of lanes.
 * [../INDEX.md](../INDEX.md): the room's catalog of lanes and current surfaces.
@@ -53,7 +56,7 @@ Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each sp
 * [ops/specs/scripts/prime.md](ops/specs/scripts/prime.md): ported from `Scripts/build_prime_session_candidate_packet.py`; Build a prime session candidate packet without copying raw sessions.
 * [ops/specs/scripts/tablet.md](ops/specs/scripts/tablet.md): ported from `Scripts/build_tablet_codex_successor.py`; Build a current-version, CLI-native Codex successor from a copied session body.
 * [ops/specs/scripts/vitals.md](ops/specs/scripts/vitals.md): ported from `Scripts/check_claude_session_health.py`; Report health for Claude Code session JSONL files.
-* [ops/specs/scripts/conflicts.md](ops/specs/scripts/conflicts.md): ported from `Scripts/check_codex_thread_writer_conflicts.py`; Detect the active-writer condition that can hang a chat on "[words sha256=2abae3baffd7f951431031d4974059d83fe3d453e7cef38aa9892bf35414078f]".
+* [ops/specs/scripts/conflicts.md](ops/specs/scripts/conflicts.md): ported from `Scripts/check_codex_thread_writer_conflicts.py`; Detect the active-writer condition that can hang a chat on "Initializing".
 * [ops/specs/scripts/telemetry.md](ops/specs/scripts/telemetry.md): ported from `Scripts/check_codex_token_health.py`; Report token health for Codex rollout JSONL files.
 * [ops/specs/scripts/identity.md](ops/specs/scripts/identity.md): ported from `Scripts/check_identity_lock.py`; Verify that every resident's identity agrees in all four places it is written.
 * [ops/specs/scripts/myself.md](ops/specs/scripts/myself.md): ported from `Scripts/check_myself.py`; Measure one resident's native identity and session health, without writes.

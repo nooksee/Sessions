@@ -142,3 +142,12 @@ Entries are appended only, generated from `ops/src/reports/ror.md.tpl` (`ops/bin
 - **Act:** Decision: Operator. Scope: PoT.md. Target policy SHA-256: 457fe85955dad98675e2ed5f6c7a4a5ca409c3b598c7221ef45cd8509c2f04cb. Implement the directed constitutional alignment and exact-base/head authorization gate; do not reinstate the superseded Amendment 3 permission loop.
 - **Record:** PoT.md; archives/PoT-457fe859.md; archives/PoT-authority-457fe859.md; private words source archives/RoR-words.md; Words SHA-256: 6cd97026509801d7f00af3e2a1e090893fd06cdd0182f3a5c9bb2d45cfc8a038
 - **Entered by:** Chief Repository Operations Officer (JoJo Git), registry key jojo-git, at 2026-11-03 02:00:20 EST (-0500)
+
+<!-- redact: public copy; source sha256 9a77fda0b3da073aa63dd83b5b80d95067999e595d4aa690b8b5d050cbfa25d8; rules 7; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
+### RoR-18: ratification of reviewed foundational policy and connected readers
+
+- **Given:** 2026-11-04T12:12:26-05:00, first observed current operator instruction; utterance time was not supplied. Effective only on actual recorded application, not a backdated event.
+- **Words:** "[words sha256=b1b34b0d43225bac58b69bcb05c87867e1ff84f18b687b9cb48dd3f5052ae67c]"
+- **Act:** Decision: Operator. Scope: PoT.md. Target policy SHA-256: 2dc41d8754189cbb52d65bca4bc387ba508eedf1cd2156f2e62f408b86eb21e7. Apply the exact reviewed foundational policy and its eleven-path reader wiring under the current named instruction. The target/hash attribution is the operation writer's explicit binding of the current direction, not a quotation of a hash typed by the operator. No native, host-service or operational-state change is part of this adoption.
+- **Record:** PoT.md; archives/PoT-2dc41d87.md; archives/PoT-authority-2dc41d87.md; private words source archives/RoR-words.md; Words SHA-256: b1b34b0d43225bac58b69bcb05c87867e1ff84f18b687b9cb48dd3f5052ae67c
+- **Entered by:** Session Continuity Apprentice (Joe Codex), joe-codex; prepared 2026-11-04T12:21:17-0500; actual application recorded in operation receipt

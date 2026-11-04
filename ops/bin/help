@@ -14,12 +14,14 @@ ROOM_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ROOT="$ROOM_ROOT"
 SELFTEST_FIXTURE=""
 
-# The read-in order: path|why. PoT owns local law; the other files route
-# readers or identify current state and mechanics.
+# The read-in order: path|why. Context distinguishes authority, contracts,
+# identity and orientation; it does not authorize protected-content access.
 READ_ORDER=(
   "AGENTS.md|room instructions and the hard safety boundary"
-  "CLAUDE.md|who you are: ask the registry and the checkers, not prose"
   "PoT.md|the Sessions constitution"
+  "ops/lib/manifests/CONTEXT.md|canonical read-in, reader classes and domain pointers"
+  "ops/lib/manifests/CONSTRAINTS.md|delegated operational contract, not a second constitution"
+  "CLAUDE.md|Claude identity/read-in; verify through the native signal and registry"
   "RoR.md|the operator decision ledger"
   "NOW.md|current state; wins over older embedded counts"
   "INDEX.md|room index"
@@ -363,7 +365,7 @@ show_menu() {
   printf '    active/     named case payload; contents remain ignored\n'
   printf '    handoff/    local working notes; contents remain ignored\n'
   printf '    .gitignore  deny-by-default payload boundary; inspect staged paths\n'
-  printf '  var/tmp/      owner-scoped task scratch (PoT 1.1.13)\n'
+  printf '  var/tmp/      owner-scoped task scratch (PoT 1.1.13; CONSTRAINTS C01)\n'
   printf '  archives/, archives/receipts/, custody   durable records\n'
   printf '  MIND.md + archives/MIND-*    minds, out of Git\n'
   printf '  Who you are: ops/etc/resident-identities.json, never prose\n'
@@ -397,6 +399,9 @@ write_fixture_room() {
   printf '# Agents\n' > "$r/AGENTS.md"
   printf '# Claude\n' > "$r/CLAUDE.md"
   printf '# PoT\n' > "$r/PoT.md"
+  mkdir -p "$r/ops/lib/manifests"
+  printf '# Context\n' > "$r/ops/lib/manifests/CONTEXT.md"
+  printf '# Constraints\n' > "$r/ops/lib/manifests/CONSTRAINTS.md"
   printf '# RoR\n' > "$r/RoR.md"
   printf '# Doctrine\n\n## 1. First\ntext\n\n## 2. Second\ntext\n' > "$r/DOCTRINE.md"
   printf '# Index\n' > "$r/INDEX.md"
@@ -428,9 +433,11 @@ run_self_test() {
   printf '# Agents\n' > "$bare/AGENTS.md"
   printf '# Policy\n' > "$bare/PoT.md"
 
-  # 1. Live room: all eight read-in files are present and numbered 1 to 8.
+  # 1. Live room: all ten read-in files are present and correctly ordered.
   out="$(cd "$ROOM_ROOT" && show_read_order)"
-  expect "live read-in order lists 8 entries" test "$(count_lines_matching "$out" '^[1-8][.] ')" = "8"
+  expect "live read-in order lists 10 entries" test "$(count_lines_matching "$out" '^[1-9][0-9]*[.] ')" = "10"
+  expect "context precedes delegated constraints" test "$(line_of "$out" "ops/lib/manifests/CONTEXT.md")" -lt "$(line_of "$out" "ops/lib/manifests/CONSTRAINTS.md")"
+  expect "contracts precede class-specific Claude read-in" test "$(line_of "$out" "ops/lib/manifests/CONSTRAINTS.md")" -lt "$(line_of "$out" "CLAUDE.md")"
   passed=$((passed + 1))
 
   # 2. Live room: each loop tool has exactly one row in the spec listing.
@@ -454,7 +461,7 @@ run_self_test() {
   # 5. Fixture: complete read-in order passes and flags the placeholder manual.
   printf '# Now\n' > "$fx/NOW.md"
   out="$(ROOT="$fx"; cd "$ROOT" && show_read_order)"
-  expect "fixture read-in lists 8 entries" test "$(count_lines_matching "$out" '^[1-8][.] ')" = "8"
+  expect "fixture read-in lists 10 entries" test "$(count_lines_matching "$out" '^[1-9][0-9]*[.] ')" = "10"
   expect "fixture manual flagged as placeholder" contains "$out" "1 placeholder line(s)"
   passed=$((passed + 1))
 
@@ -516,7 +523,7 @@ run_self_test() {
 
   # 14. Menu: read-in order, loop, and both binaries are present.
   out="$(cd "$ROOM_ROOT" && show_menu)"
-  expect "menu lists 7 read-in entries" test "$(count_lines_matching "$out" '^  [1-7][.] ')" = "7"
+  expect "menu lists 10 read-in entries" test "$(count_lines_matching "$out" '^  [1-9][0-9]*[.] ')" = "10"
   expect "menu shows the loop" contains "$out" "$LOOP_LINE"
   expect "menu lists template" contains "$out" "template"
   expect "menu distinguishes tracked storage skeleton from private payload" contains "$out" "only the declared skeleton is versioned"

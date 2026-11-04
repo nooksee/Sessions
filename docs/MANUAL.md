@@ -1,12 +1,17 @@
-<!-- redact: public copy; source sha256 df6f11e882c0d884b75d13a33fbc20f462d0271b78567d72df3eaf14a2820ee1; rules 8; mode history; words 61; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
+<!-- redact: public copy; source sha256 4925e5a192da90c6a4326a7cff14b5871b964d9dd506508262d018fa0ea0117d; rules 8; mode history; words 60; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
 # Sessions Operations Manual (Command Console)
 
 Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request ("[words sha256=5b699f7ed115780f2363d3261427967ee430cbc0ed7514b43d295b5965b799dd]"), by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
 
 Authority order:
 - **Law:** `PoT.md` is the single Sessions constitution, below Control policy.
-- **Craft and mechanics:** this manual and the specifications explain how to
-  carry out PoT; neither restates or overrides it.
+- **Operational requirements:** `ops/lib/manifests/CONSTRAINTS.md` names
+  resident and worker obligations within PoT. Tool specifications remain the
+  canonical behavior and parameter sources.
+- **Context:** `ops/lib/manifests/CONTEXT.md` defines the read-in and points to
+  each domain's source; it does not expand authorization.
+- **Craft and mechanics:** this manual explains procedures; it neither
+  restates nor overrides PoT or the contracts.
 - **Identity:** `ops/etc/resident-identities.json` (the registry) wins over any prose, including this manual.
 - **Behavior of a tool:** its spec in `docs/ops/specs/` wins over the summary here.
 - **Decisions:** Kevin decides; this manual records how his decisions are carried out.
@@ -31,6 +36,23 @@ The resident bodies themselves (`[host path 1]`, `[host path 2]`, `[host path 3]
 This manual is the operator console: what runs, in what order, who decides,
 and where things live. Historical method prose is preserved as such;
 current mechanics live here and in the tool specifications.
+
+### Read-in and execution
+
+Use `bash ops/bin/help read` for the maintained order. Follow CONTEXT X01,
+then the applicable CONSTRAINTS clauses; read only task-authorized continuity
+context, validated dependencies and the relevant specifications. Before a
+state-changing step, resolve its authority, writer, target, evidence and
+required custody. An affected stop does not halt unrelated authorized work.
+
+Each resident maintains its own mapped handoff during assigned work. Use the
+existing packet and receipt forms, record actual start/deadline and source
+pins, and report actual state at the deadline. Promote durable results before
+scratch closeout. Continuity operations follow their existing specifications:
+measured closeout, separately approved mind entries, verified custody,
+destination-native successor, required go, closed-writer join, native
+readback and operator acceptance. This sequence does not imply that an
+unwritten runner, unwired hook or notebook integration exists.
 
 ---
 
@@ -374,12 +396,13 @@ Notes:
 
 ## 10. Rules for New Files
 
-Filing authority: PoT 1.1. The map (`docs/ops/README.md`) locates the lanes;
-these are the mechanics, not a second source of law.
+Filing boundaries: PoT 1.1; filing mechanics: CONSTRAINTS C01. The map
+(`docs/ops/README.md`) locates the lanes and current holds; it is not a second
+source of law.
 
-1. Locate the existing case or base lane first (PoT 1.1.11). The scratch lane is `var/tmp/`; from the project root, `mktemp -d "[words sha256=11e8d534c75d119b8ea5e9ec8c7e603434a790eb5c479f02b54f5cf6e300b2c7]"` allocates a unique task directory. The active case records that path and its owner/closeout condition.
+1. Use an existing base lane; other unmapped folders are legacy and are not extended absent assignment (CONSTRAINTS C01). The scratch lane is `var/tmp/`; from the project root, `mktemp -d "[words sha256=11e8d534c75d119b8ea5e9ec8c7e603434a790eb5c479f02b54f5cf6e300b2c7]"` allocates a unique task directory. The active case records that path and its owner/closeout condition.
 2. One word per script, in `ops/lib/scripts/<word>.py`; a spec with the same name in `docs/ops/specs/scripts/<word>.md`, in STELA's sections (First Principles Rationale, Mechanics and Sequencing, Anecdotal Anchor, Integrity Filter Warnings); tests beside it in `tools/test/test_<word>.py`, with a test spec in `docs/ops/specs/tools/test/<word>.md`. `ops/bin/template <word>` writes the first three as skeletons.
-3. Route new incoming payloads to `storage/intake/` and working cases to `storage/active/` (PoT 1.1.4). Leave the storage root clear of new loose files. These are data lanes, not homes for operational source or software installations: code and its documentation use the `ops/`, `tools/` and `docs/` homes of 1.1.1 to 1.1.3. Existing named state remains only under the bounded migration holds in the map (1.1.14). Clones, extraction trees and intermediates use `var/tmp/` (1.1.13). Required results are kept before scratch closeout (1.2.9, 5.3); the final retention pass classifies existing material separately.
+3. Route incoming payloads to `storage/intake/` and working cases to `storage/active/` (PoT 1.1.4; CONSTRAINTS C01). Keep the storage root clear of new loose files. Operational source and documentation use `ops/`, `tools/` and `docs/` (PoT 1.1.1-1.1.3). Existing state consumers remain only under the bounded holds in the map; no permanent storage-state exception is implied. Clones, extraction trees and intermediates use owned `var/tmp/` scratch (PoT 1.1.13; CONSTRAINTS C01). Promote required results before scratch closeout (PoT 1.2.9); the retention pass classifies existing material separately.
 4. A root file is a pointer, not a document.
 5. Every new script, binary, test or runbook gets a row in its registry under `docs/ops/registry/`.
 
@@ -414,7 +437,8 @@ Also:
 
 ## 12. Glossary
 
-- **Resident:** a named, long-lived AI session with a room, a registry entry and a lineage.
+- **Resident:** a registered long-lived identity; room residents have this room as their registry room.
+- **Worker:** an actor spawned by a resident through provider delegation, in-session or as a separate unregistered session. An unregistered session alone proves neither worker provenance nor disposal eligibility.
 - **Body:** the session file the provider writes (Claude JSONL, Codex rollout, Copilot events).
 - **Container:** the provider-native session a body belongs to; replaced at rotation.
 - **Room:** the project root a resident works from; minds live per room.
@@ -428,8 +452,11 @@ Also:
 - **Pointer:** the resident's line in the room's `MIND.md`.
 - **Yes:** Kevin's words, given in conversation, recorded on the leaf.
 - **Donor:** the body being rotated out; never modified.
+- **Destination:** the fresh native container selected for a successor.
 - **Successor:** the new body built for the same resident.
-- **Spare:** a fresh container not yet carrying a resident; labeled "[words sha256=298fd492e7a3a4c617547825b1a0634473ef49639664c30aa5e32b1219e6c97c]".
+- **Spare:** a prepared container not yet active; labeled as a spare.
+- **Rotation:** changing bodies. **Compaction:** the provider's reduction of a body in place.
+- **Binding:** the mapping from resident key to body. **Label:** the provider/editor display name.
 - **Capsule:** the four-part orientation text appended to the successor.
 - **Tier A, Tier B, capsule-only:** reseed, transplant, and the fallback (section 6).
 - **Hold:** the launcher's stop record, kept from custody until acceptance.
@@ -438,3 +465,9 @@ Also:
 - **Receipt:** the durable record of one action in `archives/receipts/`.
 - **Writer:** the single named owner of a surface or operation.
 - **Worker thread:** a provider-spawned helper session; not a resident (`DOCTRINE.md` section 1A).
+- **Test:** synthetic execution. **Check:** read-only live or staged-layout inspection. **Native live validation:** the separately named native operation (CONSTRAINTS C07).
+- **Role-directed body change:** an act on body bytes, container, binding, registry or label; native appends, compaction and supported rename are distinct.
+- **Record:** a kept event account. **Maintained surface:** a surface deliberately kept current by its writer.
+- **Rebuildable tool state:** not a kept record merely because it is called a ledger.
+- **Block:** an operator-opened bounded work unit; the closeout card comes from its template.
+- **Team:** the Manager, Assistant and Apprentice, identified through the registry.

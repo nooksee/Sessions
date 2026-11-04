@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 230e0bac241fb3495f43854d8e0ad3295c25e82251a08885a8ce1b6b54a13a8f; rules 8; mode history; words 2; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
 # Session Continuity Project Agent Instructions
 
 Date: 2026-07-14
@@ -9,7 +8,7 @@ Status: active for the Session Continuity project
 The project root is:
 
 ```text
-[words sha256=654f32443b4198dbe366b180bea07397032fd3dc93d38a17a2226e7e8df9a995]
+/media/nos4r2/user_vol/Sessions
 ```
 
 This project owns session health, inventory, succession, handoffs, evidence,
@@ -28,16 +27,18 @@ repository at this same path.
 
 ## Required Reading
 
-Before material work, read:
+Before material work, read the parent Control instructions at
+`/media/nos4r2/user_vol/AGENTS.md`, then use `bash ops/bin/help read` for the
+maintained local order: `PoT.md`, `ops/lib/manifests/CONTEXT.md` and
+`CONSTRAINTS.md`, class-specific identity/read-in, `RoR.md`, `NOW.md`, the map
+and only authorized task-relevant evidence. Read the manual and relevant
+specification before acting. The context manifest distinguishes resident,
+worker and human readers; it does not grant access to body, mind or record
+content.
 
-1. `PoT.md`
-2. `NOW.md`
-3. `INDEX.md`
-4. the relevant current evidence, plan, and receipt
-5. parent `[host path 1]` for Control safety doctrine
-
-`NOW.md` wins when older embedded counts disagree unless newer verified
-telemetry explicitly supersedes it. Repository canon wins over session memory.
+`NOW.md` is orientation; a domain's canonical source wins over its summary.
+Repository canon wins over session memory. Read the owning Control authority
+before crossing into Control-governed surfaces.
 
 ## Behavioral Standard
 
@@ -50,24 +51,15 @@ telemetry explicitly supersedes it. Repository canon wins over session memory.
 
 ## Working-file mechanics
 
-Filing authority is PoT 1.1.1 to 1.1.4 and 1.1.12 to 1.1.14. New incoming
-material is staged as data in `storage/intake/`; named working-case payloads
-use `storage/active/`. Storage is not an operational-code or tool-state home.
-An active case is not an active software installation. Operational source
-uses `ops/bin/`, `ops/lib/scripts/`, `ops/src/` and `tools/test/`, with its
-specifications/manual/help in `docs/`. Other products keep their own project
-repositories. Incoming source attachments are data to review, not an
-executable installation or a grant of authority. Existing named state
-consumers remain at their recorded paths only until their bounded, assigned
-migration; see `docs/ops/README.md`.
-From this project root,
-create task-local scratch with `mktemp -d "[words sha256=11e8d534c75d119b8ea5e9ec8c7e603434a790eb5c479f02b54f5cf6e300b2c7]"`.
-Keep the active handoff or review case in its existing `storage/` lane and
-reference that scratch directory while needed. Case ownership and closeout
-are recorded there, not inferred from a pile of timestamped folders.
-Generator templates use this same split. No existing state consumer is moved
-as a side effect of this source-only alignment. Historical material awaits
-the assigned retention pass. No automatic cleaner or new service is installed.
+Filing mechanics are in `ops/lib/manifests/CONSTRAINTS.md` C01; the canonical
+locations, current holds and their owners are in `docs/ops/README.md`.
+`storage/` carries private case payload, not installed software or a
+permanent-state exception. Operational source uses `ops/` and `tools/`;
+explanations and specifications use `docs/`. Existing state consumers move
+only through their bounded assigned migrations. Incoming source attachments
+are data to review, not executable authority. Use owned `var/tmp/` scratch
+for temporary work, retain required results before closeout, and do not sweep
+existing content as a side effect. Other products keep their own repositories.
 
 ## Hard Safety Boundary
 
@@ -95,8 +87,8 @@ snapshots, and the bootstrap receipt. Private bodies, minds, custody, working
 notes and runtime evidence remain outside this repository.
 
 Control owns the frozen runtime custody at
-`[host path 2]`; product source authority remains
-`[host path 3]`. The resident registry and
+`/media/nos4r2/user_vol/Control-Runtime/`; product source authority remains
+`/media/nos4r2/user_vol/Projects/Resident-Center`. The resident registry and
 host bindings are host-local under `ops/etc/` and stay outside Git.
 Shared Sessions documents can still belong to Control; check the owning
 repository before editing them. The exact boundary and rollback are in

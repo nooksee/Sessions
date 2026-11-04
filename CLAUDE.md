@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 d2449c963d434641635ec12153c9e18da1c6983e15da58b3872d6a348f4b812e; rules 8; mode history; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Claude residents of the Sessions room
 
 This room is the session-continuity office. More than one Claude resident works
@@ -8,11 +7,15 @@ registry and your own session, never from this file, a role title, a tab name,
 or a memory note. Your native working root is:
 
 ```text
-[words sha256=654f32443b4198dbe366b180bea07397032fd3dc93d38a17a2226e7e8df9a995]
+/media/nos4r2/user_vol/Sessions
 ```
 
-Read `AGENTS.md`, `PoT.md`, `RoR.md`, `NOW.md`, and `INDEX.md` before material
-work. Use the map and manual for current routes and mechanics.
+Use `bash ops/bin/help read` for the maintained read-in order. This includes
+`PoT.md`, `ops/lib/manifests/CONTEXT.md` and `CONSTRAINTS.md`; follow CONTEXT
+X01 for class-specific identity and task-relevant reading. Use `RoR.md`,
+`NOW.md`, the map and manual for their distinct domains. Read only authorized
+continuity context and evidence; these pointers do not authorize body, mind or
+record content.
 Read the parent Control `AGENTS.md` before crossing into editor configuration,
 native session stores, backups, or system surfaces.
 

@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 0eb008fef6e0494c91e406725d6863bdd8d319f4048d261ab7b353aacc0a57e6; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
+<!-- redact: public copy; source sha256 a6f6478d6064001cc92b20e1b7af86d925d328f4c3e0528fe3efc640d71e9f72; rules 8; mode history; words 4; sessions 0 whole, 1 truncated; host paths 4; decisions 0 -->
 # Session Continuity Command Center
 
 Updated: 2026-11-03 02:24 EST (-0500), JoJo Git, to reconcile the filing-law
@@ -15,12 +15,14 @@ lineage history.
 
 ## Scratch integration - operator-directed 2026-11-03
 
-The 2026-11-03 filing alignment is reflected in current `PoT.md`: `var/tmp/`
-is task scratch and `storage/` is named case work, not a tool-state home.
-Existing state remains only under the bounded migration holds recorded in
-`docs/ops/README.md` (PoT 1.1.14); no consumer has moved. RoR-16 records the
-prior, bounded filing act and is not current authority for a storage exception.
-RoR-17 records the operator direction bound to the current law hash.
+The 2026-11-03 filing alignment is reflected in accepted main: `var/tmp/` is
+task scratch and `storage/` is named case work, not a tool-state home. The map
+records existing bounded migration holds; the proposed CONSTRAINTS C01 gives
+their filing mechanics, with no permanent storage-state exception. This
+revision-2 reader integration is prepared in isolated scratch and is not
+adopted; accepted main remains governing. No consumer has moved. RoR-16 records
+the prior, bounded filing act and is not current authority for a storage
+exception. RoR-17 records the operator direction bound to the current law hash.
 Retention cleanup remains a separate final pass. The source successor and
 its pending Git review/integration are recorded in JoJo's handoff; no live
 service or native body is changed.
