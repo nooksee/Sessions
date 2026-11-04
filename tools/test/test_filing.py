@@ -134,6 +134,12 @@ class FilingTest(unittest.TestCase):
                 "storage/intake/incoming.txt": True,
                 "storage/intake/nested/private.jsonl": True,
                 "storage/active/.gitignore": True,
+                "storage/active/intake/README.md": True,
+                "storage/active/intake/.gitignore": True,
+                "storage/active/handoff/README.md": True,
+                "storage/active/handoff/.gitignore": True,
+                "storage/intake/handoff/README.md": True,
+                "storage/intake/handoff/.gitignore": True,
                 "storage/handoff/jojo.md": True,
                 "storage/handoff/nested/.gitkeep": True,
                 "storage/handoff/nested/review.md": True,
@@ -141,13 +147,29 @@ class FilingTest(unittest.TestCase):
                 "ops/etc/host-bindings.json": True,
                 "MIND.md": True,
             }
-            self.assertEqual(len(cases), 20)
+            self.assertEqual(len(cases), 26)
+            nested_paths = tuple(path for path in cases
+                                 if path.count("/") == 3 and
+                                 path.endswith(("README.md", ".gitignore")))
+            self.assertEqual(len(nested_paths), 6)
+            for path in nested_paths:
+                nested_file = fixture / path
+                nested_file.parent.mkdir(parents=True, exist_ok=True)
+                nested_file.write_text("synthetic private payload\n",
+                                       encoding="utf-8")
             for path, expected_ignored in cases.items():
                 with self.subTest(path=path):
                     result = subprocess.run(["git", "-C", str(fixture),
                                              "check-ignore", "-q", "--", path])
                     self.assertEqual(result.returncode,
                                      0 if expected_ignored else 1)
+            status = subprocess.run(
+                ["git", "-C", str(fixture), "status", "--porcelain",
+                 "--untracked-files=all"], check=True, capture_output=True,
+                text=True)
+            for path in nested_paths:
+                with self.subTest(untracked_path=path):
+                    self.assertNotIn(path, status.stdout)
 
     def test_existing_operational_state_is_not_rerouted(self):
         self.assertIn('SESSIONS / "storage" / "gauges" / "ledger.jsonl"',

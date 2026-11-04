@@ -1,14 +1,14 @@
 # STELA pattern: version the skeleton, not the working payload.
 # Keep any exceptional admission exact and independently reviewed.
 *
-!.gitignore
-!README.md
-!active/
-active/*
-!active/.gitkeep
-!intake/
-intake/*
-!intake/.gitkeep
-!handoff/
-handoff/*
-!handoff/.gitkeep
+!/.gitignore
+!/README.md
+!/active/
+/active/*
+!/active/.gitkeep
+!/intake/
+/intake/*
+!/intake/.gitkeep
+!/handoff/
+/handoff/*
+!/handoff/.gitkeep
