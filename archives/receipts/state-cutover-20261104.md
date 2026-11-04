@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 40cb8a513fc08ec1ab651a83e4005b25162c67a73899352472fcf645074e822f; rules 7; words 1; sessions 0 whole, 0 truncated; host paths 2; decisions 1 -->
+<!-- redact: public copy; source sha256 ecf1bd97c498f33eb036ab36a7aeb463fc343b27d046bda7d16074d9ec6f8825; rules 7; words 1; sessions 0 whole, 0 truncated; host paths 2; decisions 4 -->
 # State cutover: the gauge ledger and the mind lock move to logs/ (2026-11-04)
 
 Written 2026-11-04 16:59 EST by the Session Continuity Manager (Claude Shannon), registry key session-doctor, who performed the act. Method: George Friend's block 10 preparation packet (GitHub/storage/handoff/george.md, 13:33 EST), followed in order; George performed none of it, at the operator's direction that nothing be relayed. Reviews before the act: Claudio section 182 PASS on the source (PR #33); George's exact PASS on the state source e564c359. Plan: storage/active/sessions-first-wins-plan-20261103.md, remaining finish step 2.
@@ -31,3 +31,9 @@ Hold the lock at logs/gauges/ledger.lock; record the current ledger length and h
 ## Counts
 
 Host units, timers, hooks, services changed 0; files moved 1 directory (3 inodes); files created 2 custody copies and 2 custody directories; deletions 0; production JSONLs modified 0; workers 0; deviations 0.
+
+## Correction appended 2026-11-04 17:03:52 EST, after the Independent Reviewer's section 183
+
+- **Deviations: 1, not 0.** Step 6 of George's packet asks for a canary on owned synthetic fixtures with every root overridden (registry, specification, resource state, every provider's live and archived roots) and an invented-room lock test, and authorizes no extra live-body canary. Neither synthetic check was run. The canary recorded in step 7 above was a read-only `gauge --no-ledger` run on the Session Continuity Manager's own live session, which the packet did not authorize as a canary. Measured effect: 0 writes; the first routine append after release proved the new default. "Followed in order" and "deviations 0" above are wrong by this one departure; the text is left as written (1.2.13).
+- **Times filled in from measurement:** PR #33 merged at 16:44:43 EST; the first routine append at 16:57:53 EST.
+- **The review head:** Claudio's section 182 PASS was on 1f91ce1e; JoJo rebased it as 438280b5 with identical changed lines, and that head merged.
