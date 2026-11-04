@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 6eb453c341d3bb83d925830db015c78b3f4a5246eb1b7190f54f2d6512d9aeda; rules 8; mode history; words 5; sessions 0 whole, 0 truncated; host paths 5; decisions 0 -->
 # Technical Specification: gauge
 
 Script: `Sessions/ops/lib/scripts/gauge.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_gauge.py`. Spec writer: Claude Shannon. Status: built in Sessions block 2, 2026-10-30; not on a timer and not wired to any notification. Claudio Freeman reviews it before it is relied on.
@@ -7,11 +6,11 @@ Script: `Sessions/ops/lib/scripts/gauge.py` (writer: Claudine Colbert). Tests: `
 
 This desk kept estimating how full each resident was. It weighed files (a large body is not a full one), read a percentage by hand when asked, and guessed at wake figures. Manufacturing does not service a machine when someone feels it is time; it reads a meter, services at a fixed reading, and a light comes on. The meter already exists here: after every working turn, the provider's API writes the exact token count into the resident's own body. A resident's context only grows on a working turn, and every working turn writes a fresh reading, so an idle resident's last reading is still its true figure. What it needs is its age shown beside it.
 
-So `gauge` reads that figure for every registered resident, from the end of the body, and never reads or prints message content. It prints "[words sha256=b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc]" rather than a guess. It appends each reading to a ledger, so that trends and forecasts can follow, and so that the 65 and 70 percent lines become events rather than impressions.
+So `gauge` reads that figure for every registered resident, from the end of the body, and never reads or prints message content. It prints "unknown" rather than a guess. It appends each reading to a ledger, so that trends and forecasts can follow, and so that the 65 and 70 percent lines become events rather than impressions.
 
 ## Mechanics and Sequencing
 
-1. **Residents.** Read `Sessions/ops/etc/resident-identities.json`. Each entry's provider and session id locate its body: Claude under `[host path 1]`, Codex under `[host path 2]` (archived bodies under the archived root), Copilot under its Agent Dock store.
+1. **Residents.** Read `Sessions/ops/etc/resident-identities.json`. Each entry's provider and session id locate its body: Claude under `~/.claude/projects/*/`, Codex under `~/.codex/sessions/` (archived bodies under the archived root), Copilot under its Agent Dock store.
 2. **Reading.** Scan from the end of the body, at most 16,000,000 bytes, for the newest genuine reading:
    - **Claude:** the newest main-chain assistant call's `message.usage`, input plus cache read plus cache creation, one reading per `message.id`. Zero-usage, synthetic and sidechain rows are not readings.
    - **Codex:** the newest `token_count` event: its last input figure and its `model_context_window`. The model comes from the nearest turn context before it.
@@ -20,7 +19,7 @@ So `gauge` reads that figure for every registered resident, from the end of the 
    - the window the provider reports in the same record (Codex, Copilot);
    - the reviewed table below;
    - only when the table has no row for that model: Claude Code's status-line record (`Sessions/logs/resource-state.json`). This record is written by whichever single session last ran the status line, with no session id, so its source is shown as unverified;
-   - otherwise "[words sha256=b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc]".
+   - otherwise "unknown".
 4. **State.** Each row carries one state:
    - `last observed`: a genuine reading, with its age;
    - `before compaction`: a compaction boundary follows the reading, so the figure is no longer current;
@@ -31,17 +30,19 @@ So `gauge` reads that figure for every registered resident, from the end of the 
    - `invalid`;
    - `unknown`.
 5. **Output.** A table: resident, model, tokens, window, percent, last observed, age, state, note. `--json` gives machine output, and `--key` limits the run to one resident.
-6. **Ledger.** One line per resident per run, appended to `Sessions/storage/gauges/ledger.jsonl` at mode 0600. The file is ignored by Git. `--no-ledger` skips the append.
+6. **Ledger.** One line per resident per run, appended by default to `Sessions/logs/gauges/ledger.jsonl` (PoT 1.1.12). New directories use mode 0700; new ledger and `ledger.lock` files use 0600, including under umask 0000. Existing modes stay unchanged. The file is ignored by Git. `--no-ledger` skips the append and the legacy guard, writing nothing. Explicit `--ledger PATH` retains the caller-selected append interface; it is not an automatic migration. Naming the canonical default explicitly, including normalized dot-path spellings, still runs its legacy guard.
+   - Before a default append, the shared `ops/lib/statepaths.py` no-write guard must prove `storage/gauges` absent. Any existing legacy node (including an empty directory, file, symlink or FIFO), or unsafe or uninspectable existing ancestor, refuses the append. The guard is loaded only for default appends, so measurement-only imports and copied-script consumers need no helper.
+   - Refusal or an append I/O failure leaves the measurement rows on stdout, emits one concise JSON diagnostic on stderr (`tool`, `error`, `ledger`, `reason`), and exits 2 without a traceback. Refusal creates no ledger directory or lock. No copying, deletion, adoption, or permission normalization occurs. A separately reviewed copy/release can preserve an old ledger prefix at the new path; gauge only appends afterward.
 7. **Lines.** The closeout begins at a fixed reserve of 50,000 tokens before the 70 percent line (`closeout.md`); at 70 the rotation is due (house guidance). In this version `gauge` only reports. A timer and the notification that the meter triggers each need Kevin's separate go, and a timer compares unrounded figures (649,960 of 1,000,000 prints as 65.0).
-8. **Bodies.** Claude under `[host path 1]`. Codex under `[host path 2]`, its archived root and, where present, the VM-share Codex root. Copilot under `[host path 3]`. A partial id never matches as a suffix.
+8. **Bodies.** Claude under `~/.claude/projects/*/`. Codex under `~/.codex/sessions/`, its archived root and, where present, the VM-share Codex root. Copilot under `~/.copilot/session-state/`. A partial id never matches as a suffix.
 
 ### Reviewed windows
 
-Used when the provider record has no window and the model has a reviewed row. A table row takes precedence over a status-line value for the same model; the status line is only a fallback when the table has no row, as described in step 3. Each row records where its figure came from and when it was observed. A model without a reviewed row or status-line fallback stays "[words sha256=b23a6a8439c0dde5515893e7c90c1e3233b8616e634470f20dc4928bcf3609bc]".
+Used when the provider record has no window and the model has a reviewed row. A table row takes precedence over a status-line value for the same model; the status line is only a fallback when the table has no row, as described in step 3. Each row records where its figure came from and when it was observed. A model without a reviewed row or status-line fallback stays "unknown".
 
 ```
-[words sha256=41825676f51fdb967c2dec882b48e2f6c0b4efe2c441bff0f18df4812b91e6b0]
-[words sha256=782736905fd86ac26807554897cdd3f47bfcdfcaccb334cef0c1d6046c2d007c]
+model=claude-opus-5-5|window=1000000|source=Claude Code status line (resource-state.json)|observed=2026-10-30
+model=claude-fable-5-1|window=1000000|source=provider documentation (platform.claude.com, Models overview, Context window 1M tokens) and Claude Code status line (resource-state.json, window_size 1000000)|observed=2026-11-01
 ```
 
 ## Anecdotal Anchor

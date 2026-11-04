@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 a5fa3ccbba6a89cc72a1ce19afae80dc8fa25217ed5677bfc5078124ff4ed892; rules 8; mode history; words 57; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
+<!-- redact: public copy; source sha256 80181e8551f192545c23b7224614ff4b6c1a32c03333262bce2b7f52792ab659; rules 8; mode history; words 57; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
 # Sessions Operations Manual (Command Console)
 
 Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request for a help system and a manual, both taken from the STELA framework, by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
@@ -84,7 +84,7 @@ The authority for who each resident is lives only in the registry. A resident ch
  [words sha256=a936effdf84b60a4e277697cd5b5dae19671bf2a21ef6130b151667ce37cddab]
       [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
       [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=3da5acfb42553bb23d0a161395a46499a6b03928214b0b904b1f06b18bda69bf]
+ [words sha256=10f372a597d354c27f78215562c4b7f5896c29ed506bdedefd43aea136fc5e1c]
       [words sha256=a99ced15ddd0a7c04a55a00a375bdb18203377a837322446b0c8f73d8e394552]
       [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
  [words sha256=49230c97ceb381d4fd5425f78d7867bd5ec30661b00dc4ddb681c37dca37298d]
@@ -230,7 +230,7 @@ The meter already exists: after every working turn, the provider writes the exac
 ### Cautions
 - **Bytes are not fullness.** A 78 MB body read 32 percent on 2026-10-30. Weigh tokens, never files.
 - **An estimate is not a measurement.** A wake estimate made before a rotation is an estimate; the successor's first reading is the measurement.
-- **The ledger is disposable.** `storage/gauges/ledger.jsonl` (mode 0600, ignored by Git) can be emptied; the next run rebuilds the present.
+- **The ledger is telemetry, not authority.** The source default is `logs/gauges/ledger.jsonl` (new files 0600, ignored by Git). Existing history is preserved during the assigned cutover, not silently emptied. Legacy `storage/gauges` blocks default append until that cutover; `--no-ledger` still prints a reading without writing. Explicit `--ledger` retains its selected-output interface, not migration authority. See the gauge specification and the map's bounded migration inventory.
 
 ---
 
@@ -424,7 +424,8 @@ Also:
 | `docs/ops/specs/` | specs: `scripts/`, `binaries/`, `runbook/`, `tools/test/` |
 | `docs/ops/registry/` | registries |
 | `tools/test/` | tests |
-| `storage/gauges/ledger.jsonl` | gauge ledger (disposable) |
+| `logs/gauges/ledger.jsonl` | gauge default telemetry; legacy history held until reviewed cutover |
+| `<room>/logs/mind.lock` | shared mind-write lock; legacy inode retained until reviewed cutover; no mind content change |
 | `storage/handoff/` | team room (private working notes; ignored) |
 | `storage/intake/`, `storage/active/` | incoming and named case payloads; only lane `.gitkeep` files admitted; no operational code trees |
 | `var/tmp/<owner>-<operation>.<unique>/` | task scratch; allocate with `mktemp -d`, contents ignored |

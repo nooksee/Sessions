@@ -8,9 +8,11 @@ items that the port fixes has a test named for it. Run:
     python3 -I -B tools/test/test_mind.py
 """
 import importlib.util
+import fcntl
 import json
 import os
 import re
+import selectors
 import shutil
 import stat
 import subprocess
@@ -26,11 +28,11 @@ mind = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mind)
 
 CORE = {"layer": "core", "kind": "identity", "text": "I chose the name Shannon: what survives a lossy channel.",
-        "event": "naming", "[words sha256=0e87632cd46bd4907c516317eb6d81fe0f921a23c7643018f21292894b470681]": "2026-08-09", "source": "Receipts/naming.md"}
+        "event": "naming", "date": "2026-08-09", "source": "Receipts/naming.md"}
 LESSON = {"layer": "lesson", "text": "Measure before explaining.", "event": "a claim falsified by looking",
-          "[words sha256=0e87632cd46bd4907c516317eb6d81fe0f921a23c7643018f21292894b470681]": "2026-08-09", "source": "Receipts/x.md", "applies_when": "about to explain",
+          "date": "2026-08-09", "source": "Receipts/x.md", "applies_when": "about to explain",
           "not_when": "the measurement is in hand"}
-COMMIT = {"layer": "commitment", "text": "Run Joy's cutover.", "event": "Kevin asked", "[words sha256=0e87632cd46bd4907c516317eb6d81fe0f921a23c7643018f21292894b470681]": "[words sha256=c9c37f3f041ea4694d0764b4b1dbf3d53551e7be57c4a4823ed2b6981db13c90]",
+COMMIT = {"layer": "commitment", "text": "Run Joy's cutover.", "event": "Kevin asked", "date": "2026-10-30",
           "source": "Receipts/joy.md", "owner": "Shannon"}
 
 
@@ -523,6 +525,210 @@ class MindTests(unittest.TestCase):
         self.refused(self.r.run("write", "session-doctor", "--changes", path, "--preview", binding, "--yes", "yes, close it",
                                 "--by", "claudine-colbert"), "is not what the preview showed")
         self.assertEqual(self.r.pointer()["session-doctor"], moved)
+
+
+class LegacyStateGuard(unittest.TestCase):
+    """The shared guard is metadata-only and never mutates legacy evidence."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="state-guard-")
+        self.room = Path(self.tmp.name)
+        spec = importlib.util.spec_from_file_location("state_guard_test", MIND.parents[1] / "statepaths.py")
+        self.guard = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.guard)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_missing_parent_and_missing_leaf_create_nothing(self):
+        self.guard.require_absent_legacy(self.room, Path("storage/mind.lock"))
+        self.assertEqual(list(self.room.iterdir()), [])
+        (self.room / "storage").mkdir()
+        self.guard.require_absent_legacy(self.room, Path("storage/mind.lock"))
+        self.assertEqual(list((self.room / "storage").iterdir()), [])
+
+    def test_existing_final_node_is_always_refused(self):
+        old = self.room / "storage/mind.lock"
+        old.parent.mkdir()
+        old.write_bytes(b"retained")
+        before = old.stat()
+        with self.assertRaises(self.guard.StatePathError):
+            self.guard.require_absent_legacy(self.room, Path("storage/mind.lock"))
+        self.assertEqual((old.stat().st_ino, old.read_bytes()), (before.st_ino, b"retained"))
+
+    def test_absolute_empty_and_parent_escape_fail_before_inspection(self):
+        for value in (Path("/outside"), Path("."), Path("../outside"), Path("a/../outside")):
+            with self.subTest(path=str(value)), mock.patch.object(Path, "lstat") as inspect:
+                with self.assertRaises(self.guard.StatePathError):
+                    self.guard.require_absent_legacy(self.room, value)
+                inspect.assert_not_called()
+
+    def test_metadata_error_is_not_absence(self):
+        with mock.patch.object(Path, "lstat", side_effect=PermissionError("synthetic refusal")):
+            with self.assertRaisesRegex(self.guard.StatePathError, "cannot be inspected"):
+                self.guard.require_absent_legacy(self.room, Path("storage/mind.lock"))
+        self.assertEqual(list(self.room.iterdir()), [])
+
+
+class MindLockLocation(unittest.TestCase):
+    """Real lock/write calls in synthetic rooms; no installed mind changes."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="mind-lock-location-")
+        self.base = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def room(self, name):
+        base = self.base / name
+        base.mkdir()
+        return Room(base)
+
+    def test_fresh_write_uses_only_private_logs_lock_even_with_open_umask(self):
+        room = self.room("fresh")
+        previous = os.umask(0)
+        try:
+            result = room.write({"add": [CORE]})
+        finally:
+            os.umask(previous)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((room.room / "storage").exists())
+        for path, mode in ((room.room / "logs", 0o700), (room.room / "logs/mind.lock", 0o600)):
+            self.assertEqual(path.stat().st_mode & 0o777, mode)
+
+    def test_every_legacy_lock_node_blocks_new_writes_without_changing_it(self):
+        for kind in ("file", "directory", "symlink", "fifo"):
+            with self.subTest(kind=kind):
+                room = self.room(kind)
+                old = room.room / "storage/mind.lock"
+                old.parent.mkdir()
+                target = room.room / "not-created"
+                if kind == "file":
+                    old.write_bytes(b"retained old lock")
+                elif kind == "directory":
+                    old.mkdir()
+                elif kind == "symlink":
+                    old.symlink_to(target)
+                else:
+                    os.mkfifo(old)
+                before = old.lstat()
+                result = room.write({"add": [CORE]})
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn("legacy state", result.stderr)
+                after = old.lstat()
+                self.assertEqual((before.st_dev, before.st_ino, before.st_mode, before.st_size, before.st_mtime_ns),
+                                 (after.st_dev, after.st_ino, after.st_mode, after.st_size, after.st_mtime_ns))
+                self.assertFalse((room.room / "logs").exists())
+                self.assertFalse((room.room / "MIND.md").exists())
+                self.assertFalse((room.room / "archives").exists())
+                self.assertFalse(target.exists())
+                if kind == "file":
+                    self.assertEqual(old.read_bytes(), b"retained old lock")
+                if kind == "symlink":
+                    self.assertEqual(os.readlink(old), str(target))
+
+    def test_unsafe_legacy_parent_is_not_mistaken_for_absence(self):
+        for kind in ("file", "dangling-link", "directory-link"):
+            with self.subTest(kind=kind):
+                room = self.room(kind)
+                parent = room.room / "storage"
+                target = room.room / "legacy-target"
+                if kind == "file":
+                    parent.write_bytes(b"retained parent")
+                else:
+                    if kind == "directory-link":
+                        target.mkdir()
+                    parent.symlink_to(target)
+                before = parent.lstat()
+                result = room.write({"add": [CORE]})
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn("legacy state parent", result.stderr)
+                after = parent.lstat()
+                self.assertEqual((before.st_ino, before.st_mode, before.st_mtime_ns),
+                                 (after.st_ino, after.st_mode, after.st_mtime_ns))
+                self.assertFalse((room.room / "logs").exists())
+                self.assertFalse((room.room / "MIND.md").exists())
+
+    def test_unsearchable_legacy_parent_refuses_without_new_lock(self):
+        if os.geteuid() == 0:
+            self.skipTest("requires ordinary-user permission enforcement")
+        room = self.room("unsearchable")
+        parent = room.room / "storage"
+        parent.mkdir()
+        parent.chmod(0)
+        try:
+            result = room.write({"add": [CORE]})
+        finally:
+            parent.chmod(0o700)
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("legacy state cannot be inspected", result.stderr)
+        self.assertFalse((room.room / "logs").exists())
+
+    def test_live_legacy_flock_is_never_replaced_by_a_new_lock(self):
+        room = self.room("legacy-held")
+        old = room.room / "storage/mind.lock"
+        old.parent.mkdir()
+        with old.open("w") as handle:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            before = old.stat().st_ino
+            result = room.write({"add": [CORE]})
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertEqual(old.stat().st_ino, before)
+            self.assertFalse((room.room / "logs").exists())
+
+    def test_fresh_process_holds_the_exact_shared_logs_inode(self):
+        room = self.room("new-held")
+        code = ("import importlib.util, pathlib, sys; "
+                "s=importlib.util.spec_from_file_location('mind',sys.argv[1]); "
+                "m=importlib.util.module_from_spec(s); s.loader.exec_module(m); "
+                "ctx=m.room_lock(pathlib.Path(sys.argv[2])); ctx.__enter__(); "
+                "print('held',flush=True); sys.stdin.readline(); ctx.__exit__(None,None,None)")
+        child = subprocess.Popen([sys.executable, "-I", "-B", "-c", code, str(MIND), str(room.room)],
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            with selectors.DefaultSelector() as selector:
+                selector.register(child.stdout, selectors.EVENT_READ)
+                self.assertTrue(selector.select(5), "lock holder did not become ready")
+                self.assertEqual(child.stdout.readline(), "held\n")
+            path = room.room / "logs/mind.lock"
+            inode = path.stat().st_ino
+            with path.open("a") as other:
+                with self.assertRaises(BlockingIOError):
+                    fcntl.flock(other.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            child.communicate("release\n", timeout=5)
+            self.assertEqual(child.returncode, 0)
+            with mind.room_lock(room.room):
+                self.assertEqual(path.stat().st_ino, inode)
+        finally:
+            if child.poll() is None:
+                child.kill()
+                child.communicate(timeout=5)
+
+    def test_reviewed_fixture_relocation_preserves_the_lock_inode(self):
+        room = self.room("relocated")
+        old = room.room / "storage/mind.lock"
+        old.parent.mkdir()
+        old.write_bytes(b"retained lock fixture")
+        before = old.stat()
+        new = room.room / "logs/mind.lock"
+        new.parent.mkdir(mode=0o700)
+        # A fixture's explicit relocation is not an automatic production migrator.
+        old.rename(new)
+        with mind.room_lock(room.room):
+            self.assertEqual((new.stat().st_dev, new.stat().st_ino), (before.st_dev, before.st_ino))
+            self.assertEqual(new.read_bytes(), b"retained lock fixture")
+        self.assertFalse(old.exists())
+
+    def test_legacy_lock_does_not_block_read_only_preview(self):
+        room = self.room("preview")
+        old = room.room / "storage/mind.lock"
+        old.parent.mkdir()
+        old.write_bytes(b"preserved")
+        changes = room.changes({"add": [CORE]})
+        self.assertTrue(room.preview("session-doctor", changes))
+        self.assertFalse((room.room / "logs").exists())
+        self.assertEqual(old.read_bytes(), b"preserved")
 
 
 if __name__ == "__main__":

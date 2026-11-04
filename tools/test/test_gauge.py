@@ -6,7 +6,11 @@ temporary directory and runs gauge against them; no real body is read. Run:
 
     python3 -I -B tools/test/test_gauge.py
 """
+import fcntl
 import json
+import os
+import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -75,8 +79,12 @@ def copilot_usage(inp, window, model, ts):
 
 class World:
     def __init__(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="gauge-test-")
+        scratch = GAUGE.parents[3] / "var" / "tmp"
+        scratch.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self.tmp = tempfile.TemporaryDirectory(prefix="joe-gauge-test-", dir=scratch)
         self.root = Path(self.tmp.name)
+        self.script = GAUGE
+        self.default_ledger = False
         self.claude = self.root / "claude"
         self.codex_live = self.root / "codex" / "sessions"
         self.codex_arch = self.root / "codex" / "archived_sessions"
@@ -109,16 +117,22 @@ class World:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("".join(j(r) + "\n" for r in rows))
 
-    def run(self, *extra, ledger=True):
+    def command(self, *extra, ledger=True):
         reg = self.root / "registry.json"
         reg.write_text(json.dumps({"identities": self.identities}))
-        cmd = [sys.executable, "-I", "-B", str(GAUGE), "--registry", str(reg), "--claude-root", str(self.claude),
+        cmd = [sys.executable, "-I", "-B", str(self.script), "--registry", str(reg), "--claude-root", str(self.claude),
                "--codex-root", str(self.codex_live), "--codex-archived-root", str(self.codex_arch),
                "--copilot-root", str(self.copilot), "--spec", str(self.spec), "--resource-state", str(self.state),
-               "--ledger", str(self.ledger), "--now", NOW, *extra]
+               "--now", NOW]
+        if not self.default_ledger:
+            cmd.extend(["--ledger", str(self.ledger)])
+        cmd.extend(extra)
         if not ledger:
             cmd.append("--no-ledger")
-        return subprocess.run(cmd, capture_output=True, text=True)
+        return cmd
+
+    def run(self, *extra, ledger=True, umask=-1):
+        return subprocess.run(self.command(*extra, ledger=ledger), capture_output=True, text=True, umask=umask)
 
     def rows(self):
         r = self.run("--json", ledger=False)
@@ -524,6 +538,247 @@ class Ledger(Base):
                             "--ledger", str(self.w.ledger)], capture_output=True, text=True)
         self.assertEqual(r.returncode, 2)
         self.assertFalse(self.w.ledger.exists())
+
+
+class DefaultLedger(Base):
+    """Execute the actual script and shared guard in a synthetic room layout."""
+
+    def setUp(self):
+        super().setUp()
+        self.w.script = self.w.root / "ops" / "lib" / "scripts" / "gauge.py"
+        self.w.script.parent.mkdir(parents=True)
+        shutil.copy2(GAUGE, self.w.script)
+        shutil.copy2(GAUGE.parents[1] / "statepaths.py", self.w.script.parents[1] / "statepaths.py")
+        self.w.default_ledger = True
+        self.w.ledger = self.w.root / "logs" / "gauges" / "ledger.jsonl"
+        self.legacy = self.w.root / "storage" / "gauges"
+        sid = self.w.resident("fixture", "codex", 200)
+        self.w.codex_body(sid, [codex_context("fixture-model", "2026-10-30T15:00:00Z", 1),
+                                codex_tokens(12345, 100000, "2026-10-30T15:01:00Z", 2)])
+
+    def refused(self):
+        r = self.w.run("--json")
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["tokens"], 12345)
+        self.assertNotIn("Traceback", r.stderr)
+        diagnostic = json.loads(r.stderr)
+        self.assertEqual(diagnostic["tool"], "gauge")
+        self.assertEqual(diagnostic["error"], "ledger_append_failed")
+        self.assertEqual(diagnostic["ledger"], str(self.w.ledger))
+        self.assertIn("legacy", diagnostic["reason"])
+        self.assertFalse((self.w.root / "logs").exists())
+        return r
+
+    def test_fresh_default_creates_only_logs_with_unchanged_rows(self):
+        r = self.w.run("--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.w.ledger.read_text(), r.stdout)
+        row = json.loads(r.stdout)
+        self.assertEqual((row["schema"], row["tokens"], row["window"], row["percent"], row["state"]),
+                         ("gauge/1", 12345, 100000, 12.3, "last observed"))
+        self.assertFalse((self.w.root / "storage").exists())
+        self.assertEqual({p.name for p in self.w.ledger.parent.iterdir()}, {"ledger.jsonl", "ledger.lock"})
+
+    def test_populated_legacy_ledger_and_lock_bytes_and_modes_untouched(self):
+        self.legacy.mkdir(parents=True)
+        ledger = self.legacy / "ledger.jsonl"
+        lock = self.legacy / "ledger.lock"
+        ledger.write_bytes(b'{"old":"fixture"}\n')
+        lock.write_bytes(b"old lock fixture\x00\n")
+        ledger.chmod(0o640)
+        lock.chmod(0o660)
+        before = [(p.read_bytes(), p.stat().st_mode, p.stat().st_mtime_ns) for p in (ledger, lock)]
+        self.refused()
+        self.assertEqual(before, [(p.read_bytes(), p.stat().st_mode, p.stat().st_mtime_ns) for p in (ledger, lock)])
+
+    def test_empty_legacy_directory_refuses(self):
+        self.legacy.mkdir(parents=True)
+        self.refused()
+        self.assertEqual(list(self.legacy.iterdir()), [])
+
+    def test_explicit_default_or_normalized_alias_cannot_bypass_legacy_guard(self):
+        self.legacy.mkdir(parents=True)
+        for ledger in (self.w.ledger, self.w.ledger.parent / ".." / "gauges" / "ledger.jsonl"):
+            with self.subTest(ledger=str(ledger)):
+                result = self.w.run("--json", "--ledger", str(ledger))
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(json.loads(result.stderr)["error"], "ledger_append_failed")
+                self.assertIn("legacy state", json.loads(result.stderr)["reason"])
+                self.assertFalse((self.w.root / "logs").exists())
+
+    def test_legacy_refusal_also_preserves_existing_destination(self):
+        self.legacy.mkdir(parents=True)
+        self.w.ledger.parent.mkdir(parents=True)
+        lock = self.w.ledger.with_suffix(".lock")
+        self.w.ledger.write_bytes(b"destination fixture prefix\n")
+        lock.write_bytes(b"destination lock fixture\n")
+        before = [(p.read_bytes(), p.stat().st_mode, p.stat().st_mtime_ns) for p in (self.w.ledger, lock)]
+        r = self.w.run("--json")
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(json.loads(r.stdout)["tokens"], 12345)
+        self.assertEqual(json.loads(r.stderr)["error"], "ledger_append_failed")
+        self.assertEqual(before, [(p.read_bytes(), p.stat().st_mode, p.stat().st_mtime_ns)
+                                 for p in (self.w.ledger, lock)])
+
+    def test_legacy_file_refuses(self):
+        self.legacy.parent.mkdir()
+        self.legacy.write_bytes(b"legacy fixture")
+        self.refused()
+        self.assertEqual(self.legacy.read_bytes(), b"legacy fixture")
+
+    def test_legacy_symlink_refuses_without_touching_target(self):
+        self.legacy.parent.mkdir()
+        target = self.w.root / "target"
+        target.mkdir()
+        self.legacy.symlink_to(target, target_is_directory=True)
+        self.refused()
+        self.assertTrue(self.legacy.is_symlink())
+        self.assertEqual(list(target.iterdir()), [])
+
+    def test_dangling_legacy_symlink_refuses(self):
+        self.legacy.parent.mkdir()
+        self.legacy.symlink_to(self.w.root / "missing")
+        self.refused()
+        self.assertTrue(self.legacy.is_symlink())
+
+    def test_legacy_fifo_refuses_without_opening_it(self):
+        self.legacy.parent.mkdir()
+        os.mkfifo(self.legacy, 0o600)
+        self.refused()
+        self.assertTrue(stat.S_ISFIFO(self.legacy.lstat().st_mode))
+
+    def test_dangling_legacy_parent_refuses(self):
+        self.legacy.parent.symlink_to(self.w.root / "missing")
+        self.refused()
+        self.assertTrue(self.legacy.parent.is_symlink())
+
+    def test_nondirectory_legacy_parent_refuses(self):
+        self.legacy.parent.write_bytes(b"parent fixture")
+        self.refused()
+        self.assertEqual(self.legacy.parent.read_bytes(), b"parent fixture")
+
+    def test_symlink_legacy_parent_refuses_even_with_absent_leaf(self):
+        target = self.w.root / "target"
+        target.mkdir()
+        self.legacy.parent.symlink_to(target, target_is_directory=True)
+        self.refused()
+        self.assertEqual(list(target.iterdir()), [])
+
+    def test_unsearchable_legacy_parent_refuses(self):
+        if os.geteuid() == 0:
+            self.skipTest("root bypasses directory search permissions")
+        self.legacy.parent.mkdir(mode=0o600)
+        try:
+            self.refused()
+            self.assertEqual(stat.S_IMODE(self.legacy.parent.stat().st_mode), 0o600)
+        finally:
+            self.legacy.parent.chmod(0o700)  # synthetic fixture cleanup only
+
+    def test_no_ledger_with_legacy_writes_zero_files(self):
+        self.legacy.mkdir(parents=True)
+        old = self.legacy / "ledger.jsonl"
+        old.write_bytes(b"fixture prefix\n")
+        cmd = self.w.command("--json", ledger=False)
+        before = {p.relative_to(self.w.root): (p.lstat().st_mode, p.lstat().st_mtime_ns,
+                                               p.read_bytes() if p.is_file() else None)
+                  for p in self.w.root.rglob("*")}
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["tokens"], 12345)
+        after = {p.relative_to(self.w.root): (p.lstat().st_mode, p.lstat().st_mtime_ns,
+                                              p.read_bytes() if p.is_file() else None)
+                 for p in self.w.root.rglob("*")}
+        self.assertEqual(after, before)
+
+    def test_copied_script_no_helper_supports_no_ledger_and_explicit_ledger(self):
+        script = self.w.root / "copy-only" / "ops" / "lib" / "scripts" / "gauge.py"
+        script.parent.mkdir(parents=True)
+        shutil.copy2(GAUGE, script)
+        self.w.script = script
+        self.assertEqual(self.w.run("--json", ledger=False).returncode, 0)
+        custom = self.w.root / "custom" / "fixture.jsonl"
+        r = self.w.run("--json", "--ledger", str(custom))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(custom.read_text(), r.stdout)
+        r = self.w.run("--json")
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(json.loads(r.stderr)["error"], "ledger_append_failed")
+        self.assertEqual(json.loads(r.stdout)["tokens"], 12345)
+        self.assertFalse((script.parents[3] / "logs").exists())
+
+    def test_explicit_legacy_ledger_interface_remains_compatible(self):
+        self.legacy.mkdir(parents=True)
+        custom = self.legacy / "ledger.jsonl"
+        prefix = b'{"schema":"old-fixture"}\n'
+        custom.write_bytes(prefix)
+        r = self.w.run("--json", "--ledger", str(custom))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(custom.read_bytes(), prefix + r.stdout.encode())
+        self.assertFalse((self.w.root / "logs").exists())
+
+    def test_reviewed_copy_release_preserves_old_prefix_then_appends(self):
+        self.legacy.mkdir(parents=True)
+        old = self.legacy / "ledger.jsonl"
+        prefix = b'{"schema": "fixture-old", "tokens": 17}\n\n'
+        old.write_bytes(prefix)
+        self.refused()
+        self.w.ledger.parent.mkdir(parents=True)
+        shutil.copy2(old, self.w.ledger)  # simulate the separately reviewed fixture copy
+        self.legacy.rename(self.w.root / "released-fixture")
+        r = self.w.run("--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.w.ledger.read_bytes(), prefix + r.stdout.encode())
+        self.assertEqual((self.w.root / "released-fixture" / "ledger.jsonl").read_bytes(), prefix)
+
+    def test_new_default_modes_are_private_under_umask_zero(self):
+        r = self.w.run("--json", umask=0)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for path in (self.w.root / "logs", self.w.ledger.parent):
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o700)
+        for path in (self.w.ledger, self.w.ledger.with_suffix(".lock")):
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+
+    def test_existing_modes_are_preserved(self):
+        self.w.ledger.parent.mkdir(parents=True)
+        paths = (self.w.root / "logs", self.w.ledger.parent, self.w.ledger, self.w.ledger.with_suffix(".lock"))
+        self.w.ledger.write_bytes(b"fixture-prefix\n")
+        paths[-1].write_bytes(b"fixture-lock\n")
+        modes = (0o755, 0o750, 0o640, 0o660)
+        for path, mode in zip(paths, modes):
+            path.chmod(mode)
+        r = self.w.run("--json", umask=0)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(tuple(stat.S_IMODE(p.stat().st_mode) for p in paths), modes)
+        self.assertEqual(paths[-1].read_bytes(), b"fixture-lock\n")
+
+    def test_append_io_failure_is_structured_after_truthful_table(self):
+        self.w.ledger.parent.mkdir(parents=True)
+        self.w.ledger.mkdir()
+        r = self.w.run()
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("fixture", r.stdout)
+        self.assertIn("12,345", r.stdout)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(json.loads(r.stderr)["error"], "ledger_append_failed")
+
+    def test_shared_append_lock_blocks_then_releases(self):
+        self.w.ledger.parent.mkdir(parents=True)
+        lock_path = self.w.ledger.with_suffix(".lock")
+        with lock_path.open("a") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            proc = subprocess.Popen(self.w.command("--json"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            try:
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    proc.communicate(timeout=0.2)
+                self.assertFalse(self.w.ledger.exists())
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+                stdout, stderr = proc.communicate(timeout=5)
+                self.assertEqual(proc.returncode, 0, stderr)
+                self.assertEqual(self.w.ledger.read_text(), stdout)
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.communicate()
 
 
 if __name__ == "__main__":
