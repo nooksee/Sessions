@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 9fecbbbefe23ce660a364a9cdebd81cc33b4156c0d5d133a554472a921494a01; rules 8; mode history; words 29; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 # Technical Specification: mind
 
 Script: `Sessions/ops/lib/scripts/mind.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_mind.py`. Spec writer: Claudine Colbert, Sessions block 3, 2026-10-30, under Kevin's decisions of 10-30 as Shannon recorded them (`storage/handoff/shannon.md`, block 3). Status: built and tested on synthetic rooms only; corrected for F1 (the Git check fails closed) and F2 (the write is bound to the preview). The live source, tests and accepted RoR-3 location use `archives/` root. No mind has been written. Nothing is wired: no hook, no timer. Actual use remains separately gated.
@@ -23,7 +22,7 @@ So there is nothing to ratify later: everything in a mind was said yes to by Kev
 - the leaf it builds on;
 - the resident's key.
 
-**Doubt is not permission.** "[words sha256=f40e483d0dc4e599daa01e54ad7dda78ea16270362318a8eebdb81841913b77f]" (PoT 5.1) is enforced only on Git's own positive answer. A check that cannot get one refuses; it never assumes.
+**Doubt is not permission.** "Minds stay out of Git" (PoT 5.1) is enforced only on Git's own positive answer. A check that cannot get one refuses; it never assumes.
 
 The tool cannot know who typed those words, and it does not pretend to. Three things make a false yes visible:
 - the chain of leaves;
@@ -39,38 +38,56 @@ The tool cannot know who typed those words, and it does not pretend to. Three th
   `resident=<key>|leaf=archives/<name>|sha256=<64 hex>`.
   Only this tool writes it, at mode 0600, by atomic rename. A `MIND.md` that is not exactly what the tool writes is left as it is, and every write refuses until it is resolved.
 - **Registry.** `Sessions/ops/etc/resident-identities.json`, read only. A key must be registered exactly once, and its `room` must be this room. The tool never prints a session id.
-- **Lock.** `<room>/storage/mind.lock`, held for the whole of a write.
+- **Lock.** `<room>/logs/mind.lock`, held for the whole of a write. Fresh
+  parent directories are 0700 and fresh lock files are 0600, including an
+  open umask; existing modes are not silently changed. All keys in the room
+  use this one inode, not a per-resident or task-local lock.
+- **Legacy lock boundary.** Before a write creates or opens the new lock,
+  `ops/lib/statepaths.py` proves `<room>/storage/mind.lock` absent. Any old
+  node, including an empty file, or a symbolic-link/non-directory/unreadable
+  legacy ancestor refuses the write before any new lock, pointer or leaf is
+  created. Read-only preview/check/show retain their existing interfaces.
+  This is a cooperating-writer path check, not descriptor confinement against
+  hostile same-user replacements.
+- **Cutover.** This source change migrates no live lock. Its assigned
+  operation first closes all old/new mind writers, preserves required
+  evidence, and checks the old inode under OS flock. If an old lock exists,
+  preserve the same inode at the new canonical location; do not copy it into
+  a second exclusion object or unlink a held inode. Verify owner, identity,
+  privacy and all current caller selections before permitting new writes.
+  A newly absent old path is not evidence that an old writer was closed.
+  An absent old lock needs no invented file or migration history.
 
 ### A leaf
 
 ```
-[words sha256=6e47be3b8efabc01c96756d950d4d127a29a55d784b1d0b7f2a08d9c56134629]
+# Mind of <role> (<person>)
 
-[words sha256=f00678d1945a1e419b25f2cf3335c808bc619bbd03da2cea692a6bcdee81379a]
-[words sha256=24742ba23ba7b60bd5cf2f9e8b74e3efe4a22d97613e2bde54411eb8232f8876]
-[words sha256=7f7d8fd39875b150b6ccd09a08f41917b51f5b8454c8dfe7038cd7d3ed0e1446]
-[words sha256=dddaea0036f435b8fc5258fe5e5c563ec376f1a65f8ae4ae3666fe351fcd83ba]
-[words sha256=3d82e36aea1324bd31a4a17167318b7c789bd34cc78fd18cf57c9b3eedabc147]
-[words sha256=f497b408f5385682d9e74402717b3e5255e7cd2bcb63360e050e7d117f1bad5c]
-[words sha256=3a799c9d52221ac2eeb5ffea85f821a7f74baf4eecf760aad4a7dab577f8f4e9]
-[words sha256=3e84b162396f80ea0c08a22097aaa8c9aaa6f638843cd2f7b53d3cf0059f02f7]
+resident: <key>
+written: <UTC time>
+by: <registry key of the resident who ran the write>
+predecessor: none | archives/<name> sha256=<64 hex>
+change: add <ids>; amend <ids>; retire <ids>
+yes: <date>, "<Kevin's words>"
+issued: core=N bond=N lesson=N commitment=N pointer=N
+policy: <16 hex: digest of the rules in mind.py>
 
-[words sha256=bd055b5fd9f73052d66e4b90a9b4fc2834554d54567415ef2837014c482d05b1]
+## Who I am
 
-[words sha256=22cba1231ba5d80957ded38eff491a746034faf98384e7428efaa3e419903d54]
-  [words sha256=8bb02d883873daec3dd6ba545bff57af6b0bace4785a7ee09444f6fe4f8d45d3]
-  [words sha256=3ab94cb1e69e4cb12e512deff1360c87c9b6d4518e492897edef0b439289f0ef]
-  [words sha256=31aab7dbd615439d9a5930ce50422b43e08631470316c4e00962063de520ca70]
-  [words sha256=41289cfde378b5aed6eae49eb2a71f7f83bf35669a1c1e969db098cfdd1e14c8]
-  [words sha256=a4109ad03b9d5d32744c5a18b0a29100a55736f4cd1a0961d72e6eda82fd0d9b]
+- [core-001] <text, in the resident's own voice>
+  kind: identity
+  event: <what happened>
+  date: <YYYY-MM-DD>
+  source: <receipt, handoff section or commit that records it>
+  yes: <date>, "<Kevin's words that admitted or last amended this entry>"
 ```
 
 **Sections,** in this order, each only when it has entries:
-- "[words sha256=f7227e080845bb4ce6c5097ae03708ca2ea50da274ea2ae965b242cf3d72543f]" (`core`);
-- "[words sha256=9b49a88ec4e7edb98bafc8f4ed62f92469553289ace372b684208d871c501b18]" (`bond`);
-- "[words sha256=75120f6c5ba4394a23cdb377abaa26c9496fd937f9d4a2b4255d7550bf30f1f3]" (`lesson`);
-- "[words sha256=57a30a2aaf1d6152d78db9a0aa14177a8d50692ad41645fa9642b3d878dd0510]" (`commitment`);
-- "[words sha256=96e7fda941566d1ddaad01553e74d904527870033a625c4faa51e5c23b1511fb]" (`pointer`).
+- "Who I am" (`core`);
+- "My people" (`bond`);
+- "What I have learned" (`lesson`);
+- "What I owe" (`commitment`);
+- "Where things live" (`pointer`).
 
 **Canonical form.** A leaf is valid only in canonical form: parsing it and rendering the result gives back the same bytes. So any edit by hand that does not re-render exactly fails.
 
@@ -97,7 +114,7 @@ All commands take `--room` (default: the Sessions room) and `--registry`.
   - the parsed change file.
 
   The change file's layout does not matter, but its content does.
-- **`write <key> --changes <file> --preview <binding> --yes "<Kevin's words>" --by <writer key>`.** [words sha256=730e1c2305f8993dadc4ff02676541d9940e91dc71ccb6c298c9287d8c3a2f4a]
+- **`write <key> --changes <file> --preview <binding> --yes "<Kevin's words>" --by <writer key>`.** Does nothing until every check below has passed. Then:
   1. under the lock, verify the current mind with every blocking gate, and refuse to build on a mind that fails;
   2. compute the binding again from the change it reads now and the current predecessor, and refuse on any difference from `--preview`. A change file edited after the preview, other input on standard input, or a pointer that moved since the preview is refused, and preview must be shown to Kevin again;
   3. apply the change;
@@ -107,7 +124,7 @@ All commands take `--room` (default: the Sessions room) and `--registry`.
   7. write the leaf exclusively, then move the pointer line;
   8. print the change and the leaf's full SHA-256.
 - **The Git rule** (F1). Git runs without the caller's `GIT_*` variables, in the C locale, with discovery across filesystems, and with a 30-second limit per call.
-  - **Outside Git** is accepted only when `git rev-parse --is-inside-work-tree` says "[words sha256=e7d93eed5869b154bfeb231454cd6a95c3c98a5566e486a6cf8654eaf80b658b]" and no `.git` exists in the room or above it. A repository with a broken `HEAD` makes Git say the same thing.
+  - **Outside Git** is accepted only when `git rev-parse --is-inside-work-tree` says "not a git repository" and no `.git` exists in the room or above it. A repository with a broken `HEAD` makes Git say the same thing.
   - **Inside a work tree,** `git check-ignore -q` must exit 0 for the new leaf and for `MIND.md`. Exit 1 means not ignored.
   - **Everything else is a refusal that names its cause:** Git missing, a timeout, any other error from either call, any other exit code, or an answer other than `true`.
 - **`check [--key K]`.** Every gate, for one resident or every resident in the room. Exit 1 on any blocking failure.
@@ -119,10 +136,10 @@ All commands take `--room` (default: the Sessions room) and `--registry`.
 A JSON object with up to three lists:
 
 ```json
-[words sha256=061b74ec028b4dff29e6861d86ebc26dbe094f4515b00cdce63aea1c8e4ca83a]
-             [words sha256=89f283c13f3787907472c18813cd01894161421f1da15a90553143b8530c93ba]
- [words sha256=128feadc0d3a05352461bf2be213d28e08d32e18f9ef0ebf12624853a98e49e3]
- [words sha256=a8dcce0cbf06b7e579abd2e5dcd5c73d1a7c6412bd4dd1adffc9309f1dff81f8]
+{"add":    [{"layer": "lesson", "text": "...", "event": "...", "date": "2026-10-30", "source": "...",
+             "applies_when": "...", "not_when": "..."}],
+ "amend":  [{"id": "core-002", "text": "..."}],
+ "retire": ["pointer-001"]}
 ```
 
 **Strictness.** Strict UTF-8 and JSON. Refused when:
@@ -196,7 +213,7 @@ Kevin's words are screened the same way.
 ## Anecdotal Anchor
 
 **10-30, George's read.** At 16:46 on 10-30, George read `mind.py` without running it and asked two questions, and Shannon confirmed both from the code:
-- **F1:** the Git check counted Git missing, a timeout or any error as "[words sha256=4351eab76099995a51b37eb798abc282d4ff24eb9aabc1b1f3d1f3f13a756a4e]", and so as permission;
+- **F1:** the Git check counted Git missing, a timeout or any error as "outside Git", and so as permission;
 - **F2:** `preview` and `write` each read the change file afresh, so the change written could differ from the one Kevin said yes to.
 
 Both were fixed with tests on the same day. A mutation check confirmed that undoing each fix fails its test.

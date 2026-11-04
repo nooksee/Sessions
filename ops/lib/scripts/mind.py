@@ -24,6 +24,7 @@ import contextlib
 import datetime as dt
 import fcntl
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -39,7 +40,8 @@ REGISTRY = SESSIONS / "ops" / "etc" / "resident-identities.json"
 SURFACES = "archives"                    # RoR-3: leaves sit at the archives/ root, grouped by their prefix
 LEAF_PREFIX = "MIND-"
 POINTER = "MIND.md"
-LOCK = Path("storage") / "mind.lock"
+LOCK = Path("logs") / "mind.lock"
+LEGACY_LOCK = Path("storage") / "mind.lock"
 
 LAYERS = ("core", "bond", "lesson", "commitment", "pointer")
 TITLES = {"core": "Who I am", "bond": "My people", "lesson": "What I have learned",
@@ -443,9 +445,17 @@ def title_of(entry: dict) -> str:
 
 @contextlib.contextmanager
 def room_lock(room: Path):
+    spec = importlib.util.spec_from_file_location("mind_statepaths", Path(__file__).resolve().parents[1] / "statepaths.py")
+    statepaths = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(statepaths)
+    try:
+        statepaths.require_absent_legacy(room, LEGACY_LOCK)
+    except statepaths.StatePathError as exc:
+        raise Refused(f"mind lock: {exc}") from None
     path = room / LOCK
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a") as handle:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    with os.fdopen(fd, "a") as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         try:
             yield

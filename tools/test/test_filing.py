@@ -4,6 +4,7 @@
 No session body, registry content, record or mind is read. Fixtures live in
 the project's var/tmp and are removed by TemporaryDirectory, not a sweeper.
 """
+import ast
 import re
 import shutil
 import subprocess
@@ -36,6 +37,12 @@ def filing_contracts():
     return law, filing, law
 
 
+def assigned(relative, name, expression):
+    """Compare executable assignments, not a matching comment or docstring."""
+    tree = ast.parse(text(relative))
+    matches = [node.value for node in tree.body if isinstance(node, ast.Assign)
+               and any(isinstance(target, ast.Name) and target.id == name for target in node.targets)]
+    return len(matches) == 1 and ast.dump(matches[0]) == ast.dump(ast.parse(expression, mode="eval").body)
 
 
 @contextmanager
@@ -225,13 +232,15 @@ class FilingTest(unittest.TestCase):
                 with self.subTest(untracked_path=path):
                     self.assertNotIn(path, status.stdout)
 
-    def test_existing_operational_state_is_not_rerouted(self):
-        self.assertIn('SESSIONS / "storage" / "gauges" / "ledger.jsonl"',
-                      text("ops/lib/scripts/gauge.py"))
-        self.assertIn('Path("storage") / "mind.lock"',
-                      text("ops/lib/scripts/mind.py"))
-        self.assertIn('SESSIONS / "storage" / "closeout"',
-                      text("ops/lib/scripts/closeout.py"))
+    def test_runtime_defaults_use_logs_and_retain_legacy_cutover_guards(self):
+        self.assertTrue(assigned("ops/lib/scripts/gauge.py", "LEDGER",
+                                 'SESSIONS / "logs" / "gauges" / "ledger.jsonl"'))
+        self.assertTrue(assigned("ops/lib/scripts/mind.py", "LOCK", 'Path("logs") / "mind.lock"'))
+        self.assertTrue(assigned("ops/lib/scripts/mind.py", "LEGACY_LOCK", 'Path("storage") / "mind.lock"'))
+        self.assertTrue(assigned("ops/lib/scripts/closeout.py", "LEGACY_STATE",
+                                 'SESSIONS / "storage" / "closeout"'))
+        for path in ("ops/lib/scripts/gauge.py", "ops/lib/scripts/mind.py"):
+            self.assertIn("require_absent_legacy", text(path))
 
     def test_current_instructions_and_map_name_scratch(self):
         canonical_map = text("docs/ops/README.md")

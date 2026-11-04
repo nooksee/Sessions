@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 c781225b815e8e2e7d16e7d818cf1aad9c36eaf473e447e897f1653826f3df1f; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 b8323289c20b363c7690952a515b1f26965cd8c806ed1bb1a0f92e497e935648; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
 Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). PoT 1.1 defines the filing boundaries; CONSTRAINTS C01 gives the filing mechanics. `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
@@ -27,7 +27,7 @@ force until their separately assigned cutover; this adoption moves no state.
  [words sha256=d6174139de04261e6caf388fa3aa3e61ff86814b6a6bb4c9898757acbfa3f227]
             [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
             [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=52be09371af6f365a61af20815d93b5450fdedb2f308870ddf5f74b3047db559]
+ [words sha256=19a95362122aa1c3c7d4b6ae84dde626db47d730fbe9586cbaf1fa78bf2c1fe8]
             [words sha256=82d948504cac87dae1b1a071ec6ddd1677cef65547013d936625a379232df39c]
             [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
  [words sha256=3c7bc975a4ca71b4f167de9427f9b2d2075be04ad484f23d765f2b47a9cfe976]
@@ -55,7 +55,8 @@ force until their separately assigned cutover; this adoption moves no state.
 | Piece | Path | Kind | Status |
 | --- | --- | --- | --- |
 | gauge | `ops/lib/scripts/gauge.py`, `docs/ops/specs/scripts/gauge.md`, `tools/test/test_gauge.py` | tool | built 10-30; Claudio reviews |
-| gauge ledger | `storage/gauges/ledger.jsonl` | existing state held for migration | rebuildable from body counters; see bounded migration inventory below |
+| gauge ledger | `logs/gauges/ledger.jsonl` by default | private telemetry | legacy `storage/gauges` blocks default append until reviewed history/lock cutover; `--no-ledger` remains read-only |
+| mind write lock | `<room>/logs/mind.lock` | shared room-wide exclusion | legacy `<room>/storage/mind.lock` blocks new writes until reviewed inode-preserving cutover; never a per-task lock |
 | closeout | `ops/lib/scripts/closeout.py`, `docs/ops/specs/scripts/closeout.md`, `tools/test/test_closeout.py` | tool | implemented; synthetic coverage is not native delivery or installation proof |
 | closeout state | `logs/closeout/` by default | private runtime state and diagnostics; unwired | legacy `storage/closeout` blocks default card delivery until reviewed migration; explicit state selection retains its interface |
 | mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | ported from the Candidates package, simplified to solicited input |
@@ -96,19 +97,21 @@ force until their separately assigned cutover; this adoption moves no state.
 
 ## Existing state consumers held for bounded migration
 
-This inventory distinguishes unchanged existing consumers from the closeout
-source default now under `logs/`. No existing state is moved by a source
-change. Each actual migration preserves the old inputs and recovery path.
+The source defaults below now use `logs/`; actual prior state remains held
+until its assigned cutover. No source change itself moves an existing object.
+The shared no-write legacy guard is `ops/lib/statepaths.py`, used lazily by
+default gauge append and mind write locking. Closeout retains its own guard.
+Each actual migration preserves the old inputs, exclusion and recovery path.
 
 | Consumer / owner | Existing path | Hold or ending condition | Bounded migration action |
 | --- | --- | --- | --- |
-| `gauge.py`; designated gauge tool writer | `storage/gauges/ledger.jsonl` and sibling lock | Preserve existing readings until a replacement path and required history are verified; future runs append through the tool | In one assigned tool change, identify readers, copy and hash the ledger, update the tool/spec/tests to the accepted telemetry home, test append/locking, then verify both old and new state before releasing the old path |
-| `mind.py`; designated mind tool writer | `storage/mind.lock` | OS lock is held only during a mind operation; lock file may remain after release | In one assigned migration, preserve one shared exclusion object for every room writer; a per-task scratch lock is not equivalent. Select and review a shared private destination separately, test cross-writer exclusion, then preserve the old path until the new shared lock is verified. No path or tool change is authorized by this inventory. |
+| `gauge.py`; assigned tool writer and actual cutover owner | Legacy `storage/gauges/`; source default `logs/gauges/ledger.jsonl` with sibling `ledger.lock` | Preserve history and exclusion. Any legacy node or unsafe ancestor blocks default append; explicit custom output remains supported and grants no migration authority | Quiesce all ledger writers, inventory readers and both paths, verify custody and source stability, preserve the ledger prefix and shared lock inode during the reviewed cutover, verify ownership/privacy/identity, then prove one synthetic or separately authorized append preserves the prefix. No automatic copying or history reset. |
+| `mind.py`; assigned tool writer and actual cutover owner | Legacy `<room>/storage/mind.lock`; source default `<room>/logs/mind.lock` | Any legacy node or unsafe ancestor blocks a new write. The lock remains one shared object for every writer in the room | Close all old/new writers, preserve evidence, check OS lock ownership and retain the same inode if a legacy lock exists. Verify every active caller selects the new path before allowing writes. Do not copy an old lock into a second object, unlink a held inode, create a task-local replacement or mistake an absent pathname for proof of writer closure. This changes no mind content. |
 | `closeout.py`; designated closeout tool writer | Legacy `storage/closeout/`; source default `logs/closeout/` (`state.json`, `log.jsonl`, lock and temporary state) | Tool remains unwired. Any legacy node, including a broken link, makes default delivery unknown; legacy bytes are neither copied nor replaced. The new location may record that diagnostic, never a delivered band. | Before wiring, inventory both actual paths and readers. Preserve/hash legacy state if present; stage and verify the reviewed private copy and deduplication state, then release the old canonical path under the named migration/custody operation. Explicit `--state-dir` remains supported. No automatic move, source activation or persistent state in `var/tmp/`. |
 
-No persistent state moves to `var/tmp/`, and no consumer is switched as a
-side effect of this source-only change. This inventory does not authorize a
-cutover or imply that an unwired consumer is active.
+No persistent state moves to `var/tmp/`, and no consumer state is migrated as
+a side effect of this source-only change. The new defaults and legacy guards
+are source behavior; they do not prove that the assigned live cutover ran.
 
 ## Case routing mechanics
 

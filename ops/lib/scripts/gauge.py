@@ -33,7 +33,7 @@ from pathlib import Path
 
 SESSIONS = Path(__file__).resolve().parents[3]
 REGISTRY = SESSIONS / "ops" / "etc" / "resident-identities.json"
-LEDGER = SESSIONS / "storage" / "gauges" / "ledger.jsonl"
+LEDGER = SESSIONS / "logs" / "gauges" / "ledger.jsonl"
 SPEC = SESSIONS / "docs" / "ops" / "specs" / "scripts" / "gauge.md"
 RESOURCE_STATE = SESSIONS / "logs" / "resource-state.json"
 CLAUDE_ROOT = Path.home() / ".claude" / "projects"
@@ -372,9 +372,43 @@ def measure(identity: dict, now: dt.datetime, table: dict, statusline, claude_ro
     return out
 
 
+def require_default_ledger_ready() -> None:
+    """Load the no-write legacy guard only when the default will be appended.
+
+    Measurement-only consumers also import copied gauge scripts without the
+    shared library. An explicit --ledger retains its caller-selected interface.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("gauge_statepaths", Path(__file__).resolve().parents[1] / "statepaths.py")
+    if spec is None or spec.loader is None:
+        raise OSError("state-path guard unavailable; default ledger append refused")
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    try:
+        helper.require_absent_legacy(SESSIONS, Path("storage/gauges"))
+    except helper.StatePathError as exc:
+        raise OSError(str(exc)) from None
+
+
+def mkdir_private(directory: Path) -> None:
+    """Create missing ancestors privately; never normalize existing modes."""
+    try:
+        directory.mkdir(mode=0o700)
+    except FileNotFoundError:
+        mkdir_private(directory.parent)
+        mkdir_private(directory)
+    except FileExistsError:
+        if not directory.is_dir():
+            raise
+
+
 def append_ledger(ledger: Path, rows: list[dict]) -> None:
-    ledger.parent.mkdir(parents=True, exist_ok=True)
-    with open(ledger.with_suffix(".lock"), "a") as lock:
+    if Path(os.path.abspath(ledger)) == LEDGER:
+        require_default_ledger_ready()
+    mkdir_private(ledger.parent)
+    lock_fd = os.open(ledger.with_suffix(".lock"), os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    with os.fdopen(lock_fd, "a") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         data = "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows).encode("utf-8")
         fd = os.open(ledger, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
@@ -438,7 +472,13 @@ def main(argv=None) -> int:
     else:
         sys.stdout.write(table_text(rows, now))
     if not args.no_ledger:
-        append_ledger(args.ledger, rows)
+        ledger = args.ledger
+        try:
+            append_ledger(ledger, rows)
+        except OSError as exc:
+            print(json.dumps({"tool": "gauge", "error": "ledger_append_failed", "ledger": str(ledger),
+                              "reason": str(exc)}, sort_keys=True), file=sys.stderr)
+            return 2
     return 0
 
 
