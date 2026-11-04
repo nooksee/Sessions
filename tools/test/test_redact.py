@@ -603,6 +603,83 @@ class RedactTests(unittest.TestCase):
         self.assertIn(f"source sha256 {sha256(text)}", head)
         self.assertIn("words 1; sessions 1 whole, 0 truncated; host paths 1; decisions 0 -->", head)
 
+    # -- rules 8: the Independent Reviewer's section 172 C6, and the history mode (block 12) -------
+    def redacted(self, text: str, name: str, *args) -> tuple[str, subprocess.CompletedProcess]:
+        rec = self.record(text, name + ".md")
+        out = self.dir / (name + ".out.md")
+        r = run("render", str(rec), "--out", str(out), *args)
+        return (self.body(out.read_bytes().decode("utf-8")) if out.exists() else ""), r
+
+    def W(self, words: str) -> str:
+        return f"[words sha256={sha256(words)}]"
+
+    def test_c6_a_go_quoted_as_a_blockquote_under_an_operator_heading_is_words(self):
+        go = "synthetic go text, do the named act now"
+        text = ("# Receipt: a synthetic stage\n\nText of the receipt.\n\n## The operator's go (2026-11-01, about 15:27)\n\n"
+                f"> Go: {go}\n> and a second line of it\n\n## What was done\n\n> A plain quote under a plain heading stays.\n")
+        body, r = self.redacted(text, "c6-stage-b")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(body, ("# Receipt: a synthetic stage\n\nText of the receipt.\n\n## The operator's go (2026-11-01, about 15:27)\n\n"
+                                f"> Go: {self.W(go)}\n> {self.W('and a second line of it')}\n\n## What was done\n\n"
+                                "> A plain quote under a plain heading stays.\n"))
+
+    def test_c6_labelled_blockquotes_and_the_heading_forms(self):
+        go = "synthetic words of a go"
+        cases = [
+            (f"Intro.\n\n> **Go:** {go}\n", f"Intro.\n\n> **Go:** {self.W(go)}\n"),
+            (f'Intro.\n\n> Go: "{go}"\n', f'Intro.\n\n> Go: "{self.W(go)}"\n'),
+            (f"The operator's go\n==========\n\n> {go}\n", f"[words sha256=3a1850fb80169495968cd8e643c412c927254efd1a4040fab94cca68890a0e4b]"),
+            (f"<h2>The operator's go</h2>\n\n> {go}\n", f"[words sha256=503bf6aa483f0aa8ab42e3f98aa327bed7d8f4a0c247883e87eaf284ea5b35ef]"),
+            (f"## The operator's go\n\n> {go}\nlazy continued line\n", f"[words sha256=8b8eba41dbab8d4909b2bb6398c89a5bb042604953563f17402301ec98627cfa]"),
+            (f"## The operator's go\n\n> part one\n\n> part two\n", f"[words sha256=973d03144f1ece35fab62e4f0d4f7dadb0bd0af3ef29d816e2556ec40475e5ce]"),
+            (f"## The operator's go\n\n- > {go}\n", f"[words sha256=17f818c313504760a8a2447932739cbecaae6ac17b843445d6df9a1118a44ec3]"),
+            (f"**The operator's words:**\n\n> {go}\n", f"[words sha256=b87d2f313ba0e731e403c54ffab7dcdc3e13e61e26252b028376ae74fa61fda4]"),
+            (f"# Record\r\r## The operator's go\r\r> {go}\r", f"[words sha256=c661c748fcce4bf014c3d2f169d301924081849cf0d085f1061a1ea3879f3537]"),
+        ]
+        for i, (text, want) in enumerate(cases):
+            with self.subTest(case=i):
+                body, r = self.redacted(text, f"c6-{i}")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(body, want)
+
+    def test_c6_a_blockquote_that_carries_a_path_or_identifier_hides_them_with_the_words(self):
+        text = f"## The operator's go\n\n> put it under /home/example/x and {UUID}\nAfter /home/example/y.\n\nDone.\n"
+        body, r = self.redacted(text, "c6-inner")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(body, f"## The operator's go\n\n> {self.W('put it under /home/example/x and ' + UUID)}\n"
+                               f"{self.W('After /home/example/y.')}\n\nDone.\n")
+
+    def test_history_mode_digests_every_quote_and_redacts_every_open_span(self):
+        text = ('The file says "hello world" twice.\nRun `grep "pattern" file` too.\n```\nx = "in a fence"\n```\n'
+                'He wrote "unclosed words\nKevin: "attributed words".\nThe spare was 7f3a9c1e.\n'
+                f"See https://claude.ai/code/artifact/{UUID} here.\n")
+        rec = self.record(text, "history.md")
+        r = run("check", str(rec), "--history")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("redact check --history:", r.stdout)
+        self.assertIn("unclassified 0", r.stdout)
+        out = self.dir / "history.out.md"
+        r = run("render", str(rec), "--out", str(out), "--history")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        public = out.read_bytes().decode("utf-8")
+        head = public.split("\n", 1)[0]
+        self.assertIn("; mode history; ", head)
+        self.assertIn("decisions 0 -->", head)
+        self.assertEqual(self.body(public), (f'The file says "{self.W("hello world")}" twice.\n'
+                                             f'Run `grep "{self.W("pattern")}" file` too.\n```\nx = "{self.W("in a fence")}"\n```\n'
+                                             f'{self.W(chr(72) + "e wrote " + chr(34) + "unclosed words")}\n'
+                                             f'Kevin: "{self.W("attributed words")}".\nThe spare was [session prefix 1].\n'
+                                             f"See https://claude.ai/code/artifact/[session 2] here.\n"))
+
+    def test_history_mode_takes_no_decision_and_record_mode_names_its_mode(self):
+        rec = self.record("plain\n", "plain.md")
+        r = run("render", str(rec), "--out", str(self.dir / "h.md"), "--history", "--decide", "0123456789ab=keep")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("history mode asks no decision", r.stderr)
+        self.assertFalse((self.dir / "h.md").exists())
+        public, r = self.rendered("plain\n")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("; rules 8; mode record; words 0;", public.split("\n", 1)[0])
 
 if __name__ == "__main__":
     unittest.main()
