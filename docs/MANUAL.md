@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 80181e8551f192545c23b7224614ff4b6c1a32c03333262bce2b7f52792ab659; rules 8; mode history; words 57; sessions 0 whole, 0 truncated; host paths 6; decisions 0 -->
 # Sessions Operations Manual (Command Console)
 
 Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request for a help system and a manual, both taken from the STELA framework, by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
@@ -31,7 +30,7 @@ This room owns:
 - **rotation:** moving a resident into a fresh body the same way every time;
 - **custody and receipts:** every donor preserved whole, every action receipted.
 
-The resident bodies themselves (`[host path 1]`, `[host path 2]`, `[host path 3]`) are evidence, not canon. The repository is canon. When they disagree, the repository wins.
+The resident bodies themselves (`~/.claude/projects/`, `~/.codex/sessions/`, `~/.copilot/session-state/`) are evidence, not canon. The repository is canon. When they disagree, the repository wins.
 
 This manual is the operator console: what runs, in what order, who decides,
 and where things live. Historical method prose is preserved as such;
@@ -71,7 +70,7 @@ Rules that hold for every seat:
 - **One writer per surface.** Each file, live session and rollout has exactly one named writer at a time.
 - **The team room.** `storage/handoff/{shannon,claudine,joe}.md`. Each member writes only their own file. Results are promoted to `archives/receipts/` or the office handoff; the room itself is working notes.
 - **A file proves no delivery.** Kevin relays between chats. A routing decision or a note in the team room is not delivery.
-- **Attribution.** Relayed text is attributed to its real author; "[words sha256=b91136286b50c5be49bd3fdbd00648a98aded623894ebd9debdaa91ad844ca5c]" only for the author's own words.
+- **Attribution.** Relayed text is attributed to its real author; "verbatim" only for the author's own words.
 - **House style.** No contractions. Deviations reported as counts.
 
 The authority for who each resident is lives only in the registry. A resident checks its own body with `ops/lib/scripts/myself.py` and the identity lock with `ops/lib/scripts/identity.py`.
@@ -81,25 +80,25 @@ The authority for who each resident is lives only in the registry. A resident ch
 ## 1A. The Four-Tool Loop
 
 ```
- [words sha256=a936effdf84b60a4e277697cd5b5dae19671bf2a21ef6130b151667ce37cddab]
-      [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
-      [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=10f372a597d354c27f78215562c4b7f5896c29ed506bdedefd43aea136fc5e1c]
-      [words sha256=a99ced15ddd0a7c04a55a00a375bdb18203377a837322446b0c8f73d8e394552]
-      [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=49230c97ceb381d4fd5425f78d7867bd5ec30661b00dc4ddb681c37dca37298d]
-      [words sha256=daa50bb51c96727e56786973a4c238406561f857f0e2406ff87b1bfc0f4925e8]
-      [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=903ed26ca272fb6251242b505d1426164a0533da4417a841dd2d7272ad06f3cf]
-      [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
-      [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=05344c2fa23c2d8568497e3a2b36dabb8d93c40112fa9613b371f43d411916f6]
-      [words sha256=444379a4b85256d8c60cdc7fd3b4aedbe783223baa49defe19798ce3389adf99]
-      [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=e9f4850e40b4b38c01c98d80b1871937dcb5b1d7f636962200beae4231772920]
-      [words sha256=782496b3583e429bb950bddc6e2ae723276151c5465f2b96c12856500b9f04af]
-      [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=027380aeaeaa2904936f13df1c10b03b53790b440ee1f28e526055ec557844a2]
+ registry (ops/etc/resident-identities.json): who each resident is
+      |
+      v
+ [gauge]     reads each body's own API token count  -> logs/gauges/ledger.jsonl
+      |      when 50,000 tokens remain before the 70 percent line
+      v
+ [closeout]  the card appears in the resident's own context; the resident parks work,
+      |      writes its closing handoff, and proposes up to 3 mind entries in chat
+      v
+ Kevin says yes, in conversation
+      |
+      v
+ [mind]      writes a new leaf archives/MIND-<key>-<date>-<hash8>.md
+      |      and moves the resident's line in the room's MIND.md
+      v
+ [rotate]    capsule + donor's own summary and window -> static gates -> custody (two tiers)
+      |      -> Kevin's go -> verified swap -> registry and binding -> labels -> receipt
+      v
+ [gauge]     the successor's first reading confirms the wake; the loop begins again
 ```
 
 | Tool | Script | Spec | Tests | Implementation and installation |
@@ -115,33 +114,33 @@ Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.m
 
 ## 2. Top Commands
 
-Run from the room root, `[host path 4]`. Python runs isolated (`-I -B`) so that no bytecode is written beside the tools.
+Run from the room root, `/media/nos4r2/user_vol/Sessions`. Python runs isolated (`-I -B`) so that no bytecode is written beside the tools.
 
 ### Gauge (read the meters)
 ~~~bash
-[words sha256=aa48bb626c10d8396738aae7ab124dce452cf537d29e9d4c51ed9ee86dc9ffb7]
-[words sha256=a64b9d2530d2827e4c65d0e428378cb51933d36759f6ad2322d188d12cfc80ed]
+# Every registered resident, as a table; appends one ledger line per resident
+python3 -I -B ops/lib/scripts/gauge.py
 
-[words sha256=e178fb9090f18161cffcaf120ec5ac42e51005715019ec8895a90cf136cf917d]
-[words sha256=b67da94d7c85dc7b6ffc1fd591b228096306c7bf086ad4d67e506a599a494bb4]
+# Print only; append nothing to the ledger
+python3 -I -B ops/lib/scripts/gauge.py --no-ledger
 
-[words sha256=96250f55cf1721dd83d05da986801c3583ca229cb1938508e66759bf82a7367c]
-[words sha256=32ee3cbcf3cb2ceb005c759d04184652a304a2c4302218c54e4ba7580aca97e0]
+# One resident, machine-readable
+python3 -I -B ops/lib/scripts/gauge.py --key session-doctor --json --no-ledger
 ~~~
 
 ### Mind (read and check; writing needs Kevin's yes first, see section 5)
 ~~~bash
-[words sha256=ca4153aadd8cfc0e8296df12e489b49adeca84271ac6726b4c1d57066fee9ea6]
-[words sha256=1140e60db2f2c6b54508d40b3354d09d6f9e60bb4930c6844d149d4f8e1d3cdb]
-[words sha256=b612063865b5039adcab411556115d9720e31a6a5aa551bd2a210f7b6526ecd9]
-[words sha256=99c52966eda62c5392f4df96616e79dfe2b0f6a0710cb34ff1c51688d72665b8]
-[words sha256=3bcd383885bbc1dc735f4cdc1a353903c3ef90f5a90678d327a5440b049c81c1]
+python3 -I -B ops/lib/scripts/mind.py check
+python3 -I -B ops/lib/scripts/mind.py show <key>
+python3 -I -B ops/lib/scripts/mind.py show <key> --ref
+python3 -I -B ops/lib/scripts/mind.py history <key>
+python3 -I -B ops/lib/scripts/mind.py preview <key> --changes <file.json>
 ~~~
 
 ### Tests (synthetic data only; no real body, room or mind is touched)
 ~~~bash
-[words sha256=606e059b6d4b84627b5e7c4e5946c2143e786b4708acc3723358a2608aef8789]
-[words sha256=d4a694841bd35651b21eb7090e89513e8c6162a7352b0abb0a9abb804ed55565]
+python3 -I -B tools/test/test_gauge.py
+python3 -I -B tools/test/test_mind.py
 ~~~
 Reviewers also run each suite at the host umasks 0002 and 0022 as well as 0077; a suite that passes only under one umask is not green.
 
@@ -153,25 +152,25 @@ or a native canary (PoT 6.1.2, 6.1.5).
 
 ### Help and template (entry points; registry `docs/ops/registry/binaries.md`)
 ~~~bash
-[words sha256=d0ec33d962901807e06078443832e78d27c3a8f4ea61163dd1c071074cfd45f7]
-[words sha256=563a3d29b280327547859caf12c7da9501857c59828c82af1a8ee29fdc743ec0]
-[words sha256=cc7733fe91d284bfedc1429720402da070226d6d7af10ac9f9332d5ee7c2e488]
-[words sha256=bb55673f6870ccf6d49faaac83393c75cb4d97c09a399e91d1751c7684350d46]
-[words sha256=e9a4cb7fe9a00c2465e5d2de552084194db49fcacaa0f721f47b8f3e75732219]
-[words sha256=93c981c35f56e22518224a2fa2964b2db1f586f2202538f9a92235acea134663]
+# The front door: read-in order, the loop, every tool with its spec's own status
+ops/bin/help
+ops/bin/help read          # the read-in order, checked
+ops/bin/help specs         # every spec with its Status: line
+ops/bin/help doctrine      # DOCTRINE.md section headings with line numbers
+ops/bin/help term <text>   # search: specs first, then this manual, then docs/
 
-[words sha256=795c6f39d79c7f117fe79dc7fb8b334fc57343e5d0dea96e5a88ff9dedb527c5]
-[words sha256=538ba8dad15b6e71d9892d481b91983df8413bcb340192c85416148fb0bcfe3e]
-[words sha256=ad138350324521cc5b55f9b071660c04557a2e72dfd9a7f26f119b125ed3a66b]
-[words sha256=c16607e02ca957527be9b6e3a73c3b126483939db5c9b90630ee5656e91dc2b7]
-[words sha256=8a8b37ebcc283344d5b342d12b0ee4cba2de93dfcfef1d9082134bbe23b948a2]
+# A new tool's skeleton (script, spec, test), all three or none; prints its registry row
+ops/bin/template --dry-run <word>
+ops/bin/template <word>
+ops/bin/template --slot PURPOSE='one line' <word>   # a given slot replaces its placeholder
+ops/bin/template --preserve-spec <word>             # preserve a reviewed regular spec; create only script and test
 
-[words sha256=586c21943eb6e906ba9e6525e60f73bf0908c13f1accbe67079a2bcee7fbeef6]
-[words sha256=4d517bb3b682d043b685a67dd3c76f28389eff8773da08db4425cfe75db9faa3]
-[words sha256=833fcf08d7ce53d1a43c72b4e77d37a4917472bc987c2e74e378130bdd32cc05]
-[words sha256=8cc5b94fc409a5b365a9e7497ae5e748e7104ff05dccc65cdf3419f87c023b83]
-[words sha256=783853d13b652edcc43f9096169b4095dad79e7920dc5c4359106d6ebc2fbf77]
-[words sha256=038c4e81b73052b6dfb686930220b5ca822fe510158e2c91dd9936dea9be056f]
+# A report from its form, every slot required (refusal lists the missing slots and what each holds)
+ops/bin/template receipt                            # with no slots: refuses, listing the 17 slots a receipt needs
+ops/bin/template receipt --slots-file my.slots --out archives/receipts/<resident>-rotation-<n>-<date>.md
+ops/bin/template packet --slots-file packet.slots   # TO FROM RELAYED_BY OWNER SCOPE AUTHORITY SOURCES RULES STOP_CONDITION POST_TO
+ops/bin/template closeout --slot PERCENT=65.2 --slot WINDOW=1,000,000 --slot READING_TIME='16:40 EDT' --slot "ROTATION_WRITER=Shannon's desk"
+ops/bin/template source-change                       # lists the required source/configuration receipt fields
 ~~~
 The forms live in `ops/src/` as `.tpl` files (Kevin, 2026-10-30: the agent kept changing the form, or at times forgot it). A slots file holds `KEY=VALUE` lines. Report mode refuses a missing, unknown or empty slot, a `[PLACEHOLDER`, any `{{...}}` left in the output, and an existing `--out` file. Report forms are not tool names. The rotation `receipt` remains distinct from `source-change`, which records bounded source/configuration work, exact heads, validation, review, integration and rollback.
 
@@ -230,7 +229,7 @@ The meter already exists: after every working turn, the provider writes the exac
 ### Cautions
 - **Bytes are not fullness.** A 78 MB body read 32 percent on 2026-10-30. Weigh tokens, never files.
 - **An estimate is not a measurement.** A wake estimate made before a rotation is an estimate; the successor's first reading is the measurement.
-- **The ledger is telemetry, not authority.** The source default is `logs/gauges/ledger.jsonl` (new files 0600, ignored by Git). Existing history is preserved during the assigned cutover, not silently emptied. Legacy `storage/gauges` blocks default append until that cutover; `--no-ledger` still prints a reading without writing. Explicit `--ledger` retains its selected-output interface, not migration authority. See the gauge specification and the map's bounded migration inventory.
+- **The ledger is telemetry, not authority.** The source default is `logs/gauges/ledger.jsonl` (new files 0600, ignored by Git). The history moved here in place on 2026-11-04 with its inodes preserved (`archives/receipts/state-cutover-20261104.md`). A legacy `storage/gauges` would block default append; `--no-ledger` still prints a reading without writing. Explicit `--ledger` retains its selected-output interface, not migration authority. See the gauge specification and the map's bounded migration inventory.
 
 ---
 
@@ -279,7 +278,7 @@ here. A first mind write and notebook integration remain separate operations.
 2. The resident proposes them in chat: layer, the text in its own voice, the event, the fix where one applies, where it does not apply, and a source that resolves.
 3. The writer runs `preview` so that Kevin reads exactly what would change: each addition in full, each amendment before and after, each retirement with the text it removes. Nothing is written.
 4. **Kevin says yes in the conversation.** Without his yes nothing is written.
-5. The writer runs `write <key> --changes <file> --yes "[words sha256=e25aaeb553f85959d39985e592b023bd5d9c1c7d5e0024d32d1df83d0ff9fa02]" --by <writer key>`, passing his words exactly as he said them. The tool refuses without them.
+5. The writer runs `write <key> --changes <file> --yes "<Kevin's words>" --by <writer key>`, passing his words exactly as he said them. The tool refuses without them.
 6. The tool writes a new immutable leaf and moves the resident's line in the room's `MIND.md`. It prints the change and the leaf's full SHA-256.
 
 **What never happens.**
@@ -314,7 +313,7 @@ Spec: `docs/ops/specs/scripts/rotate.md`. Status: spec only; `rotate.py` is not 
 - **Capsule-only:** only when a window build fails to load, on Kevin's go.
 - **A, reseed:** a fresh session reads the handoff; only on Kevin's explicit choice, recorded as Tier A and never called a rotation.
 
-**The capsule, appended as text (never a path), in four parts:** registry header; the mind leaf, verbatim and hash-verified; the transition note; the first-turn line ("[words sha256=f8eaf1daae2772b01b392518a4297397dfbd9e86aff27530026edd08f7d12f1d]").
+**The capsule, appended as text (never a path), in four parts:** registry header; the mind leaf, verbatim and hash-verified; the transition note; the first-turn line ("the room's status in a few lines, then speak as yourself").
 
 **Phases (each ends at a stop point; the writer reports and does not run ahead):**
 
@@ -343,7 +342,7 @@ Spec: `docs/ops/specs/scripts/rotate.md`. Status: spec only; `rotate.py` is not 
 Every donor is preserved whole. A rotation, a relabel or a removal never proceeds until custody is verified.
 
 **Two tiers.**
-- **Tier 1, canonical copy:** `[host path 5]>/`, on the always-present internal drive.
+- **Tier 1, canonical copy:** `/media/nos4r2/user_vol/Backup/Codex-Session-Preservation/<batch>/`, on the always-present internal drive.
 - **Tier 2, redundant cold copy:** the same batch on a mounted hot-swap drive (`hard_vol1` or `hard_vol2`, interchangeable peers per `DOCTRINE.md` section 8).
 
 **The batch.** One folder per operation, named for what and when (for example `central-donors-20261026/`, `claudio-spare-relabel-20261030/`), holding the files and a `SHA256SUMS` file. Verification is a fresh hash of every file in both tiers against `SHA256SUMS`, with tier 2 read directly from the drive, never assumed from the copy step.
@@ -380,10 +379,10 @@ Back up before every label edit. At cutover the plain name moves to the new body
 Kevin's whole part in a rotation, in four words. Everything else is the writer's job.
 
 ```
-[words sha256=36fa9167b66a63f3183e116aece4a8b927d7e03e4b5d6e79a68aacb181161309]
-[words sha256=a6d117072ed749e0cd6e5968a8a1a3898e20a980e6c8961b3c0c2303a260ee95]
-[words sha256=6c298f6f37f42ee34f5fdf49906fed9928cdcb7505cb2dbc3bbe41d58b5f8e63]
-[words sha256=c6eeecfd6adf113bff3aabbf3e31b4ca80bb1e3e109b10ecf82908e9948322c6]
+1. DECIDE     Rotate now, at this tier (B unless you say otherwise).
+2. CONTAINER  Open a fresh chat in the resident's room. Say nothing in it.
+3. GO         When the writer names the container, size, custody hash and rollback, say go.
+4. HELLO      Open the resident by its plain name and say hello. If it answers as itself, say "this is him" or "this is her"; if not, say no, and the writer rolls back.
 ```
 
 Notes:
@@ -400,7 +399,7 @@ Filing boundaries: PoT 1.1; filing mechanics: CONSTRAINTS C01. The map
 (`docs/ops/README.md`) locates the lanes and current holds; it is not a second
 source of law.
 
-1. Use an existing base lane; other unmapped folders are legacy and are not extended absent assignment (CONSTRAINTS C01). The scratch lane is `var/tmp/`; from the project root, `mktemp -d "[words sha256=11e8d534c75d119b8ea5e9ec8c7e603434a790eb5c479f02b54f5cf6e300b2c7]"` allocates a unique task directory. The active case records that path and its owner/closeout condition.
+1. Use an existing base lane; other unmapped folders are legacy and are not extended absent assignment (CONSTRAINTS C01). The scratch lane is `var/tmp/`; from the project root, `mktemp -d "$PWD/var/tmp/<owner>-<operation>.XXXXXX"` allocates a unique task directory. The active case records that path and its owner/closeout condition.
 2. One word per script, in `ops/lib/scripts/<word>.py`; a spec with the same name in `docs/ops/specs/scripts/<word>.md`, in STELA's sections (First Principles Rationale, Mechanics and Sequencing, Anecdotal Anchor, Integrity Filter Warnings); tests beside it in `tools/test/test_<word>.py`, with a test spec in `docs/ops/specs/tools/test/<word>.md`. `ops/bin/template <word>` writes the first three as skeletons.
 3. Route incoming payloads to `storage/intake/` and working cases to `storage/active/` (PoT 1.1.4; CONSTRAINTS C01). Keep the storage root clear of new loose files. Operational source and documentation use `ops/`, `tools/` and `docs/` (PoT 1.1.1-1.1.3). Existing state consumers remain only under the bounded holds in the map; no permanent storage-state exception is implied. Clones, extraction trees and intermediates use owned `var/tmp/` scratch (PoT 1.1.13; CONSTRAINTS C01). Promote required results before scratch closeout (PoT 1.2.9); the retention pass classifies existing material separately.
 4. A root file is a pointer, not a document.
@@ -424,14 +423,14 @@ Also:
 | `docs/ops/specs/` | specs: `scripts/`, `binaries/`, `runbook/`, `tools/test/` |
 | `docs/ops/registry/` | registries |
 | `tools/test/` | tests |
-| `logs/gauges/ledger.jsonl` | gauge default telemetry; legacy history held until reviewed cutover |
-| `<room>/logs/mind.lock` | shared mind-write lock; legacy inode retained until reviewed cutover; no mind content change |
+| `logs/gauges/ledger.jsonl` | gauge default telemetry; the history moved here on 2026-11-04 (`archives/receipts/state-cutover-20261104.md`) |
+| `<room>/logs/mind.lock` | shared mind-write lock, created by the first authorized write; no legacy lock existed at the cutover of 2026-11-04; no mind content change |
 | `storage/handoff/` | team room (private working notes; ignored) |
 | `storage/intake/`, `storage/active/` | incoming and named case payloads; only lane `.gitkeep` files admitted; no operational code trees |
 | `var/tmp/<owner>-<operation>.<unique>/` | task scratch; allocate with `mktemp -d`, contents ignored |
 | `MIND.md`, `archives/MIND-*` | minds (out of Git) |
 | `archives/receipts/` | durable receipts; only explicitly admitted redacted copies are tracked |
-| `Backup/Codex-Session-Preservation/<batch>/` (under `[host path 6]`) | tier-1 custody |
+| `Backup/Codex-Session-Preservation/<batch>/` (under `/media/nos4r2/user_vol`) | tier-1 custody |
 | `storage/candidates/`, `storage/lab/` | existing cases awaiting classification; new ephemeral work uses `var/tmp/` |
 
 ---

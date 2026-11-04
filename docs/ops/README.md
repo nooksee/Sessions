@@ -1,4 +1,3 @@
-<!-- redact: public copy; source sha256 a39b7681c0f438e700c5c46b489edcb85ba1ba157e0300d80aa430a8ae1c0a4b; rules 8; mode history; words 24; sessions 0 whole, 0 truncated; host paths 3; decisions 0 -->
 # Sessions operations: the continuity system, one map
 
 Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). PoT 1.1 defines the filing boundaries; CONSTRAINTS C01 gives the filing mechanics. `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
@@ -18,36 +17,37 @@ with its CONSTRAINTS/CONTEXT read-in contracts and entry-point wiring.
 `storage/active/pot-adoption-20261104/receipt.md` records the actual source
 head, application time, contract hashes, custody and checks. The preserved
 proposal and clause map remain historical preparation evidence, not another
-active policy. Existing operational-state migration holds below remain in
-force until their separately assigned cutover; this adoption moves no state.
+active policy. The gauge and mind-lock migration holds below ended with the state cutover
+of 2026-11-04 16:57 (`archives/receipts/state-cutover-20261104.md`); the closeout hold
+remains; the adoption itself moved no state.
 
 ## The system: four tools, one loop
 
 ```
- [words sha256=d6174139de04261e6caf388fa3aa3e61ff86814b6a6bb4c9898757acbfa3f227]
-            [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
-            [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=19a95362122aa1c3c7d4b6ae84dde626db47d730fbe9586cbaf1fa78bf2c1fe8]
-            [words sha256=82d948504cac87dae1b1a071ec6ddd1677cef65547013d936625a379232df39c]
-            [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=3c7bc975a4ca71b4f167de9427f9b2d2075be04ad484f23d765f2b47a9cfe976]
-            [words sha256=7cc8c27c66bfc149da0aa8c802b1007d4a8870a93a61d8bc4a1ac7c4bbb21237]
-            [words sha256=daef9073a7ce22875840b70f33bb3e2af4585916f697c5363d9a760987ee1684]
-            [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=64323b40d5c620029cabcd43947bf4254d330dc5fe64e3ac4ce031637ef03655]
-            [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
-            [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=8cdd8d8c7578390804c9d639f0da8a56ba97d34b9c5eda9aa85d0532a6aee593]
-         [words sha256=5b0e52261aaf0f76b262c0b8a004e1d74090f607ffb023f31187203e7bf4474d]
-            [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
-            [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=d54ac852d42183f6ce8cfbb46583a132a0f4ef2cd16ce81090df62d596c6023c]
-           [words sha256=89f593150cb849af6ccb1b91a6cb9f25648dfe149e91215b0ef4849177b73791]
-           [words sha256=06b22146f801977093248d4a3a97bca67d44cca3e4d9f0cfbfaf91908d09c266]
-           [words sha256=c07e7bc6fe6369153d60deae715c8a7a8342aeb1cbca94d6a22e929963dd9eec]
-            [words sha256=cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7]
-            [words sha256=4c94485e0c21ae6c41ce1dfe7b6bfaceea5ab68e40a2476f50208e526f506080]
- [words sha256=e9466bb9118b563b4b262af14a51b81b586ffa6a221f1d9eba2207c859a46f44]
+ ops/etc/resident-identities.json      (the registry: who each resident is; the authority)
+            |
+            v
+ [gauge]  reads each body's own API token count  -->  logs/gauges/ledger.jsonl (private telemetry)
+            |   when: the closeout reserve before the rotation line (closeout spec)
+            v
+ [closeout]  hook puts the card in the resident's own context (Codex: Kevin is notified)
+            |   the resident parks work, writes its closing handoff,
+            |   and proposes up to 3 mind entries in chat
+            v
+ Kevin says yes in conversation
+            |
+            v
+ [mind]  writes a new leaf  archives/MIND-<key>-<date>-<hash8>.md   (out of Git; custody-backed)
+         and moves the pointer line in the room's root  MIND.md
+            |
+            v
+ [rotate]  capsule = registry header + mind leaf + transition note + first-turn line,
+           plus the donor's own summary and recent window, word for word
+           -> static gates -> custody (two drives) -> Kevin's go -> verified swap -> registry and binding
+           -> labels (spares say "spare body, do not open") -> receipt in archives/receipts/
+            |
+            v
+ [gauge]  the successor's first reading confirms the wake, and the loop begins again
 ```
 
 ## Where everything lives
@@ -55,8 +55,8 @@ force until their separately assigned cutover; this adoption moves no state.
 | Piece | Path | Kind | Status |
 | --- | --- | --- | --- |
 | gauge | `ops/lib/scripts/gauge.py`, `docs/ops/specs/scripts/gauge.md`, `tools/test/test_gauge.py` | tool | built 10-30; Claudio reviews |
-| gauge ledger | `logs/gauges/ledger.jsonl` by default | private telemetry | legacy `storage/gauges` blocks default append until reviewed history/lock cutover; `--no-ledger` remains read-only |
-| mind write lock | `<room>/logs/mind.lock` | shared room-wide exclusion | legacy `<room>/storage/mind.lock` blocks new writes until reviewed inode-preserving cutover; never a per-task lock |
+| gauge ledger | `logs/gauges/ledger.jsonl` by default | private telemetry | the history moved here in place on 2026-11-04 with its inodes (`archives/receipts/state-cutover-20261104.md`); `storage/gauges` is absent, and a recreated one would block default append; `--no-ledger` remains read-only |
+| mind write lock | `<room>/logs/mind.lock` | shared room-wide exclusion | no legacy lock existed at the cutover of 2026-11-04, so the first authorized write creates this one; a legacy `<room>/storage/mind.lock` would block new writes; never a per-task lock |
 | closeout | `ops/lib/scripts/closeout.py`, `docs/ops/specs/scripts/closeout.md`, `tools/test/test_closeout.py` | tool | implemented; synthetic coverage is not native delivery or installation proof |
 | closeout state | `logs/closeout/` by default | private runtime state and diagnostics; unwired | legacy `storage/closeout` blocks default card delivery until reviewed migration; explicit state selection retains its interface |
 | mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | ported from the Candidates package, simplified to solicited input |
@@ -69,7 +69,7 @@ force until their separately assigned cutover; this adoption moves no state.
 | active case payload | `storage/active/` | working data; only `.gitkeep` admitted | payload ignored; owner, operation and closeout; no operational code trees |
 | mind project record | `archives/mind-manifest-20261101/` | durable, private and ignored | packed 2026-11-01; `MANIFEST.txt` holds every file's source and sha256; integrated by the port (`archives/receipts/mind-manifest-integration-20261101.md`); preservation does not imply Git admission |
 | receipts | `archives/receipts/<what>-<date>.md` | durable; selective Git admission | original/private sources remain kept; only explicitly admitted redacted records enter Git, as `.gitignore` names them |
-| custody | `[host path 1]>/` (tier 1, /dev/sdb1), mirrored on hard_vol2 (tier 2, /dev/sdc1) | durable | hard_vol2 is failing and its replacement stays open (PoT 5.3.3): until a healthy second medium is chosen, each batch's third copy lives on the boot drive under `[host path 2]` (tier 3, /dev/sda2, interim): `Sessions-Custody-Interim-20261104/<batch>/` holds the receipts, evidence and ledger-sources batches of 11-01 and 11-02; `Central-RoR-First-Render-20261104/` and `Sessions-State-Cutover-20261104/` hold the ledger render and the gauge-history preimages of 11-04, each with a sibling under `Backup/` |
+| custody | `/media/nos4r2/user_vol/Backup/Codex-Session-Preservation/<batch>/` (tier 1, /dev/sdb1), mirrored on hard_vol2 (tier 2, /dev/sdc1) | durable | hard_vol2 is failing and its replacement stays open (PoT 5.3.3): until a healthy second medium is chosen, each batch's third copy lives on the boot drive under `/home/nos4r2/.local/state/` (tier 3, /dev/sda2, interim): `Sessions-Custody-Interim-20261104/<batch>/` holds the receipts, evidence and ledger-sources batches of 11-01 and 11-02; `Central-RoR-First-Render-20261104/` and `Sessions-State-Cutover-20261104/` hold the ledger render and the gauge-history preimages of 11-04, each with a sibling under `Backup/` |
 | help | `ops/bin/help`, `docs/ops/specs/binaries/help.md` | binary | adapted from STELA 10-30; read-only wayfinding (`docs/ops/registry/binaries.md`) |
 | template | `ops/bin/template`, `docs/ops/specs/binaries/template.md` | binary | adapted from STELA 10-30; new tool skeleton (`docs/ops/registry/binaries.md`) |
 | manual | `docs/MANUAL.md` | document | written 10-30; operator console for the loop |
@@ -85,7 +85,7 @@ force until their separately assigned cutover; this adoption moves no state.
 ## Ported later (Kevin: no side path now)
 
 - `Scripts/`: ported 2026-11-01 to `ops/lib/scripts/`, one word each with a spec each (`docs/ops/specs/runbook/port.md`, `archives/receipts/port-20261101.md`); its two frozen remains are under `archives/legacy/Scripts/`.
-- The retired folders Archived, Attic, Plans and Intake were frozen unchanged under `archives/legacy/` on 2026-11-01. `Resident-Center/`, `Config/` and the rest of `Scripts/` left the room in block 7 for Control's frozen runtime custody at `[host path 3]` (Control's decision; PoT 3.4).
+- The retired folders Archived, Attic, Plans and Intake were frozen unchanged under `archives/legacy/` on 2026-11-01. `Resident-Center/`, `Config/` and the rest of `Scripts/` left the room in block 7 for Control's frozen runtime custody at `/media/nos4r2/user_vol/Control-Runtime/` (Control's decision; PoT 3.4).
 - `HANDOFF.md`, `INDEX.md` and `START-HERE.md` became pointer-first root files on 2026-11-01; their former contents are at `archives/legacy/HANDOFF.md`, `archives/legacy/INDEX.md` and `docs/START-HERE.md`. `NOW.md` stays the present-state board.
 
 ## Rules for every new file
@@ -97,21 +97,23 @@ force until their separately assigned cutover; this adoption moves no state.
 
 ## Existing state consumers held for bounded migration
 
-The source defaults below now use `logs/`; actual prior state remains held
-until its assigned cutover. No source change itself moves an existing object.
+The source defaults below use `logs/`. The gauge and mind-lock migrations ran
+on 2026-11-04 (`archives/receipts/state-cutover-20261104.md`); the closeout hold stands. No
+source change itself moves an existing object.
 The shared no-write legacy guard is `ops/lib/statepaths.py`, used lazily by
 default gauge append and mind write locking. Closeout retains its own guard.
 Each actual migration preserves the old inputs, exclusion and recovery path.
 
 | Consumer / owner | Existing path | Hold or ending condition | Bounded migration action |
 | --- | --- | --- | --- |
-| `gauge.py`; assigned tool writer and actual cutover owner | Legacy `storage/gauges/`; source default `logs/gauges/ledger.jsonl` with sibling `ledger.lock` | Preserve history and exclusion. Any legacy node or unsafe ancestor blocks default append; explicit custom output remains supported and grants no migration authority | Quiesce all ledger writers, inventory readers and both paths, verify custody and source stability, preserve the ledger prefix and shared lock inode during the reviewed cutover, verify ownership/privacy/identity, then prove one synthetic or separately authorized append preserves the prefix. No automatic copying or history reset. |
-| `mind.py`; assigned tool writer and actual cutover owner | Legacy `<room>/storage/mind.lock`; source default `<room>/logs/mind.lock` | Any legacy node or unsafe ancestor blocks a new write. The lock remains one shared object for every writer in the room | Close all old/new writers, preserve evidence, check OS lock ownership and retain the same inode if a legacy lock exists. Verify every active caller selects the new path before allowing writes. Do not copy an old lock into a second object, unlink a held inode, create a task-local replacement or mistake an absent pathname for proof of writer closure. This changes no mind content. |
+| `gauge.py`; tool writer; cutover performed by the Session Continuity Manager | `logs/gauges/ledger.jsonl` with sibling `ledger.lock`, moved in place from `storage/gauges/` on 2026-11-04 16:57 | Done (`archives/receipts/state-cutover-20261104.md`): history and lock inodes preserved, prefix verified, custody on two drives first. Any legacy node or unsafe ancestor still blocks default append; explicit custom output remains supported and grants no migration authority | Quiesce all ledger writers, inventory readers and both paths, verify custody and source stability, preserve the ledger prefix and shared lock inode during the reviewed cutover, verify ownership/privacy/identity, then prove one synthetic or separately authorized append preserves the prefix. No automatic copying or history reset. |
+| `mind.py`; tool writer | `<room>/logs/mind.lock`, created by the first authorized write; no legacy lock existed at the cutover of 2026-11-04 (`archives/receipts/state-cutover-20261104.md`) | Done, nothing to move. Any legacy node or unsafe ancestor blocks a new write. The lock remains one shared object for every writer in the room | Close all old/new writers, preserve evidence, check OS lock ownership and retain the same inode if a legacy lock exists. Verify every active caller selects the new path before allowing writes. Do not copy an old lock into a second object, unlink a held inode, create a task-local replacement or mistake an absent pathname for proof of writer closure. This changes no mind content. |
 | `closeout.py`; designated closeout tool writer | Legacy `storage/closeout/`; source default `logs/closeout/` (`state.json`, `log.jsonl`, lock and temporary state) | Tool remains unwired. Any legacy node, including a broken link, makes default delivery unknown; legacy bytes are neither copied nor replaced. The new location may record that diagnostic, never a delivered band. | Before wiring, inventory both actual paths and readers. Preserve/hash legacy state if present; stage and verify the reviewed private copy and deduplication state, then release the old canonical path under the named migration/custody operation. Explicit `--state-dir` remains supported. No automatic move, source activation or persistent state in `var/tmp/`. |
 
 No persistent state moves to `var/tmp/`, and no consumer state is migrated as
 a side effect of this source-only change. The new defaults and legacy guards
-are source behavior; they do not prove that the assigned live cutover ran.
+are source behavior; the gauge and mind-lock cutover ran on 2026-11-04
+(`archives/receipts/state-cutover-20261104.md`); the closeout migration has not.
 
 ## Case routing mechanics
 
