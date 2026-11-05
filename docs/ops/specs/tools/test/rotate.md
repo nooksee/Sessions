@@ -34,6 +34,37 @@ and actual successor/media construction. Every static predicate has negative
 fixtures; gate results are real execution results, not constant success slots.
 Tree snapshots check bytes, modes, inodes and mtimes rather than atime.
 
+The suite has 115 tests: the existing 92 plus 23 distinct C1 tests from the
+section 276 gap table. Each new test is paired with one single-clause or
+property omission in the author's retained mutation table, not a whole
+require-call skip. The new test names identify those exact cases:
+
+| Gap | Test method, with the common test_c1_ prefix |
+| --- | --- |
+| Capsule mind from actual show --ref leaf | capsule_mind_is_verbatim_actual_show_ref_leaf |
+| First turn and four-part order | capsule_first_turn_and_four_part_order |
+| Staging inside the synthetic room before creation | staging_is_created_inside_the_synthetic_room |
+| Required, hash-bound and recorded cut reason | cut_reason_is_required_hash_bound_and_recorded |
+| Last of two boundaries | window_uses_the_last_of_two_boundaries |
+| Exactly one summary | two_summaries_are_not_exactly_one |
+| Estimate schema | estimate_schema_is_checked_independently |
+| Estimate donor digest | estimate_binds_the_exact_donor_hash |
+| Estimate cut row | estimate_binds_the_selected_cut |
+| Estimate model window | estimate_window_matches_the_reading |
+| Nonblank estimate method | estimate_method_cannot_be_blank |
+| Metadata prompt exclusion | metadata_user_row_is_not_a_prompt |
+| Sidechain prompt exclusion | sidechain_user_row_is_not_a_prompt |
+| Summary prompt exclusion | summary_user_row_is_not_a_prompt |
+| Nonempty tool-result prompt exclusion | nonempty_tool_result_is_not_a_prompt |
+| Empty prompt exclusion | empty_user_content_is_not_a_prompt |
+| Injected prompt exclusion | injected_user_content_is_not_a_prompt |
+| Cut-start prompt independently checked | cut_start_must_itself_be_a_user_prompt |
+| Exchange prompt independently checked | exchange_row_must_itself_be_a_user_prompt |
+| Cut/exchange ordering | exchange_cannot_precede_the_selected_cut |
+| Plan bound to closing-record digest | build_plan_binds_the_closing_record_hash |
+| Exact identity on every row | every_row_needs_the_exact_session_identity |
+| No build object after a late refusal | late_failure_never_leaks_a_completed_build_object |
+
 Refusal cases include missing/corrupt/duplicate/oversized JSON, bad or
 archived/compacted counters, numeric booleans, changed evidence, unproved
 closing/mind state, bad private modes, absolute/traversing/body paths,

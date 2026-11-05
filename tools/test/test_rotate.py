@@ -5,12 +5,14 @@ Generated with ops/bin/template; implemented by Joe Codex. Run with -I -B
 under umask 0002, 0022 and 0077. Fixture minds contain invented entries only.
 """
 import contextlib
+import copy
 import datetime as dt
 import hashlib
 import importlib.util
 import io
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -905,6 +907,219 @@ class BuildPhases(unittest.TestCase):
     def test_late_new_holder_prevents_build(self):
         with mock.patch.object(ROTATE, "no_fixture_holders", side_effect=(None, ROTATE.Refused("synthetic-destination-held"))):
             self.refused(5, "synthetic-destination-held")
+
+    def test_c1_capsule_mind_is_verbatim_actual_show_ref_leaf(self):
+        mind = ROTATE.sibling("mind")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            rc = mind.main(["--room", str(self.room), "--registry", str(self.room / self.registry),
+                            "show", KEY, "--ref"])
+        self.assertEqual(rc, 0)
+        ref = re.fullmatch(r"leaf=(archives/MIND-[a-z0-9-]+\.md)\|sha256=([0-9a-f]{64})\n", out.getvalue())
+        self.assertIsNotNone(ref)
+        leaf = (self.room / ref.group(1)).read_bytes()
+        self.assertEqual(hashlib.sha256(leaf).hexdigest(), ref.group(2))
+        actual = ROTATE.static_gates
+        observed = []
+        def inspect(raw, rows, args, evidence, capsule, *rest):
+            before, marker, after = capsule.partition("\n\nMind\n")
+            mind_text, transition, tail = after.partition("\nTransition\n")
+            self.assertTrue(before.startswith("Registry\n"))
+            self.assertTrue(marker and transition)
+            self.assertEqual(mind_text.encode("utf-8"), leaf)
+            self.assertTrue(tail)
+            observed.append(ref.group(2))
+            return actual(raw, rows, args, evidence, capsule, *rest)
+        with mock.patch.object(ROTATE, "static_gates", side_effect=inspect):
+            self.assertEqual(self.invoke(5)[0], 0)
+        self.assertEqual(observed, [ref.group(2)])
+
+    def test_c1_capsule_first_turn_and_four_part_order(self):
+        actual = ROTATE.static_gates
+        seen = []
+        def inspect(raw, rows, args, evidence, capsule, *rest):
+            positions = [capsule.index(part) for part in ("Registry\n", "\n\nMind\n", "\nTransition\n", "\nFirst turn\n")]
+            self.assertEqual(positions, sorted(positions))
+            self.assertEqual(capsule.partition("\nFirst turn\n")[2],
+                             "The room's status in a few lines, then speak as yourself.\n")
+            seen.append(True)
+            return actual(raw, rows, args, evidence, capsule, *rest)
+        with mock.patch.object(ROTATE, "static_gates", side_effect=inspect):
+            self.assertEqual(self.invoke(5)[0], 0)
+        self.assertEqual(seen, [True])
+
+    def test_c1_staging_is_created_inside_the_synthetic_room(self):
+        actual = tempfile.TemporaryDirectory
+        seen = []
+        def private_stage(*args, **kwargs):
+            # Refuse the mutant before it can create anything outside the
+            # authorized fixture, not merely after observing its writes.
+            self.assertEqual(kwargs.get("dir"), self.room)
+            stage = actual(*args, **kwargs)
+            self.assertEqual(Path(stage.name).parent, self.room)
+            self.assertTrue(Path(stage.name).name.startswith(".rotate-build."))
+            seen.append(Path(stage.name))
+            return stage
+        before = self.snapshot()
+        with mock.patch.object(ROTATE.tempfile, "TemporaryDirectory", side_effect=private_stage):
+            self.assertEqual(self.invoke(5)[0], 0)
+        self.assertEqual(len(seen), 1)
+        self.assertFalse(seen[0].exists())
+        self.assertEqual(before, self.snapshot())
+
+    def test_c1_cut_reason_is_required_hash_bound_and_recorded(self):
+        reason = dict(self.plan["cut"]["reason"])
+        self.plan["cut"]["reason"] = {**reason, "sha256": "0" * 64}
+        self.save(self.plan_path, self.plan)
+        self.refused(4, "evidence-hash-mismatch")
+        self.plan["cut"].pop("reason")
+        self.save(self.plan_path, self.plan)
+        self.refused(4, "invalid-evidence-reference")
+        self.plan["cut"]["reason"] = reason
+        self.save(self.plan_path, self.plan)
+        rc, result = self.invoke(4)
+        self.assertEqual(rc, 0, result)
+        self.assertEqual(result["window"]["reason_sha256"], self.sha(reason["path"]))
+
+    def test_c1_window_uses_the_last_of_two_boundaries(self):
+        self.rows[0].update(type="system", subtype="compact_boundary", parentUuid=None)
+        self.rows[0].pop("message")
+        self.write_body()
+        self.bind_plan()
+        rc, result = self.invoke(4)
+        self.assertEqual(rc, 0, result)
+        self.assertEqual(result["window"]["boundary"], 1)
+        self.assertEqual(result["window"]["summary"], 2)
+
+    def test_c1_two_summaries_are_not_exactly_one(self):
+        self.rows[3]["isCompactSummary"] = True
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "exact-compaction-summary-required")
+
+    def test_c1_estimate_schema_is_checked_independently(self):
+        self.estimate["schema"] = "rotate-estimate/99"
+        self.save(self.estimate_path, self.estimate)
+        self.plan["cut"]["estimate"] = self.ref(self.estimate_path)
+        self.save(self.plan_path, self.plan)
+        self.refused(4, "wake-estimate-unproved-or-over-budget")
+
+    def test_c1_estimate_binds_the_exact_donor_hash(self):
+        self.estimate["donor_sha256"] = "0" * 64
+        self.save(self.estimate_path, self.estimate)
+        self.plan["cut"]["estimate"] = self.ref(self.estimate_path)
+        self.save(self.plan_path, self.plan)
+        self.refused(4, "wake-estimate-unproved-or-over-budget")
+
+    def test_c1_estimate_binds_the_selected_cut(self):
+        self.estimate["cut_row"] = 4
+        self.save(self.estimate_path, self.estimate)
+        self.plan["cut"]["estimate"] = self.ref(self.estimate_path)
+        self.save(self.plan_path, self.plan)
+        self.refused(4, "wake-estimate-unproved-or-over-budget")
+
+    def test_c1_estimate_window_matches_the_reading(self):
+        self.estimate["window"] -= 1
+        self.save(self.estimate_path, self.estimate)
+        self.plan["cut"]["estimate"] = self.ref(self.estimate_path)
+        self.save(self.plan_path, self.plan)
+        self.refused(4, "wake-estimate-unproved-or-over-budget")
+
+    def test_c1_estimate_method_cannot_be_blank(self):
+        self.estimate["method"] = " \t "
+        self.save(self.estimate_path, self.estimate)
+        self.plan["cut"]["estimate"] = self.ref(self.estimate_path)
+        self.save(self.plan_path, self.plan)
+        self.refused(4, "wake-estimate-unproved-or-over-budget")
+
+    def test_c1_metadata_user_row_is_not_a_prompt(self):
+        self.rows[5]["isMeta"] = True
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "genuine-user-cut-required")
+
+    def test_c1_sidechain_user_row_is_not_a_prompt(self):
+        self.rows[5]["isSidechain"] = True
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "genuine-user-cut-required")
+
+    def test_c1_summary_user_row_is_not_a_prompt(self):
+        self.rows[5]["isCompactSummary"] = True
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "genuine-user-cut-required")
+
+    def test_c1_nonempty_tool_result_is_not_a_prompt(self):
+        self.rows[5]["message"]["content"] = [{"type": "tool_result", "tool_use_id": "fixture-call",
+            "text": "A nonempty invented result must not masquerade as a user prompt."}]
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "genuine-user-cut-required")
+
+    def test_c1_empty_user_content_is_not_a_prompt(self):
+        self.rows[5]["message"]["content"] = " \t "
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "genuine-user-cut-required")
+
+    def test_c1_injected_user_content_is_not_a_prompt(self):
+        self.rows[5]["message"]["content"] = "<system-reminder>Invented injected procedure.</system-reminder>"
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "genuine-user-cut-required")
+
+    def test_c1_cut_start_must_itself_be_a_user_prompt(self):
+        self.plan["cut"].update(user_row=4, exchange_row=5)
+        self.bind_plan()
+        self.refused(4, "genuine-user-cut-required")
+
+    def test_c1_exchange_row_must_itself_be_a_user_prompt(self):
+        extra = copy.deepcopy(self.rows[-1])
+        extra.update(uuid=DESTINATION, parentUuid=self.rows[-1]["uuid"], timestamp="2026-11-05T12:00:01Z")
+        extra["message"].pop("usage")
+        extra["message"]["content"] = "Another invented assistant reply."
+        self.rows.append(extra)
+        self.write_body()
+        self.plan["cut"].update(user_row=5, exchange_row=6)
+        self.bind_plan()
+        self.refused(4, "genuine-user-cut-required")
+
+    def test_c1_exchange_cannot_precede_the_selected_cut(self):
+        self.rows[3].pop("isMeta")
+        self.rows[3]["message"]["content"] = "An earlier invented project question."
+        self.write_body()
+        self.plan["cut"].update(user_row=5, exchange_row=3)
+        self.bind_plan()
+        self.refused(4, "genuine-user-cut-required")
+
+    def test_c1_build_plan_binds_the_closing_record_hash(self):
+        self.plan["closing_sha256"] = "0" * 64
+        self.save(self.plan_path, self.plan)
+        self.refused(3, "build-plan-mismatch")
+
+    def test_c1_every_row_needs_the_exact_session_identity(self):
+        self.rows[0].pop("sessionId")
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "synthetic-body-identity-mismatch")
+
+    def test_c1_late_failure_never_leaks_a_completed_build_object(self):
+        actual = ROTATE.build_preview
+        changed = []
+        def late_change(*args):
+            preview = actual(*args)
+            self.assertTrue(preview["gates"])
+            self.save(self.gauge, {**self.row, "tokens": 710000, "percent": 71.0})
+            changed.append(self.snapshot())
+            return preview
+        with mock.patch.object(ROTATE, "build_preview", side_effect=late_change):
+            rc, result = self.invoke(5)
+        self.assertEqual(rc, 2, result)
+        self.assertEqual(result["reason"], "evidence-changed")
+        self.assertNotIn("build", result)
+        self.assertEqual(len(changed), 1)
+        self.assertEqual(self.snapshot(), changed[0])
 
 
 if __name__ == "__main__":
