@@ -538,6 +538,19 @@ def git_exposed(room: Path, paths: list[Path]) -> list[str]:
             return []
         if inside.stdout.strip() != "true":
             return [f"git rev-parse answered {inside.stdout.strip()!r}, not 'true': the room is not a plain work tree"]
+        markers = [directory / ".git" for directory in (room, *room.parents)
+                   if (directory / ".git").exists() or (directory / ".git").is_symlink()]
+        if not markers:
+            return ["Git reports a work tree, but no .git marker exists in the room or its ancestors"]
+        marker = markers[0]
+        if marker.exists() or marker.is_symlink():
+            top = run_git(room, "rev-parse", "--show-toplevel")
+            if top.returncode != 0:
+                return [f"git rev-parse --show-toplevel failed (exit {top.returncode}: {first_line(top.stderr)})"]
+            top_level = top.stdout.strip()
+            if not top_level or os.path.realpath(top_level) != os.path.realpath(marker.parent):
+                return [f"Git resolved this room to {top_level or 'an empty path'}, but the nearest .git marker "
+                        f"is at {marker.parent}; a broken repository is not proof of being outside Git"]
         problems = []
         for path in paths:
             rel = path.relative_to(room).as_posix()

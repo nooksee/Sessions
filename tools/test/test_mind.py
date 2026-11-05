@@ -13,6 +13,7 @@ import json
 import os
 import re
 import selectors
+import shlex
 import shutil
 import stat
 import subprocess
@@ -445,11 +446,14 @@ class MindTests(unittest.TestCase):
         self.assertIn("gave no answer within 0.3 seconds", problems[0])
 
     def test_f1_a_check_ignore_that_does_not_answer_is_a_refusal(self):
+        subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
         real = subprocess.run
 
         def fake(cmd, **kw):
             if "check-ignore" in cmd:
                 raise subprocess.TimeoutExpired(cmd, kw.get("timeout"))
+            if "--show-toplevel" in cmd:
+                return subprocess.CompletedProcess(cmd, 0, str(self.r.room) + "\n", "")
             return subprocess.CompletedProcess(cmd, 0, "true\n", "")
         with mock.patch.object(mind.subprocess, "run", side_effect=fake):
             problems = mind.git_exposed(self.r.room, [self.r.room / mind.POINTER])
@@ -459,27 +463,158 @@ class MindTests(unittest.TestCase):
     def test_f1_a_broken_repository_is_a_refusal(self):
         subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
         (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/MIND-*\n/storage/\n")
+        real_git = shutil.which("git")
+        self.assertIsNotNone(real_git)
+        bin_dir = self.r.base / "ceiling-bin"
+        bin_dir.mkdir()
+        wrapper = bin_dir / "git"
+        wrapper.write_text(
+            "#!/bin/sh\nGIT_CEILING_DIRECTORIES="
+            + shlex.quote(str(self.r.base))
+            + " exec "
+            + shlex.quote(real_git)
+            + ' "$@"\n'
+        )
+        wrapper.chmod(0o755)
+        env = dict(os.environ, PATH=str(bin_dir))
         head = self.r.room / ".git" / "HEAD"
         head.write_text("not a ref\n")                          # Git now says "not a git repository" here
-        self.refused(self.r.write({"add": [CORE]}), "a broken repository is not proof of being outside Git")
+        self.refused(self.r.write({"add": [CORE]}, env=env), "a broken repository is not proof of being outside Git")
         head.write_text("ref: refs/heads/main\n")
         (self.r.room / ".git" / "config").write_text("[[[ broken\n")
-        self.refused(self.r.write({"add": [CORE]}), "git rev-parse failed (exit 128")
+        self.refused(self.r.write({"add": [CORE]}, env=env), "git rev-parse failed (exit 128")
         self.assertFalse((self.r.room / mind.POINTER).exists())
         self.assertEqual(list(self.r.room.glob("archives/MIND-*")), [])
 
+    def test_f1_a_broken_inner_repository_is_refused_with_valid_parent(self):
+        subprocess.run(["git", "init", "-q", str(self.r.base)], check=True)
+        (self.r.base / ".gitignore").write_text(
+            "/room/MIND.md\n/room/archives/MIND-*\n/room/storage/\n"
+        )
+        subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
+        head = self.r.room / ".git" / "HEAD"
+        head.write_text("not a ref\n")
+        inside = subprocess.run(
+            ["git", "-C", str(self.r.room), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        top = subprocess.run(
+            ["git", "-C", str(self.r.room), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        ignored = subprocess.run(
+            ["git", "-C", str(self.r.room), "check-ignore", "-q", str(self.r.room / mind.POINTER)],
+            check=False,
+        )
+        self.assertEqual(inside.stdout.strip(), "true")
+        self.assertEqual(Path(top.stdout.strip()), self.r.base)
+        self.assertEqual(ignored.returncode, 0)
+        self.refused(self.r.write({"add": [CORE]}), "a broken repository is not proof of being outside Git")
+        self.assertFalse((self.r.room / mind.POINTER).exists())
+        self.assertEqual(list(self.r.room.glob("archives/MIND-*")), [])
+
+        shutil.rmtree(self.r.room / ".git")
+        self.ok(self.r.write({"add": [CORE]}))
+
+    def test_f1_a_broken_nearest_ancestor_is_refused(self):
+        outer = Path(self.tmp.name) / "outer"
+        middle = outer / "middle"
+        outer.mkdir()
+        subprocess.run(["git", "init", "-q", str(outer)], check=True)
+        (outer / ".gitignore").write_text(
+            "/middle/room/MIND.md\n/middle/room/archives/MIND-*\n/middle/room/storage/\n"
+        )
+        subprocess.run(["git", "init", "-q", str(middle)], check=True)
+        room = Room(middle)
+        head = middle / ".git" / "HEAD"
+        head.write_text("not a ref\n")
+
+        inside = subprocess.run(
+            ["git", "-C", str(room.room), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        top = subprocess.run(
+            ["git", "-C", str(room.room), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        ignored = subprocess.run(
+            ["git", "-C", str(room.room), "check-ignore", "-q", str(room.room / mind.POINTER)],
+            check=False,
+        )
+        self.assertFalse((room.room / ".git").exists())
+        self.assertEqual(inside.stdout.strip(), "true")
+        self.assertEqual(Path(top.stdout.strip()), outer)
+        self.assertEqual(ignored.returncode, 0)
+        self.refused(room.write({"add": [CORE]}), "nearest .git marker", "broken repository")
+        self.assertFalse((room.room / mind.POINTER).exists())
+        self.assertEqual(list(room.room.glob("archives/MIND-*")), [])
+
+    def test_f1_valid_nearer_repository_ignores_broken_higher_ancestor(self):
+        outer = Path(self.tmp.name) / "outer"
+        middle = outer / "middle"
+        outer.mkdir()
+        subprocess.run(["git", "init", "-q", str(outer)], check=True)
+        subprocess.run(["git", "init", "-q", str(middle)], check=True)
+        room = Room(middle)
+        (middle / ".gitignore").write_text("/room/MIND.md\n/room/archives/MIND-*\n/room/storage/\n")
+        (outer / ".git" / "HEAD").write_text("not a ref\n")
+
+        top = subprocess.run(
+            ["git", "-C", str(room.room), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertEqual(Path(top.stdout.strip()), middle)
+        self.ok(room.write({"add": [CORE]}))
+
+    def test_f1_valid_worktree_git_file_allows_ignored_writes(self):
+        repository = self.r.base / "worktree-source"
+        subprocess.run(["git", "init", "-q", str(repository)], check=True)
+        subprocess.run(["git", "-C", str(repository), "config", "user.name", "Synthetic Test"], check=True)
+        subprocess.run(
+            ["git", "-C", str(repository), "config", "user.email", "synthetic@example.invalid"],
+            check=True,
+        )
+        (repository / "seed").write_text("synthetic\n")
+        subprocess.run(["git", "-C", str(repository), "add", "seed"], check=True)
+        subprocess.run(["git", "-C", str(repository), "commit", "-qm", "seed"], check=True)
+        shutil.rmtree(self.r.room)
+        subprocess.run(
+            ["git", "-C", str(repository), "worktree", "add", "-q", "--detach", str(self.r.room)],
+            check=True,
+        )
+        self.assertTrue((self.r.room / ".git").is_file())
+        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/MIND-*\n/storage/\n")
+        self.ok(self.r.write({"add": [CORE]}))
+
     def test_f1_only_a_positive_answer_passes(self):
+        path = shlex.quote(str(self.r.room))
+        (self.r.room / ".git").mkdir()
         cases = {
             "rev-parse says false": ('echo false\n', "not 'true'"),
             "rev-parse fails otherwise": ('echo "fatal: something else" >&2; exit 128\n', "git rev-parse failed (exit 128: fatal: something else)"),
-            "check-ignore errors": ('case "$3" in rev-parse) echo true;; *) echo "fatal: boom" >&2; exit 128;; esac\n',
+            "check-ignore errors": (
+                'case "$4" in --is-inside-work-tree) echo true;; '
+                f'--show-toplevel) echo {path};; *) echo "fatal: boom" >&2; exit 128;; esac\n',
                                     "git check-ignore failed for archives/MIND-"),
         }
         for label, (script, words) in cases.items():
             with self.subTest(label):
                 self.refused(self.r.write({"add": [CORE]}, env=self.fake_git(script)), words)
                 self.assertEqual(self.r.files(), [])
-        ignored = self.fake_git('case "$3" in rev-parse) echo true;; *) exit 0;; esac\n')
+        ignored = self.fake_git(
+            'case "$4" in --is-inside-work-tree) echo true;; '
+            f'--show-toplevel) echo {path};; *) exit 0;; esac\n'
+        )
         self.ok(self.r.write({"add": [CORE]}, env=ignored))
 
     # -- George's read, 10-30: F2, the write is bound to the preview ------------
