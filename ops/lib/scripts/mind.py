@@ -29,6 +29,7 @@ import json
 import math
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -827,6 +828,142 @@ def prepare(args, now: dt.datetime, words: str | None):
 
 
 # --------------------------------------------------------------------------
+# Projection (W5, first slice): a copy of the current leaf, as one marked
+# block at the top of a resident's notebook MEMORY.md, so the provider loads
+# it at start. The leaf stays the authority. The caller names the notebook
+# folder every time: this tool has no notebook home and creates none.
+# --------------------------------------------------------------------------
+NOTEBOOK_INDEX = "MEMORY.md"
+LOAD_LINES = 200        # the provider loads only the first 200 lines of MEMORY.md (design of 2026-10-31, fact 4)
+LOAD_BYTES = 25000      # and at most 25 KB; the smaller reading of that limit is used
+MARK = "<!-- mind-projection "
+BEGIN_RE = re.compile(r"^<!-- mind-projection begin key=([a-z0-9][a-z0-9-]*) leaf=(archives/MIND-\S+\.md) "
+                      r"sha256=([0-9a-f]{64}): a copy written by mind\.py project; the leaf is the authority -->\n$")
+END_RE = re.compile(r"^<!-- mind-projection end key=([a-z0-9][a-z0-9-]*) -->\n$")
+
+
+def projection_block(key: str, rel: str, data: bytes) -> str:
+    return (f"{MARK}begin key={key} leaf={rel} sha256={sha256(data)}: a copy written by mind.py project; "
+            f"the leaf is the authority -->\n" + data.decode("utf-8") + f"{MARK}end key={key} -->\n")
+
+
+def private_path_problems(notebook: Path) -> list[str]:
+    """The notebook folder and every ancestor exist and none is a symbolic link; the folder is a directory
+    of this user at mode 0700; an existing MEMORY.md is a single-link regular file of this user at 0600."""
+    current = Path(notebook.anchor)
+    for part in notebook.parts[1:]:
+        current = current / part
+        try:
+            st = os.lstat(current)
+        except FileNotFoundError:
+            return [f"{current} does not exist; this tool names no notebook home and creates none"]
+        if stat.S_ISLNK(st.st_mode):
+            return [f"{current} is a symbolic link; a notebook path must hold none"]
+    problems = []
+    st = os.lstat(notebook)
+    if not stat.S_ISDIR(st.st_mode):
+        return [f"{notebook} is not a directory"]
+    if st.st_uid != os.geteuid():
+        problems.append(f"{notebook} is not owned by this user")
+    if stat.S_IMODE(st.st_mode) != 0o700:
+        problems.append(f"{notebook} is mode {stat.S_IMODE(st.st_mode):04o}, not 0700")
+    index = notebook / NOTEBOOK_INDEX
+    try:
+        st = os.lstat(index)
+    except FileNotFoundError:
+        return problems
+    if not stat.S_ISREG(st.st_mode):
+        return problems + [f"{index} is not a regular file"]
+    if st.st_uid != os.geteuid():
+        problems.append(f"{index} is not owned by this user")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        problems.append(f"{index} is mode {stat.S_IMODE(st.st_mode):04o}, not 0600")
+    if st.st_nlink != 1:
+        problems.append(f"{index} has {st.st_nlink} hard links; a notebook index has one")
+    return problems
+
+
+def nl_lines(text: str) -> list[str]:
+    """Lines split at newline only, each keeping its newline; joining them gives back the text."""
+    parts = text.split("\n")
+    return [p + "\n" for p in parts[:-1]] + ([parts[-1]] if parts[-1] else [])
+
+
+def project_text(existing: str, key: str, rel: str, data: bytes) -> tuple[str, str]:
+    """The new MEMORY.md and a note on the block it replaces. Every byte outside the one block is kept."""
+    lines = nl_lines(existing)
+    marks = [(i, line) for i, line in enumerate(lines) if line.startswith(MARK)]
+    block = projection_block(key, rel, data)
+    if not marks:
+        return block + existing, "no earlier block; inserted at the top"
+    for i, line in marks:
+        if not (BEGIN_RE.match(line) or END_RE.match(line)):
+            raise Refused(f"{NOTEBOOK_INDEX} line {i + 1} is a malformed projection marker; it is left as it is")
+    if len(marks) != 2 or not BEGIN_RE.match(marks[0][1]) or not END_RE.match(marks[1][1]):
+        raise Refused(f"{NOTEBOOK_INDEX} holds {len(marks)} projection markers, not one begin and one end in order")
+    (start, begin), (end, finish) = marks
+    owners = {BEGIN_RE.match(begin).group(1), END_RE.match(finish).group(1)}
+    if owners != {key}:
+        raise Refused(f"{NOTEBOOK_INDEX} holds a projection for {', '.join(sorted(owners))}, not {key}; "
+                      "one notebook carries one resident's mind")
+    if start != 0:
+        raise Refused(f"the projection in {NOTEBOOK_INDEX} starts at line {start + 1}, not at the top; it is left as it is")
+    named = BEGIN_RE.match(begin).group(3)
+    inner = "".join(lines[start + 1:end]).encode("utf-8")
+    note = ("the earlier block matched the leaf it named" if sha256(inner) == named else
+            "the earlier block did not hash to the leaf it named (edited by hand); it is replaced, never trusted")
+    return block + "".join(lines[end + 1:]), note
+
+
+def project_plan(args) -> tuple[Path, str, str, str, str]:
+    """Read-only preflight: every gate, nothing written. Returns (index, new text, old text, rel, note)."""
+    if not KEY_RE.match(args.key or ""):
+        raise Refused("project needs --key with a registry key")
+    raw = args.notebook
+    if raw is None or not str(raw).strip():
+        raise Refused("project needs --notebook; this tool has no notebook home")
+    notebook = Path(os.path.abspath(raw))
+    reg = read_registry(args.registry)
+    rep, current = verify(args.room, args.key, reg, read_pointer(args.room) or {})
+    if rep.failures():
+        raise Refused("this mind is not projected until its check passes: " + "; ".join(rep.failures()))
+    rel, _, _, data = current
+    problems = private_path_problems(notebook)
+    if problems:
+        raise Refused("nothing was written: " + "; ".join(problems))
+    index = notebook / NOTEBOOK_INDEX
+    exposed = git_exposed(notebook, [index])
+    if exposed:
+        raise Refused("nothing was written: " + "; ".join(exposed))
+    try:
+        old = index.read_bytes().decode("utf-8") if index.exists() else ""
+    except UnicodeDecodeError:
+        raise Refused(f"{index} is not UTF-8; it is left as it is") from None
+    new, note = project_text(old, args.key, rel, data)
+    block = projection_block(args.key, rel, data)
+    if block.count("\n") > LOAD_LINES or len(block.encode("utf-8")) > LOAD_BYTES:
+        raise Refused(f"the projection needs {block.count(chr(10))} lines and {len(block.encode('utf-8'))} bytes; "
+                      f"the provider loads {LOAD_LINES} lines and {LOAD_BYTES} bytes, and a mind is never truncated")
+    return index, new, old, rel, note
+
+
+def cmd_project(args):
+    project_plan(args)                       # a refusal here changes nothing, not even the lock
+    with room_lock(args.room):
+        index, new, old, rel, note = project_plan(args)
+        state = "unchanged" if new == old else "written"
+        if new != old:
+            write_atomic(index, new.encode("utf-8"))
+    begin = BEGIN_RE.match(nl_lines(new)[0])
+    block_lines = new[:new.index(f"{MARK}end key={args.key} -->\n")].count("\n") + 1
+    sys.stdout.write(f"mind {args.key}: projection {state} in {index}\n"
+                     f"leaf {rel} sha256 {begin.group(3)}\n"
+                     f"block: {block_lines} of {LOAD_LINES} loaded lines; {note}\n"
+                     "This is a copy of the leaf; it is not evidence that any provider loaded it.\n")
+    return 0
+
+
+# --------------------------------------------------------------------------
 # Commands.
 # --------------------------------------------------------------------------
 def cmd_preview(args):
@@ -964,6 +1101,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--preview", help="the binding that preview printed for the change Kevin said yes to")
     p.add_argument("--by", help="the registry key of the resident running the write")
     p.set_defaults(run=cmd_write)
+    p = sub.add_parser("project", help="copy the verified current leaf as one marked block at the top of a "
+                                       "notebook's MEMORY.md; the notebook folder is always named, never defaulted")
+    p.add_argument("--key", required=True, help="the registry key whose mind is projected")
+    p.add_argument("--notebook", required=True, help="the resident's own notebook folder (exists, 0700, no links)")
+    p.set_defaults(run=cmd_project)
     return ap
 
 
