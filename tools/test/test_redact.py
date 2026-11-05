@@ -635,13 +635,13 @@ class RedactTests(unittest.TestCase):
         cases = [
             (f"Intro.\n\n> **Go:** {go}\n", f"Intro.\n\n> **Go:** {self.W(go)}\n"),
             (f'Intro.\n\n> Go: "{go}"\n', f'Intro.\n\n> Go: "{self.W(go)}"\n'),
-            (f"The operator's go\n==========\n\n> {go}\n", f"[words sha256=3a1850fb80169495968cd8e643c412c927254efd1a4040fab94cca68890a0e4b]"),
-            (f"<h2>The operator's go</h2>\n\n> {go}\n", f"[words sha256=503bf6aa483f0aa8ab42e3f98aa327bed7d8f4a0c247883e87eaf284ea5b35ef]"),
-            (f"## The operator's go\n\n> {go}\nlazy continued line\n", f"[words sha256=8b8eba41dbab8d4909b2bb6398c89a5bb042604953563f17402301ec98627cfa]"),
-            (f"## The operator's go\n\n> part one\n\n> part two\n", f"[words sha256=973d03144f1ece35fab62e4f0d4f7dadb0bd0af3ef29d816e2556ec40475e5ce]"),
-            (f"## The operator's go\n\n- > {go}\n", f"[words sha256=17f818c313504760a8a2447932739cbecaae6ac17b843445d6df9a1118a44ec3]"),
-            (f"**The operator's words:**\n\n> {go}\n", f"[words sha256=b87d2f313ba0e731e403c54ffab7dcdc3e13e61e26252b028376ae74fa61fda4]"),
-            (f"# Record\r\r## The operator's go\r\r> {go}\r", f"[words sha256=c661c748fcce4bf014c3d2f169d301924081849cf0d085f1061a1ea3879f3537]"),
+            (f"The operator's go\n==========\n\n> {go}\n", f"The operator's go\n==========\n\n> {self.W(go)}\n"),
+            (f"<h2>The operator's go</h2>\n\n> {go}\n", f"<h2>The operator's go</h2>\n\n> {self.W(go)}\n"),
+            (f"## The operator's go\n\n> {go}\nlazy continued line\n", f"## The operator's go\n\n> {self.W(go)}\n{self.W('lazy continued line')}\n"),
+            (f"## The operator's go\n\n> part one\n\n> part two\n", f"## The operator's go\n\n> {self.W('part one')}\n\n> {self.W('part two')}\n"),
+            (f"## The operator's go\n\n- > {go}\n", f"## The operator's go\n\n- > {self.W(go)}\n"),
+            (f"**The operator's words:**\n\n> {go}\n", f"**The operator's words:**\n\n> {self.W(go)}\n"),
+            (f"# Record\r\r## The operator's go\r\r> {go}\r", f"# Record\r\r## The operator's go\r\r> {self.W(go)}\r"),
         ]
         for i, (text, want) in enumerate(cases):
             with self.subTest(case=i):
@@ -692,9 +692,9 @@ class RedactTests(unittest.TestCase):
         cases = [
             (f"## The operator's go\n\nIt was given as follows:\n\n> {go}\n",
              f"## The operator's go\n\nIt was given as follows:\n\n> {self.W(go)}\n"),
-            (f"## The operator's go\n\n<!-- a note -->\n> {go}\n", f"[words sha256=8d652ca9fed7b61c81be3c51ff13a4e92b8c98dec4ea0b5b1bd10a3617cd8085]"),
-            (f"The operator's go:\n> {go}\n", f"[words sha256=212e1069b92bee9ae180fc91746cd968202b2e8948ed03c6938f79b8970dd4f3]"),
-            (f"The operator's go:\n\n> {go}\n", f"[words sha256=f7c3563cd98eda1925d7b4f600203d84bdf22bc602c1a622c7ed05dd3709a448]"),
+            (f"## The operator's go\n\n<!-- a note -->\n> {go}\n", f"## The operator's go\n\n<!-- a note -->\n> {self.W(go)}\n"),
+            (f"The operator's go:\n> {go}\n", f"The operator's go:\n> {self.W(go)}\n"),
+            (f"The operator's go:\n\n> {go}\n", f"The operator's go:\n\n> {self.W(go)}\n"),
             ("## The operator's go\n\n> part a\n\n### Detail\n\n> part b\n\n## Next\n\n> a plain quote stays\n",
              f"## The operator's go\n\n> {self.W('part a')}\n\n### Detail\n\n> {self.W('part b')}\n\n## Next\n\n> a plain quote stays\n"),
         ]
@@ -740,6 +740,21 @@ class RedactTests(unittest.TestCase):
         body, r = self.redacted(text, "neutral-keep", "--decide", f"{ids[0]}=keep")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(body, "## Notes\n\n> a neutral quoted line\n> and its second line at [host path 1]\n\nAfter.\n")
+
+    def test_c3_r4_a_fence_opened_on_a_list_items_line_is_a_fenced_block(self):
+        go = "synthetic words of a go"
+        for i, text in enumerate((f"- ```\n  {go}\n  ```\n", f"1. ~~~text\n   {go}\n   ~~~\n", f"* ```\n  {go}\n  ```\nAfter.\n")):
+            with self.subTest(case=i):
+                r = run("check", str(self.record(text, f"h15-{i}.md")))
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn("a fenced block that no rule classifies", r.stdout)
+                self.assertNotIn(go, r.stdout + r.stderr)
+                body, r = self.redacted(text, f"h15-h{i}", "--history")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertNotIn(go, body)
+                self.assertIn(self.W(go), body)
+        public, r = self.rendered("- ```x = 1``` is inline code\n")             # three backticks closed on the line: no fence
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
 if __name__ == "__main__":
     unittest.main()

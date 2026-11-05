@@ -69,7 +69,7 @@ WORDS_LABEL_RE = re.compile(r"^\s*(?:[-*]\s*)?\*\*([^*]+)\*\*")
 WORDS_LABEL_WORDS = re.compile(r"\b(?:words|direction)\b", re.I)
 ATTRIBUTION_RE = re.compile(r"\b(?:kevin|operator)\b", re.I)
 ATTRIBUTION_WINDOW = 80
-FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
+FENCE_RE = re.compile(r"^\s*(?:(?:[-*+]|\d+[.)])\s+)?(`{3,}|~{3,})(.*)$")   # also on a list item's own line (h15)
 # A blockquote that quotes the operator (the Independent Reviewer's section 172, C6): a heading, an HTML
 # heading, a setext heading or a bold label line that names the operator, the go, the words or a direction,
 # and the blockquote under it; or a blockquote line labelled as a go, the words or a direction.
@@ -152,7 +152,7 @@ def quote_spans(line: str, history: bool = False) -> list[dict]:
         a, b = marks[i] + 1, marks[i + 1]
         before = line[max(0, marks[i] - ATTRIBUTION_WINDOW):marks[i]]
         cls = "words" if ATTRIBUTION_RE.search(before) else None
-        spans.append(span("quote", a, b, line[a:b], cls, "attributed to the operator" if cls else "[words sha256=8746c4c78c1778ebb72b892888660bcbc0637e3a3368d7387c53b390fe287587]"))
+        spans.append(span("quote", a, b, line[a:b], cls, "attributed to the operator" if cls else "an unattributed quote"))
     if len(marks) % 2:
         a = marks[-1] + 1
         spans.append(span("quote", a, eol(line), line[a:eol(line)], None, "an unbalanced quote"))
