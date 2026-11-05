@@ -79,6 +79,7 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
      - restore the registry and binding;
      - put the donor's store file back from custody;
      - keep the hold.
+
 **Canonical identity-registry privacy.** Registry-value updates, creation,
 replacement and restoration of `ops/etc/resident-identities.json` require
 mode 0600, preserving its accepted uid and gid, regular single-link type
