@@ -98,7 +98,7 @@ Written 2026-11-01 13:52:40 EST by the Session Continuity Manager (Claude Shanno
 - `Receipts/worker-thread-doctrine-20260731.md` | `archives/receipts/worker-thread-doctrine-20260731.md` | `d8e0d38a4db86528c7d2357b2c94469119b36ea8ac4d49e16f629f2f0d512514`
 - `Receipts/managed-archive-place-tag-promotion-packet-v1-20260720.md` | `archives/receipts/managed-archive-place-tag-promotion-packet-v1-20260720.md` | `d171676f29d61ac83640b46f027f6eb3ad9cf1a999d24a3b91f71fb5eff5c7bc`
 - `Receipts/remote-operations-cloud-matrices-roadmap-20260810.md` | `archives/receipts/remote-operations-cloud-matrices-roadmap-20260810.md` | `2865eaaedecc86c41b79c3cc4affcbb8cd588ddcc0d5223f451e78e774cc9b4b`
-- `Receipts/athol-claude-session-treatment-20260706.md` | `archives/receipts/athol-claude-session-treatment-20260706.md` | `b30a98c4f64dc515432e773b4dc4471fe449ac3a116f6e57ef56ddc968fa8377`
+- `Receipts/[redacted]-claude-session-treatment-20260706.md` | `archives/receipts/[redacted]-claude-session-treatment-20260706.md` | `b30a98c4f64dc515432e773b4dc4471fe449ac3a116f6e57ef56ddc968fa8377`
 - `Receipts/legacy-ide-active-surface-cleanup-20260715.md` | `archives/receipts/legacy-ide-active-surface-cleanup-20260715.md` | `2177fa534192d8030ca9fe94ac4f4312fcc3bfcc790dffeacf077073d58964f1`
 - `Receipts/managed-archive-orientation-promotion-pilot-v1-20260719.md` | `archives/receipts/managed-archive-orientation-promotion-pilot-v1-20260719.md` | `cb0b95207099a56ed3ed1de6b09cf39a9d3822cd394d046ae47036d85b57bd8f`
 - `Receipts/resident-launcher-registry-sync-20260725.md` | `archives/receipts/resident-launcher-registry-sync-20260725.md` | `3f66c5cc7c351e9aa0bbbbf7c248641a329f13a276f9601f018992528fcb7309`
@@ -401,3 +401,5 @@ Written 2026-11-01 13:52:40 EST by the Session Continuity Manager (Claude Shanno
   - `storage/lab/rotation-batch-20260730/george-prince.jsonl` | `11331dcbaf0ca8ca2f2c0b57a081a7e868972178368cd0f1db35e2eb257687f6`
   - `storage/lab/rotation-batch-20260730/jerry-codex.jsonl` | `605054647d1af27d40c51e7655bf5486b4f4bfb6c8e3c4b69f94cf54860e449b`
   - `storage/lab/stela-source-study-20261028/journal-wf_700181ba-531.jsonl` | `b170a80685ee07f2a69e9e6f0e9c2d9b9a2cc3122d00e2f7ca56400bbf036bcf`
+
+**Redaction by attributed addition, 2026-11-05, by the Session Continuity Manager (session-doctor), under the operator's rule of 2026-11-05 (PoT 5.1.4, operator-designated private material).** The file name in one row of the table above carried a term designated private in both of its path cells; it reads `[redacted]` there now. The row's hash is of the file's content and is unchanged. Nothing else in this copy was changed.
