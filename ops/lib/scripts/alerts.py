@@ -21,13 +21,25 @@ is this script's own internal working state (it does contain per-patient
 identifiers as dict keys) and is not a stable public contract — external
 consumers should read the aggregate instead. See
 `Sessions/docs/clinic-aggregate-contract.md` for the schema.
+
+Since 2026-11-05 it also writes a PRIVATE active panel, clinic-panel.json at
+mode 0600 beside the alert state: one row per registered resident, keyed by
+registry key, bound to exactly one live body or marked missing, ambiguous,
+unknown or archived, with unregistered bodies, helpers and the archive counted
+apart (W3). It carries no session id, patient label, path or body content, never
+enters the public aggregate, and prints one closing PANEL line. The
+aggregate, the state, the alert lines and the exit status are unchanged by it.
 """
 from __future__ import annotations
 
+import contextlib
 import datetime
+import importlib.util
 import json
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 SESSIONS = Path(__file__).resolve().parents[3]   # the room, resolved as gauge.py does
@@ -247,6 +259,253 @@ def build_alert(events: list, names: dict, home: Path = None) -> dict:
             "alert": bool(lines), "quiet_helpers": quiet}
 
 
+# --------------------------------------------------------------------------
+# The active panel (W3, 2026-11-05): a PRIVATE projection beside the alert
+# state, logs/clinic-panel.json at mode 0600, never part of the public
+# aggregate. One row per registered resident, keyed by registry key, with its
+# binding to exactly one live body or an explicit missing, ambiguous, unknown
+# or archived; unregistered bodies and helpers, and the archive, are counted
+# in their own inventories and never presented as resident health. A body is
+# resolved by its file name only, as the health desk's
+# measurement of 2026-11-05 did; never by the newest file or a working
+# directory. The Codex ward does not scan the archive, so a registered session
+# and the archive's count are read from the file names here, not from ward rows.
+# Only a helper's test reads the session-meta record, as the popup's
+# naming already does. The panel carries registry keys, ward names, verdicts, counts and
+# ages; never a session id, a patient label, a path or body content.
+# --------------------------------------------------------------------------
+PANEL_NAME = "clinic-panel.json"      # beside STATE_FILE, so it follows wherever the state lives
+PANEL_SCHEMA = "clinic-panel/1"
+CLAUDE_PROJECTS = None                # the Claude live store; None is vitals.PROJECTS_ROOT
+BINDINGS = ("one-live-body", "missing", "ambiguous", "unknown", "archived")
+CLINIC_DOMAIN = ("clinic ward verdict (file size, media, compaction and carry, and context percentage "
+                 "as each ward measures them)")
+SIGNALS_NOT_JOINED = ("context pressure from the gauge", "scheduler operation", "product-source drift")
+
+
+def _vitals():
+    spec = importlib.util.spec_from_file_location("alerts_vitals", Path(__file__).resolve().with_name("vitals.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _age(path: Path, now: datetime.datetime) -> int | None:
+    try:
+        return max(0, int(now.timestamp() - path.stat().st_mtime))
+    except OSError:
+        return None
+
+
+def body_index(codex_home: Path, extra: list, claude_projects: Path, room_name) -> tuple[dict, dict]:
+    """Physical bodies by the label a ward report gives them: file names only, never content.
+    Returns (codex: file name -> [(location, ward)], claude: "room / prefix" -> [(file name, ward)])."""
+    codex = {}
+    roots = [(codex_home / "sessions", "live", "codex-host-live")]
+    roots += [(root, "live", "codex-vm-live") for root in extra]
+    roots += [(codex_home / "archived_sessions", "archived", "codex-archive")]
+    for root, location, ward in roots:
+        if root.is_dir():
+            for path in sorted(root.rglob("rollout-*.jsonl")):
+                if path.is_file() and not path.is_symlink():
+                    codex.setdefault(path.name, []).append((location, ward))
+    claude = {}
+    if claude_projects.is_dir():
+        for path in sorted(claude_projects.glob("*/*.jsonl")):
+            if path.is_file() and not path.is_symlink():
+                claude.setdefault(f"{room_name(path.parent.name)} / {path.name[:20]}", []).append(
+                    (path.name, "claude-live-store"))
+    return codex, claude
+
+
+def bodies_by_session(codex: dict, claude: dict) -> dict:
+    """(provider, session id) -> the location of each body whose file name carries that id, from body_index."""
+    found = {}
+    for name, hits in codex.items():
+        m = UUID.search(name)
+        if m:
+            found.setdefault(("codex", m.group(1)), []).extend(location for location, _ in hits)
+    for hits in claude.values():
+        for name, _ in hits:
+            m = UUID.search(name)
+            if m:
+                found.setdefault(("claude", m.group(1)), []).append("live")
+    return found
+
+
+def classify_patient(pid: str, codex: dict, claude: dict) -> dict:
+    """One patient: its provider, location (live, archived, missing, ambiguous) and native id. The id is
+    used only in memory to bind the patient to the registry and never enters the panel."""
+    provider, label = pid.split(":", 1)
+    hits = codex.get(label, []) if provider == "codex" else claude.get(label, [])
+    if len(hits) != 1:
+        if provider == "codex":                  # the file name carries the whole id, found or not
+            m = UUID.search(label)
+            native = m.group(1) if m else None
+        else:                                    # a Claude label carries only a prefix of it
+            native = "prefix:" + label.rsplit(" / ", 1)[1] if " / " in label else None
+        return {"provider": provider, "location": "ambiguous" if hits else "missing", "native": native, "ward": None}
+    if provider == "codex":
+        location, ward = hits[0]
+        m = UUID.search(label)
+    else:
+        (name, ward), location = hits[0], "live"
+        m = UUID.search(name)
+    return {"provider": provider, "location": location, "native": m.group(1) if m else None, "ward": ward}
+
+
+def build_panel(current: dict, reports: dict, registry_path: Path, now: datetime.datetime,
+                codex_home: Path, extra: list, claude_projects: Path | None, home_meta=None) -> dict:
+    """The panel object. reports maps provider -> (report path, rows parsed from it)."""
+    evidence = [{"domain": f"clinic {provider} ward report", "age_seconds": _age(path, now), "rows": rows}
+                for provider, (path, rows) in sorted(reports.items())]
+    evidence.append({"domain": "resident registry", "age_seconds": _age(registry_path, now)})
+    panel = {"schema": PANEL_SCHEMA, "generated_at": now.isoformat(timespec="seconds"), "evidence": evidence,
+             "signals_not_joined": list(SIGNALS_NOT_JOINED)}
+    try:
+        identities = json.loads(registry_path.read_text(encoding="utf-8"))["identities"]
+        if not isinstance(identities, list):
+            raise TypeError
+    except (OSError, ValueError, KeyError, TypeError):
+        return {**panel, "status": "registry unavailable", "residents": {}, "inventories": None}
+    rows = [r for r in identities if isinstance(r, dict) and isinstance(r.get("key"), str) and r["key"]]
+    keys = [r["key"] for r in rows]
+    vitals = _vitals()
+    codex, claude = body_index(codex_home, extra, claude_projects or vitals.PROJECTS_ROOT, vitals.room_name)
+    on_disk = bodies_by_session(codex, claude)
+    bound = {}        # (provider, native) -> [(pid, location, ward)]
+    for pid in sorted(current):
+        c = classify_patient(pid, codex, claude)
+        bound.setdefault((c["provider"], c["native"]), []).append((pid, c["location"], c["ward"]))
+    binding_count = {}
+    registered_natives = set()        # every row naming a session: an ambiguous row is still registered
+    for r in rows:
+        if isinstance(r.get("provider"), str) and isinstance(r.get("session_id"), str):
+            pair = (r["provider"], r["session_id"])
+            binding_count[pair] = binding_count.get(pair, 0) + 1
+            if r["session_id"]:
+                registered_natives.add(pair)
+    residents = {}
+    for r in rows:
+        key, provider, native = r["key"], r.get("provider"), r.get("session_id")
+        row = {"provider": provider if isinstance(provider, str) else None, "binding": "unknown", "verdict": None,
+               "ward": None, "signals": {}}
+        if keys.count(key) != 1:
+            row["binding"], row["reason"] = "ambiguous", "the key appears in more than one registry row"
+        elif provider not in reports:
+            row["reason"] = "no clinic ward reads this provider"
+        elif not isinstance(native, str) or not native:
+            row["reason"] = "the registry row names no session"
+        elif binding_count.get((provider, native), 0) != 1:
+            row["binding"], row["reason"] = "ambiguous", "the session is bound to more than one registry row"
+        elif reports[provider][1] == 0:
+            row["reason"] = f"the {provider} ward report has no rows"
+        else:
+            hits = bound.get((provider, native), [])
+            if provider == "claude":
+                hits = hits + bound.get((provider, "prefix:" + native[:20]), [])
+            live = [h for h in hits if h[1] == "live"]
+            unresolved = [h for h in hits if h[1] in ("missing", "ambiguous")]
+            disk = on_disk.get((provider, native), [])
+            if len(live) == 1 and not unresolved:
+                pid, _, ward = live[0]
+                row.update(binding="one-live-body", verdict=current[pid], ward=ward)
+                row["signals"]["clinic_verdict"] = {"value": current[pid], "domain": CLINIC_DOMAIN,
+                                                    "evidence": f"clinic {provider} ward report",
+                                                    "age_seconds": _age(reports[provider][0], now)}
+            elif live or any(h[1] == "ambiguous" for h in unresolved) or len(disk) > 1:
+                row["binding"], row["reason"] = "ambiguous", "more than one body or ward row carries this session"
+            elif disk == ["archived"]:
+                row["binding"], row["reason"] = "archived", "only an archived body carries this session"
+            elif disk == ["live"]:             # never a verdict without a ward row, and not missing: a body exists
+                row["reason"] = "one live body carries this session, but no ward row measures it"
+            else:
+                row["binding"] = "missing"
+                row["reason"] = ("its ward row names a body that is not found" if unresolved else
+                                 "no body is found under the live or archive roots")
+        residents.setdefault(key, row)
+    archived_names = [name for name, hits in codex.items() for location, _ in hits if location == "archived"]
+    inventories = {"orphan_and_helper": {"unregistered": {}, "helper": {}},
+                   "unresolved": {"missing": {}, "ambiguous": {}},
+                   "lifecycle": {"archived": len(archived_names),
+                                 "archived_registered": sum(1 for name in archived_names if (m := UUID.search(name))
+                                                            and ("codex", m.group(1)) in registered_natives),
+                                 "operator_recorded_retired": None}}
+
+    def tally(bucket: dict, verdict: str) -> None:
+        bucket[verdict] = bucket.get(verdict, 0) + 1
+
+    for (provider, native), hits in bound.items():
+        for pid, location, ward in hits:
+            verdict = current[pid]
+            if location in ("missing", "ambiguous"):
+                tally(inventories["unresolved"][location], verdict)
+            elif location == "live" and (provider, native) not in registered_natives:
+                meta = (home_meta or codex_meta)(native) if provider == "codex" and native else {}
+                source = meta.get("source") if isinstance(meta.get("source"), dict) else {}
+                subagent = source.get("subagent") if isinstance(source.get("subagent"), dict) else {}
+                spawn = subagent.get("thread_spawn") if isinstance(subagent.get("thread_spawn"), dict) else {}
+                parent = meta.get("parent_thread_id") or spawn.get("parent_thread_id")
+                tally(inventories["orphan_and_helper"]["helper" if parent else "unregistered"], verdict)
+    counts = {b: sum(1 for r in residents.values() if r["binding"] == b) for b in BINDINGS}
+    return {**panel, "status": "ok", "registered": len(residents), "active": len(residents) - counts["archived"],
+            "bindings": counts, "residents": dict(sorted(residents.items())), "inventories": inventories}
+
+
+def write_private(path: Path, data: bytes) -> None:
+    """Replace path atomically at mode 0600."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix="." + path.name + ".")
+    try:
+        os.fchmod(fd, 0o600)
+        view = memoryview(data)
+        while view:
+            view = view[os.write(fd, view):]
+        os.fsync(fd)
+        os.close(fd)
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.close(fd)
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
+
+
+def panel_line(panel: dict) -> str:
+    """The one line for the rounds log; the rows stay in the private file. It starts with PANEL, so no
+    pattern the wrapper reads can match it."""
+    line = f"PANEL active panel, private ({PANEL_NAME}); generated {panel['generated_at']}; status {panel['status']}"
+    if panel.get("residents") is None or panel.get("inventories") is None:
+        return line
+    b, inv = panel["bindings"], panel["inventories"]
+    return (f"{line}; residents {panel['registered']}, active {panel['active']}: "
+            + ", ".join(f"{k} {b[k]}" for k in BINDINGS)
+            + "; not resident health: unregistered " + str(sum(inv["orphan_and_helper"]["unregistered"].values()))
+            + ", helpers " + str(sum(inv["orphan_and_helper"]["helper"].values()))
+            + ", unresolved " + str(sum(inv["unresolved"]["missing"].values())
+                                    + sum(inv["unresolved"]["ambiguous"].values()))
+            + f", archived {inv['lifecycle']['archived']}, archived registered {inv['lifecycle']['archived_registered']}")
+
+
+def publish_panel(current: dict, codex_report: Path, claude_report: Path) -> None:
+    """Build, write and print the panel. Any failure is printed and written as unavailable and changes
+    nothing else: the state, the aggregate, the alert lines and the exit status are already settled."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    target = STATE_FILE.parent / PANEL_NAME
+    try:
+        reports = {"codex": (codex_report, sum(1 for p in current if p.startswith("codex:"))),
+                   "claude": (claude_report, sum(1 for p in current if p.startswith("claude:")))}
+        panel = build_panel(current, reports, REGISTRY, now, CODEX_HOME, EXTRA_CODEX_ROOTS, CLAUDE_PROJECTS)
+    except Exception as exc:
+        panel = {"schema": PANEL_SCHEMA, "generated_at": now.isoformat(timespec="seconds"),
+                 "status": f"unavailable ({exc.__class__.__name__})"}
+    try:
+        write_private(target, (json.dumps(panel, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+    except OSError as exc:
+        panel["status"] = f"{panel['status']}; not written ({exc.__class__.__name__})"
+    print(panel_line(panel))
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print("usage: clinic_alert_diff.py <codex_report.txt> <claude_report.txt>", file=sys.stderr)
@@ -373,6 +632,7 @@ def main() -> int:
     print(f"QUIET_HELPERS={alert['quiet_helpers']}")
     print(f"HEADLINE={alert['headline']}")
     print(f"SHOULD_ALERT={'1' if alert['alert'] else '0'} ANY_CRITICAL={'1' if alert['critical'] else '0'}")
+    publish_panel(current, Path(sys.argv[1]), Path(sys.argv[2]))
     return 0
 
 
