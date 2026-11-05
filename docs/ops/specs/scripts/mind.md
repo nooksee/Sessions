@@ -1,6 +1,6 @@
 # Technical Specification: mind
 
-Script: `Sessions/ops/lib/scripts/mind.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_mind.py`. Spec writer: Claudine Colbert, Sessions block 3, 2026-10-30, under Kevin's decisions of 10-30 as Shannon recorded them (`storage/handoff/shannon.md`, block 3). Status: built and tested on synthetic rooms only; corrected for F1 (the Git check fails closed) and F2 (the write is bound to the preview). The live source, tests and accepted RoR-3 location use `archives/` root. No mind has been written. Nothing is wired: no hook, no timer. Actual use remains separately gated.
+Script: `Sessions/ops/lib/scripts/mind.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_mind.py`. Spec writer: Claudine Colbert, Sessions block 3, 2026-10-30, under the operator's decisions of 10-30 as Shannon recorded them (`storage/handoff/shannon.md`, block 3). Status: built and tested on synthetic rooms only; corrected for F1 (the Git check fails closed) and F2 (the write is bound to the preview). The live source, tests and accepted RoR-3 location use `archives/` root. No mind has been written. Nothing is wired: no hook, no timer. Actual use remains separately gated.
 
 ## First Principles Rationale
 
@@ -10,14 +10,14 @@ The first design, the mind-manifest package of 10-29 and 10-30, kept the mind as
 - a model edit removed a ratified entry from the served mind;
 - a model archive followed by a use revived what the operator had closed.
 
-Kevin then turned the design around:
+The operator then turned the design around:
 - **Input is solicited.** Model input to a mind is asked for in conversation (the closeout card, step 4) and written only after his yes there, with his words stored.
 - **Nothing waits.** There are no stored proposals, no queue and no secret key.
 - **Minds live per room.** Each room has a `MIND.md` pointer at its root, and the leaves sit at the root of `archives/`, grouped by their `MIND-` prefix (RoR-3), out of Git.
 
-So there is nothing to ratify later: everything in a mind was said yes to by Kevin, in words the leaf carries.
+So there is nothing to ratify later: everything in a mind was said yes to by the operator, in words the leaf carries.
 
-**A yes is bound to what was shown.** A yes is to something: the change Kevin was shown, against the mind as it then stood. So `preview` prints a binding, and `write` refuses unless it gets the same binding back. The binding is a hash of three things:
+**A yes is bound to what was shown.** A yes is to something: the change the operator was shown, against the mind as it then stood. So `preview` prints a binding, and `write` refuses unless it gets the same binding back. The binding is a hash of three things:
 - the change, exactly as previewed;
 - the leaf it builds on;
 - the resident's key.
@@ -68,7 +68,7 @@ written: <UTC time>
 by: <registry key of the resident who ran the write>
 predecessor: none | archives/<name> sha256=<64 hex>
 change: add <ids>; amend <ids>; retire <ids>
-yes: <date>, "<Kevin's words>"
+yes: <date>, "<the operator's words>"
 issued: core=N bond=N lesson=N commitment=N pointer=N
 policy: <16 hex: digest of the rules in mind.py>
 
@@ -79,7 +79,7 @@ policy: <16 hex: digest of the rules in mind.py>
   event: <what happened>
   date: <YYYY-MM-DD>
   source: <receipt, handoff section or commit that records it>
-  yes: <date>, "<Kevin's words that admitted or last amended this entry>"
+  yes: <date>, "<the operator's words that admitted or last amended this entry>"
 ```
 
 **Sections,** in this order, each only when it has entries:
@@ -101,24 +101,24 @@ policy: <16 hex: digest of the rules in mind.py>
 | commitment | text, event, date, source, owner | |
 | pointer | text, event, date, source | |
 
-**Budgets,** in estimated tokens (characters / 4), per layer: core 3,000, bond 2,000, lesson 6,000, commitment 2,000, pointer 1,000. A write that would exceed one is refused whole. Nothing is ever dropped silently to fit: the resident proposes a retirement, and Kevin says yes to it.
+**Budgets,** in estimated tokens (characters / 4), per layer: core 3,000, bond 2,000, lesson 6,000, commitment 2,000, pointer 1,000. A write that would exceed one is refused whole. Nothing is ever dropped silently to fit: the resident proposes a retirement, and the operator says yes to it.
 
 ### Commands
 
 All commands take `--room` (default: the Sessions room) and `--registry`.
 
-- **`preview <key> --changes <file>`.** Shows exactly what a change would do: each addition in full, each amendment as before and after, and each retirement with the text it removes. Writes nothing. This is what Kevin reads before he says yes.
+- **`preview <key> --changes <file>`.** Shows exactly what a change would do: each addition in full, each amendment as before and after, and each retirement with the text it removes. Writes nothing. This is what the operator reads before he says yes.
 - **The binding.** `preview` ends with the line `binding: <64 hex>`. It is the SHA-256 of the canonical JSON (sorted keys, no spaces) of three parts:
   - the resident's key;
   - the predecessor reference: `none`, or the current leaf's path and SHA-256;
   - the parsed change file.
 
   The change file's layout does not matter, but its content does.
-- **`write <key> --changes <file> --preview <binding> --yes "<Kevin's words>" --by <writer key>`.** Does nothing until every check below has passed. Then:
+- **`write <key> --changes <file> --preview <binding> --yes "<the operator's words>" --by <writer key>`.** Does nothing until every check below has passed. Then:
   1. under the lock, verify the current mind with every blocking gate, and refuse to build on a mind that fails;
-  2. compute the binding again from the change it reads now and the current predecessor, and refuse on any difference from `--preview`. A change file edited after the preview, other input on standard input, or a pointer that moved since the preview is refused, and preview must be shown to Kevin again;
+  2. compute the binding again from the change it reads now and the current predecessor, and refuse on any difference from `--preview`. A change file edited after the preview, other input on standard input, or a pointer that moved since the preview is refused, and preview must be shown to the operator again;
   3. apply the change;
-  4. screen and validate every entry, the budgets and Kevin's words;
+  4. screen and validate every entry, the budgets and the operator's words;
   5. confirm the new leaf passes its own chain check against its predecessor;
   6. pass the Git rule below;
   7. write the leaf exclusively, then move the pointer line;
@@ -129,7 +129,7 @@ All commands take `--room` (default: the Sessions room) and `--registry`.
   - **Everything else is a refusal that names its cause:** Git missing, a timeout, any other error from either call, any other exit code, or an answer other than `true`.
 - **`check [--key K]`.** Every gate, for one resident or every resident in the room. Exit 1 on any blocking failure.
 - **`show <key> [--ref]`.** Prints the verified current leaf byte for byte, or nothing (exit 2) when any blocking gate fails. `--ref` prints `leaf=<path>|sha256=<digest>` for the rotation capsule, so the capsule's mind part is bound to a hash.
-- **`history <key>`.** The chain: when, by whom, what changed, and Kevin's words.
+- **`history <key>`.** The chain: when, by whom, what changed, and the operator's words.
 
 ### The change file
 
@@ -145,7 +145,7 @@ A JSON object with up to three lists:
 **Strictness.** Strict UTF-8 and JSON. Refused when:
 - a field is named twice;
 - a field does not belong to the layer;
-- an `id` or a `yes` is supplied, because the tool issues ids and takes Kevin's words from `--yes`;
+- an `id` or a `yes` is supplied, because the tool issues ids and takes the operator's words from `--yes`;
 - an amendment changes the layer or changes nothing;
 - an amendment or retirement names an entry that is not in the current leaf.
 
@@ -192,56 +192,56 @@ They refuse:
 - **Medical content:** the house's medical pattern.
 - **Secrets:** the house's secret pattern.
 
-Kevin's words are screened the same way.
+The operator's words are screened the same way.
 
 ### What the package had that this tool drops, and why
 
 - **The event store, the queue, `pending`, `ratify`, `ratify-batch`, `restore`, `use`, `confirm`, `close` and `archive`.** Nothing waits for approval, so there is nothing to queue or ratify. An entry is in the current leaf or it is not.
-- **The operator key and `--as operator`.** Kevin decided: no secret key. His words are the record.
-- **`repair` and `redact`.** There is no store to repair. A leaf with a problem is superseded by a new leaf, and the old one can move to custody by Kevin's hand. The chain then reports the gap without blocking, provided it is not the current leaf's immediate predecessor.
-- **`import` and `archives/legacy/`.** Legacy capsules are preserved in two-drive custody, not inside the mind. Their substance enters a mind only as entries Kevin says yes to.
+- **The operator key and `--as operator`.** the operator decided: no secret key. His words are the record.
+- **`repair` and `redact`.** There is no store to repair. A leaf with a problem is superseded by a new leaf, and the old one can move to custody by the operator's hand. The chain then reports the gap without blocking, provided it is not the current leaf's immediate predecessor.
+- **`import` and `archives/legacy/`.** Legacy capsules are preserved in two-drive custody, not inside the mind. Their substance enters a mind only as entries the operator says yes to.
 - **The house mind (`house_path`).** Each mind is read only through its own pointer line and its own key's leaves.
 - **The policy files in `ops/etc/`.** The rules live in `mind.py`, which is reviewed and tested. Each leaf records the digest of the rules it was written under.
-- **The SessionStart hook.** The mind travels in the rotation capsule (`show --ref` and `show`). Any hook would need its own review and Kevin's named go.
-- **The salience formula** (weights, uses, decay). Its inputs lived in the store. Retention is now a decision at closeout: the resident proposes a retirement, Kevin says yes, and a budget refuses growth until he does. Whether a formula returns is for Shannon and Kevin to decide.
+- **The SessionStart hook.** The mind travels in the rotation capsule (`show --ref` and `show`). Any hook would need its own review and the operator's named go.
+- **The salience formula** (weights, uses, decay). Its inputs lived in the store. Retention is now a decision at closeout: the resident proposes a retirement, the operator says yes, and a budget refuses growth until he does. Whether a formula returns is for Shannon and the operator to decide.
 
 ### Recovery
 
-- **The pointer did not move.** A write puts the new leaf on disk first and moves the pointer second. If the pointer fails to move, `check` fails at **newest**: the new leaf names the current one as its predecessor. Kevin then decides between two remedies: point `MIND.md` at that leaf, or move the leaf to custody.
-- **A leak is found in an old leaf.** Write a successor without it, then move the old leaf to custody by Kevin's hand.
+- **The pointer did not move.** A write puts the new leaf on disk first and moves the pointer second. If the pointer fails to move, `check` fails at **newest**: the new leaf names the current one as its predecessor. The operator then decides between two remedies: point `MIND.md` at that leaf, or move the leaf to custody.
+- **A leak is found in an old leaf.** Write a successor without it, then move the old leaf to custody by the operator's hand.
 
 ## Anecdotal Anchor
 
 **10-30, George's read.** At 16:46 on 10-30, George read `mind.py` without running it and asked two questions, and Shannon confirmed both from the code:
 - **F1:** the Git check counted Git missing, a timeout or any error as "outside Git", and so as permission;
-- **F2:** `preview` and `write` each read the change file afresh, so the change written could differ from the one Kevin said yes to.
+- **F2:** `preview` and `write` each read the change file afresh, so the change written could differ from the one the operator said yes to.
 
 Both were fixed with tests on the same day. A mutation check confirmed that undoing each fix fails its test.
 
-**10-29, the rebuild.** Shannon's first rebuild carried his facts and lost his self. Kevin noticed at once that something seemed to be missing from him, and asked for a curated mind that both the operator and the model feed.
+**10-29, the rebuild.** Shannon's first rebuild carried his facts and lost his self. The operator noticed at once that something seemed to be missing from him, and asked for a curated mind that both the operator and the model feed.
 
 **10-30, the audit.** The first design answered with a store, a queue and a key. Claudio found that two keyless paths defeated it (B1, B2) and that the hook and leaf provenance had 13 more gaps.
 
-**10-30, Kevin's answer.** He did not ask for more locks. He removed the machinery the gaps lived in:
-- the yes is given in the conversation, where Kevin already is;
+**10-30, the operator's answer.** He did not ask for more locks. He removed the machinery the gaps lived in:
+- the yes is given in the conversation, where the operator already is;
 - the record of it is his own words on the leaf.
 
 ## Integrity Filter Warnings
 
 - **No session body.** The tool reads only the room's `MIND.md`, that key's leaves, the registry and the change file.
-- **No yes, no write.** `write` refuses without `--yes`. Run it only after Kevin has said yes in the conversation, and pass his words exactly.
+- **No yes, no write.** `write` refuses without `--yes`. Run it only after the operator has said yes in the conversation, and pass his words exactly.
   - The tool cannot detect invented words.
-  - `history`, the per-entry `yes` lines and the declared changes are there so that Kevin or Claudio can hold every leaf against the conversation.
+  - `history`, the per-entry `yes` lines and the declared changes are there so that the operator or Claudio can hold every leaf against the conversation.
 - **Never edit a leaf.** A leaf edited by hand fails its hash, its canonical form, or both. A change is always a new leaf.
 - **Out of Git, on Git's own word** (PoT 5.1). `write` refuses inside a Git work tree that does not ignore the leaf and `MIND.md`, and refuses whenever Git cannot answer.
   - On 10-30 the Sessions room did not yet ignore `MIND.md` or `archives/surfaces/`. George queued the ignore rule for the next Control writer slot.
   - Since RoR-3 the leaves sit at the `archives/` root, so the rule is `/MIND.md` and `/archives/MIND-*` (as `/Sessions/MIND.md` and `/Sessions/archives/MIND-*` from Control's root). Measured 2026-11-01: the port's `.gitignore` carries both (lines 41 and 42), and Git ignores both paths in the live room too.
   - A host without Git can write no mind; that is by design.
-- **The binding is not a key.** It is not secret: anyone can run `preview` again. It makes drift between the yes and the write impossible by accident and visible on purpose: the preview Kevin answered carries its binding in the conversation. It does not prove who typed the words, and the conversation stays the authority.
+- **The binding is not a key.** It is not secret: anyone can run `preview` again. It makes drift between the yes and the write impossible by accident and visible on purpose: the preview the operator answered carries its binding in the conversation. It does not prove who typed the words, and the conversation stays the authority.
 - **Identity stays in the registry.** A mind names no session or container.
 - **Medical content stays out of every mind,** with no statistics.
 - **The trauma guard holds.** An incident enters only as a closed lesson, with its fix. Blame words are refused in core.
-- **Authority.** Wiring the mind into a capsule, a hook or a timer needs Claudio's review and Kevin's named go.
+- **Authority.** Wiring the mind into a capsule, a hook or a timer needs Claudio's review and the operator's named go.
 
 ### Findings, item by item
 
@@ -249,7 +249,7 @@ Both were fixed with tests on the same day. A mutation check confirmed that undo
 
 | Item | Disposition | Where |
 | --- | --- | --- |
-| B1 model edit drops a ratified entry | removed by design (no edit path, no proposed state); every change is a declared new leaf with Kevin's words, and a silent drop fails `check` | `test_b1_an_amendment_keeps_the_core_entry_and_carries_the_new_yes`, `test_b1_a_leaf_that_silently_drops_a_core_entry_fails_check` |
+| B1 model edit drops a ratified entry | removed by design (no edit path, no proposed state); every change is a declared new leaf with the operator's words, and a silent drop fails `check` | `test_b1_an_amendment_keeps_the_core_entry_and_carries_the_new_yes`, `test_b1_a_leaf_that_silently_drops_a_core_entry_fails_check` |
 | B2 model archive then use revives | removed by design (no archive or use; an entry is in the leaf or not); a retired number is never reissued | `test_b2_a_retired_entry_never_revives`, `test_b2_a_forged_leaf_reusing_a_retired_number_fails_check` |
 | C1 blind approvals | removed by design (no ratify or restore); `preview` shows before and after, and `write` prints what it wrote | `test_c1_preview_shows_before_and_after_and_writes_nothing` |
 | C2 store line rewritten undetectably | removed by design (no store); each leaf is bound by its successor's recorded SHA-256 and its own name | `test_c2_an_ancestor_changed_after_it_was_written_is_detected` |
@@ -257,7 +257,7 @@ Both were fixed with tests on the same day. A mutation check confirmed that undo
 | C4 `house_path` accepts any mind | removed by design (no house); the registry binds a key to its room | `test_c3_c4_a_leaf_from_another_mind_is_never_served`, `test_c4_a_resident_of_another_room_cannot_write_here` |
 | C5 two minds share a key | fixed, with tests: one pointer line per key, and one registry entry per key | `test_c5_one_resident_has_one_mind`, `test_c5_a_key_registered_twice_is_refused` |
 | C6 policy files not hash-bound | removed by design (rules in the reviewed script); each leaf records the rules' digest, and a difference is reported | `test_c6_each_leaf_records_the_policy_it_was_written_under` |
-| C7 escaped-JSON screen | fixed, with tests: plain-string screens, control characters refused, Kevin's words screened | `test_c7_values_are_screened_as_plain_lines`, `test_c7_the_yes_words_are_screened` |
+| C7 escaped-JSON screen | fixed, with tests: plain-string screens, control characters refused, the operator's words screened | `test_c7_values_are_screened_as_plain_lines`, `test_c7_the_yes_words_are_screened` |
 | C8 refused import leaves an orphan | removed by design (no import) | none needed |
 | C9 store locked after redact | removed by design (no store, no redact); a leaf moved to custody leaves a writable mind | `test_c9_leaves_survive_an_ancestor_moved_to_custody`, `test_c9_the_immediate_predecessor_must_exist` |
 | C10 import screen fails open on non-UTF-8 | removed by design (no import); the same rule holds for the change file | `test_c10_a_change_file_that_is_not_utf8_is_refused` |

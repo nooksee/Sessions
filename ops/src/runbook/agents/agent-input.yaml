@@ -3,7 +3,7 @@ version: 1
 instructions: >
   Fill every field before delivery. Use "none" for an empty field. Scope is
   exact paths or surfaces; authority quotes the decision actually given.
-  Delivery occurs only when Kevin pastes this packet into the resident's own
+  Delivery occurs only when the operator pastes this packet into the resident's own
   conversation.
 fields:
   to: "Role (Person) and registry key"

@@ -78,13 +78,13 @@ summary above; their original counts and observations remain historical.
 - Resident Center residents assigned 2026-08-05: EZ Claude, who leads
   continuity, analysis, and adversarial review, and Leonard Codex, who performs
   bounded implementation as the sole repository writer.
-- `claudio-sanchez` was retired on 2026-08-05 at Kevin's instruction, name
+- `claudio-sanchez` was retired on 2026-08-05 at the operator's instruction, name
   included. `documentstudio` was rebound to Claude Rains and re-enabled.
 - Seven residents were rotated into fresh bodies on 2026-08-05: George Friend
   (renamed from George X), George Mercer, George Harrison, Jacob Codex, George
   Prime, George King, and Jerry Codex. All seven report `ready` against their
   new containers. Their seven previous bodies remain in the live session store
-  as rollback and are retired `0` times so far, pending Kevin's confirmation
+  as rollback and are retired `0` times so far, pending the operator's confirmation
   that each resident woke whole. See
   `Receipts/seven-rotations-and-instrument-repair-20260805.md`.
 - Worker threads live: `0`. Seventeen were deleted on 2026-08-05 under the
@@ -130,7 +130,7 @@ rollback custody. Receipt:
 
 ## 2026-07-27 OSAI Retirement And Resident Center Intake
 
-Kevin ended OSAI operations and further development. Resident Center now
+The operator ended OSAI operations and further development. Resident Center now
 lives at `Sessions/Resident-Center`; imported files and bytes are `157` and
 `739,030`; portable manifest checks pass `160/160`; focused tests pass
 `145/145`; and live-safe self-checks pass `3/3`. The host indicator runs from
@@ -231,7 +231,7 @@ Receipts:
 ## 2026-07-27 Resident Center Independent Naming, Staffing, And Reconciliation
 
 Same day as the OSAI retirement and intake above, three further passes
-completed under Kevin's direction to "organiz how see fit... have your
+completed under the operator's direction to "organiz how see fit... have your
 staff do work":
 
 - **Independent naming.** Joe Codex renamed the live product from
@@ -364,13 +364,13 @@ gates passed. Production body edits and permanent deletes were `0/0`.
 3. **Cross-provider follow-through:** the Control Room transplant is accepted,
    represented in `DOCTRINE.md`, and continued by David Codex inside
    Personal. The external counterpart remains active; retirement remains a
-   separate Kevin decision.
+   a separate decision of the operator.
 4. **Session predecessor accounting:** preserve the observed discrepancy and
    obtain attributed evidence before any live-store treatment.
 
 ## Authority
 
-- Kevin owns objectives, authority, priorities, and final acceptance.
+- The operator owns objectives, authority, priorities, and final acceptance.
 - George Friend owns current Control decisions and cross-project reconciliation.
 - Claude Shannon owns session-clinic method and bounded
   session-health work.

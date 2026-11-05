@@ -3,7 +3,7 @@
 Test file: `Sessions/tools/test/test_mind.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Spec written 2026-10-30 and updated for the retained RoR-3 and F1/F2 regressions. Status: 43 tests in the current suite; rerun at umask 0002, 0022 and 0077 for measured results.
 
 ## Purpose
-Prove, in synthetic rooms only, that `mind` writes a leaf only with Kevin's words and a registered writer, that every change is a declared new leaf in a verifiable chain, that a forged, moved or edited leaf is never served, and that each of Claudio Freeman's section 130 items the port fixes stays fixed. Each such item has a test named for it.
+Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator's words and a registered writer, that every change is a declared new leaf in a verifiable chain, that a forged, moved or edited leaf is never served, and that each of Claudio Freeman's section 130 items the port fixes stays fixed. Each such item has a test named for it.
 
 ## Invocation
 - Command, from the room root: `python3 -I -B tools/test/test_mind.py`
@@ -28,7 +28,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with Kevin's word
 43 tests.
 
 **The basic loop (3).**
-1. `test_write_check_show_round_trip`: write, check and show agree; `show` returns the leaf byte for byte; the leaf records Kevin's words, the writer, `predecessor: none` and the declared change.
+1. `test_write_check_show_round_trip`: write, check and show agree; `show` returns the leaf byte for byte; the leaf records the operator's words, the writer, `predecessor: none` and the declared change.
 2. `test_c11_show_ref_binds_the_capsule_to_the_leaf_hash`: `show --ref` prints `leaf=<path>|sha256=<digest>` matching the leaf.
 3. `test_write_needs_kevins_words_and_a_registered_writer`: an empty yes, a bare "ok", or an unregistered `--by` is refused, and 0 files are written.
 
@@ -50,7 +50,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with Kevin's word
 16. `test_c5_a_key_registered_twice_is_refused`: a key registered twice is refused.
 17. `test_c6_each_leaf_records_the_policy_it_was_written_under`: each leaf records the policy digest; a different digest is reported, not blocked.
 18. `test_c7_values_are_screened_as_plain_lines`: newline, tab, zero-width characters, a UUID, a 16-digit hash, a secret pattern and a medical word are each refused, with 0 files written; the yes is screened too.
-19. `test_c7_the_yes_words_are_screened`: a secret pattern in Kevin's words is refused.
+19. `test_c7_the_yes_words_are_screened`: a secret pattern in the operator's words is refused.
 20. `test_c9_leaves_survive_an_ancestor_moved_to_custody`: an older ancestor removed is reported as `chain-history`, and writing continues.
 21. `test_c9_the_immediate_predecessor_must_exist`: a missing immediate predecessor fails `check`.
 22. `test_c10_a_change_file_that_is_not_utf8_is_refused`: a non-UTF-8 change file and a field named twice are refused, with 0 files written.
@@ -81,12 +81,12 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with Kevin's word
 43. `test_f2_a_moved_predecessor_is_refused`: a moved predecessor invalidates the binding.
 
 ## Not covered
-- That the words passed to `--yes` are truly Kevin's: the tool cannot know, and the spec says so. The audit is the chain, the declared changes and the words held against the conversation.
+- That the words passed to `--yes` are truly the operator's: the tool cannot know, and the spec says so. The audit is the chain, the declared changes and the words held against the conversation.
 - The Sessions room itself: no test writes a real mind, and none has been written.
 - Any hook, timer or capsule wiring: none exists.
 
 ## Anecdotal Anchor
-Claudio's audit of 2026-10-30 (section 130) found that the first design's store let a model edit drop a ratified entry and let an archive-then-use revive a closed one. Kevin removed the machinery those gaps lived in. These tests are the record that each gap stays closed: an item fixed by design has a test that tries the old path and is refused.
+Claudio's audit of 2026-10-30 (section 130) found that the first design's store let a model edit drop a ratified entry and let an archive-then-use revive a closed one. The operator removed the machinery those gaps lived in. These tests are the record that each gap stays closed: an item fixed by design has a test that tries the old path and is refused.
 
 ## Related pointers
 - Tool spec: `docs/ops/specs/scripts/mind.md` (its last table maps each section 130 item to its test).

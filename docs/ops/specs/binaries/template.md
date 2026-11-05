@@ -4,7 +4,7 @@ Binary: `Sessions/ops/bin/template` (Bash, no library). Templates: `Sessions/ops
 
 ## First Principles Rationale
 
-Kevin, 2026-10-30, on why STELA keeps `.tpl` templates: the agent kept revising the form, and at times forgot it altogether, and the templates were his effort to make the form uniform and consistent and the reports better.
+The operator, 2026-10-30, on why STELA keeps `.tpl` templates: the agent kept revising the form, and at times forgot it altogether, and the templates were his effort to make the form uniform and consistent and the reports better.
 
 A form kept in an agent's memory drifts one use at a time: a receipt without its custody hashes, a packet without a stop condition, a closeout card reworded by whoever pasted it. A form kept in a file, with its required fields declared at the top, cannot be forgotten or quietly revised: the renderer refuses until every field is filled, and refuses anything it does not recognize.
 
@@ -66,7 +66,7 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
      named case lane. Relative paths and symlink aliases are resolved with
      coreutils `realpath -m`. This is a trusted-writer path guard, not a
      hostile same-user filesystem sandbox.
-   - The closeout card's single source is its template, `ops/src/reports/closeout.md.tpl` (PoT 1.2, SSOT); `closeout.md` points to it and carries no copy. Its slots are `PERCENT`, `WINDOW`, `READING_TIME` and `ROTATION_WRITER`, so each card names one writer: "5. Tell Kevin you are ready for rotation. <ROTATION_WRITER> runs it." The self-test renders the card and refuses a second copy of it in the spec.
+   - The closeout card's single source is its template, `ops/src/reports/closeout.md.tpl` (PoT 1.2, SSOT); `closeout.md` points to it and carries no copy. Its slots are `PERCENT`, `WINDOW`, `READING_TIME` and `ROTATION_WRITER`, so each card names one writer: "5. Tell the operator you are ready for rotation. <ROTATION_WRITER> runs it." The self-test renders the card and refuses a second copy of it in the spec.
 6. **Tool-set mode** (`<word>`).
    - **Name.** One lowercase word: letters `a` to `z` only, 2 to 32 of them.
    - **Root.** By default, the room that contains this `ops/bin` folder, which must hold `AGENTS.md` and `PoT.md`. With `--root=DIR`, an existing directory of any kind, for scratch trees and tests. Templates always come from this room's `ops/src`, whatever the root.
@@ -121,18 +121,18 @@ Dropped from STELA:
 - the telemetry leaves STELA's `common.sh` writes to `logs/` at the Git top level, which here would land in the Control root.
 
 [PLACEHOLDER: further template types (for example a binary under `ops/bin` with its spec under `docs/ops/specs/binaries`), and multi-line values in a slots file, owner Claude Shannon, when one is needed often enough.]
-[PLACEHOLDER: a spec-first mode that adds only the missing files of a tool set, owner Claude Shannon, if Kevin wants one.]
+[PLACEHOLDER: a spec-first mode that adds only the missing files of a tool set, owner Claude Shannon, if the operator wants one.]
 
 ## Anecdotal Anchor
 
-On 2026-10-30, Kevin asked for the rotation to be formalized, because to him it always felt haphazard and awkward and was never carried out the same way twice (`rotate.md`). In Joy's rotation 6, three slips came from hand-glued joins:
+On 2026-10-30, the operator asked for the rotation to be formalized, because to him it always felt haphazard and awkward and was never carried out the same way twice (`rotate.md`). In Joy's rotation 6, three slips came from hand-glued joins:
 - a path passed where text was meant;
 - an image pointer that led nowhere;
 - a chmod in the wrong order.
 
 The same day, the room adopted STELA's convention, and its map lists 42 legacy scripts in `Scripts/` to be moved to `ops/lib/scripts/`, one word each, with a spec each, as each is next touched. That is 42 chances for the same kind of slip at the joins between script, spec, tests and registry. The day `template` was first built, `help specs` showed where hand assembly had already left gaps: `closeout` and `rotate` each have a spec and no script.
 
-Later that day Kevin explained STELA's templates: the agent kept changing the form, or at times forgot it. The rotation receipts in `archives/receipts/` show the same drift: Joy's rotation 6 receipt (`joy-anne-rotation-6-20261030.md`) is organized as Why, Close and custody, Build, Gates, Install, Rollback, Not done and Deviations, while `rotate.md` phase 9 asks for tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations, acceptance and its time. `template receipt` holds every future receipt to the phase 9 list.
+Later that day the operator explained STELA's templates: the agent kept changing the form, or at times forgot it. The rotation receipts in `archives/receipts/` show the same drift: Joy's rotation 6 receipt (`joy-anne-rotation-6-20261030.md`) is organized as Why, Close and custody, Build, Gates, Install, Rollback, Not done and Deviations, while `rotate.md` phase 9 asks for tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations, acceptance and its time. `template receipt` holds every future receipt to the phase 9 list.
 
 ## Integrity Filter Warnings
 

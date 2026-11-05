@@ -17,7 +17,7 @@ requires_slots:
 slot_notes:
   TO: the resident by Role (Person) and registry key; never a session identifier
   FROM: the packet's real author; relayed words carry their real author
-  RELAYED_BY: who carries the packet into the resident's own chat (usually Kevin), or none
+  RELAYED_BY: who carries the packet into the resident's own chat (usually the operator), or none
   OWNER: the single writer of the work; review grants no write authority
   SCOPE: the exact files or surfaces the owner may write, as a list of paths
   AUTHORITY: whose decision this carries out, quoted with date, and what still needs a further go
