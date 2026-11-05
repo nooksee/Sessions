@@ -79,8 +79,8 @@ remains; the adoption itself moved no state.
 ## What the last two days left, and its place
 
 - `archives/mind-manifest-20261101/`: the whole mind project as of 2026-11-01, packed by the Session Continuity Manager with a hash manifest: the v1 proposal and package, Claudio's audit, the v2 tool as it stands, the law, the handoff excerpts and the notes. It is the durable record. `storage/candidates/mind-manifest-20261029/` and `storage/lab/jojo-production/working-snapshots/claudio-20261030-mind-audit/` are its working duplicates, disposable.
-- `storage/candidates/joy-anne-rotation-20261030/` and `shannon-rebuild-20261029/`: build records of two rotations. `splice_window.py` and the gates are the ingredients of `rotate.py`. The large intermediate bodies are rebuildable from custody.
-- `storage/lab/` (formerly the Lab folder): existing working snapshots, ignored by Git. Required audit evidence stays until classified and kept; new task scratch goes to `var/tmp/`. Existing contents await the assigned retention pass, not a blind move or purge.
+- `storage/candidates/`, the build records of this office's rotations and capsules from 2026-07 to 2026-10, moved to custody on 2026-11-04 as batch `sessions-storage-candidates-20261104` (three roots, direct-read verified) and removed from the room at the operator's direction; `splice_window.py` and the gates, the ingredients of `rotate.py`, are in custody with them.
+- `storage/lab/` (formerly the Lab folder): in custody entire as batch `sessions-storage-lab-20261104` (2026-11-04); this desk's folders removed from the room, the other residents' folders kept until their owners say, ignored by Git.
 
 ## Ported later (the operator: no side path now)
 

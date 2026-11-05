@@ -431,7 +431,7 @@ Also:
 | `MIND.md`, `archives/MIND-*` | minds (out of Git) |
 | `archives/receipts/` | durable receipts; only explicitly admitted redacted copies are tracked |
 | `Backup/Codex-Session-Preservation/<batch>/` (under `/media/nos4r2/user_vol`) | tier-1 custody |
-| `storage/candidates/`, `storage/lab/` | existing cases awaiting classification; new ephemeral work uses `var/tmp/` |
+| `storage/lab/` | the other residents' lab folders, in custody, kept until their owners say; `storage/candidates/` is in custody and gone; new ephemeral work uses `var/tmp/` |
 
 ---
 
