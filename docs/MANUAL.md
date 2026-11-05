@@ -430,7 +430,7 @@ Also:
 | `var/tmp/<owner>-<operation>.<unique>/` | task scratch; allocate with `mktemp -d`, contents ignored |
 | `MIND.md`, `archives/MIND-*` | minds (out of Git) |
 | `archives/receipts/` | durable receipts; only explicitly admitted redacted copies are tracked |
-| `Backup/Codex-Session-Preservation/<batch>/` (under `/media/nos4r2/user_vol`) | tier-1 custody |
+| `Backup/Codex-Session-Preservation/<batch>/` (under `<control>`) | tier-1 custody |
 | `storage/lab/` | the other residents' lab folders, in custody, kept until their owners say; `storage/candidates/` is in custody and gone; new ephemeral work uses `var/tmp/` |
 
 ---

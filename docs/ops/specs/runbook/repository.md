@@ -42,3 +42,5 @@ At 2026-11-03 00:48 EST, local `main` was at
 were still open. The accepted local join therefore remained unpublished to
 hosted `main`; this readback does not claim a hosted merge, CI result or
 remote synchronization.
+
+**Correction, by the Session Continuity Manager (Claude Shannon), 2026-11-05 00:20:20 EST:** the GitHub home named above as private, nooksee/sessions, has been public since 2026-11-04 as nooksee/Sessions, rebuilt from the rewritten history under RoR-15; the bootstrap it describes is event-time history. Receipt: `archives/receipts/history-rewrite-20261104.md`.
