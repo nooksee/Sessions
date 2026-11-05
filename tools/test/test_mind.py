@@ -866,5 +866,179 @@ class MindLockLocation(unittest.TestCase):
         self.assertEqual(old.read_bytes(), b"preserved")
 
 
+class ProjectTests(unittest.TestCase):
+    """W5 first slice: mind project --key K --notebook DIR, in synthetic rooms and notebooks only."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="mind-project-")
+        self.r = Room(Path(self.tmp.name))
+        self.nb = Path(self.tmp.name) / "notebooks" / "session-doctor"
+        self.nb.mkdir(parents=True)
+        self.nb.chmod(0o700)
+        self.index = self.nb / "MEMORY.md"
+        self.tail = "- [Room facts](room-facts.md) - a note the resident keeps\n"
+        self.index.write_text(self.tail)
+        self.index.chmod(0o600)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def project(self, key="session-doctor", notebook=None, env=None):
+        return self.r.run("project", "--key", key, "--notebook", str(notebook or self.nb), env=env)
+
+    def ok(self, result):
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result
+
+    def refused(self, result, *words):
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        for word in words:
+            self.assertIn(word, result.stderr)
+        return result
+
+    def genesis(self):
+        self.assertEqual(self.r.write({"add": [CORE, LESSON, COMMIT]}).returncode, 0)
+
+    def block(self, key="session-doctor"):
+        rel, digest = self.r.pointer()[key]
+        data = (self.r.room / rel).read_bytes()
+        return (f"<!-- mind-projection begin key={key} leaf={rel} sha256={digest}: a copy written by mind.py project; "
+                f"the leaf is the authority -->\n" + data.decode("utf-8") + f"<!-- mind-projection end key={key} -->\n")
+
+    def room_bytes(self):
+        return {p: (self.r.room / p).read_bytes() for p in self.r.files()}
+
+    def test_w5_project_puts_one_block_at_the_top_and_keeps_every_other_byte(self):
+        self.genesis()
+        before = self.room_bytes()
+        out = self.ok(self.project()).stdout
+        self.assertEqual(self.index.read_text(), self.block() + self.tail)
+        self.assertEqual(stat.S_IMODE(self.index.stat().st_mode), 0o600)
+        self.assertIn("projection written", out)
+        self.assertIn("not evidence that any provider loaded it", out)
+        self.assertEqual(self.room_bytes(), before)                 # leaf and pointer untouched
+        self.assertNotIn("never-printed", out)
+
+    def test_w5_project_creates_the_index_in_a_named_empty_notebook(self):
+        self.genesis()
+        self.index.unlink()
+        self.ok(self.project())
+        self.assertEqual(self.index.read_text(), self.block())
+        self.assertEqual(stat.S_IMODE(self.index.stat().st_mode), 0o600)
+
+    def test_w5_project_is_idempotent_and_follows_a_new_leaf(self):
+        self.genesis()
+        self.ok(self.project())
+        first = self.index.read_bytes()
+        self.assertIn("projection unchanged", self.ok(self.project()).stdout)
+        self.assertEqual(self.index.read_bytes(), first)
+        self.assertEqual(self.r.write({"add": [dict(LESSON, text="Another lesson.")]}, yes="yes, add it").returncode, 0)
+        out = self.ok(self.project()).stdout
+        self.assertIn("matched the leaf it named", out)
+        self.assertEqual(self.index.read_text(), self.block() + self.tail)
+        self.assertNotEqual(self.index.read_bytes(), first)
+
+    def test_w5_project_has_no_default_notebook(self):
+        self.genesis()
+        result = self.r.run("project", "--key", "session-doctor")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--notebook", result.stderr)
+        missing = Path(self.tmp.name) / "notebooks" / "absent"
+        self.refused(self.project(notebook=missing), "creates none")
+        self.assertFalse(missing.exists())
+        self.refused(self.project(notebook=" "), "--notebook")
+        self.assertEqual(self.index.read_text(), self.tail)
+
+    def test_w5_project_refuses_unsafe_notebook_paths(self):
+        self.genesis()
+        real = Path(self.tmp.name) / "real"
+        real.mkdir(mode=0o700)
+        real.chmod(0o700)
+        (real / "nb").mkdir()
+        (real / "nb").chmod(0o700)
+        link_parent = Path(self.tmp.name) / "linked-parent"
+        link_parent.symlink_to(real)
+        self.refused(self.project(notebook=link_parent / "nb"), "symbolic link")
+        link_dir = Path(self.tmp.name) / "linked-nb"
+        link_dir.symlink_to(self.nb)
+        self.refused(self.project(notebook=link_dir), "symbolic link")
+        self.nb.chmod(0o755)
+        self.refused(self.project(), "not 0700")
+        self.nb.chmod(0o700)
+        self.index.chmod(0o644)
+        self.refused(self.project(), "not 0600")
+        self.index.chmod(0o600)
+        twin = Path(self.tmp.name) / "twin"
+        os.link(self.index, twin)
+        self.refused(self.project(), "hard links")
+        twin.unlink()
+        self.index.unlink()
+        other = Path(self.tmp.name) / "elsewhere.md"
+        other.write_text(self.tail)
+        self.index.symlink_to(other)
+        self.refused(self.project(), "not a regular file")
+        self.assertEqual(other.read_text(), self.tail)
+        self.index.unlink()
+        plain = Path(self.tmp.name) / "plain-file"
+        plain.write_text("x")
+        self.refused(self.project(notebook=plain), "not a directory")
+        self.assertEqual(plain.read_text(), "x")
+
+    def test_w5_project_refuses_wrong_duplicate_malformed_and_misplaced_markers(self):
+        self.genesis()
+        self.assertEqual(self.r.write({"add": [CORE]}, key="claudine-colbert").returncode, 0)
+        cases = {
+            "another key": (self.block("claudine-colbert") + self.tail, "not session-doctor"),
+            "duplicate": (self.block() + self.block() + self.tail, "4 projection markers"),
+            "malformed": ("<!-- mind-projection begin key=session-doctor -->\n" + self.tail, "malformed"),
+            "end only": (self.tail + "<!-- mind-projection end key=session-doctor -->\n", "1 projection markers"),
+            "not at the top": (self.tail + self.block(), "not at the top"),
+            "crlf marker": (self.block().replace("-->\n", "-->\r\n", 1) + self.tail, "malformed"),
+        }
+        for name, (text, word) in cases.items():
+            with self.subTest(case=name):
+                self.index.write_text(text)
+                before = self.index.read_bytes()
+                self.refused(self.project(), word)
+                self.assertEqual(self.index.read_bytes(), before)
+
+    def test_w5_an_edited_block_is_reported_and_replaced(self):
+        self.genesis()
+        self.ok(self.project())
+        self.index.write_text(self.index.read_text().replace("Measure before explaining.", "Explain first."))
+        out = self.ok(self.project()).stdout
+        self.assertIn("edited by hand", out)
+        self.assertEqual(self.index.read_text(), self.block() + self.tail)
+
+    def test_w5_an_unverified_mind_is_never_projected_and_nothing_is_locked(self):
+        self.refused(self.project(), "not projected until its check passes")
+        self.assertFalse((self.r.room / "logs").exists())
+        self.assertEqual(self.index.read_text(), self.tail)
+        self.genesis()
+        leaf = self.r.leaf()
+        leaf.write_text(leaf.read_text().replace("Measure before explaining.", "Explain first."))
+        self.refused(self.project(), "not projected until its check passes")
+        self.assertEqual(self.index.read_text(), self.tail)
+        self.refused(self.project(key="nobody-here"), "not projected until its check passes")
+
+    def test_w5_oversize_is_refused_never_truncated(self):
+        many = [dict(LESSON, text=f"Lesson number {n} in words.") for n in range(1, 31)]
+        self.assertEqual(self.r.write({"add": many}).returncode, 0)
+        self.assertGreater(len(self.r.leaf().read_text().splitlines()), mind.LOAD_LINES)
+        self.refused(self.project(), "never truncated")
+        self.assertEqual(self.index.read_text(), self.tail)
+
+    def test_w5_project_needs_positive_git_exclusion(self):
+        if subprocess.run(["git", "--version"], capture_output=True).returncode != 0:
+            self.skipTest("git is not installed")
+        self.genesis()
+        subprocess.run(["git", "init", "-q", str(self.nb)], check=True)
+        self.refused(self.project(), "not ignored by Git")
+        self.assertEqual(self.index.read_text(), self.tail)
+        (self.nb / ".gitignore").write_text("/MEMORY.md\n")
+        self.ok(self.project())
+        self.assertEqual(self.index.read_text(), self.block() + self.tail)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

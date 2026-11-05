@@ -1,6 +1,6 @@
 # Technical Specification: tools/test/test_mind.py
 
-Test file: `Sessions/tools/test/test_mind.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Spec written 2026-10-30 and updated for the retained RoR-3 and F1/F2 regressions. Status: 43 tests in the current suite; rerun at umask 0002, 0022 and 0077 for measured results.
+Test file: `Sessions/tools/test/test_mind.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Spec written 2026-10-30 and updated for the retained RoR-3 and F1/F2 regressions, then for the W5 projection slice (2026-11-05). Status: 69 tests in the current suite (measured 2026-11-05: 69 passed at umask 0002, 0022 and 0077); rerun at those umasks for measured results.
 
 ## Purpose
 Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator's words and a registered writer, that every change is a declared new leaf in a verifiable chain, that a forged, moved or edited leaf is never served, and that each of Claudio Freeman's section 130 items the port fixes stays fixed. Each such item has a test named for it.
@@ -9,7 +9,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - Command, from the room root: `python3 -I -B tools/test/test_mind.py`
 - Required flags: none. Positional arguments: none (standard `unittest` arguments are accepted).
 - Expected exit behavior:
-  - `0` when all 43 tests pass (one test skips if `git` is not installed).
+  - `0` when all 69 tests pass (two tests skip if `git` is not installed).
   - `1` when any test fails or errors.
 - Reviewers also run it at umask 0002, 0022 and 0077.
 
@@ -20,12 +20,12 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - No real room, registry, mind or body is read or written.
 
 ## Outputs
-- Stdout: `unittest` progress and a summary line (`Ran 43 tests`, `OK`).
+- Stdout: `unittest` progress and a summary line (`Ran 69 tests`, `OK`).
 - Writes only inside its own temporary directory, which is removed after each test.
 - Exit codes the tests assert on the tool: `0` success, `1` a failed `check`, `2` a refusal.
 
 ## Invariants and failure modes
-43 tests.
+69 tests. The 43 numbered below, the 10 projection tests listed after them, and 16 tests of the legacy-state guard, the lock location and the nearest-Git rule (B1) that this list does not yet itemize; the base suite at d7e9ae51 measured 59.
 
 **The basic loop (3).**
 1. `test_write_check_show_round_trip`: write, check and show agree; `show` returns the leaf byte for byte; the leaf records the operator's words, the writer, `predecessor: none` and the declared change.
@@ -80,10 +80,24 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 42. `test_f2_changes_from_standard_input`: the supported stdin route is covered.
 43. `test_f2_a_moved_predecessor_is_refused`: a moved predecessor invalidates the binding.
 
+**Notebook projection, W5 first slice (10, class `ProjectTests`).** Each uses its own synthetic notebook folder (0700) with a one-line `MEMORY.md` (0600).
+- `test_w5_project_puts_one_block_at_the_top_and_keeps_every_other_byte`: the block is the leaf verbatim between its two markers, at the top; the earlier bytes follow unchanged; the index stays 0600; the room's leaf and pointer are unchanged; output says the copy is not evidence of loading and prints no session id.
+- `test_w5_project_creates_the_index_in_a_named_empty_notebook`: with no `MEMORY.md`, the index is created holding the block alone, at 0600.
+- `test_w5_project_is_idempotent_and_follows_a_new_leaf`: a second run reports unchanged and writes nothing; after a new leaf the block is replaced and the tail kept.
+- `test_w5_project_has_no_default_notebook`: no `--notebook`, a blank one, or an absent folder is refused, and no folder is created.
+- `test_w5_project_refuses_unsafe_notebook_paths`: a linked ancestor, a linked notebook folder, a folder not 0700, an index not 0600, an index with two hard links, a linked index and a file in place of the folder are each refused; the link target is untouched.
+- `test_w5_project_refuses_wrong_duplicate_malformed_and_misplaced_markers`: another key's block, a duplicated block, a malformed marker, an end without a begin, a block below the top and a CRLF marker are each refused with the index byte for byte as it was.
+- `test_w5_an_edited_block_is_reported_and_replaced`: a hand-edited block is reported as edited and replaced by the leaf, never trusted.
+- `test_w5_an_unverified_mind_is_never_projected_and_nothing_is_locked`: no pointer line, a forged leaf, or an unregistered key is refused; a refusal before the lock creates no `logs/`.
+- `test_w5_oversize_is_refused_never_truncated`: a mind whose block exceeds 200 lines is refused whole.
+- `test_w5_project_needs_positive_git_exclusion`: a notebook inside a Git work tree that does not ignore `MEMORY.md` is refused; once ignored, it is projected. Skips if `git` is absent.
+
 ## Not covered
 - That the words passed to `--yes` are truly the operator's: the tool cannot know, and the spec says so. The audit is the chain, the declared changes and the words held against the conversation.
 - The Sessions room itself: no test writes a real mind, and none has been written.
 - Any hook, timer or capsule wiring: none exists.
+- That a provider loads the projected block: projection source is not evidence of loading; that needs its own native proof.
+- A real notebook, its home, seal, unseal or the launch wrapper: none is built or touched.
 
 ## Anecdotal Anchor
 Claudio's audit of 2026-10-30 (section 130) found that the first design's store let a model edit drop a ratified entry and let an archive-then-use revive a closed one. The operator removed the machinery those gaps lived in. These tests are the record that each gap stays closed: an item fixed by design has a test that tries the old path and is refused.

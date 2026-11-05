@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-05 00:45 EST, the Session Continuity Manager, after the B1 merge; earlier 2026-11-04 23:39 EST for the public gate; earlier by Joe Codex on 2026-11-04 for the RoR-18 policy and reader adoption.
+Updated: 2026-11-05 11:03 EST, JoJo Git, for the W4 source merge and the W5 projection slice; earlier 2026-11-05 00:45 EST, the Session Continuity Manager, after the B1 merge; earlier 2026-11-04 23:39 EST for the public gate; earlier by Joe Codex on 2026-11-04 for the RoR-18 policy and reader adoption.
 The operation receipt records the actual application time and source head.
 Other observations retain their stated measurement times and were not
 refreshed in this change. The dated boards below are historical context,
@@ -28,13 +28,17 @@ of the end-to-end continuity loop. The operator named Joe Codex acting team
 lead on 2026-11-05 while the Session Continuity Manager is away; this is a
 temporary assignment, not a replacement identity or permanent registry role.
 
-- W4: closeout source exists; resident-context delivery and operator-notice
-  installation remain unproved. An operator-only backstop is in isolated
-  source preparation, not active automation.
+- W4: the operator-only notice source is on `main` at commit 7a740a06
+  (2026-11-05, PR #10, source PASS by the Independent Reviewer); it is not
+  activated. Its live use waits on the registry permission finding (F1)
+  and George's activation; resident-context delivery remains unproved.
 - W5: the mind tool exists. The Assistant reports its first operator-approved
   mind write in the private handoff, section 52, on 2026-11-05; this is not
-  fleet adoption or notebook integration. Resident projection, sealing,
-  restoration and launcher integration remain unfinished.
+  fleet adoption or notebook integration. The `project` command (a verified
+  leaf copied into a named notebook folder) is source only: no notebook home
+  is chosen, folder ownership is not proved, no provider read-in is shown, and
+  a real invocation needs the notebook's writer stopped. Sealing, unsealing,
+  the launch wrapper and restoration remain unfinished.
 - W6: the guided `rotate.py` runner and provider-specific native acceptance
   remain unfinished; existing builders are ingredients, not that runner.
 
