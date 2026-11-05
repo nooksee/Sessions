@@ -67,11 +67,18 @@ REQUIRED = {"core": COMMON + ("kind",), "bond": COMMON, "lesson": COMMON + ("app
 MIN_YES = 3
 GIT_TIMEOUT = 30
 HEAD_KEYS = ("resident", "written", "by", "predecessor", "change", "yes", "issued", "policy")
+NOTEBOOK_KEY = "notebook"
+# Leaf formats. Version 1 is the eight header lines above. Version 2 is the same eight plus one notebook line,
+# naming the seal taken at the same seam. Any later version adds an explicit "format: N" line, which no leaf
+# carries yet: this tool refuses one as not understood.
+LEAF_FORMATS = {1: HEAD_KEYS, 2: HEAD_KEYS + (NOTEBOOK_KEY,)}
 
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 NAME_RE = re.compile(r"^MIND-(?P<key>[a-z0-9][a-z0-9-]*?)-(?P<date>\d{4}-\d{2}-\d{2})-(?P<hash>[0-9a-f]{8})\.md$")
 PRED_RE = re.compile(r"^(archives/MIND-\S+) sha256=([0-9a-f]{64})$")
 ISSUED_RE = re.compile(r"^" + " ".join(f"{layer}=(\\d+)" for layer in LAYERS) + r"$")
+NOTEBOOK_REF_RE = re.compile(r"^archives/(?P<name>NOTEBOOK-(?P<key>[a-z0-9][a-z0-9-]*?)-(?P<date>\d{4}-\d{2}-\d{2})-"
+                             r"(?P<hash>[0-9a-f]{8})\.tar) sha256=(?P<sha>[0-9a-f]{64})$")
 YES_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}), "(.+)"$')
 WRITTEN_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 ENTRY_RE = re.compile(r"^- \[((" + "|".join(LAYERS) + r")-(\d{3,}))\] (\S.*)$")
@@ -130,6 +137,7 @@ def policy_digest() -> str:
     """The first 16 hex digits of a digest of every rule above; each leaf records the one it was written under."""
     body = {"layers": LAYERS, "budgets": BUDGETS, "allowed": ALLOWED, "required": REQUIRED,
             "core_kinds": CORE_KINDS, "min_yes": MIN_YES, "chars_per_token": CHARS_PER_TOKEN,
+            "leaf_formats": {str(version): list(keys) for version, keys in LEAF_FORMATS.items()},
             "screens": [rx.pattern for rx in (*IDENTITY_RES, MEDICAL_RE, SECRET_RE, BLAME_RE)]}
     return sha256(json.dumps(body, sort_keys=True).encode("utf-8"))[:16]
 
@@ -195,8 +203,13 @@ def parse_issued(text: str) -> dict:
     return {layer: int(n) for layer, n in zip(LAYERS, m.groups())}
 
 
+def leaf_format(head: dict) -> int:
+    """2 when the header names a seal, else 1."""
+    return 2 if head.get(NOTEBOOK_KEY) else 1
+
+
 def render_leaf(head: dict, entries: list[dict]) -> str:
-    out = [f"# Mind of {head['title']}", ""] + [f"{k}: {head[k]}" for k in HEAD_KEYS]
+    out = [f"# Mind of {head['title']}", ""] + [f"{k}: {head[k]}" for k in LEAF_FORMATS[leaf_format(head)]]
     for layer in LAYERS:
         chosen = sorted((e for e in entries if e["layer"] == layer), key=lambda e: id_key(e["id"]))
         if chosen:
@@ -217,10 +230,14 @@ def parse_leaf(text: str) -> tuple[dict, list[dict]]:
         if not line.startswith(k + ": "):
             raise Refused(f"the leaf header has no {k!r} line where it belongs")
         head[k] = line[len(k) + 2:]
+    start = 2 + len(HEAD_KEYS)
+    if len(lines) > start and lines[start].startswith(NOTEBOOK_KEY + ": "):
+        head[NOTEBOOK_KEY] = lines[start][len(NOTEBOOK_KEY) + 2:]          # version 2
+        start += 1
     by_title = {title: layer for layer, title in TITLES.items()}
     entries: list[dict] = []
     layer = current = None
-    for number, line in enumerate(lines[2 + len(HEAD_KEYS):], 3 + len(HEAD_KEYS)):
+    for number, line in enumerate(lines[start:], start + 1):
         if line == "":
             continue
         if line.startswith("## "):
@@ -266,6 +283,17 @@ def head_problems(head: dict) -> list[str]:
         parse_issued(head["issued"])
     except Refused as exc:
         problems.append(str(exc))
+    if NOTEBOOK_KEY in head:
+        m = NOTEBOOK_REF_RE.match(head[NOTEBOOK_KEY])
+        if not m:
+            problems.append("notebook is not a seal reference (archives/NOTEBOOK-<key>-<date>-<hash8>.tar sha256=<64 hex>)")
+        else:
+            if m.group("key") != head["resident"]:
+                problems.append("notebook names a seal of another resident")
+            if not m.group("sha").startswith(m.group("hash")):
+                problems.append("notebook: the seal's name and the digest recorded for it disagree")
+            if not valid_date(m.group("date")):
+                problems.append("notebook: the seal's date is not a date")
     return problems
 
 
@@ -722,9 +750,12 @@ def load_changes(source: str) -> tuple[list, list, list]:
     return add, amend, retire
 
 
-def binding_of(key: str, predecessor: str, add: list, amend: list, retire: list) -> str:
-    """What Kevin's yes is bound to: the change exactly as previewed, the leaf it builds on, and whose mind it is."""
+def binding_of(key: str, predecessor: str, add: list, amend: list, retire: list, seal: str | None = None) -> str:
+    """What Kevin's yes is bound to: the change exactly as previewed, the leaf it builds on, whose mind it is, and,
+    with --seal, the seal reference exactly as shown. Without a seal the body is what it always was."""
     body = {"key": key, "predecessor": predecessor, "changes": {"add": add, "amend": amend, "retire": retire}}
+    if seal is not None:
+        body["notebook"] = seal
     return sha256(json.dumps(body, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
 
 
@@ -812,7 +843,9 @@ def prepare(args, now: dt.datetime, words: str | None):
             raise Refused(f"leaves for {key!r} already exist in {SURFACES}/ but {POINTER} has no line for it; restore the pointer first")
         head, entries, issued, predecessor = None, [], {layer: 0 for layer in LAYERS}, "none"
     add, amend, retire = load_changes(args.changes)
-    binding = binding_of(key, predecessor, add, amend, retire)
+    seal = getattr(args, "seal", None)
+    reference = seal_reference(room, key, seal) if seal is not None else None
+    binding = binding_of(key, predecessor, add, amend, retire, reference)
     yes = f'{now.date().isoformat()}, "{words if words is not None else "(Kevin, at write)"}"'
     new_entries, new_issued, added, amended, retired, before = apply_changes(entries, issued, add, amend, retire, yes)
     problems = [p for e in new_entries for p in entry_problems(e)] + budget_problems(new_entries)
@@ -825,8 +858,12 @@ def prepare(args, now: dt.datetime, words: str | None):
     new_head = {"title": title_of(entry), "resident": key, "written": iso(now), "by": getattr(args, "by", None) or key,
                 "predecessor": predecessor, "change": change_text(added, amended, retired), "yes": yes,
                 "issued": issued_text(new_issued), "policy": policy_digest()}
+    if reference is not None:
+        new_head[NOTEBOOK_KEY] = reference
     text = render_leaf(new_head, new_entries)
     report = change_report(added, amended, retired, before, new_entries, with_yes=words is not None)
+    if reference is not None:
+        report += f"notebook: {reference}\n"
     return text, new_head, new_entries, head, entries, lines, reg, report, binding
 
 
@@ -1325,6 +1362,42 @@ def projection_problems(room: Path, key: str, notebook: Path, current) -> tuple[
     return [], f"matches {rel}"
 
 
+def seal_reference(room: Path, key: str, name: str) -> str:
+    """write --seal: the seal is at the archives root, this key's, a regular file at 0600 that hashes to its name and
+    validates whole (read_seal). Returns the reference a version 2 leaf records: its path and full SHA-256."""
+    data, _ = read_seal(room, key, name)
+    bare = name[len(SURFACES) + 1:] if name.startswith(SURFACES + "/") else name
+    mode = stat.S_IMODE(os.lstat(room / SURFACES / bare).st_mode)
+    if mode != 0o600:
+        raise Refused(f"{SURFACES}/{bare} is mode {mode:04o}, not 0600; a seal a leaf names is private")
+    return f"{SURFACES}/{bare} sha256={sha256(data)}"
+
+
+def leaf_seal_gate(room: Path, key: str, chain: list) -> tuple[list[str], list[str], str]:
+    """The check gate: every leaf of the chain that names a seal names one that is on disk, belongs to the key and
+    hashes to the full digest recorded. A seal not on disk is reported, as chain-history reports an ancestor."""
+    problems, custody, named = [], [], 0
+    for rel, head in chain:
+        if not head.get(NOTEBOOK_KEY):
+            continue
+        named += 1
+        m = NOTEBOOK_REF_RE.match(head[NOTEBOOK_KEY])
+        if not m:
+            problems.append(f"{rel}: its notebook line is not a seal reference")
+            continue
+        try:
+            data, _ = read_seal(room, key, m.group("name"))
+        except Missing:
+            custody.append(f"{rel} names {SURFACES}/{m.group('name')}, which is not on disk (moved to custody, or lost)")
+            continue
+        except Refused as exc:
+            problems.append(f"{rel}: {exc}")
+            continue
+        if sha256(data) != m.group("sha"):
+            problems.append(f"{rel}: {SURFACES}/{m.group('name')} does not hash to the digest the leaf records")
+    return problems, custody, (f"{named} leaves of the chain name a seal" if named else "no leaf names a seal")
+
+
 def seal_gate(room: Path, key: str) -> tuple[list[str], str]:
     """The check gate: every seal named for this key hashes as its name says and belongs to the key."""
     surfaces = room / SURFACES
@@ -1347,7 +1420,8 @@ def cmd_preview(args):
     sys.stdout.write(f"mind {args.key}: proposed change, for Kevin's yes. Nothing is written.\n" + report
                      + f"binding: {binding}\n"
                      + f"After Kevin's yes, write exactly this change: write {args.key} --changes <the same changes> "
-                     + f"--preview {binding} --yes \"<his words>\" --by <your key>\n")
+                     + f"--preview {binding} --yes \"<his words>\" --by <your key>"
+                     + (f" --seal {args.seal}" if getattr(args, "seal", None) else "") + "\n")
     return 0
 
 
@@ -1403,6 +1477,12 @@ def cmd_check(args):
     for key in keys:
         rep, current = verify(args.room, key, reg, lines)
         rep.add("seal", True, *seal_gate(args.room, key))
+        if current is not None:
+            chain = walk(args.room, key, *current)[3]
+            problems, custody, detail = leaf_seal_gate(args.room, key, chain)
+            rep.add("leaf-seal", True, problems, detail)
+            if custody:
+                rep.add("seal-history", False, custody)
         if args.notebook is not None:
             rep.add("projection", True, *projection_problems(args.room, key, named_folder(args.notebook, "--notebook"), current))
         for gate, blocking, problems, detail in rep.rows:
@@ -1444,7 +1524,8 @@ def cmd_history(args):
     head, entries, data = load_leaf(args.room, args.key, rel)
     problems, notes, _, chain = walk(args.room, args.key, rel, head, entries, data)
     for name, h in chain:
-        print(f"{h['written']} {name} by {h['by']}: {h['change']}; yes {h['yes']}")
+        print(f"{h['written']} {name} by {h['by']}: {h['change']}; yes {h['yes']}"
+              + (f"; notebook {h[NOTEBOOK_KEY]}" if h.get(NOTEBOOK_KEY) else ""))
     for line in problems + notes:
         print(f"note: {line}")
     return 0
@@ -1479,6 +1560,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("preview", help="show exactly what a change would do; writes nothing")
     p.add_argument("key")
     p.add_argument("--changes", required=True, help="a JSON file of add, amend and retire, or - for stdin")
+    p.add_argument("--seal", help="a seal in archives/ to record in the new leaf (version 2); the binding covers it")
     p.set_defaults(run=cmd_preview)
     p = sub.add_parser("write", help="after Kevin's yes: write a new leaf and move the pointer")
     p.add_argument("key")
@@ -1486,6 +1568,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--yes", help="Kevin's own words from the conversation")
     p.add_argument("--preview", help="the binding that preview printed for the change Kevin said yes to")
     p.add_argument("--by", help="the registry key of the resident running the write")
+    p.add_argument("--seal", help="the same seal preview was shown with; the leaf records its path and full SHA-256")
     p.set_defaults(run=cmd_write)
     p = sub.add_parser("project", help="copy the verified current leaf as one marked block at the top of a "
                                        "notebook's MEMORY.md; the notebook folder is always named, never defaulted")

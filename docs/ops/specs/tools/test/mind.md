@@ -1,6 +1,6 @@
 # Technical Specification: tools/test/test_mind.py
 
-Test file: `Sessions/tools/test/test_mind.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Spec written 2026-10-30 and updated for the retained RoR-3 and F1/F2 regressions, then for the W5 projection and sealing slices (2026-11-05). Status: 84 tests in the current suite (measured 2026-11-05: 84 passed at umask 0002, 0022 and 0077); rerun at those umasks for measured results.
+Test file: `Sessions/tools/test/test_mind.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Spec written 2026-10-30 and updated for the retained RoR-3 and F1/F2 regressions, then for the W5 projection, sealing and seal-field slices (2026-11-05). Status: 92 tests in the current suite (measured 2026-11-05: 92 passed at umask 0002, 0022 and 0077); rerun at those umasks for measured results.
 
 ## Purpose
 Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator's words and a registered writer, that every change is a declared new leaf in a verifiable chain, that a forged, moved or edited leaf is never served, and that each of Claudio Freeman's section 130 items the port fixes stays fixed. Each such item has a test named for it.
@@ -9,7 +9,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - Command, from the room root: `python3 -I -B tools/test/test_mind.py`
 - Required flags: none. Positional arguments: none (standard `unittest` arguments are accepted).
 - Expected exit behavior:
-  - `0` when all 84 tests pass (four tests skip if `git` is not installed).
+  - `0` when all 92 tests pass (four tests skip if `git` is not installed).
   - `1` when any test fails or errors.
 - Reviewers also run it at umask 0002, 0022 and 0077.
 
@@ -20,12 +20,12 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - No real room, registry, mind or body is read or written.
 
 ## Outputs
-- Stdout: `unittest` progress and a summary line (`Ran 84 tests`, `OK`).
+- Stdout: `unittest` progress and a summary line (`Ran 92 tests`, `OK`).
 - Writes only inside its own temporary directory, which is removed after each test.
 - Exit codes the tests assert on the tool: `0` success, `1` a failed `check`, `2` a refusal.
 
 ## Invariants and failure modes
-84 tests. The 43 numbered below, the 10 projection and 15 sealing tests listed after them, and 16 tests of the legacy-state guard, the lock location and the nearest-Git rule (B1) that this list does not yet itemize; the base suite at d7e9ae51 measured 59.
+92 tests. The 43 numbered below, the 10 projection, 15 sealing and 8 seal-field tests listed after them, and 16 tests of the legacy-state guard, the lock location and the nearest-Git rule (B1) that this list does not yet itemize; the base suite at d7e9ae51 measured 59.
 
 **The basic loop (3).**
 1. `test_write_check_show_round_trip`: write, check and show agree; `show` returns the leaf byte for byte; the leaf records the operator's words, the writer, `predecessor: none` and the declared change.
@@ -111,13 +111,25 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 
 Each guard of this slice was disabled in turn (26 mutations: links, specials, hard links, overwrite, preflight before the lock, registration, fixity, escape, special members, ownership, manifest key, member hash, member count, folder order, `--replace`, the staged comparison, keeping the earlier folder, the name's key, the target's parent and privacy, both Git rules and both gates, and `--notebook` without `--key`); the suite caught 26 of 26.
 
+**Leaf format 2, the seal in the leaf, W5 third slice (8, class `SealFieldTests`).** Synthetic rooms and notebooks; the operator's words are invented.
+- `test_w5_a_version_1_leaf_of_the_real_shape_still_passes`: a first leaf shaped like a real one (three lessons, two of them closed incidents with fixes, written under the policy before this slice, `a92a7c3f6a3b6112`) parses and renders byte for byte as version 1, passes `check` with `policy` reported and not failed and `leaf-seal` passing, is served by `show` byte for byte, has no notebook in `history`, and takes a version 2 successor.
+- `test_w5_the_binding_without_a_seal_is_unchanged`: without a seal the binding equals the old three-part body's digest; with one it differs.
+- `test_w5_write_with_a_seal_records_a_version_2_leaf`: the `notebook:` line follows `policy` with the seal's path and full SHA-256; the leaf is version 2, canonical and 0600; `check` passes `leaf-seal`; `show` prints the line; a later write without a seal is version 1; `history` marks only the sealed leaf.
+- `test_w5_preview_shows_the_seal_and_the_binding_covers_it`: preview shows the line and names the seal in its instruction; the binding differs from the one without a seal; a write with another seal, with none, or with a binding previewed without the seal is refused, and the pointer does not move.
+- `test_w5_write_refuses_a_seal_it_cannot_trust`: a seal not on disk, another key's seal, a malformed name, a seal at 0644, a linked seal, a seal with one flipped bit and a seal renamed to another key are each refused, and the pointer does not move.
+- `test_w5_check_gate_for_the_leaf_seal`: a named seal moved away is reported under `seal-history`, with exit 0; a changed seal fails `leaf-seal`; a leaf whose recorded digest differs from the seal's after the first 8 digits fails it too.
+- `test_w5_a_version_2_header_is_canonical_and_checked`: a `notebook:` line out of place, a `format:` line after or before it, and an empty `notebook:` value are refused by the parser; a reference that is not a seal path, one of another resident, one whose name and digest disagree, and one with an impossible date each fail the header check.
+- `test_w5_the_policy_digest_covers_the_leaf_formats`: the digest differs from the one before this slice, and changes again when the formats change.
+
+Each new guard of this slice was disabled in turn (18 mutations: parsing and rendering version 2, the reference's form, key, digest prefix and date, the binding's seal, the seal's verification and its 0600 mode, the line in the leaf, custody as a report, a bad seal as a failure, the full digest, the gate's blocking, the history line, the policy's formats, and preview's line and instruction); the suite caught 18 of 18.
+
 ## Not covered
 - That the words passed to `--yes` are truly the operator's: the tool cannot know, and the spec says so. The audit is the chain, the declared changes and the words held against the conversation.
 - The Sessions room itself: no test reads or writes a real mind, notebook or seal.
 - Any hook, timer or capsule wiring: none exists.
 - That a provider loads the projected block: projection source is not evidence of loading; that needs its own native proof.
 - A real notebook or its home, a real seal or unseal, and the launch wrapper: none is touched or built here.
-- `write --seal` and a `notebook:` leaf line: not built (see the tool spec).
+- A seal-only leaf, with no change to the entries: not possible (the tool spec says why).
 - Whether a provider writes the notebook during a seal or unseal: the tool cannot detect its writer; the seam is the operator's.
 
 ## Anecdotal Anchor

@@ -1356,5 +1356,221 @@ class SealTests(unittest.TestCase):
         self.refused(self.r.run("check", "--notebook", str(self.nb)), "needs --key")
 
 
+class SealFieldTests(unittest.TestCase):
+    """W5 third slice: leaf format 2, a notebook line naming a seal, in synthetic rooms only."""
+
+    OLD_POLICY = "a92a7c3f6a3b6112"          # the policy digest at main b710b60c, before leaf format 2
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="mind-sealfield-")
+        self.base = Path(self.tmp.name)
+        self.r = Room(self.base)
+        self.nb = self.base / "notebooks" / "session-doctor"
+        self.nb.mkdir(parents=True)
+        self.nb.chmod(0o700)
+        (self.nb / "MEMORY.md").write_bytes(b"- [Room facts](room-facts.md) - a note\n")
+        (self.nb / "MEMORY.md").chmod(0o600)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def ok(self, result):
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result
+
+    def refused(self, result, *words):
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        for word in words:
+            self.assertIn(word, result.stderr)
+        return result
+
+    def seal(self, key="session-doctor", notebook=None) -> str:
+        out = self.ok(self.r.run("seal", "--key", key, "--notebook", str(notebook or self.nb))).stdout
+        return re.search(r"archives/(NOTEBOOK-\S+\.tar)", out).group(1)
+
+    def preview(self, path, seal=None, key="session-doctor"):
+        result = self.r.run("preview", key, "--changes", path, *(["--seal", seal] if seal else []))
+        m = re.search(r"^binding: ([0-9a-f]{64})$", result.stdout, re.M)
+        return (m.group(1) if m else ""), result
+
+    def write(self, obj, seal=None, preview_seal="same", binding=None, key="session-doctor"):
+        """As a writer does it: preview with the seal, then write with the binding preview printed."""
+        path = self.r.changes(obj)
+        shown, _ = self.preview(path, seal if preview_seal == "same" else preview_seal, key)
+        return self.r.run("write", key, "--changes", path, "--preview", binding or shown or "0" * 64,
+                          "--yes", "yes, record it", "--by", "claudine-colbert", *(["--seal", seal] if seal else []))
+
+    def reference(self, name: str) -> str:
+        return f"archives/{name} sha256={mind.sha256((self.r.room / 'archives' / name).read_bytes())}"
+
+    def check(self, *extra):
+        return self.r.run("check", "--key", "session-doctor", *extra)
+
+    # -- version 1 stays as it was ------------------------------------------------------
+    def test_w5_a_version_1_leaf_of_the_real_shape_still_passes(self):
+        """A first leaf of three lessons, two of them closed incidents, written under the old policy."""
+        lesson = {"layer": "lesson", "event": "a value written before it was measured", "date": "2026-10-29",
+                  "source": "Receipts/x.md", "applies_when": "a record carries a value", "not_when": "nothing is recorded"}
+        yes = '2026-10-30, "yes, all three"'
+        entries = [dict(lesson, id="lesson-001", text="Stamp every value inside the writing command.", kind="incident",
+                        fix="the append reads the clock itself", closed="2026-10-30", yes=yes),
+                   dict(lesson, id="lesson-002", text="Keep no sole copy of work in volatile scratch.", kind="incident",
+                        fix="build in the room scratch and push early", closed="2026-10-29", yes=yes),
+                   dict(lesson, id="lesson-003", text="Make the unknown form fail closed.", yes=yes)]
+        head = {"title": "Role (Person session-doctor)", "resident": "session-doctor", "written": "2026-10-30T06:49:00Z",
+                "by": "session-doctor", "predecessor": "none", "change": "add lesson-001, lesson-002, lesson-003",
+                "yes": yes, "issued": "core=0 bond=0 lesson=3 commitment=0 pointer=0", "policy": self.OLD_POLICY}
+        data = mind.render_leaf(head, entries).encode("utf-8")
+        name = f"MIND-session-doctor-2026-10-30-{mind.sha256(data)[:8]}.md"
+        (self.r.room / "archives").mkdir()
+        (self.r.room / "archives" / name).write_bytes(data)
+        (self.r.room / mind.POINTER).write_text(mind.pointer_text({"session-doctor": (f"archives/{name}", mind.sha256(data))}))
+        text = self.r.leaf().read_text()
+        self.assertNotIn("\nnotebook: ", text)
+        self.assertEqual(mind.render_leaf(*mind.parse_leaf(text)), text)
+        self.assertEqual(mind.leaf_format(mind.parse_leaf(text)[0]), 1)
+        out = self.ok(self.check()).stdout
+        self.assertIn(f"REPORT session-doctor policy : written under policy {self.OLD_POLICY}", out)
+        self.assertIn("PASS session-doctor leaf-seal : no leaf names a seal", out)
+        self.assertEqual(self.ok(self.r.run("show", "session-doctor")).stdout, text)
+        self.assertNotIn("notebook", self.ok(self.r.run("history", "session-doctor")).stdout)
+        name = self.seal()                                      # a version 2 leaf builds on it
+        self.ok(self.write({"add": [CORE]}, seal=name))
+        self.ok(self.check())
+
+    def test_w5_the_binding_without_a_seal_is_unchanged(self):
+        changes = ([{"layer": "core", "text": "x"}], [], [])
+        old = mind.sha256(json.dumps({"key": "k", "predecessor": "none", "changes": {"add": changes[0], "amend": [],
+                                     "retire": []}}, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode())
+        self.assertEqual(mind.binding_of("k", "none", *changes), old)
+        self.assertNotEqual(mind.binding_of("k", "none", *changes, "archives/NOTEBOOK-k-2026-10-30-00000000.tar"), old)
+
+    # -- version 2 -------------------------------------------------------------------------
+    def test_w5_write_with_a_seal_records_a_version_2_leaf(self):
+        self.ok(self.r.write({"add": [CORE]}))
+        name = self.seal()
+        self.ok(self.write({"add": [LESSON]}, seal=name))
+        text = self.r.leaf().read_text()
+        lines = text.split("\n")
+        policy_at = next(i for i, line in enumerate(lines) if line.startswith("policy: "))
+        self.assertEqual(lines[policy_at + 1], f"notebook: {self.reference(name)}")
+        head, _ = mind.parse_leaf(text)
+        self.assertEqual((mind.leaf_format(head), mind.render_leaf(*mind.parse_leaf(text))), (2, text))
+        self.assertEqual(stat.S_IMODE(self.r.leaf().stat().st_mode), 0o600)
+        self.assertIn("PASS session-doctor leaf-seal : 1 leaves of the chain name a seal", self.ok(self.check()).stdout)
+        self.assertIn(f"notebook: {self.reference(name)}", self.ok(self.r.run("show", "session-doctor")).stdout)
+        self.ok(self.r.write({"add": [COMMIT]}, yes="yes, a plain one"))   # a version 1 leaf after it
+        self.assertNotIn("\nnotebook: ", self.r.leaf().read_text())
+        history = self.ok(self.r.run("history", "session-doctor")).stdout.splitlines()
+        self.assertEqual([("; notebook " + self.reference(name)) in line for line in history], [False, True, False])
+        self.assertIn("1 leaves of the chain name a seal", self.ok(self.check()).stdout)
+
+    def test_w5_preview_shows_the_seal_and_the_binding_covers_it(self):
+        self.ok(self.r.write({"add": [CORE]}))
+        first = self.seal()
+        (self.nb / "MEMORY.md").write_bytes(b"- [Room facts](room-facts.md) - a newer note\n")
+        second = self.seal()
+        path = self.r.changes({"add": [LESSON]})
+        plain, _ = self.preview(path)
+        shown, result = self.preview(path, first)
+        self.assertIn(f"notebook: {self.reference(first)}", result.stdout)
+        self.assertIn(f"--seal {first}", result.stdout)
+        self.assertNotEqual(plain, shown)
+        before = self.r.pointer()
+        for seal in (second, None):
+            with self.subTest(seal=seal):
+                self.refused(self.r.run("write", "session-doctor", "--changes", path, "--preview", shown, "--yes",
+                                        "yes, record it", "--by", "claudine-colbert", *(["--seal", seal] if seal else [])),
+                             "the binding differs")
+        self.refused(self.write({"add": [LESSON]}, seal=first, preview_seal=None), "the binding differs")
+        self.assertEqual(self.r.pointer(), before)
+
+    def test_w5_write_refuses_a_seal_it_cannot_trust(self):
+        self.ok(self.r.write({"add": [CORE]}))
+        name = self.seal()
+        other_nb = self.base / "notebooks" / "claudine-colbert"
+        other_nb.mkdir()
+        other_nb.chmod(0o700)
+        foreign = self.seal(key="claudine-colbert", notebook=other_nb)
+        path = self.r.room / "archives" / name
+        before = self.r.pointer()
+        self.refused(self.write({"add": [LESSON]}, seal=name.replace(name[-12:-4], "00000000")), "not on disk")
+        self.refused(self.write({"add": [LESSON]}, seal=foreign), "belongs to 'claudine-colbert'")
+        self.refused(self.write({"add": [LESSON]}, seal="NOTEBOOK-oops.tar"), "not a seal name")
+        path.chmod(0o644)
+        self.refused(self.write({"add": [LESSON]}, seal=name), "not 0600")
+        path.chmod(0o600)
+        moved = self.base / "seal-elsewhere.tar"
+        path.rename(moved)
+        path.symlink_to(moved)
+        self.refused(self.write({"add": [LESSON]}, seal=name), "symbolic link")
+        path.unlink()
+        moved.rename(path)
+        data = path.read_bytes()
+        path.write_bytes(data[:-1] + bytes([data[-1] ^ 1]))
+        self.refused(self.write({"add": [LESSON]}, seal=name), "no longer match the hash in its name")
+        path.write_bytes(data)
+        renamed = name.replace("session-doctor", "claudine-colbert")
+        self.refused(self.write({"add": [LESSON]}, seal=renamed), "belongs to 'claudine-colbert'")
+        self.assertEqual(self.r.pointer(), before)
+
+    def test_w5_check_gate_for_the_leaf_seal(self):
+        self.ok(self.r.write({"add": [CORE]}))
+        name = self.seal()
+        self.ok(self.write({"add": [LESSON]}, seal=name))
+        path = self.r.room / "archives" / name
+        kept = self.base / "custody.tar"
+        path.rename(kept)
+        out = self.ok(self.check()).stdout                           # in custody: reported, not failed
+        self.assertIn("REPORT session-doctor seal-history", out)
+        self.assertIn("not on disk", out)
+        kept.rename(path)
+        data = path.read_bytes()
+        path.write_bytes(data[:-1] + bytes([data[-1] ^ 1]))
+        result = self.check()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("FAIL session-doctor leaf-seal", result.stdout)
+        path.write_bytes(data)
+        head, entries = mind.parse_leaf(self.r.leaf().read_text())
+        m = mind.NOTEBOOK_REF_RE.match(head["notebook"])
+        head = dict(head, notebook=head["notebook"][:-56] + ("0" * 56 if m.group("sha")[8:] != "0" * 56 else "1" * 56))
+        self.r.plant(head, entries)
+        result = self.check()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("does not hash to the digest the leaf records", result.stdout)
+
+    def test_w5_a_version_2_header_is_canonical_and_checked(self):
+        self.ok(self.r.write({"add": [CORE]}))
+        name = self.seal()
+        self.ok(self.write({"add": [LESSON]}, seal=name))
+        text = self.r.leaf().read_text()
+        ref = self.reference(name)
+        lines = text.split("\n")
+        i = lines.index(f"notebook: {ref}")
+        swapped = lines[:i - 1] + [lines[i], lines[i - 1]] + lines[i + 1:]
+        for bad in ("\n".join(swapped), text.replace(f"notebook: {ref}\n", f"notebook: {ref}\nformat: 3\n"),
+                    text.replace(f"notebook: {ref}\n", f"format: 3\nnotebook: {ref}\n"),
+                    text.replace(f"notebook: {ref}\n", "notebook: \n")):
+            with self.subTest(bad=bad[:0]):
+                with self.assertRaises(mind.Refused):
+                    mind.parse_leaf(bad)
+        head, _ = mind.parse_leaf(text)
+        sha = ref.split("sha256=")[1]
+        cases = {"archives/elsewhere.tar sha256=" + sha: "not a seal reference",
+                 ref.replace("NOTEBOOK-session-doctor-", "NOTEBOOK-claudine-colbert-"): "another resident",
+                 ref.replace(sha, ("f" if sha[0] != "f" else "e") + sha[1:]): "disagree",
+                 ref.replace("-2026-10-30-", "-2026-13-40-"): "not a date"}
+        for value, word in cases.items():
+            with self.subTest(word=word):
+                self.assertTrue(any(word in p for p in mind.head_problems(dict(head, notebook=value))), word)
+        self.assertEqual([p for p in mind.head_problems(head) if "notebook" in p], [])
+
+    def test_w5_the_policy_digest_covers_the_leaf_formats(self):
+        self.assertNotEqual(mind.policy_digest(), self.OLD_POLICY)
+        now = mind.policy_digest()
+        with mock.patch.object(mind, "LEAF_FORMATS", {1: mind.HEAD_KEYS}):
+            self.assertNotEqual(mind.policy_digest(), now)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
