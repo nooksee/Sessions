@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-05 13:36 EST, the Session Continuity Manager, for the continuity loop's state after F1, the notebook home and the F1 contract; earlier 2026-11-05 10:56 EST, JoJo Git, for the W4 source merge and the W5 projection slice; earlier 2026-11-05 00:45 EST, the Session Continuity Manager, after the B1 merge; earlier 2026-11-04 23:39 EST for the public gate; earlier by Joe Codex on 2026-11-04 for the RoR-18 policy and reader adoption.
+Updated: 2026-11-05 16:40 EST, the Session Continuity Manager, at the day's close; earlier 2026-11-05 13:36 EST for the continuity loop's state after F1, the notebook home and the F1 contract; earlier 2026-11-05 10:56 EST, JoJo Git, for the W4 source merge and the W5 projection slice; earlier 2026-11-05 00:45 EST, the Session Continuity Manager, after the B1 merge; earlier 2026-11-04 23:39 EST for the public gate; earlier by Joe Codex on 2026-11-04 for the RoR-18 policy and reader adoption.
 The operation receipt records the actual application time and source head.
 Other observations retain their stated measurement times and were not
 refreshed in this change. The dated boards below are historical context,
@@ -30,31 +30,38 @@ Session Continuity Manager was away; the Manager resumed coordination at 12:25
 the same day, and Joe's acting cover ended there. That was a temporary assignment, not a replacement identity
 or permanent registry role.
 
-- W4: the operator-only notice source is on `main` at commit 7a740a06
-  (2026-11-05, PR #10, source PASS by the Independent Reviewer). The
-  registry permission finding (F1) is settled: the registry file is at mode
-  0600 since 12:26 on 2026-11-05, George's metadata-only act on the operator's
-  go, audited after the act; the registry privacy contract is on `main` at
-  commit 93978946 (PR #13). The gauge and notice dry runs accept the 0600
-  registry. The notice is still not activated: its live use waits on George's
-  wiring and the operator-only canary, and resident-context delivery remains
-  unproved.
-- W5: the mind tool exists. The Assistant's first operator-approved mind
-  leaf was written on 2026-11-05 (her handoff, section 52) and is in custody
-  on the three roots as batch `sessions-minds-20261105`, verified; this is
-  not fleet adoption. The `project` command (a verified leaf copied into a
-  named notebook folder) is on `main` (PR #12), source only. The notebook
-  home is decided and its ignore rule is on `main` (PR #14): one folder per
-  registry key under `ops/etc/notebooks/` at mode 0700, never a default
-  project slot; the parent folder exists, and George's F2 verification of
-  the first child folder is in progress. Sealing and unsealing are being
-  built by the Assistant on synthetic rooms. No projection has run; folder
-  ownership, the launch wrapper and provider read-in remain unproved, and a
-  real invocation needs the notebook's writer stopped by the operator.
-- W6: the guided `rotate.py` runner's first slice (a dry-run skeleton with
-  phases 0 to 2 real and the rest as stop points) is assigned to Joe Codex on
-  synthetic rooms; provider-specific native acceptance remains unfinished;
-  existing builders are ingredients, not that runner.
+- W3: the health desk is measured and corrected. The read-only
+  measurement of 2026-11-05 (the Apprentice) found the clinic's chronic set
+  to be 8 current residents, 57 helpers of live residents and one unresolved
+  family of unregistered bodies; the self-check now reads each resident's
+  window from the gauge's reviewed table (PR #20); the active panel writes a
+  private file beside the alert state with the public aggregate byte-identical
+  (PR #21, live since the 16:00 run, audited). The unresolved family's owner
+  and the six drift paths in Control's frozen runtime stay open.
+- W4: the operator-only notice source is on `main` (PR #10); F1 settled
+  (the registry at 0600, the privacy contract on `main` as commit 93978946);
+  one live dry-run cycle ran on 2026-11-05 through a real user timer on the
+  operator's go and was withdrawn whole, audited. The finite four-cycle
+  cadence is prepared, its units passed and its design under one text
+  correction; its go, and the real notification after it, are later acts.
+- W5: the mind tool carries projection, seal, unseal and the seal recorded
+  in the leaf (PRs #12, #16, #19); the launch wrapper's dry run is on `main`
+  (PR #17), a resident of another room passing through untouched. The first
+  mind leaf (the Assistant's) is in custody as `sessions-minds-20261105`. The
+  notebook home exists at `ops/etc/notebooks/<key>/` (PR #14), the first
+  folder created and audited. The seeding sets are marked from the Control
+  notebook's names, one note withheld for the operator's review. Not yet:
+  the provider's route proved, any seeding, any projection or seal run, the
+  launch setting; each a named go.
+- W6: the guided `rotate.py` runner has phases 0 to 2 on `main` (PR #18,
+  audited) and phases 3 to 5 frozen in the Apprentice's clone, the source
+  passed and its tests under one correction; phases 6 to 9 and the first
+  real rotation remain. Provider-specific native acceptance is unproved.
+
+The Chief Repository Operations Officer and the Desktop Continuity Manager
+leave the Sessions programme after 2026-11-05 at the operator's word; their
+open items (the W6 integration, the cadence) are held for the operator's
+new team.
 
 Current work is carried by the existing private first-wins plan and bounded
 W4 case. This board grants no live settings, provider, mind or body action.
