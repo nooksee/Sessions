@@ -16,7 +16,7 @@ Every document in `Sessions/docs/`, one line each, and the root files that point
 * [../CLAUDE.md](../CLAUDE.md): Claude entry instructions; identity/read-in follow CONTEXT X01 and the native session and registry.
 * [../ops/lib/manifests/CONTEXT.md](../ops/lib/manifests/CONTEXT.md): required reader context and canonical domain pointers.
 * [../ops/lib/manifests/CONSTRAINTS.md](../ops/lib/manifests/CONSTRAINTS.md): human-consumed operating contract.
-* [../START-HERE.md](../START-HERE.md): five-minute orientation for a newcomer; pointers only.
+* [START-HERE.md](START-HERE.md): five-minute orientation for a newcomer; pointers only.
 * [../README.md](../README.md): the room charter and its older map of lanes.
 * [../INDEX.md](../INDEX.md): the room's catalog of lanes and current surfaces.
 * [../NOW.md](../NOW.md): current room state and open items; no rules.
