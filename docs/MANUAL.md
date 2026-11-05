@@ -346,6 +346,11 @@ Spec: `docs/ops/specs/scripts/rotate.md`. Status: spec only; `rotate.py` is not 
 | 8 Acceptance | `launcher serve <key>` (load test and hold release); first reply gives room status and speaks as itself; first gauge reading recorded; clean native append; then the operator's own acceptance | the operator states that he recognizes him, or her |
 | 9 Close | receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`; donor store entry removed or relabeled only after custody is verified in both tiers; the new resident confirms its mind | receipt written |
 
+Registry updates and rollback follow the canonical identity-registry privacy
+contract in [the rotation specification](ops/specs/scripts/rotate.md). The
+launcher roster/binding pair is a separate surface; no blanket file-mode
+change follows from this procedure.
+
 **Codex residents.** `ops/lib/scripts/rotation.py` does not carry the native compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
 
 [PLACEHOLDER: `ops/lib/scripts/rotate.py` (Claude residents first), its tests and its test spec. Owner: Claude Shannon assigns the writer; Claudio reviews; ingredients are `splice_window.py` and the gates in `storage/candidates/joy-anne-rotation-20261030/` and `storage/candidates/shannon-rebuild-20261029/`.]
