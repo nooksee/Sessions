@@ -74,6 +74,8 @@ FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 # heading, a setext heading or a bold label line that names the operator, the go, the words or a direction,
 # and the blockquote under it; or a blockquote line labelled as a go, the words or a direction.
 HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s|^\s*<h[1-6][\s>]", re.I)
+ATX_RE = re.compile(r"^\s{0,3}(#{1,6})\s")
+HTML_HEADING_RE = re.compile(r"^\s*<h([1-6])[\s>]", re.I)
 SETEXT_RE = re.compile(r"^\s{0,3}(?:=+|-+)\s*$")
 OPERATOR_NAMED_RE = re.compile(r"(?<![A-Za-z0-9])(?:kevin|operator|go|words|direction)(?![A-Za-z0-9])", re.I)
 BLOCKQUOTE_RE = re.compile(r"^\s*(?:(?:[-*+]|\d+[.)])\s+)?(?:>\s*)+")
@@ -174,6 +176,20 @@ def blockquote_words(lines: list[str]) -> tuple[dict[int, tuple[int, int, str]],
         if b > a:
             out[k] = (a, b, why)
 
+    def level(j: int):
+        """The heading level of line j (ATX, HTML or setext), or None."""
+        cur = lines[j]
+        m = ATX_RE.match(cur)
+        if m:
+            return len(m.group(1))
+        m = HTML_HEADING_RE.match(cur)
+        if m:
+            return int(m.group(1))
+        if j + 1 < len(lines) and cur.strip() and not BLOCKQUOTE_RE.match(cur) and SETEXT_RE.match(lines[j + 1]):
+            return 1 if "=" in lines[j + 1] else 2
+        return None
+
+    why = "a blockquote under a heading or label that names the operator, the go, the words or a direction"
     for k, line in enumerate(lines):
         label = BLOCKQUOTE_LABEL_RE.match(line)
         if label:
@@ -181,19 +197,37 @@ def blockquote_words(lines: list[str]) -> tuple[dict[int, tuple[int, int, str]],
             continue
         if BLOCKQUOTE_RE.match(line) or not OPERATOR_NAMED_RE.search(line):
             continue
-        setext = k + 1 < len(lines) and line.strip() and SETEXT_RE.match(lines[k + 1])
-        if not (HEADING_RE.match(line) or WORDS_LABEL_RE.match(line) or setext):
+        lv = level(k)
+        if lv is not None:                                     # a heading: every blockquote of its section
+            j, prev = k + 1, False
+            while j < len(lines):
+                lj = level(j)
+                if lj is not None and lj <= lv:
+                    break                                      # the next heading of the same or a higher level
+                cur = lines[j]
+                bq = BLOCKQUOTE_RE.match(cur)
+                if bq:
+                    heads.add(k)
+                    if j not in out:
+                        lab = BLOCKQUOTE_LABEL_RE.match(cur)
+                        take(j, lab.end() if lab else bq.end(), why)
+                    prev = True
+                elif prev and cur.strip() and lj is None:
+                    take(j, 0, why + " (a lazy continuation line)")
+                else:
+                    prev = False
+                j += 1
             continue
-        j = k + 2 if setext else k + 1
-        why = "a blockquote under a heading or label that names the operator, the go, the words or a direction"
-        in_quote = False
+        if not (WORDS_LABEL_RE.match(line) or line.rstrip().endswith(":")):
+            continue                                           # a bold label, or a plain line ending in a colon
+        j, in_quote = k + 1, False
         while j < len(lines):
             cur = lines[j]
             if not cur.strip():
                 n = j
                 while n < len(lines) and not lines[n].strip():
                     n += 1
-                if n < len(lines) and BLOCKQUOTE_RE.match(lines[n]) and (in_quote or j == (k + 2 if setext else k + 1)):
+                if n < len(lines) and BLOCKQUOTE_RE.match(lines[n]) and (in_quote or j == k + 1):
                     j, in_quote = n, False                     # a blank line, then the next blockquote
                     continue
                 break
@@ -204,7 +238,7 @@ def blockquote_words(lines: list[str]) -> tuple[dict[int, tuple[int, int, str]],
                     lab = BLOCKQUOTE_LABEL_RE.match(cur)
                     take(j, lab.end() if lab else bq.end(), why)
                 in_quote = True
-            elif in_quote and not HEADING_RE.match(cur):
+            elif in_quote and level(j) is None:
                 take(j, 0, why + " (a lazy continuation line)")
             else:
                 break

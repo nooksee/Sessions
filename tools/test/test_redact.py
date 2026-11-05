@@ -680,6 +680,25 @@ class RedactTests(unittest.TestCase):
         public, r = self.rendered("plain\n")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("; rules 8; mode record; words 0;", public.split("\n", 1)[0])
+    def test_c6_r2_a_line_or_comment_before_the_blockquote_a_plain_label_and_the_section_bound(self):
+        go = "synthetic words of a go"
+        cases = [
+            (f"## The operator's go\n\nIt was given as follows:\n\n> {go}\n",
+             f"## The operator's go\n\nIt was given as follows:\n\n> {self.W(go)}\n"),
+            (f"## The operator's go\n\n<!-- a note -->\n> {go}\n", f"[words sha256=8d652ca9fed7b61c81be3c51ff13a4e92b8c98dec4ea0b5b1bd10a3617cd8085]"),
+            (f"The operator's go:\n> {go}\n", f"[words sha256=212e1069b92bee9ae180fc91746cd968202b2e8948ed03c6938f79b8970dd4f3]"),
+            (f"The operator's go:\n\n> {go}\n", f"[words sha256=f7c3563cd98eda1925d7b4f600203d84bdf22bc602c1a622c7ed05dd3709a448]"),
+            ("## The operator's go\n\n> part a\n\n### Detail\n\n> part b\n\n## Next\n\n> a plain quote stays\n",
+             f"## The operator's go\n\n> {self.W('part a')}\n\n### Detail\n\n> {self.W('part b')}\n\n## Next\n\n> a plain quote stays\n"),
+        ]
+        for i, (text, want) in enumerate(cases):
+            with self.subTest(case=i):
+                body, r = self.redacted(text, f"c6r2-{i}")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(body, want)
+                hbody, r = self.redacted(text, f"c6r2-h{i}", "--history")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertNotIn(go, hbody)
 
 if __name__ == "__main__":
     unittest.main()
