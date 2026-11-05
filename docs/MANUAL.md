@@ -105,7 +105,7 @@ The authority for who each resident is lives only in the registry. A resident ch
 | --- | --- | --- | --- | --- |
 | gauge | `ops/lib/scripts/gauge.py` | `docs/ops/specs/scripts/gauge.md` | `tools/test/test_gauge.py` | built; see its specification for measurement behavior and installed scope |
 | closeout | `ops/lib/scripts/closeout.py` | `docs/ops/specs/scripts/closeout.md` | `tools/test/test_closeout.py` | implemented and synthetically tested; current-hash review and native delivery proof precede installation (PoT 6.1.2) |
-| notice (operator backstop) | `ops/lib/scripts/notice.py` | `docs/ops/specs/scripts/notice.md` | `tools/test/test_notice.py` | source implemented; review/integration pending, unwired; consumes one exact gauge row, submits an operator-only notice, never delivers resident context |
+| notice (operator backstop) | `ops/lib/scripts/notice.py` | `docs/ops/specs/scripts/notice.md` | `tools/test/test_notice.py` | source integrated on `main` (PR #10, 2026-11-05) with the Independent Reviewer's source PASS and post-integration audit; unwired, live go pending the registry permission finding (F1) and George's activation; consumes one exact gauge row, submits an operator-only notice, never delivers resident context |
 | mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; `project` writes a leaf copy into a named notebook folder (source only, no default home); actual use, a real notebook and the launch wrapper have separate acceptance |
 | rotate | `ops/lib/scripts/rotate.py` (not written) | `docs/ops/specs/scripts/rotate.md` | none yet | spec only; rotations still run by hand, by the spec |
 
