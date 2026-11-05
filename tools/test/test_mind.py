@@ -9,6 +9,7 @@ items that the port fixes has a test named for it. Run:
 """
 import importlib.util
 import fcntl
+import io
 import json
 import os
 import re
@@ -18,6 +19,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -1038,6 +1040,320 @@ class ProjectTests(unittest.TestCase):
         (self.nb / ".gitignore").write_text("/MEMORY.md\n")
         self.ok(self.project())
         self.assertEqual(self.index.read_text(), self.block() + self.tail)
+
+
+class SealTests(unittest.TestCase):
+    """W5 second slice: seal, unseal and the two check gates, in synthetic rooms and notebooks only."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="mind-seal-")
+        self.base = Path(self.tmp.name)
+        self.r = Room(self.base)
+        self.nb = self.base / "notebooks" / "session-doctor"
+        self.nb.mkdir(parents=True)
+        self.nb.chmod(0o700)
+        self.files = {"MEMORY.md": b"- [Room facts](room-facts.md) - a note\n", "room-facts.md": b"The room has one door.\n",
+                      "topics/deep.md": b"A note in a subfolder.\n"}
+        (self.nb / "topics").mkdir()
+        (self.nb / "topics").chmod(0o700)
+        for rel, data in self.files.items():
+            (self.nb / rel).write_bytes(data)
+            (self.nb / rel).chmod(0o600)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def ok(self, result):
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result
+
+    def refused(self, result, *words):
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        for word in words:
+            self.assertIn(word, result.stderr)
+        return result
+
+    def seal(self, key="session-doctor", notebook=None, env=None):
+        return self.r.run("seal", "--key", key, "--notebook", str(notebook or self.nb), env=env)
+
+    def unseal(self, name, into, key="session-doctor", replace=False):
+        return self.r.run("unseal", "--key", key, "--seal", name, "--into", str(into), *(["--replace"] if replace else []))
+
+    def seals(self):
+        return sorted(p.name for p in (self.r.room / "archives").glob("NOTEBOOK-*")) if (self.r.room / "archives").exists() else []
+
+    def sealed(self, **kw) -> str:
+        out = self.ok(self.seal(**kw)).stdout
+        return re.search(r"archives/(NOTEBOOK-\S+\.tar)", out).group(1)
+
+    def tree(self, folder: Path) -> dict:
+        return {p.relative_to(folder).as_posix(): (p.read_bytes() if p.is_file() else None, stat.S_IMODE(p.lstat().st_mode))
+                for p in folder.rglob("*")}
+
+    def plant(self, members, key="session-doctor", manifest=None, date="2026-10-30") -> str:
+        """A hand-made seal with a correct name hash, as a forger would write one."""
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w", format=tarfile.PAX_FORMAT) as tar:
+            listed = []
+            for info, data in members:
+                if info.name.startswith("notebook/") and (info.isreg() or info.isdir()):
+                    listed.append({"path": info.name[len("notebook/"):], "type": "file" if info.isreg() else "dir"}
+                                  | ({"sha256": mind.sha256(data), "size": len(data)} if info.isreg() else {}))
+            body = json.dumps(manifest if manifest is not None else
+                              {"format": mind.SEAL_FORMAT, "key": key, "members": listed}).encode("utf-8")
+            for info, data in [(self.info("SEAL.json", size=len(body)), body), (self.info("notebook", kind=tarfile.DIRTYPE), b"")] + members:
+                tar.addfile(info, io.BytesIO(data) if info.isreg() else None)
+        data = buf.getvalue()
+        name = f"NOTEBOOK-{key}-{date}-{mind.sha256(data)[:8]}.tar"
+        (self.r.room / "archives").mkdir(exist_ok=True)
+        (self.r.room / "archives" / name).write_bytes(data)
+        return name
+
+    @staticmethod
+    def info(name, kind=tarfile.REGTYPE, size=0, uid=None, linkname=""):
+        info = tarfile.TarInfo(name)
+        info.type, info.size, info.linkname = kind, size, linkname
+        info.uid, info.gid, info.uname, info.gname = os.geteuid() if uid is None else uid, os.getegid(), "", ""
+        info.mode = 0o700 if kind == tarfile.DIRTYPE else 0o600
+        return info
+
+    # -- seal ------------------------------------------------------------------
+    def test_w5_seal_writes_once_binding_key_and_hash(self):
+        name = self.sealed()
+        path = self.r.room / "archives" / name
+        self.assertRegex(name, r"^NOTEBOOK-session-doctor-2026-10-30-[0-9a-f]{8}\.tar$")
+        self.assertTrue(mind.sha256(path.read_bytes()).startswith(name[-12:-4]))
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+        with tarfile.open(path) as tar:
+            names = tar.getnames()
+            manifest = json.loads(tar.extractfile("SEAL.json").read())
+        self.assertEqual(names[:2], ["SEAL.json", "notebook"])
+        self.assertEqual(manifest["key"], "session-doctor")
+        self.assertEqual(sorted(m["path"] for m in manifest["members"]), ["MEMORY.md", "room-facts.md", "topics", "topics/deep.md"])
+        first = path.read_bytes()
+        self.assertIn("already sealed, unchanged", self.ok(self.seal()).stdout)
+        self.assertEqual(self.seals(), [name])
+        (self.nb / "room-facts.md").write_bytes(b"The room has two doors.\n")
+        second = self.sealed()
+        self.assertNotEqual(second, name)
+        self.assertEqual(path.read_bytes(), first)                     # the earlier seal is untouched
+
+    def test_w5_seal_never_overwrites_other_bytes(self):
+        name = self.sealed()
+        path = self.r.room / "archives" / name
+        path.write_bytes(path.read_bytes() + b"x")
+        tampered = path.read_bytes()
+        self.refused(self.seal(), "never overwritten")
+        self.assertEqual(path.read_bytes(), tampered)
+
+    def test_w5_seal_refuses_links_specials_hard_links_and_an_unregistered_key(self):
+        cases = []
+        link = self.nb / "linked.md"
+        link.symlink_to(self.nb / "room-facts.md")
+        cases.append(("symbolic link", link.unlink))
+        for word, cleanup in cases:
+            self.refused(self.seal(), word)
+            cleanup()
+        os.mkfifo(self.nb / "pipe")
+        self.refused(self.seal(), "device, pipe or socket")
+        (self.nb / "pipe").unlink()
+        os.link(self.nb / "room-facts.md", self.base / "twin")
+        self.refused(self.seal(), "hard links")
+        (self.base / "twin").unlink()
+        self.refused(self.seal(key="nobody-here"), "registered 0 times")
+        self.nb.chmod(0o755)
+        self.refused(self.seal(), "not 0700")
+        self.nb.chmod(0o700)
+        self.refused(self.r.run("seal", "--key", "session-doctor", "--notebook", " "), "--notebook is required")
+        self.assertEqual(self.r.run("seal", "--key", "session-doctor").returncode, 2)
+        self.assertEqual(self.seals(), [])
+        self.assertFalse((self.r.room / "logs").exists())             # refused before the lock
+
+    def test_w5_seal_needs_positive_git_exclusion(self):
+        if subprocess.run(["git", "--version"], capture_output=True).returncode != 0:
+            self.skipTest("git is not installed")
+        subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
+        self.refused(self.seal(), "not ignored by Git")
+        self.assertEqual(self.seals(), [])
+        (self.r.room / ".gitignore").write_text("/archives/NOTEBOOK-*\n/logs/\n")
+        self.ok(self.seal())
+
+    # -- unseal ----------------------------------------------------------------
+    def test_w5_unseal_restores_byte_for_byte_into_an_absent_folder(self):
+        name = self.sealed()
+        into = self.base / "successor" / "session-doctor"
+        into.parent.mkdir()
+        self.ok(self.unseal(name, into))
+        got = self.tree(into)
+        self.assertEqual({k: v[0] for k, v in got.items()}, {**self.files, "topics": None})
+        self.assertEqual({k: v[1] for k, v in got.items()}, {"MEMORY.md": 0o600, "room-facts.md": 0o600, "topics": 0o700,
+                                                             "topics/deep.md": 0o600})
+        self.assertEqual(stat.S_IMODE(into.stat().st_mode), 0o700)
+        self.assertEqual(sorted(p.name for p in into.parent.iterdir()), ["session-doctor"])   # no staging left
+
+    def test_w5_unseal_fills_an_empty_folder_and_replaces_only_with_replace(self):
+        name = self.sealed()
+        into = self.base / "successor"
+        into.mkdir(mode=0o700)
+        into.chmod(0o700)
+        self.ok(self.unseal(name, into))
+        (into / "MEMORY.md").write_bytes(b"newer work\n")
+        self.refused(self.unseal(name, into), "not empty", "--replace")
+        self.assertEqual((into / "MEMORY.md").read_bytes(), b"newer work\n")
+        out = self.ok(self.unseal(name, into, replace=True)).stdout
+        self.assertEqual((into / "MEMORY.md").read_bytes(), self.files["MEMORY.md"])
+        kept = [p for p in self.base.iterdir() if p.name.startswith(".successor.replaced-")]
+        self.assertEqual(len(kept), 1)
+        self.assertEqual((kept[0] / "MEMORY.md").read_bytes(), b"newer work\n")       # the earlier notebook is kept
+        self.assertIn("kept, unread", out)
+
+    def test_w5_unseal_checks_fixity_before_extracting(self):
+        name = self.sealed()
+        path = self.r.room / "archives" / name
+        data = bytearray(path.read_bytes())
+        data[600] ^= 1
+        path.write_bytes(bytes(data))
+        into = self.base / "successor"
+        self.refused(self.unseal(name, into), "no longer match the hash in its name")
+        self.assertFalse(into.exists())
+        self.assertEqual([p.name for p in self.base.iterdir() if ".unseal-" in p.name], [])
+
+    def test_w5_unseal_refuses_hostile_members_without_extracting(self):
+        payload = b"x\n"
+        good = (self.info("notebook/MEMORY.md", size=len(payload)), payload)
+        cases = {
+            "absolute": [(self.info("/etc/evil", size=2), payload)],
+            "escape": [(self.info("notebook/../evil", size=2), payload)],
+            "symlink": [(self.info("notebook/l", kind=tarfile.SYMTYPE, linkname="/etc/passwd"), b"")],
+            "hard link": [good, (self.info("notebook/h", kind=tarfile.LNKTYPE, linkname="notebook/MEMORY.md"), b"")],
+            "device": [(self.info("notebook/d", kind=tarfile.CHRTYPE), b"")],
+            "pipe": [(self.info("notebook/p", kind=tarfile.FIFOTYPE), b"")],
+            "foreign owner": [(self.info("notebook/MEMORY.md", size=2, uid=os.geteuid() + 1), payload)],
+            "outside the root": [(self.info("elsewhere.md", size=2), payload)],
+            "before its folder": [(self.info("notebook/sub/a.md", size=2), payload)],
+        }
+        words = {"absolute": "escapes", "escape": "escapes", "symlink": "special", "hard link": "special",
+                 "device": "special", "pipe": "special", "foreign owner": "foreign ownership",
+                 "outside the root": "manifest lists", "before its folder": "comes before its folder"}
+        into = self.base / "successor"
+        for case, members in cases.items():
+            with self.subTest(case=case):
+                name = self.plant(members)
+                self.refused(self.unseal(name, into), words[case])
+                self.assertFalse(into.exists())
+        name = self.plant([good], manifest={"format": mind.SEAL_FORMAT, "key": "claudine-colbert", "members": [
+            {"path": "MEMORY.md", "type": "file", "sha256": mind.sha256(payload), "size": 2}]})
+        self.refused(self.unseal(name, into), "belongs to 'claudine-colbert'")
+        name = self.plant([good], manifest={"format": mind.SEAL_FORMAT, "key": "session-doctor", "members": [
+            {"path": "MEMORY.md", "type": "file", "sha256": "0" * 64, "size": 2}]})
+        self.refused(self.unseal(name, into), "does not hash as its manifest records")
+        name = self.plant([good], manifest={"format": mind.SEAL_FORMAT, "key": "session-doctor", "members": []})
+        self.refused(self.unseal(name, into), "not the ones its manifest lists")
+        self.assertFalse(into.exists())
+        self.assertEqual([p.name for p in self.base.iterdir() if ".unseal-" in p.name], [])
+
+    def test_w5_unseal_binds_the_key(self):
+        name = self.sealed()
+        into = self.base / "successor"
+        self.refused(self.unseal(name, into, key="claudine-colbert"), f"{name} belongs to 'session-doctor'")
+        moved = name.replace("session-doctor", "claudine-colbert")
+        (self.r.room / "archives" / name).rename(self.r.room / "archives" / moved)
+        self.refused(self.unseal(moved, into, key="claudine-colbert"), "manifest belongs to 'session-doctor'")
+        self.refused(self.unseal("NOTEBOOK-oops.tar", into), "not a seal name")
+        self.assertFalse(into.exists())
+
+    def test_w5_unseal_refuses_unsafe_targets(self):
+        name = self.sealed()
+        real = self.base / "real"
+        real.mkdir(mode=0o700)
+        real.chmod(0o700)
+        linked = self.base / "linked"
+        linked.symlink_to(real)
+        self.refused(self.unseal(name, linked / "nb"), "symbolic link")
+        self.refused(self.unseal(name, linked), "symbolic link")
+        loose = self.base / "loose"
+        loose.mkdir()
+        loose.chmod(0o755)
+        self.refused(self.unseal(name, loose), "not 0700")
+        self.refused(self.unseal(name, self.base / "absent-parent" / "nb"), "does not exist")
+        self.assertEqual(list(real.iterdir()), [])
+
+    def test_w5_unseal_needs_positive_git_exclusion(self):
+        if subprocess.run(["git", "--version"], capture_output=True).returncode != 0:
+            self.skipTest("git is not installed")
+        name = self.sealed()
+        home = self.base / "home"
+        home.mkdir()
+        subprocess.run(["git", "init", "-q", str(home)], check=True)
+        self.refused(self.unseal(name, home / "nb"), "not ignored by Git")
+        self.assertFalse((home / "nb").exists())
+        (home / ".gitignore").write_text("/nb/\n/.nb.*\n")
+        self.ok(self.unseal(name, home / "nb"))
+
+    def test_w5_a_staged_tree_must_equal_the_seal(self):
+        members = [("MEMORY.md", "file", b"x\n", 0), ("topics", "dir", b"", 0)]
+        stage = self.base / "stage"
+        stage.mkdir(mode=0o700)
+        (stage / "topics").mkdir(mode=0o700)
+        (stage / "topics").chmod(0o700)
+        (stage / "MEMORY.md").write_bytes(b"x\n")
+        (stage / "MEMORY.md").chmod(0o600)
+        self.assertTrue(mind.staged_matches(stage, members))
+        (stage / "MEMORY.md").write_bytes(b"y\n")
+        self.assertFalse(mind.staged_matches(stage, members))
+        (stage / "MEMORY.md").write_bytes(b"x\n")
+        (stage / "MEMORY.md").chmod(0o644)
+        self.assertFalse(mind.staged_matches(stage, members))
+        (stage / "MEMORY.md").chmod(0o600)
+        (stage / "extra.md").write_bytes(b"")
+        self.assertFalse(mind.staged_matches(stage, members))
+
+    def test_w5_a_bad_staged_write_never_takes_the_name(self):
+        name = self.sealed()
+        into = self.base / "successor"
+        argv = ["--room", str(self.r.room), "--registry", str(self.r.registry), "--now", "2026-10-30T18:00:00Z",
+                "unseal", "--key", "session-doctor", "--seal", name, "--into", str(into)]
+        short = lambda fd, data: os.write(fd, data[:-1]) if data else None
+        with mock.patch.object(mind, "write_all", side_effect=short), mock.patch("sys.stderr", new=io.StringIO()) as err:
+            self.assertEqual(mind.main(argv), 2)
+        self.assertIn("does not match the seal", err.getvalue())
+        self.assertFalse(into.exists())
+        self.assertEqual([p.name for p in self.base.iterdir() if ".unseal-" in p.name], [])
+
+    # -- the two check gates ---------------------------------------------------------
+    def test_w5_check_seal_gate(self):
+        self.assertEqual(self.r.write({"add": [CORE]}).returncode, 0)
+        self.assertIn("PASS session-doctor seal : no seals", self.ok(self.r.run("check")).stdout)
+        name = self.sealed()
+        self.assertIn("1 seals, each hashing as named", self.ok(self.r.run("check", "--key", "session-doctor")).stdout)
+        path = self.r.room / "archives" / name
+        path.write_bytes(path.read_bytes()[:-1] + b"\x01")
+        result = self.r.run("check", "--key", "session-doctor")
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("FAIL session-doctor seal", result.stdout)
+        self.ok(self.r.run("show", "session-doctor"))                  # show is unchanged: the gate lives in check
+        path.unlink()
+        (self.r.room / "archives" / "NOTEBOOK-garbled.tar").write_bytes(b"")
+        self.assertIn("1 NOTEBOOK- files", self.ok(self.r.run("check")).stdout)
+
+    def test_w5_check_projection_gate(self):
+        self.assertEqual(self.r.write({"add": [CORE]}).returncode, 0)
+        check = ("check", "--key", "session-doctor", "--notebook", str(self.nb))
+        self.assertIn("holds no projection", self.r.run(*check).stdout)
+        self.ok(self.r.run("project", "--key", "session-doctor", "--notebook", str(self.nb)))
+        self.assertIn("PASS session-doctor projection : matches", self.ok(self.r.run(*check)).stdout)
+        index = self.nb / "MEMORY.md"
+        projected = index.read_text()
+        index.write_text(projected.replace("I chose the name Shannon", "I chose a name"))
+        result = self.r.run(*check)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("byte for byte", result.stdout)
+        index.write_text(projected)
+        self.assertEqual(self.r.write({"add": [LESSON]}, yes="yes, add it").returncode, 0)
+        result = self.r.run(*check)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("project again", result.stdout)
+        self.refused(self.r.run("check", "--notebook", str(self.nb)), "needs --key")
 
 
 if __name__ == "__main__":
