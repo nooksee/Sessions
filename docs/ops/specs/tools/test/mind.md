@@ -1,6 +1,6 @@
 # Technical Specification: tools/test/test_mind.py
 
-Test file: `Sessions/tools/test/test_mind.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Spec written 2026-10-30 and updated for the retained RoR-3 and F1/F2 regressions, then for the W5 projection slice (2026-11-05). Status: 69 tests in the current suite (measured 2026-11-05: 69 passed at umask 0002, 0022 and 0077); rerun at those umasks for measured results.
+Test file: `Sessions/tools/test/test_mind.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Spec written 2026-10-30 and updated for the retained RoR-3 and F1/F2 regressions, then for the W5 projection and sealing slices (2026-11-05). Status: 84 tests in the current suite (measured 2026-11-05: 84 passed at umask 0002, 0022 and 0077); rerun at those umasks for measured results.
 
 ## Purpose
 Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator's words and a registered writer, that every change is a declared new leaf in a verifiable chain, that a forged, moved or edited leaf is never served, and that each of Claudio Freeman's section 130 items the port fixes stays fixed. Each such item has a test named for it.
@@ -9,7 +9,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - Command, from the room root: `python3 -I -B tools/test/test_mind.py`
 - Required flags: none. Positional arguments: none (standard `unittest` arguments are accepted).
 - Expected exit behavior:
-  - `0` when all 69 tests pass (two tests skip if `git` is not installed).
+  - `0` when all 84 tests pass (four tests skip if `git` is not installed).
   - `1` when any test fails or errors.
 - Reviewers also run it at umask 0002, 0022 and 0077.
 
@@ -20,12 +20,12 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - No real room, registry, mind or body is read or written.
 
 ## Outputs
-- Stdout: `unittest` progress and a summary line (`Ran 69 tests`, `OK`).
+- Stdout: `unittest` progress and a summary line (`Ran 84 tests`, `OK`).
 - Writes only inside its own temporary directory, which is removed after each test.
 - Exit codes the tests assert on the tool: `0` success, `1` a failed `check`, `2` a refusal.
 
 ## Invariants and failure modes
-69 tests. The 43 numbered below, the 10 projection tests listed after them, and 16 tests of the legacy-state guard, the lock location and the nearest-Git rule (B1) that this list does not yet itemize; the base suite at d7e9ae51 measured 59.
+84 tests. The 43 numbered below, the 10 projection and 15 sealing tests listed after them, and 16 tests of the legacy-state guard, the lock location and the nearest-Git rule (B1) that this list does not yet itemize; the base suite at d7e9ae51 measured 59.
 
 **The basic loop (3).**
 1. `test_write_check_show_round_trip`: write, check and show agree; `show` returns the leaf byte for byte; the leaf records the operator's words, the writer, `predecessor: none` and the declared change.
@@ -92,12 +92,33 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - `test_w5_oversize_is_refused_never_truncated`: a mind whose block exceeds 200 lines is refused whole.
 - `test_w5_project_needs_positive_git_exclusion`: a notebook inside a Git work tree that does not ignore `MEMORY.md` is refused; once ignored, it is projected. Skips if `git` is absent.
 
+**Notebook seals and the two check gates, W5 second slice (15, class `SealTests`).** Each uses a synthetic notebook folder (0700) holding `MEMORY.md`, a topic file and a subfolder with one file (0600). Hostile seals are built in the test with a correct name hash, as a forger would build them.
+- `test_w5_seal_writes_once_binding_key_and_hash`: the seal is named for the key, the UTC date and its own hash, mode 0600, opens with `SEAL.json` and `notebook`, and its manifest names the key and every member; a repeat is reported unchanged with one file; a changed notebook gives a second seal and the first stays byte for byte.
+- `test_w5_seal_never_overwrites_other_bytes`: a seal name holding other bytes is refused and left as it is.
+- `test_w5_seal_refuses_links_specials_hard_links_and_an_unregistered_key`: a linked member, a pipe, a file with two hard links, an unregistered key, a folder not 0700, a blank or missing `--notebook` are each refused; no seal is written and no lock is created.
+- `test_w5_seal_needs_positive_git_exclusion`: in a room inside a Git work tree that does not ignore the seal, it is refused; once ignored, it is written. Skips if `git` is absent.
+- `test_w5_unseal_restores_byte_for_byte_into_an_absent_folder`: every file comes back byte for byte, folders 0700 and files 0600, and no staging folder is left.
+- `test_w5_unseal_fills_an_empty_folder_and_replaces_only_with_replace`: an empty folder is filled; a non-empty one is refused without `--replace`; with it, the seal takes the name and the earlier folder is kept beside it with its bytes.
+- `test_w5_unseal_checks_fixity_before_extracting`: one flipped bit in the seal is refused on its name hash; no target and no staging folder exist afterwards.
+- `test_w5_unseal_refuses_hostile_members_without_extracting`: an absolute member, a `..` escape, a symbolic link, a hard link, a character device, a pipe, a foreign owner, a member outside `notebook/`, a member before its folder, a manifest of another key, a manifest hash that does not match and a manifest that omits a member are each refused, and nothing is extracted.
+- `test_w5_unseal_binds_the_key`: a seal of one key is refused for another by its name; renamed to the other key, it is refused by its manifest; a malformed name is refused.
+- `test_w5_unseal_refuses_unsafe_targets`: a linked parent, a linked target, a target not 0700 and an absent parent are each refused.
+- `test_w5_unseal_needs_positive_git_exclusion`: a target inside a Git work tree that does not ignore it is refused; once ignored, it is restored. Skips if `git` is absent.
+- `test_w5_a_staged_tree_must_equal_the_seal`: the staged-tree comparison rejects other bytes, another mode and an extra file.
+- `test_w5_a_bad_staged_write_never_takes_the_name`: in process, a staged write that loses a byte is caught by the comparison; the target never appears and the staging folder is removed.
+- `test_w5_check_seal_gate`: no seals passes; a valid seal passes; a seal with one changed byte fails `check` (exit 1) while `show` still serves the mind; a garbled `NOTEBOOK-` name is reported at room level.
+- `test_w5_check_projection_gate`: no projection fails; a fresh projection passes; a hand-edited block fails; a newer leaf not yet projected fails as stale; `--notebook` without `--key` is refused.
+
+Each guard of this slice was disabled in turn (26 mutations: links, specials, hard links, overwrite, preflight before the lock, registration, fixity, escape, special members, ownership, manifest key, member hash, member count, folder order, `--replace`, the staged comparison, keeping the earlier folder, the name's key, the target's parent and privacy, both Git rules and both gates, and `--notebook` without `--key`); the suite caught 26 of 26.
+
 ## Not covered
 - That the words passed to `--yes` are truly the operator's: the tool cannot know, and the spec says so. The audit is the chain, the declared changes and the words held against the conversation.
-- The Sessions room itself: no test writes a real mind, and none has been written.
+- The Sessions room itself: no test reads or writes a real mind, notebook or seal.
 - Any hook, timer or capsule wiring: none exists.
 - That a provider loads the projected block: projection source is not evidence of loading; that needs its own native proof.
-- A real notebook, its home, seal, unseal or the launch wrapper: none is built or touched.
+- A real notebook or its home, a real seal or unseal, and the launch wrapper: none is touched or built here.
+- `write --seal` and a `notebook:` leaf line: not built (see the tool spec).
+- Whether a provider writes the notebook during a seal or unseal: the tool cannot detect its writer; the seam is the operator's.
 
 ## Anecdotal Anchor
 Claudio's audit of 2026-10-30 (section 130) found that the first design's store let a model edit drop a ratified entry and let an archive-then-use revive a closed one. The operator removed the machinery those gaps lived in. These tests are the record that each gap stays closed: an item fixed by design has a test that tries the old path and is refused.
