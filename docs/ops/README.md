@@ -1,6 +1,6 @@
 # Sessions operations: the continuity system, one map
 
-Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA (`Projects/STELA`). PoT 1.1 defines the filing boundaries; CONSTRAINTS C01 gives the filing mechanics. `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
+Owner: Session Continuity Manager. Originally written 2026-10-30. Convention: STELA, the house convention, kept in the operator's Control tree and not in this repository. PoT 1.1 defines the filing boundaries; CONSTRAINTS C01 gives the filing mechanics. `storage/` carries named working cases, `var/tmp/` carries task scratch, `logs/` carries telemetry, and kept records belong in `archives/` or custody. Each tool has one word, a registered source path, specification and tests; imported shell tools retain `.sh`. Scratch mechanics are in `var/README.md` and the manual; clearing all working cases is not a cleanup procedure.
 
 CONTEXT is the canonical read-in and domain-pointer inventory. CONSTRAINTS
 contains human-consumed operating requirements delegated by PoT; neither
@@ -9,12 +9,17 @@ to these contracts. The map owns current locations, custody/Control ownership
 and bounded migration holds; those holds do not create a permanent storage
 state exception.
 
+Paths in these documents use two tokens. `<control>` is the Control root on the
+operator's host, and `<room>` is this room's root inside it, `<control>/Sessions`;
+on a clone, the clone's root takes the place of `<room>`. The tools find the room
+from their own location; code defaults and tests keep their literal paths.
+
 ## Foundational policy adoption
 
 RoR-18 adopts the reviewed policy at SHA-256
 `2dc41d8754189cbb52d65bca4bc387ba508eedf1cd2156f2e62f408b86eb21e7`
 with its CONSTRAINTS/CONTEXT read-in contracts and entry-point wiring.
-`storage/active/pot-adoption-20261104/receipt.md` records the actual source
+The private adoption receipt, `storage/active/pot-adoption-20261104/receipt.md` (not in this repository), records the actual source
 head, application time, contract hashes, custody and checks. The preserved
 proposal and clause map remain historical preparation evidence, not another
 active policy. The gauge and mind-lock migration holds below ended with the state cutover
@@ -67,7 +72,7 @@ remains; the adoption itself moved no state.
 | task scratch | `var/tmp/<owner>-<operation>.<unique>/`, skeleton described in `var/README.md` | ephemeral, ignored | owner-scoped; PoT 1.1.13; no persistent state or automatic purge |
 | incoming payload | `storage/intake/` | working data; only `.gitkeep` admitted | payload ignored; awaiting classification, not executable installation or authority |
 | active case payload | `storage/active/` | working data; only `.gitkeep` admitted | payload ignored; owner, operation and closeout; no operational code trees |
-| mind project record | `archives/mind-manifest-20261101/` | durable, private and ignored | packed 2026-11-01; `MANIFEST.txt` holds every file's source and sha256; integrated by the port (`archives/receipts/mind-manifest-integration-20261101.md`); preservation does not imply Git admission |
+| mind project record | `archives/mind-manifest-20261101/` | durable, private and ignored | packed 2026-11-01; `MANIFEST.txt` holds every file's source and sha256; integrated by the port (`archives/receipts/mind-manifest-integration-20261101.md`, a private receipt); preservation does not imply Git admission |
 | receipts | `archives/receipts/<what>-<date>.md` | durable; selective Git admission | original/private sources remain kept; only explicitly admitted redacted records enter Git, as `.gitignore` names them |
 | custody | `/media/nos4r2/user_vol/Backup/Codex-Session-Preservation/<batch>/` (tier 1, /dev/sdb1), mirrored on hard_vol2 (tier 2, /dev/sdc1) | durable | hard_vol2 is failing and its replacement stays open (PoT 5.3.3): until a healthy second medium is chosen, each batch's third copy lives on the boot drive under `/home/nos4r2/.local/state/` (tier 3, /dev/sda2, interim): `Sessions-Custody-Interim-20261104/<batch>/` holds the receipts, evidence and ledger-sources batches of 11-01 and 11-02; `Central-RoR-First-Render-20261104/` and `Sessions-State-Cutover-20261104/` hold the ledger render and the gauge-history preimages of 11-04, each with a sibling under `Backup/`; `sessions-history-20261104/` and `sessions-prerewrite-20261104/` hold the bundles of the repository before the history rewrite of 11-04 with the export of its pull requests, `sessions-identities-20261104/` the first public-gate repository before its re-creation with its four pull requests and the mailmap, and `sessions-port-110126-retired-20261104/` the porter's working copy of the room, retired from `Projects/` with its manifest beside it (receipt `archives/receipts/history-rewrite-20261104.md`) |
 | help | `ops/bin/help`, `docs/ops/specs/binaries/help.md` | binary | adapted from STELA 10-30; read-only wayfinding (`docs/ops/registry/binaries.md`) |
@@ -76,7 +81,7 @@ remains; the adoption itself moved no state.
 | index | `docs/INDEX.md` | document | updated 11-03; maintained pointers to current docs and forms |
 | registries | `docs/ops/registry/{scripts,binaries,test,runbook}.md` | document | maintained inventories; one row per tool, binary, test suite and runbook |
 
-## What the last two days left, and its place
+## What 2026-10-29 to 2026-11-01 left, and its place
 
 - `archives/mind-manifest-20261101/`: the whole mind project as of 2026-11-01, packed by the Session Continuity Manager with a hash manifest: the v1 proposal and package, Claudio's audit, the v2 tool as it stands, the law, the handoff excerpts and the notes. It is the durable record. `storage/candidates/mind-manifest-20261029/` and `storage/lab/jojo-production/working-snapshots/claudio-20261030-mind-audit/` are its working duplicates, disposable.
 - `storage/candidates/`, the build records of this office's rotations and capsules from 2026-07 to 2026-10, moved to custody on 2026-11-04 as batch `sessions-storage-candidates-20261104` (three roots, direct-read verified) and removed from the room at the operator's direction; `splice_window.py` and the gates, the ingredients of `rotate.py`, are in custody with them.
@@ -84,7 +89,7 @@ remains; the adoption itself moved no state.
 
 ## Ported later (the operator: no side path now)
 
-- `Scripts/`: ported 2026-11-01 to `ops/lib/scripts/`, one word each with a spec each (`docs/ops/specs/runbook/port.md`, `archives/receipts/port-20261101.md`); its two frozen remains are under `archives/legacy/Scripts/`.
+- `Scripts/`: ported 2026-11-01 to `ops/lib/scripts/`, one word each with a spec each (`docs/ops/specs/runbook/port.md`; its receipt, `archives/receipts/port-20261101.md`, is private); its two frozen remains are under `archives/legacy/Scripts/`.
 - The retired folders Archived, Attic, Plans and Intake were frozen unchanged under `archives/legacy/` on 2026-11-01. `Resident-Center/`, `Config/` and the rest of `Scripts/` left the room in block 7 for Control's frozen runtime custody at `/media/nos4r2/user_vol/Control-Runtime/` (Control's decision; PoT 3.4).
 - `HANDOFF.md`, `INDEX.md` and `START-HERE.md` became pointer-first root files on 2026-11-01; their former contents are at `archives/legacy/HANDOFF.md`, `archives/legacy/INDEX.md` and `docs/START-HERE.md`. `NOW.md` stays the present-state board. The root `START-HERE.md` pointer was retired on 2026-11-04 at the operator's direction; `docs/START-HERE.md` is the orientation. The same night the public gate completed: the history rewritten, the repository re-created under the name `nooksee/Sessions` and switched public, the receipt in `archives/receipts/`.
 

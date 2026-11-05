@@ -27,8 +27,8 @@ repository is canon.** When they disagree, the repository wins.
 | `PoT.md` | the Sessions constitution | before material work |
 | `NOW.md` | live board — current state, open items | at the start of every session |
 | `README.md` | charter and folder map | when you need to find something |
-| `HANDOFF.md` | who you are, if you are the resident here | on wake |
-| `docs/session-continuity-apprentice-field-guide.md` | how to observe without overstepping | if you are here to help, not to lead |
+| `storage/handoff/<key>.md` | your own handoff, if you are a resident here (private, not in this repository) | on wake |
+| `docs/MANUAL.md` | how the tools are run and observed, without overstepping | if you are here to help, not to lead |
 
 ## The four rules you can break something with
 
@@ -54,7 +54,7 @@ Everything else is recoverable. These are the ones that cost real damage.
 - **Compaction count, not just percentage.** A session that keeps compacting
   has a *low* context percentage precisely because it keeps shedding history.
   The sickest sessions can look the healthiest. See `DOCTRINE.md` §1A and the
-  `compact-treadmill` verdict.
+  `compact-treadmill` verdict of `ops/lib/scripts/vitals.py`.
 - **Data health and mechanism health are different questions.** "The clinic
   says everyone is fine" and "the clinic is actually still running" must be
   checked separately. Stale data looks plausible.
@@ -75,7 +75,7 @@ the model has not learned yet.
 ## Your first hour, in order
 
 ```bash
-cd /media/nos4r2/user_vol/Sessions
+cd <room>
 
 # 1. What does the house look like right now?
 python3 ops/lib/scripts/workers.py
@@ -85,43 +85,43 @@ python3 ops/lib/scripts/telemetry.py
 python3 ops/lib/scripts/vitals.py --only-flagged
 
 # 3. What does the operator surface believe?
+# (logs/ is never in Git: on the operator's host only)
 cat logs/clinic-aggregate.json
 cat logs/resource-state.json        # provider budget, if collected
 
 # 4. Can every resident actually be launched? The launcher lives in Control's
 #    frozen runtime; the roster and bindings it reads are this room's ops/etc/.
-cd /media/nos4r2/user_vol/Control-Runtime/Resident-Center/research/resident-launcher
+cd <control>/Control-Runtime/Resident-Center/research/resident-launcher
 PYTHONPATH=src python3 -c "
 from pathlib import Path
 from osai_resident_launcher.registry import load_registry
 from osai_resident_launcher.validation import validate_all
-r=load_registry(Path('/media/nos4r2/user_vol/Sessions/ops/etc/residents.json'),
-  Path('/media/nos4r2/user_vol/Sessions/ops/etc/host-bindings.json'))
+r=load_registry(Path('<room>/ops/etc/residents.json'),
+  Path('<room>/ops/etc/host-bindings.json'))
 [print(v.resident.key, v.state, v.detail) for v in validate_all(r)]
 "
 ```
 
-All of that is read-only. Run it freely. Nothing above writes.
+All of that is read-only; nothing above writes. Steps 3 and 4 need the operator's host: `logs/`, the roster and the launcher are not in this repository.
 
 ## Where the authority sits
 
 - **The operator** owns objectives, priorities, and final acceptance. Nothing lands
   without him.
-- **Control** (currently George X) owns cross-project reconciliation.
-- **Sessions Claude** owns session-health method and this repository.
+- **Control's desktop continuity manager** owns cross-project reconciliation.
+- **The Session Continuity Manager** owns session-health method and this repository (PoT 4.1).
 - **Residents** own their own project scope and nothing else.
 - The **repository** outranks any session's memory of what happened.
 
 ## How we handle being wrong
 
-This matters more than it sounds. The receipts in this repo contain their own
-corrections, in place, including ones that make the author look worse. That is
-deliberate. If you find a mistake — yours or an earlier one — correct it where
-it lives and say what changed. Do not quietly reword history so it reads
-better.
+This matters more than it sounds. The receipts in this repo carry their own
+corrections, including ones that make the author look worse. That is
+deliberate. If you find a mistake, yours or an earlier one, add an attributed,
+dated correction beside the record and say what changed; never reword the
+record itself so it reads better (PoT 1.2.13).
 
-A recent example worth reading in full:
-`archives/receipts/worker-thread-doctrine-20260731.md`. Seventeen worker threads had
+A recent example, now in `DOCTRINE.md` section 1A (its receipt is private). Seventeen worker threads had
 accumulated unnoticed because the model had only two categories for sessions.
 They were nearly swept as junk. The lesson became doctrine: **a large
 "miscellaneous" pile is usually a category you have not learned yet, not

@@ -36,7 +36,7 @@ body is changed by this policy/read-in source integration.
 
 ## Historical Operating Summary - 2026-11-03
 
-- **Block 7 landing:** the `Scripts/`, `Config/` and `Resident-Center/` runtime roots have moved from Sessions to `/media/nos4r2/user_vol/Control-Runtime/`. The independent product source remains `/media/nos4r2/user_vol/Projects/Resident-Center`; private registry, roster and host-binding inputs remain in `ops/etc/`. The landing and its actual-result audit are recorded in George's sealed Control receipt and Joe's audit at `archives/working-records/20261102-block7/joe-filing-alignment-20261102.3i1Jv2/actual-result-audit-20261103.md`.
+- **Block 7 landing:** the `Scripts/`, `Config/` and `Resident-Center/` runtime roots have moved from Sessions to `<control>/Control-Runtime/`. The independent product source remains `<control>/Projects/Resident-Center`; private registry, roster and host-binding inputs remain in `ops/etc/`. The landing and its actual-result audit are recorded in George's sealed Control receipt and Joe's audit at `archives/working-records/20261102-block7/joe-filing-alignment-20261102.3i1Jv2/actual-result-audit-20261103.md`.
 - **Sessions Git:** at 2026-11-03 00:48 EST, local `main` remains `714c588aa137c39a26bf4c431e9eb386a29e498f` (tree `cc72cc58643501efe406625a0068758479f8aa32`), five commits ahead of `origin/main` at `bfbc83b7c1eb173d752edb21a01ec123e5ed13c2`. The private GitHub repository is `nooksee/sessions`; PRs #16 and #19 remain open, so the accepted local join is not yet integrated on hosted `main`.
 - **Observed health is not cleared:** Joe's 2026-11-03 actual-result audit records the scheduled serve and rounds runs exiting with status 2, and drift still `both-changed` / `critical` with 77 mapped and 71 converged paths and no repairs. These are failures and unresolved drift, not healthy results or a diagnosis. The audit reports the copied contents and checked non-access metadata match, while all 1,560 file access times in each custody tier advanced after the in-window copy verification; original access times remain in the sealed manifest and were not normalized.
 - **Open work and limits:** `hard_vol2` remains the previously recorded failing second custody medium; hash verification does not certify its health, and replacement remains open. The audit also leaves visual interaction, remote connection and provider-generation canaries untested, and reports two archived-container launcher blocks. No new fleet-health claim is made here.
@@ -75,7 +75,7 @@ summary above; their original counts and observations remain historical.
   `Receipts/launcher-containment-runtime-patch-20261018.md`.
 - Assignment split: Codex `15`; Claude `10`.
 - **Resident Center source authority is the independent product repository at
-  `/media/nos4r2/user_vol/Projects/Resident-Center`.** The Sessions tree at
+  `<control>/Projects/Resident-Center`.** The Sessions tree at
   `Sessions/Resident-Center` is frozen runtime custody: it is what runs and it
   is the rollback donor, and it is not edited as source. Canon:
   `Decisions/resident-center-source-authority-and-frozen-runtime-custody.md`.
@@ -130,7 +130,7 @@ summary above; their original counts and observations remain historical.
 
 The LiveUSB exact-root gap is closed. PyCharm registration, trust, display,
 SDK association, Claude native-room encoding, resident title, and runtime
-load all use `/media/nos4r2/user_vol/Projects/live-usb`. The retired project
+load all use `<control>/Projects/live-usb`. The retired project
 shell and Claude room are absent from live paths and preserved in verified
 rollback custody. Receipt:
 `Receipts/liveusb-exact-root-host-rebind-20260725.md`.

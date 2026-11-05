@@ -8,7 +8,7 @@ Status: active for the Session Continuity project
 The project root is:
 
 ```text
-/media/nos4r2/user_vol/Sessions
+<room>
 ```
 
 This project owns session health, inventory, succession, handoffs, evidence,
@@ -28,7 +28,7 @@ repository at this same path.
 ## Required Reading
 
 Before material work, read the parent Control instructions at
-`/media/nos4r2/user_vol/AGENTS.md`, then use `bash ops/bin/help read` for the
+`<control>/AGENTS.md`, then use `bash ops/bin/help read` for the
 maintained local order: `PoT.md`, `ops/lib/manifests/CONTEXT.md` and
 `CONSTRAINTS.md`, class-specific identity/read-in, `RoR.md`, `NOW.md`, the map
 and only authorized task-relevant evidence. Read the manual and relevant
@@ -87,8 +87,8 @@ snapshots, and the bootstrap receipt. Private bodies, minds, custody, working
 notes and runtime evidence remain outside this repository.
 
 Control owns the frozen runtime custody at
-`/media/nos4r2/user_vol/Control-Runtime/`; product source authority remains
-`/media/nos4r2/user_vol/Projects/Resident-Center`. The resident registry and
+`<control>/Control-Runtime/`; product source authority remains
+`<control>/Projects/Resident-Center`. The resident registry and
 host bindings are host-local under `ops/etc/` and stay outside Git.
 Shared Sessions documents can still belong to Control; check the owning
 repository before editing them. The exact boundary and rollback are in
