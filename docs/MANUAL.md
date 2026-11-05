@@ -281,9 +281,10 @@ does not reopen its expired live window.
 Spec: `docs/ops/specs/scripts/mind.md`. Source and synthetic tests exist;
 current test results belong to their validation receipt, not a frozen count
 here. The `project` command exists in source (W5 first slice): it copies a
-verified leaf into a notebook folder the operator names, and only after the
-writer of that notebook is stopped. No notebook home is chosen, no sealing or
-wrapper exists, and a projection is not proof that a provider loaded it.
+verified leaf into a notebook folder the operator names; the operator must
+first stop that notebook's writer, which the tool cannot detect. No notebook
+home is chosen, no sealing or wrapper exists, and a projection is not proof
+that a provider loaded it.
 
 **What a mind is.** The small curated record of who a resident is, what it has learned and what it owes. It travels into every successor beside the donor's own summary and window, and never replaces them.
 
