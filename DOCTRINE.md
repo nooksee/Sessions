@@ -4,7 +4,8 @@
 current policy and does not override `PoT.md`. Read `PoT.md` for law,
 `docs/MANUAL.md` for operator mechanics, and the applicable tool specification
 for implementation details. The current constitutional source of truth is
-`PoT.md`; this historical text has not been re-rendered or modernized.
+`PoT.md`; this historical text has not been re-rendered or modernized. One term designated private was removed from
+four lines on 2026-11-05 (PoT 5.1.4); nothing else was changed.
 
 The durable canon for keeping AI coding sessions (Codex rollouts, Claude
 Code transcripts) healthy, and for migrating a session's *identity and
@@ -14,7 +15,7 @@ sessions do not re-derive what the 2026-06 → 2026-07 campaign already paid
 for in full.
 
 Source events behind this doctrine: the 9.6 GB April thread retirement, the
-George lineage (I→IV), the Part II/III desktop transplants, the Athol Claude
+George lineage (I→IV), the Part II/III desktop transplants, the Addition Claude
 Code repair, and George's verified cross-surface (PyCharm↔VS Code) migration
 (external report: `VMs/Shared/Workbench/migration-framework/15_cross_surface_session_continuity_results_2026-07-12.md`).
 
@@ -544,7 +545,7 @@ automatic launches, permanent deletes — all `0` unless explicitly approved.
   transplant** — the session is in the picker; you resume it. The
   container/capsule machinery is only for **Codex rollouts** crossing CLI
   versions, editor/ACP registration, corruption, or the token ceiling. Do not
-  cargo-cult the ceremony where nothing is broken (Athol/DocumentStudio =
+  cargo-cult the ceremony where nothing is broken (Addition/DocumentStudio =
   native resume; Desktop Codex IV = real transplant).
 
 Open spec work George requested: turn this recipe into a non-mutating
@@ -592,7 +593,7 @@ offering myself* was — and it did not have to be.
    project's Claude Code list **iff its JSONL physically sits in that folder.**
    Moving the file between store folders relocates it across rooms,
    byte-identical and reversible. Proven by relocating the 74 MB "Addition"
-   (Mom's Athol Move) thread from the Control room to the Addition room with a
+   (Mom's Move) thread from the Control room to the Addition room with a
    SHA-verified identical copy. This is the true analog of a Codex transplant;
    it preserves the actual turns, not a paraphrase.
 
@@ -621,7 +622,7 @@ offering myself* was — and it did not have to be.
      the live-writer constraint.
 
 4. **Operators may already embody the doctrine in documents.** The Addition /
-   Mom's Athol Move project carries a month of continuity in dated handoff docs
+   Mom's Move project carries a month of continuity in dated handoff docs
    (`Projects/Addition/99_meta/*`, `HANDOFF_TO_AI_ASSISTANT.md`) — threads
    "expired due to image cap" and it never mattered, because the memory was
    written to disk. When a thread's project has this, continuity is safe
