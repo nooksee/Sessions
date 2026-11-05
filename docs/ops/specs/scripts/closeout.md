@@ -12,6 +12,18 @@ Input to a resident's mind is solicited by a prompt in conversation and written 
 
 ## Mechanics and Sequencing
 
+### Shared pressure decision (W4 source increment, not activation)
+
+`pressure_band(tokens, window)` is the one reserve/band calculation for the
+prompt hook and the proposed operator-only notice adapter. It preserves the
+existing 70 percent line, 50,000-token reserve and five-point bands. It
+returns `None` only for a valid below-trigger reading and an integer band
+otherwise. Invalid types, booleans, negative tokens, nonpositive/too-small
+windows and over-window counters raise `Unknown`, never healthy. Equality
+with the trigger enters band zero. Tests cover both equality boundaries,
+the next band, different windows and invalid input. No live hook, desktop
+notification or timer is installed by factoring this decision.
+
 1. **The meter.** After every working turn, the provider writes the exact token count into the resident's own body (`gauge.md`).
 2. **The trigger line: a reserve, not a percent.** Joe Codex measured on 2026-10-30 that, at a busy pace, the step from 65 to 70 percent lasts minutes (7.6 for Claudio, 8.6 for George, 24 for Shannon, 42 for Joy). So the closeout begins when **50,000 tokens remain before the 70 percent line**, whatever the window: 65 percent of 1,000,000, about 59.5 of 475,000, and about 50.6 of 258,400. The card stops new work, so the reserve covers a calm closeout. The operator may veto this rule.
 3. **The signal (Claude residents).** A `UserPromptSubmit` hook runs `closeout.py` on each prompt.

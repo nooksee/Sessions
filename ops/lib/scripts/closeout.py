@@ -74,6 +74,25 @@ class Timeout(Exception):
     """The 5-second limit was reached."""
 
 
+def pressure_band(tokens: int, window: int) -> int | None:
+    """Shared reserve/band decision; None is below trigger, never unknown.
+
+    Preserve the existing 70 percent line, 50,000-token reserve and 5-point
+    bands. The hook and operator-only notice must call this one decision.
+    """
+    if (isinstance(tokens, bool) or not isinstance(tokens, int) or tokens < 0
+            or isinstance(window, bool) or not isinstance(window, int) or window <= 0):
+        raise Unknown("tokens and window must be valid integer counters")
+    if tokens > window:
+        raise Unknown("the reading exceeds the window")
+    trigger = DUE * window - RESERVE
+    if trigger <= 0:
+        raise Unknown("the window is too small for the reserve rule")
+    if tokens < trigger:
+        return None
+    return int((tokens - trigger) // (BAND * window))
+
+
 ALARMS = [0]
 PHASE = ["decide"]
 
@@ -391,16 +410,13 @@ def decide(opts: dict, raw: bytes, now: dt.datetime):
             raise Unknown(reading.get("window_reason") or "no reviewed window")
         if tokens > window:
             raise Unknown("the reading exceeds the window")
-        trigger = DUE * window - RESERVE
-        if trigger <= 0:
-            raise Unknown("the window is too small for the reserve rule")
+        band = pressure_band(tokens, window)
         state_dir = opts["state-dir"]
-        if tokens < trigger:
+        if band is None:
             old = update(state_dir, session_id, lambda entry: None)
             if old and old.get("band") is not None:
                 log(state_dir, now, event="rearmed", key=ctx["key"], percent=round(100.0 * tokens / window, 3))
             return None, None
-        band = int((tokens - trigger) // (BAND * window))
         percent = 100.0 * tokens / window
         when = gauge.parse_time(reading.get("reading_at"))
         card = render_card(card_template(opts["template"]), {    # first: a defect is unknown and uses up no band

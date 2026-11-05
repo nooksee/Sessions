@@ -8,6 +8,7 @@ is wired. Run:
 
     python3 -I -B tools/test/test_closeout.py
 """
+import importlib.util
 import json
 import os
 import shutil
@@ -807,6 +808,50 @@ class StateLocation(unittest.TestCase):
                            (state / "state.json", 0o600), (state / "log.jsonl", 0o600)):
             with self.subTest(path=path.name):
                 self.assertEqual(path.stat().st_mode & 0o777, mode)
+
+
+class SharedPressureDecision(unittest.TestCase):
+    """Hook and operator-only adapter share one unchanged decision."""
+
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location("closeout_shared_decision", CLOSEOUT)
+        cls.tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.tool)
+
+    def test_threshold_equality_uses_the_existing_reserve(self):
+        self.assertIsNone(self.tool.pressure_band(649999, 1000000))
+        self.assertEqual(self.tool.pressure_band(650000, 1000000), 0)
+
+    def test_band_equality_and_next_band(self):
+        self.assertEqual(self.tool.pressure_band(699999, 1000000), 0)
+        self.assertEqual(self.tool.pressure_band(700000, 1000000), 1)
+        self.assertEqual(self.tool.pressure_band(750000, 1000000), 2)
+
+    def test_zero_tokens_is_a_real_below_trigger_measurement(self):
+        self.assertIsNone(self.tool.pressure_band(0, 1000000))
+
+    def test_small_window_remains_unknown(self):
+        with self.assertRaises(self.tool.Unknown):
+            self.tool.pressure_band(0, 50000)
+
+    def test_over_window_remains_unknown(self):
+        with self.assertRaises(self.tool.Unknown):
+            self.tool.pressure_band(1000001, 1000000)
+
+    def test_invalid_counter_types_are_not_measurements(self):
+        for tokens, window in ((True, 1000000), (1, True), (-1, 1000000),
+                               (1.5, 1000000), (1, 0), (1, -1),
+                               (float("nan"), 1000000), (1, float("inf")),
+                               ("650000", 1000000), (None, 1000000)):
+            with self.subTest(tokens=tokens, window=window):
+                with self.assertRaises(self.tool.Unknown):
+                    self.tool.pressure_band(tokens, window)
+
+    def test_different_window_keeps_the_same_rule(self):
+        self.assertIsNone(self.tool.pressure_band(229999, 400000))
+        self.assertEqual(self.tool.pressure_band(230000, 400000), 0)
+        self.assertEqual(self.tool.pressure_band(250000, 400000), 1)
 
 
 if __name__ == "__main__":

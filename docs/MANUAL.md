@@ -105,10 +105,21 @@ The authority for who each resident is lives only in the registry. A resident ch
 | --- | --- | --- | --- | --- |
 | gauge | `ops/lib/scripts/gauge.py` | `docs/ops/specs/scripts/gauge.md` | `tools/test/test_gauge.py` | built; see its specification for measurement behavior and installed scope |
 | closeout | `ops/lib/scripts/closeout.py` | `docs/ops/specs/scripts/closeout.md` | `tools/test/test_closeout.py` | implemented and synthetically tested; current-hash review and native delivery proof precede installation (PoT 6.1.2) |
+| notice (operator backstop) | `ops/lib/scripts/notice.py` | `docs/ops/specs/scripts/notice.md` | `tools/test/test_notice.py` | source implemented; review/integration pending, unwired; consumes one exact gauge row, submits an operator-only notice, never delivers resident context |
 | mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; actual use and notebook integration have separate acceptance |
 | rotate | `ops/lib/scripts/rotate.py` (not written) | `docs/ops/specs/scripts/rotate.md` | none yet | spec only; rotations still run by hand, by the spec |
 
 Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.md`.
+
+The diagram is the intended loop, not an installation report. `notice` is
+an optional operator backstop to its closeout step, not another telemetry
+reader or proof of native context injection. It receives one checked gauge
+JSON row for an explicit key. `--dry-run` sends and writes nothing. Its
+status `submitted` means only notifier success, not display or acceptance;
+`unknown` is nonzero and never a clean reading. Host wiring remains George's
+separately reviewed and named operation. See the notice specification for
+private state, interruption limits and the exact CLI; no copy-and-run live
+pipeline is implied by this source preparation.
 
 ---
 

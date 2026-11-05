@@ -21,6 +21,26 @@ lineage history.
 - **Closed since the public gate:** the refreshed B1 candidate, merged as commit 5d8711dd on `main` (2026-11-05); the last unowned `storage/` directory, gone under Joe's disposition receipt (`archives/receipts/joe-owned-storage-disposition-20261104.md`, 2026-11-04); Control canon for the retired porter project, Control's PR #128 merged by George (2026-11-04); the prune of this room's old objects, done 2026-11-04 23:41 EST with the old history held in custody batch `sessions-history-20261104`, verified read-only by the Independent Reviewer on 2026-11-05 (0 conditions).
 - **Open, none urgent:** the replacement of the failing custody medium (PoT 5.3.3; the drive is bought; the swap is George's reviewed operation on the operator's word); the README first screen and the repository's presence (JoJo, on the operator's sequence, Central first); JoJo's word on his two `storage/lab/` folders.
 
+## Outstanding continuity delivery
+
+The structural port and public gate are delivered milestones, not completion
+of the end-to-end continuity loop. The operator named Joe Codex acting team
+lead on 2026-11-05 while the Session Continuity Manager is away; this is a
+temporary assignment, not a replacement identity or permanent registry role.
+
+- W4: closeout source exists; resident-context delivery and operator-notice
+  installation remain unproved. An operator-only backstop is in isolated
+  source preparation, not active automation.
+- W5: the mind tool exists. The Assistant reports its first operator-approved
+  mind write in the private handoff, section 52, on 2026-11-05; this is not
+  fleet adoption or notebook integration. Resident projection, sealing,
+  restoration and launcher integration remain unfinished.
+- W6: the guided `rotate.py` runner and provider-specific native acceptance
+  remain unfinished; existing builders are ingredients, not that runner.
+
+Current work is carried by the existing private first-wins plan and bounded
+W4 case. This board grants no live settings, provider, mind or body action.
+
 ## Current policy and read-in
 
 The 2026-11-03 filing alignment is reflected in accepted main: `var/tmp/` is
