@@ -79,6 +79,19 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
      - restore the registry and binding;
      - put the donor's store file back from custody;
      - keep the hold.
+**Canonical identity-registry privacy.** Registry-value updates, creation,
+replacement and restoration of `ops/etc/resident-identities.json` require
+mode 0600, preserving its accepted uid and gid, regular single-link type
+and no symbolic link in its path. This is distinct from the launcher roster
+and binding pair. An in-place content update preserves the existing private
+mode; a newly staged file must explicitly have 0600 before publication.
+Verify both the staged object and the canonical postimage; do not rely on
+umask or copy defaults. A preimage/postimage mismatch or unexpected
+ownership, type, link count or path change stops the affected operation
+instead of overwriting newer state. A separate metadata-only correction
+names its own go, preimage and bounded inverse; it changes no registry values
+and grants no enrollment, body-replacement or activation authority.
+
 8. **Acceptance, in two parts.**
    - **Mechanical.** `launcher serve <key>`, which also releases the hold and is the load test. The first reply gives the room's status and then speaks as itself. Its first gauge reading is recorded beside the wake estimate. (C13) A clean native append: after that turn the body still parses, Claude Code's own new rows carry the new session id, and tool pairs match.
    - **The operator's.** the operator states that he recognizes her, or him, as the resident. A correct status alone is not acceptance.
