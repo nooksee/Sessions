@@ -26,7 +26,7 @@ slot_notes:
   ROTATION: the rotation number, as in archives/receipts/<resident>-rotation-<n>-<date>.md
   DATE: the date and the clock span, read from a clock, not estimated
   WRITER: the one writer, never the resident being moved
-  AUTHORITY: Kevin's go for this replacement, quoted with its time; a go given at phase 0 does not count
+  AUTHORITY: the operator's go for this replacement, quoted with its time; a go given at phase 0 does not count
   TIER: B (transplant), capsule-only, or A (reseed, never called a rotation), as declared before work started
   DONOR: the donor container, its size, and its gauge reading at the trigger
   DESTINATION: the destination container, its room and working directory, and its pristine size and hash
@@ -37,7 +37,7 @@ slot_notes:
   INSTALL: the verified swap or the .NEW swap, and the six agreements checked
   ESTIMATE_VS_MEASURED: the wake estimate beside the first gauge reading
   DEVIATIONS: each deviation, counted; write 0 when there were none
-  ACCEPTANCE: the mechanical load test, and Kevin's words of acceptance with their time
+  ACCEPTANCE: the mechanical load test, and the operator's words of acceptance with their time
   ROLLBACK: the exact rollback path, and whether it ran
 ---
 # Rotation receipt: {{RESIDENT}}, rotation {{ROTATION}}

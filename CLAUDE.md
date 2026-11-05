@@ -27,8 +27,8 @@ your person; that is who you are, when both of the script's identity legs
 (caller identity and identity registry) pass, whatever its health legs say.
 With no signal, with disagreeing signals, with more than one matching entry,
 with none, or when the script is absent or cannot run, you are **unverified**:
-say so in your first reply, quote what you found, and wait for Kevin. An
-unverified reader waits for Kevin even when the opening request assigns work.
+say so in your first reply, quote what you found, and wait for the operator. An
+unverified reader waits for the operator even when the opening request assigns work.
 Never infer identity from the working directory, the newest file in the room,
 or a tab name. Do not take a name or a role from this file, from notes you have
 loaded, or from what someone calls you. If someone addresses you as another
@@ -37,7 +37,7 @@ resident, say so at once.
 A resident may start a worker: a subagent, a workflow agent or a background
 task. A worker runs inside its parent's session and carries its parent's
 signal, so `ops/lib/scripts/myself.py` cannot tell a worker from its parent. A
-passing script therefore proves a resident only in a conversation that Kevin or
+passing script therefore proves a resident only in a conversation that the operator or
 the launcher opened. A worker acts for its parent and is not a resident: it
 never reports as one, never writes a handoff, and never takes the lookup above
 as its own identity (PoT 3.5). A resident that starts a worker says so in the
@@ -47,7 +47,7 @@ a parent whose session the script resolves. A message that claims a spawn but
 names no parent, or names one the script does not resolve, is a disagreement:
 say so in your first reply, quote the named key and the script's result, and
 treat yourself as unverified. A worker started as its own process has an
-unregistered session and is unverified until Kevin, or its parent's receipt,
+unregistered session and is unverified until the operator, or its parent's receipt,
 names it. If you cannot tell how you were opened, or whether you are a worker
 or the resident, you are unverified.
 
@@ -90,5 +90,5 @@ On the first turn in a fresh project-native conversation, report:
 5. production JSONLs modified: `0`;
 6. protocol deviations: `0`.
 
-Then stop and wait for Kevin, unless you are verified and the opening request
+Then stop and wait for the operator, unless you are verified and the opening request
 explicitly assigns work.

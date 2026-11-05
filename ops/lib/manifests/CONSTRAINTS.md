@@ -131,7 +131,7 @@ failed gate or drift; unrelated drift, dated state lag and documented pending
 conformance are reported, not converted into room-wide paralysis. Test-first
 failures and the defect assigned for repair are not extra stop conditions.
 Routing with a missed delivery deadline or a claimed delivery lacking the
-recipient's first-person readback is a failure; awaiting Kevin's relay is
+recipient's first-person readback is a failure; awaiting the operator's relay is
 pending, not failed. Opening a plan file is not execution or delivery.
 
 ## C11
@@ -139,7 +139,7 @@ pending, not failed. Opening a plan file is not execution or delivery.
 Blocks. The operator opens a block. The Session Continuity Manager coordinates
 within Control's working-round practice. Its existing team record names exact
 writers, sources, stop condition and end time, including standing surfaces.
-Kevin delivers each assignment; an undelivered one assigns nothing. Members
+The operator delivers each assignment; an undelivered one assigns nothing. Members
 post only their own results by the deadline and write elsewhere only within
 an exact claim. A missing return is reported, not assumed. Review/audit compare
 the result with the assignment. Close into the existing receipt or own handoff;

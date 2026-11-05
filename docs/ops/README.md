@@ -30,11 +30,11 @@ remains; the adoption itself moved no state.
  [gauge]  reads each body's own API token count  -->  logs/gauges/ledger.jsonl (private telemetry)
             |   when: the closeout reserve before the rotation line (closeout spec)
             v
- [closeout]  hook puts the card in the resident's own context (Codex: Kevin is notified)
+ [closeout]  hook puts the card in the resident's own context (Codex: the operator is notified)
             |   the resident parks work, writes its closing handoff,
             |   and proposes up to 3 mind entries in chat
             v
- Kevin says yes in conversation
+ the operator says yes in conversation
             |
             v
  [mind]  writes a new leaf  archives/MIND-<key>-<date>-<hash8>.md   (out of Git; custody-backed)
@@ -43,7 +43,7 @@ remains; the adoption itself moved no state.
             v
  [rotate]  capsule = registry header + mind leaf + transition note + first-turn line,
            plus the donor's own summary and recent window, word for word
-           -> static gates -> custody (two drives) -> Kevin's go -> verified swap -> registry and binding
+           -> static gates -> custody (two drives) -> the operator's go -> verified swap -> registry and binding
            -> labels (spares say "spare body, do not open") -> receipt in archives/receipts/
             |
             v
@@ -82,7 +82,7 @@ remains; the adoption itself moved no state.
 - `storage/candidates/joy-anne-rotation-20261030/` and `shannon-rebuild-20261029/`: build records of two rotations. `splice_window.py` and the gates are the ingredients of `rotate.py`. The large intermediate bodies are rebuildable from custody.
 - `storage/lab/` (formerly the Lab folder): existing working snapshots, ignored by Git. Required audit evidence stays until classified and kept; new task scratch goes to `var/tmp/`. Existing contents await the assigned retention pass, not a blind move or purge.
 
-## Ported later (Kevin: no side path now)
+## Ported later (the operator: no side path now)
 
 - `Scripts/`: ported 2026-11-01 to `ops/lib/scripts/`, one word each with a spec each (`docs/ops/specs/runbook/port.md`, `archives/receipts/port-20261101.md`); its two frozen remains are under `archives/legacy/Scripts/`.
 - The retired folders Archived, Attic, Plans and Intake were frozen unchanged under `archives/legacy/` on 2026-11-01. `Resident-Center/`, `Config/` and the rest of `Scripts/` left the room in block 7 for Control's frozen runtime custody at `/media/nos4r2/user_vol/Control-Runtime/` (Control's decision; PoT 3.4).

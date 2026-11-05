@@ -265,7 +265,7 @@ class Closeout(unittest.TestCase):
         self.assertRegex(text, r"^TEST CARD 70\.0 of 1,000,000 tokens at .+\.\nStep five: Claude Shannon's desk runs it\.$")
         source = CLOSEOUT.read_text()
         self.assertNotIn("CLOSEOUT. Your context is", source)               # no second copy in the script
-        self.assertNotIn("Tell Kevin plainly", source)
+        self.assertNotIn("Tell the operator plainly", source)
 
     def test_the_managers_own_rotation_is_run_by_the_assistant(self):
         sid = MANAGER["session_id"]
@@ -280,7 +280,7 @@ class Closeout(unittest.TestCase):
         self.assertEqual(len(lines), 6)
         self.assertTrue(lines[0].startswith("CLOSEOUT. Your context is 65.0 percent of 1,000,000 tokens, measured from your own body at "))
         self.assertTrue(lines[4].endswith("then it is written with his words and the date."))
-        self.assertEqual(lines[5], "5. Tell Kevin you are ready for rotation. Claude Shannon's desk runs it.")
+        self.assertEqual(lines[5], "5. Tell the operator you are ready for rotation. Claude Shannon's desk runs it.")
 
     def test_a_template_it_cannot_read_or_fill_is_unknown_never_a_fallback(self):
         cases = {

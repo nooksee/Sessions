@@ -17,7 +17,7 @@ repository at this same path.
 
 ## Ownership
 
-- Kevin owns objectives, authority, priorities, and final acceptance.
+- The operator owns objectives, authority, priorities, and final acceptance.
 - The active Control desktop continuity manager is the cross-project
   coordinator; current assignments come from Control canon and the registry.
 - The resident Session Continuity Claude owns bounded session diagnosis,
@@ -64,7 +64,7 @@ existing content as a side effect. Other products keep their own repositories.
 ## Hard Safety Boundary
 
 - Do not edit production Codex or Claude JSONL bodies.
-- Do not promote a derivative into a live path without Kevin's explicit
+- Do not promote a derivative into a live path without the operator's explicit
   approval, a destination-native container, a verified backup, a receipt, and
   a rollback path.
 - Do not copy authentication, credentials, keychains, SSH material, browser
@@ -80,7 +80,7 @@ existing content as a side effect. Other products keep their own repositories.
 
 ## Repository Boundary
 
-Kevin directed creation of this repository on 2026-10-31. Its Git root is
+The operator directed creation of this repository on 2026-10-31. Its Git root is
 Sessions itself. Control remains the parent policy authority. The initial
 versioned set is the root canon, modern ops/tools/docs, the two constitutional
 snapshots, and the bootstrap receipt. Private bodies, minds, custody, working
@@ -113,5 +113,5 @@ root.
 
 ## Success Standard
 
-Kevin should have one understandable session command center, current telemetry,
+The operator should have one understandable session command center, current telemetry,
 clear lineage, reversible operations, and fewer foreground burdens.

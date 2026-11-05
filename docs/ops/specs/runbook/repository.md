@@ -1,6 +1,6 @@
 # Sessions repository
 
-Kevin directed George on 2026-10-31, in the morning, to make Sessions a repository at once. George Friend owns this Git bootstrap. The repository root is /media/nos4r2/user_vol/Sessions; it is kept at the same filesystem path so existing room, launcher and runtime references continue to resolve. The GitHub home is private, nooksee/sessions.
+The operator directed George on 2026-10-31, in the morning, to make Sessions a repository at once. George Friend owns this Git bootstrap. The repository root is /media/nos4r2/user_vol/Sessions; it is kept at the same filesystem path so existing room, launcher and runtime references continue to resolve. The GitHub home is private, nooksee/sessions.
 
 ## Versioned boundary
 
@@ -12,7 +12,7 @@ This establishes Sessions Git and does not complete removal of Sessions paths fr
 
 The parent has one active Process branch/PR #117 at f462451c8ec7ebcf2cf4ab7797a53606392558ff. It is preserved. Full separation requires its normal disposition and a separate Control branch/PR that reconciles the parent index and pointers, CI ownership and the frozen Resident Center custody contract. In particular, Control CI still runs Sessions/Scripts/tests, and the drift checker binds Sessions/Config/resident-center-relationship.json to accepted Control history. Removing every Sessions path from Control now would break those contracts.
 
-This bootstrap changes neither the ratified PoT nor the pending amendments. Root README is rendered from the existing readme template; AGENTS' former shared-repository paragraph is corrected under Kevin's new direction. Existing Control history preserves their prior versions; immediate preimages are in ignored storage/repository-bootstrap-20261031/.
+This bootstrap changes neither the ratified PoT nor the pending amendments. Root README is rendered from the existing readme template; AGENTS' former shared-repository paragraph is corrected under the operator's new direction. Existing Control history preserves their prior versions; immediate preimages are in ignored storage/repository-bootstrap-20261031/.
 
 ## Git lifecycle
 

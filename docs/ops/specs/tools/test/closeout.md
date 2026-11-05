@@ -31,6 +31,6 @@ The installed hook and native delivery path are outside the suite.
 
 ## Not Covered
 
-The suite cannot prove that a live session receives the card, that Kevin
+The suite cannot prove that a live session receives the card, that the operator
 receives an actual notification, or that any hook/timer is installed. Those
 remain separate deployment gates.

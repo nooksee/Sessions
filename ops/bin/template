@@ -831,7 +831,7 @@ for p in sys.argv[1:]:
   expect "the card renders as six lines" test "$(printf '%s\n' "$out" | wc -l | tr -d ' ')" = "6"
   expect "card line 1 carries the reading" test "$(printf '%s\n' "$out" | head -n 1)" = "CLOSEOUT. Your context is <N> percent of <window>, measured from your own body at <time>. It is time to close out, in this order:"
   expect "card step 4 keeps the operator's words" grep -qF 'then it is written with his words and the date.' <<< "$out"
-  expect "card step 5 renders the writer" test "$(printf '%s\n' "$out" | sed -n 6p)" = "5. Tell Kevin you are ready for rotation. Shannon runs it."
+  expect "card step 5 renders the writer" test "$(printf '%s\n' "$out" | sed -n 6p)" = "5. Tell the operator you are ready for rotation. Shannon runs it."
   expect "the spec points to the card template" grep -qF 'ops/src/reports/closeout.md.tpl' "${ROOM_ROOT}/docs/ops/specs/scripts/closeout.md"
   expect "the spec carries no second card" bash -c '! grep -qF "CLOSEOUT. Your context is" "$1"' _ "${ROOM_ROOT}/docs/ops/specs/scripts/closeout.md"
   passed=$((passed + 1))

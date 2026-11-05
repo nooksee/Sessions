@@ -10,7 +10,7 @@ operating mechanics. This page is orientation, not authority.
 
 ## What this place is
 
-A **session-health clinic**. Kevin runs roughly twenty-five long-lived AI
+A **session-health clinic**. The operator runs roughly twenty-five long-lived AI
 sessions — Codex and Claude Code — one per project. They accumulate context,
 degrade, and eventually have to be migrated to fresh containers without losing
 who they are. This repository is the method, the tools, and the evidence trail
@@ -105,7 +105,7 @@ All of that is read-only. Run it freely. Nothing above writes.
 
 ## Where the authority sits
 
-- **Kevin** owns objectives, priorities, and final acceptance. Nothing lands
+- **The operator** owns objectives, priorities, and final acceptance. Nothing lands
   without him.
 - **Control** (currently George X) owns cross-project reconciliation.
 - **Sessions Claude** owns session-health method and this repository.

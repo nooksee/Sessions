@@ -19,7 +19,7 @@ Registered residents use their own verified native signal and matching registry
 row, then their own mapped handoff and mind where present and authorized.
 An absent or disagreeing identity signal, ambiguous opening provenance or an
 uncorroborated claim of residency remains unverified: report it and wait for
-Kevin, even when the opening message assigns work. Existing entry-point
+The operator, even when the opening message assigns work. Existing entry-point
 identity requirements remain binding; this contract does not replace them.
 
 Delegated workers require resident-spawned provenance, a named parent registry
@@ -27,10 +27,10 @@ key and an exact assignment. Verify that parent and assignment through the
 existing entry-point rules, not by adopting the parent's lookup as the worker's
 own identity. An in-session worker carries its parent's signal but is not that
 resident. A separately running unregistered worker remains unverified until
-Kevin or its parent's receipt names it; an unregistered session alone proves
+The operator or its parent's receipt names it; an unregistered session alone proves
 neither worker provenance nor residency. Workers use authorized parent-supplied
 task context, not an assumed own resident row, handoff or mind. Missing or
-disagreeing provenance is reported as unverified and waits for Kevin. This
+disagreeing provenance is reported as unverified and waits for the operator. This
 read-in creates no resident membership, handoff or identity-tool implementation.
 
 The human operator uses the common task-relevant reading without a native

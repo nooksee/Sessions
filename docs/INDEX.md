@@ -36,7 +36,7 @@ current craft and mechanics are in the manual and specifications.
 Scripts (STELA's sections: rationale, mechanics, anchor, warnings):
 * [ops/specs/scripts/gauge.md](ops/specs/scripts/gauge.md): how full each resident is, from the provider's own token figures; states, window authority, the reviewed window table, the ledger.
 * [ops/specs/scripts/closeout.md](ops/specs/scripts/closeout.md): implemented closeout hook behavior, reserve, privacy limits and separate installation gates.
-* [ops/specs/scripts/mind.md](ops/specs/scripts/mind.md): the mind as a chain of immutable leaves, written only with Kevin's words; commands, gates, screens, and Claudio's section 130 dispositions.
+* [ops/specs/scripts/mind.md](ops/specs/scripts/mind.md): the mind as a chain of immutable leaves, written only with the operator's words; commands, gates, screens, and Claudio's section 130 dispositions.
 * [ops/specs/scripts/rounds.md](ops/specs/scripts/rounds.md): clinic report and separate Control source-drift wrapper behavior; no deployment authority.
 * [ops/specs/scripts/rotate.md](ops/specs/scripts/rotate.md): the rotation, phase by phase with stop points; tiers, capsule, custody, install, acceptance, close.
 

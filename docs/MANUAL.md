@@ -1,6 +1,6 @@
 # Sessions Operations Manual (Command Console)
 
-Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at Kevin's request for a help system and a manual, both taken from the STELA framework, by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
+Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at the operator's request for a help system and a manual, both taken from the STELA framework, by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
 
 Authority order:
 - **Law:** `PoT.md` is the single Sessions constitution, below Control policy.
@@ -13,7 +13,7 @@ Authority order:
   restates nor overrides PoT or the contracts.
 - **Identity:** `ops/etc/resident-identities.json` (the registry) wins over any prose, including this manual.
 - **Behavior of a tool:** its spec in `docs/ops/specs/` wins over the summary here.
-- **Decisions:** Kevin decides; this manual records how his decisions are carried out.
+- **Decisions:** the operator decides; this manual records how his decisions are carried out.
 
 Where a tool is not built yet, this manual says so with a `[PLACEHOLDER: ...]` line rather than describing behavior that does not exist.
 
@@ -21,12 +21,12 @@ Where a tool is not built yet, this manual says so with a `[PLACEHOLDER: ...]` l
 
 ## 0. Purpose
 
-Sessions is the session-health office of the Control house. Kevin runs about twenty-five long-lived AI residents (Claude Code, Codex and Copilot), one per room. Their context windows fill, and each must eventually move into a fresh body without losing who it is.
+Sessions is the session-health office of the Control house. The operator runs about twenty-five long-lived AI residents (Claude Code, Codex and Copilot), one per room. Their context windows fill, and each must eventually move into a fresh body without losing who it is.
 
 This room owns:
 - **measurement:** how full each resident is, from the provider's own figures;
 - **closeout:** telling a resident, from inside, that its time is near;
-- **minds:** the small curated record of who a resident is, written only with Kevin's yes;
+- **minds:** the small curated record of who a resident is, written only with the operator's yes;
 - **rotation:** moving a resident into a fresh body the same way every time;
 - **custody and receipts:** every donor preserved whole, every action receipted.
 
@@ -59,17 +59,17 @@ unwritten runner, unwired hook or notebook integration exists.
 
 | Who | Seat | Owns | Does not own |
 | --- | --- | --- | --- |
-| **Kevin** | operator | objectives, priorities, authority, every yes and every go, final acceptance | implementation chores |
+| **The operator** | operator | objectives, priorities, authority, every yes and every go, final acceptance | implementation chores |
 | **Claude Shannon** | Session Continuity Manager (registry key `session-doctor`) | continuity, the Sessions room, the specs, coordination of the team, running rotations for other residents | his own rotation (Claudine runs it) |
 | **Claudine Colbert** | Assistant Session Continuity Manager | the tools she is assigned as sole writer (`gauge.py`, `mind.py`), and Shannon's rotation | a surface another writer holds |
-| **Joe Codex** | Session Continuity Apprentice | read-only measurement and the Codex side (methods, runway figures, Codex hooks) | any write without Kevin's named go |
+| **Joe Codex** | Session Continuity Apprentice | read-only measurement and the Codex side (methods, runway figures, Codex hooks) | any write without the operator's named go |
 | **Claudio Freeman** | independent reviewer and auditor (Control) | review before reliance, audit after change | implementation, repair or rollout writing on work he reviews |
-| **George** | Control authority, desktop continuity and cross-project coordination | routing and the exact packet for cross-room work | Kevin's acceptance |
+| **George** | Control authority, desktop continuity and cross-project coordination | routing and the exact packet for cross-room work | the operator's acceptance |
 
 Rules that hold for every seat:
 - **One writer per surface.** Each file, live session and rollout has exactly one named writer at a time.
 - **The team room.** `storage/handoff/{shannon,claudine,joe}.md`. Each member writes only their own file. Results are promoted to `archives/receipts/` or the office handoff; the room itself is working notes.
-- **A file proves no delivery.** Kevin relays between chats. A routing decision or a note in the team room is not delivery.
+- **A file proves no delivery.** the operator relays between chats. A routing decision or a note in the team room is not delivery.
 - **Attribution.** Relayed text is attributed to its real author; "verbatim" only for the author's own words.
 - **House style.** No contractions. Deviations reported as counts.
 
@@ -89,14 +89,14 @@ The authority for who each resident is lives only in the registry. A resident ch
  [closeout]  the card appears in the resident's own context; the resident parks work,
       |      writes its closing handoff, and proposes up to 3 mind entries in chat
       v
- Kevin says yes, in conversation
+ the operator says yes, in conversation
       |
       v
  [mind]      writes a new leaf archives/MIND-<key>-<date>-<hash8>.md
       |      and moves the resident's line in the room's MIND.md
       v
  [rotate]    capsule + donor's own summary and window -> static gates -> custody (two tiers)
-      |      -> Kevin's go -> verified swap -> registry and binding -> labels -> receipt
+      |      -> the operator's go -> verified swap -> registry and binding -> labels -> receipt
       v
  [gauge]     the successor's first reading confirms the wake; the loop begins again
 ```
@@ -128,7 +128,7 @@ python3 -I -B ops/lib/scripts/gauge.py --no-ledger
 python3 -I -B ops/lib/scripts/gauge.py --key session-doctor --json --no-ledger
 ~~~
 
-### Mind (read and check; writing needs Kevin's yes first, see section 5)
+### Mind (read and check; writing needs the operator's yes first, see section 5)
 ~~~bash
 python3 -I -B ops/lib/scripts/mind.py check
 python3 -I -B ops/lib/scripts/mind.py show <key>
@@ -172,7 +172,7 @@ ops/bin/template packet --slots-file packet.slots   # TO FROM RELAYED_BY OWNER S
 ops/bin/template closeout --slot PERCENT=65.2 --slot WINDOW=1,000,000 --slot READING_TIME='16:40 EDT' --slot "ROTATION_WRITER=Shannon's desk"
 ops/bin/template source-change                       # lists the required source/configuration receipt fields
 ~~~
-The forms live in `ops/src/` as `.tpl` files (Kevin, 2026-10-30: the agent kept changing the form, or at times forgot it). A slots file holds `KEY=VALUE` lines. Report mode refuses a missing, unknown or empty slot, a `[PLACEHOLDER`, any `{{...}}` left in the output, and an existing `--out` file. Report forms are not tool names. The rotation `receipt` remains distinct from `source-change`, which records bounded source/configuration work, exact heads, validation, review, integration and rollback.
+The forms live in `ops/src/` as `.tpl` files (the operator, 2026-10-30: the agent kept changing the form, or at times forgot it). A slots file holds `KEY=VALUE` lines. Report mode refuses a missing, unknown or empty slot, a `[PLACEHOLDER`, any `{{...}}` left in the output, and an existing `--out` file. Report forms are not tool names. The rotation `receipt` remains distinct from `source-change`, which records bounded source/configuration work, exact heads, validation, review, integration and rollback.
 
 The storage root is not an output directory. Only `storage/.gitignore`,
 `storage/README.md` and the lane `.gitkeep` files are admitted; all case and
@@ -213,7 +213,7 @@ The meter already exists: after every working turn, the provider writes the exac
 | `unknown` | no reading could be established (body missing, ambiguous, beyond the 16,000,000-byte tail bound) | read the note |
 
 ### The lines
-- **Closeout begins at a reserve:** 50,000 tokens before the 70 percent line, whatever the window (`closeout.md`; Kevin may veto this rule). Computed from that rule:
+- **Closeout begins at a reserve:** 50,000 tokens before the 70 percent line, whatever the window (`closeout.md`; the operator may veto this rule). Computed from that rule:
 
 | Window | 70 percent line | Closeout begins at |
 | --- | --- | --- |
@@ -224,7 +224,7 @@ The meter already exists: after every working turn, the provider writes the exac
 | 258,400 | 180,880 | 130,880 (about 50.6 percent) |
 
 - **Rotation is due at 70 percent.**
-- `gauge` itself only reports. A timer, and the notification the meter would trigger, each need Kevin's separate go. A timer compares unrounded figures (649,960 of 1,000,000 prints as 65.0).
+- `gauge` itself only reports. A timer, and the notification the meter would trigger, each need the operator's separate go. A timer compares unrounded figures (649,960 of 1,000,000 prints as 65.0).
 
 ### Cautions
 - **Bytes are not fullness.** A 78 MB body read 32 percent on 2026-10-30. Weigh tokens, never files.
@@ -244,19 +244,19 @@ specification records the implementation boundary; PoT 6.1.2 governs wiring.
 **What it does, as designed:**
 1. A `UserPromptSubmit` hook reads only the resident's own `transcript_path`, takes the newest reading the way `gauge` does, and divides by that model's window.
 2. Above the reserve it prints nothing. At or beyond the reserve it adds one block to the resident's context: the measured figure and the closeout card. It repeats once per 5 points crossed, and re-arms after a compaction or rotation.
-3. Kevin receives a copy of the crossing as a notification.
-4. Unknown readings print nothing to the resident; after 3 consecutive unknowns, Kevin is notified once.
+3. The operator receives a copy of the crossing as a notification.
+4. Unknown readings print nothing to the resident; after 3 consecutive unknowns, the operator is notified once.
 5. The hook is never in the way: it catches every error, always exits 0, and runs under a 5-second timeout.
 6. Only registered sessions are covered; helpers, subagents and sidechains are always silent.
 
 **The card, in order:**
-1. Tell Kevin plainly that the closeout has begun, with the figure.
+1. Tell the operator plainly that the closeout has begun, with the figure.
 2. Finish the current step if it is short; otherwise stop at a clean point. Start nothing new and material.
 3. Write the closing handoff: work in flight, open promises, owners, first steps for the successor.
-4. Propose up to three mind entries, in chat, for Kevin's yes. Write nothing to the mind until he says yes.
-5. Tell Kevin the resident is ready for rotation. Shannon's desk runs it; for Shannon himself, Claudine runs it.
+4. Propose up to three mind entries, in chat, for the operator's yes. Write nothing to the mind until he says yes.
+5. Tell the operator the resident is ready for rotation. Shannon's desk runs it; for Shannon himself, Claudine runs it.
 
-**Codex and Copilot residents.** Codex CLI 0.166 documents the same hook (Joe Codex, `joe.md`); the PyCharm path is untested, so it is tried on one Codex resident before anyone relies on it. Until then, and for Copilot, Kevin pastes the card.
+**Codex and Copilot residents.** Codex CLI 0.166 documents the same hook (Joe Codex, `joe.md`); the PyCharm path is untested, so it is tried on one Codex resident before anyone relies on it. Until then, and for Copilot, the operator pastes the card.
 
 The implementation and `tools/test/test_closeout.py` already exist. A native
 delivery check and any hook, notification or timer installation follow the
@@ -274,11 +274,11 @@ here. A first mind write and notebook integration remain separate operations.
 **What a mind is.** The small curated record of who a resident is, what it has learned and what it owes. It travels into every successor beside the donor's own summary and window, and never replaces them.
 
 **How input arrives: solicited, in conversation.**
-1. The closeout card (step 4), or Kevin directly, asks the resident for up to three entries.
+1. The closeout card (step 4), or the operator directly, asks the resident for up to three entries.
 2. The resident proposes them in chat: layer, the text in its own voice, the event, the fix where one applies, where it does not apply, and a source that resolves.
-3. The writer runs `preview` so that Kevin reads exactly what would change: each addition in full, each amendment before and after, each retirement with the text it removes. Nothing is written.
-4. **Kevin says yes in the conversation.** Without his yes nothing is written.
-5. The writer runs `write <key> --changes <file> --yes "<Kevin's words>" --by <writer key>`, passing his words exactly as he said them. The tool refuses without them.
+3. The writer runs `preview` so that the operator reads exactly what would change: each addition in full, each amendment before and after, each retirement with the text it removes. Nothing is written.
+4. **The operator says yes in the conversation.** Without his yes nothing is written.
+5. The writer runs `write <key> --changes <file> --yes "<the operator's words>" --by <writer key>`, passing his words exactly as he said them. The tool refuses without them.
 6. The tool writes a new immutable leaf and moves the resident's line in the room's `MIND.md`. It prints the change and the leaf's full SHA-256.
 
 **What never happens.**
@@ -286,7 +286,7 @@ here. A first mind write and notebook integration remain separate operations.
 - No hand edits: a leaf is valid only in canonical form; a change is always a new leaf.
 - No identifiers, live state, medical content or secrets in a mind; the screens refuse them.
 - No blame in the core layer; an incident enters only as a closed lesson with its fix.
-- Nothing is silently dropped to fit a budget; the resident proposes a retirement and Kevin says yes to it.
+- Nothing is silently dropped to fit a budget; the resident proposes a retirement and the operator says yes to it.
 
 **Where minds live.**
 - Pointer: `<room>/MIND.md`, one line per resident in that room.
@@ -306,12 +306,12 @@ historical missing-ignore observation is not a current permission gate.
 
 Spec: `docs/ops/specs/scripts/rotate.md`. Status: spec only; `rotate.py` is not written, so each rotation follows the spec by hand, phase by phase, and stops at each stop point.
 
-**Roles.** Kevin decides, opens the container, gives the go, accepts or does not. Exactly one writer, named before work starts and never the resident being moved. The donor closes well and never builds its own successor. Claudio audits afterwards.
+**Roles.** the operator decides, opens the container, gives the go, accepts or does not. Exactly one writer, named before work starts and never the resident being moved. The donor closes well and never builds its own successor. Claudio audits afterwards.
 
 **Tiers, declared in writing before work starts.**
 - **B, transplant (default):** the capsule plus the donor's compaction summary and a measured slice of its own window, word for word.
-- **Capsule-only:** only when a window build fails to load, on Kevin's go.
-- **A, reseed:** a fresh session reads the handoff; only on Kevin's explicit choice, recorded as Tier A and never called a rotation.
+- **Capsule-only:** only when a window build fails to load, on the operator's go.
+- **A, reseed:** a fresh session reads the handoff; only on the operator's explicit choice, recorded as Tier A and never called a rotation.
 
 **The capsule, appended as text (never a path), in four parts:** registry header; the mind leaf, verbatim and hash-verified; the transition note; the first-turn line ("the room's status in a few lines, then speak as yourself").
 
@@ -320,15 +320,15 @@ Spec: `docs/ops/specs/scripts/rotate.md`. Status: spec only; `rotate.py` is not 
 | Phase | What happens | Stop point |
 | --- | --- | --- |
 | 0 Trigger | gauge crosses the line; the closeout card has run; tier, donor, writer, destination and reading recorded | recorded in the handoff |
-| 1 The donor closes well | closing handoff; up to three mind entries proposed; Kevin's yes; `mind write` | leaf written |
+| 1 The donor closes well | closing handoff; up to three mind entries proposed; the operator's yes; `mind write` | leaf written |
 | 2 The mind is ready | `mind check` passes; leaf hash matches the pointer | gate passes |
-| 3 The destination | Kevin opens a fresh chat in the room; the writer labels it a spare at once and verifies room, working directory, no other owner, no process holding it | verified |
+| 3 The destination | the operator opens a fresh chat in the room; the writer labels it a spare at once and verifies room, working directory, no other owner, no process holding it | verified |
 | 4 The window | measure the donor by the gauge method; cut at a genuine operator prompt; carry at least one exchange beyond procedure; record the reason | cut recorded |
 | 5 Build and static gates | splice, re-identify by identity field, externalize media, append the capsule and a fresh plain label; run every static gate | all gates pass |
 | 6 Custody and serve-safety | `launcher stop <key>` writes the hold; donor, pristine destination, successor, capsule, gates, media, registry and binding go to both tiers, checked against `SHA256SUMS` | both tiers verified |
-| 6 to 7 Kevin's go | the writer names container, room, size, custody hash and rollback, then waits; a go given at phase 0 does not count | Kevin's go |
-| 7 Install | verified swap (default) or Kevin's `.NEW` swap (fallback); registry and binding switched; six identity checks agree; rollback on any failure | six checks agree |
-| 8 Acceptance | `launcher serve <key>` (load test and hold release); first reply gives room status and speaks as itself; first gauge reading recorded; clean native append; then Kevin's own acceptance | Kevin states that he recognizes him, or her |
+| 6 to 7 the operator's go | the writer names container, room, size, custody hash and rollback, then waits; a go given at phase 0 does not count | the operator's go |
+| 7 Install | verified swap (default) or the operator's `.NEW` swap (fallback); registry and binding switched; six identity checks agree; rollback on any failure | six checks agree |
+| 8 Acceptance | `launcher serve <key>` (load test and hold release); first reply gives room status and speaks as itself; first gauge reading recorded; clean native append; then the operator's own acceptance | the operator states that he recognizes him, or her |
 | 9 Close | receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`; donor store entry removed or relabeled only after custody is verified in both tiers; the new resident confirms its mind | receipt written |
 
 **Codex residents.** `ops/lib/scripts/rotation.py` does not carry the native compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
@@ -351,7 +351,7 @@ Every donor is preserved whole. A rotation, a relabel or a removal never proceed
 
 **Drive health.** The map records that `hard_vol2` is failing and a replacement is pending. A tier-2 copy on a failing drive is still read back and hashed; a mismatch is a stop, not a warning.
 
-[PLACEHOLDER: the current location of `PRESERVATION_MANIFEST.md` named in `DOCTRINE.md` section 8 (not found at the top two levels of `Backup/` on 2026-10-30), and the replacement tier-2 drive once Kevin has it. Owner: Claude Shannon.]
+[PLACEHOLDER: the current location of `PRESERVATION_MANIFEST.md` named in `DOCTRINE.md` section 8 (not found at the top two levels of `Backup/` on 2026-10-30), and the replacement tier-2 drive once the operator has it. Owner: Claude Shannon.]
 
 The receipt for each operation names the exact custody paths and hashes. Permanent deletion is never the default.
 
@@ -359,9 +359,9 @@ The receipt for each operation names the exact custody paths and hashes. Permane
 
 ## 8. Labels: Spares and Donors
 
-Kevin's policy, 2026-10-30: only the live, registered body carries the plain name `Role (Person)`. Every other body is visibly labeled on every surface:
+The operator's policy, 2026-10-30: only the live, registered body carries the plain name `Role (Person)`. Every other body is visibly labeled on every surface:
 - a pre-positioned or freshly opened destination: `<Role (Person)> - spare body, do not open`;
-- a donor after rotation: `<Role (Person)> - donor, rotated <date>, do not resume`, unless Kevin prefers removal from the list (his standing preference since 2026-10-29), after custody is verified.
+- a donor after rotation: `<Role (Person)> - donor, rotated <date>, do not resume`, unless the operator prefers removal from the list (his standing preference since 2026-10-29), after custody is verified.
 
 **Where a label lives.**
 - Claude: a `custom-title` and `agent-name` record appended to the session file.
@@ -370,13 +370,13 @@ Kevin's policy, 2026-10-30: only the live, registered body carries the plain nam
 
 Back up before every label edit. At cutover the plain name moves to the new body and the donor label to the old one. Current map: `archives/receipts/resident-label-map-20261030.md`.
 
-**Why.** On 2026-10-29 Kevin faced two identical entries and could not tell which was the live resident. A label makes the wrong body impossible to open by accident.
+**Why.** On 2026-10-29 the operator faced two identical entries and could not tell which was the live resident. A label makes the wrong body impossible to open by accident.
 
 ---
 
 ## 9. The Operator's Card
 
-Kevin's whole part in a rotation, in four words. Everything else is the writer's job.
+The operator's whole part in a rotation, in four words. Everything else is the writer's job.
 
 ```
 1. DECIDE     Rotate now, at this tier (B unless you say otherwise).
@@ -386,10 +386,10 @@ Kevin's whole part in a rotation, in four words. Everything else is the writer's
 ```
 
 Notes:
-- **Decide** comes after the closeout card has run and the resident has said it is ready. Kevin also says yes or no to any mind entries proposed at the closeout.
+- **Decide** comes after the closeout card has run and the resident has said it is ready. The operator also says yes or no to any mind entries proposed at the closeout.
 - **Container** is opened from the room's own root so the provider files it under that room. The writer labels it a spare at once.
 - **Go** counts only when it is given for this replacement, after custody. A go given at the start does not count.
-- **Hello** is two things: the load test (a correct first reply) and Kevin's acceptance. A correct status alone is not acceptance.
+- **Hello** is two things: the load test (a correct first reply) and the operator's acceptance. A correct status alone is not acceptance.
 
 ---
 
@@ -450,7 +450,7 @@ Also:
 - **Mind:** the curated record of a resident, as a chain of leaves.
 - **Leaf:** one immutable version of a mind, named with its own hash.
 - **Pointer:** the resident's line in the room's `MIND.md`.
-- **Yes:** Kevin's words, given in conversation, recorded on the leaf.
+- **Yes:** the operator's words, given in conversation, recorded on the leaf.
 - **Donor:** the body being rotated out; never modified.
 - **Destination:** the fresh native container selected for a successor.
 - **Successor:** the new body built for the same resident.
@@ -460,7 +460,7 @@ Also:
 - **Capsule:** the four-part orientation text appended to the successor.
 - **Tier A, Tier B, capsule-only:** reseed, transplant, and the fallback (section 6).
 - **Hold:** the launcher's stop record, kept from custody until acceptance.
-- **Verified swap:** the writer's atomic install after Kevin's go; the `.NEW` swap is Kevin's fallback.
+- **Verified swap:** the writer's atomic install after the operator's go; the `.NEW` swap is the operator's fallback.
 - **Custody:** two-tier, hash-verified preservation; see section 7.
 - **Receipt:** the durable record of one action in `archives/receipts/`.
 - **Writer:** the single named owner of a surface or operation.
