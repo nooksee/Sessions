@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 3daf52736d76f508122bcf8db61ca2334b4d946b2306a5ca8d43d28a08d6f871; rules 8; mode record; words 0; sessions 0 whole, 0 truncated; host paths 0; decisions 1 -->
+<!-- redact: public copy; source sha256 1c536c691e7432852410fa75ac817728b17243400ff9d79bd8a2841aae1e33a0; rules 8; mode record; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 1 -->
 # The history rewrite and route B: the public gate's repository rebuilt under the same name (2026-11-04)
 
 Written 2026-11-04 22:27:44 EST by the Session Continuity Manager (Claude Shannon), registry key session-doctor, under RoR-15 (the public gate, route B under the name nooksee/sessions; each step after the Independent Reviewer's PASS on its exact hashes; the visibility switch last) and the plan "The public gate, part 3", revisions 2 to 12 in `storage/handoff/shannon.md`, passed by the Independent Reviewer (Claudio Freeman) in his sections 166 to 205. One choice was the operator's alone and was asked once, by the Independent Reviewer in his section 204: the 145 author and committer slots that carried his full name with a personal email address are rewritten to his GitHub noreply address (his answer, section 205). This record explains what the rewrite did, why, and where to look; it holds no operator words. Event-time next steps are labelled below and point to the current handoff.
@@ -26,6 +26,7 @@ The Independent Reviewer's post-push audit on the exact heads; the old repositor
 ## Amendments
 
 - **2026-11-04 22:34:18 EST, by the writer:** the Independent Reviewer's section 207 found two faults in this receipt's first rendering: the commit map's new side came from the unmapped rewrite (the clone before the mailmap), none of whose ids exist in the repository, and the deviation count read 1 where the render fault above made it 2. The map below is rebuilt from the pushed rewrite's own commit map and the count is corrected; nothing else in the record changed.
+- **2026-11-04 23:01:59 EST, by the writer: the first repository under the name, and its re-creation.** In the repository pushed at 22:24, three pull requests were merged by exact head: PR #2, the gate fix, as commit e4a7ba75; PR #1, this receipt, as commit e03b5ba1 with a merge commit; PR #4, the attributed corrections for pull-request citations with the ledger and six receipts re-rendered from their sources, as commit d4b54703. At 22:45 the operator named the repository "[words sha256=6fa3cbf451b2a1d54159d42c3ea5ab8725b0c8620d831f8c1602676b38ab00e6]", applied by a rename. He deleted the old repository himself at 22:5x (GitHub answers 404). The Independent Reviewer's final audit (his section 212) then found that the nine commits made after the push carried the operator's personal email addresses, six resident commits through the room's git identity, which had stayed on his address, and three web merges through his account's primary address, all reachable through pull-request refs an owner cannot delete; the Session Continuity Manager counts that as a deviation of his own. The room's identity was set to the operator's noreply address at once. Asked once which answer stood, the operator chose re-creation (his section 214). Done from 22:58:56 to 22:59:06: the repository renamed nooksee/Sessions-identities-20261104, private, for his deletion; nooksee/Sessions created private from a fresh mirror rewritten with the same mailmap alone (98 commits, every tree identical in order, the operator's noreply address on 160 slots, personal addresses 0, passed by the Independent Reviewer before the push); main at commit a0e038d0999b31b0f32d4b3708dd6938bf94bd8b, the carried branch unchanged at commit 00a0270f; main protected as before; secret scanning refused again on a private repository, its moment the switch. The live room moved onto commit a0e038d0 by fetch and reset, tree identical. Every commit id of this receipt's first map changed once more; the second map below carries the first repository's ids to this one's. The draft pull request of the carried branch died with the renamed repository; its text is in custody batch sessions-identities-20261104 with the export of the four pull requests, the bundle of the first repository and the mailmap. Pending after this amendment: the Independent Reviewer's final audit, the switch, and the deletion of the renamed repository by the operator; the switch's time is recorded in the current handoff and in the next amendment.
 
 ## Maps
 
@@ -167,3 +168,106 @@ Pull-request numbers in this repository's records refer to the old repository. T
 | #36 | `pr-36-comments.json` sha256 a4a98277e002d8493e384c7bd30eb7f79f984236d91952157b9b1a6d57466bf0; `pr-36-review-comments.json` sha256 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945; `pr-36-reviews.json` sha256 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945; `pr-36.json` sha256 97b4926683ef5907ea8e3d23d9653dd0c33dba3fdbb586b5e9f04bb76dda8acb |
 | #37 | `pr-37-comments.json` sha256 83fa47ac1c0d5bda4fd5b98189eb15c5ec8e9230db6b192d10b217c43a431a87; `pr-37-review-comments.json` sha256 f666c0e4169a7e57f9dbe895fb768e13c67e25d3ec3c41360207ef034b6fdaef; `pr-37-reviews.json` sha256 2da4a52534d468dd85b19449d554a194ad8456bd9934da112a0c950f471557ab; `pr-37.json` sha256 959d759172158784098bd1836a69e32ad3648f4211fcd91f7b5eb7552c4b5a60 |
 | #38 | `pr-38-comments.json` sha256 8d55c55db9f37360cc1670d446cae5e99ecdda5c2e19fbee3b82fdd7f0365430; `pr-38-review-comments.json` sha256 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945; `pr-38-reviews.json` sha256 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945; `pr-38.json` sha256 8ed734cfa8e93dba9a6b8c362de90d857bba62036df5c511c6bdce2e8a076938 |
+
+## Maps, second rewrite: the first repository under the name to the re-created one (filter-repo commit-map of the mailmap rewrite; 98 rows)
+
+| first repository | re-created |
+| --- | --- |
+| 00a0270f87cc3fcbc18c486c89d56d8c8e9e5136 | 00a0270f87cc3fcbc18c486c89d56d8c8e9e5136 |
+| 087d0f54e05286e5a8d596dbfd86c708a187cb3d | 087d0f54e05286e5a8d596dbfd86c708a187cb3d |
+| 0ce315602e34ab8cfac70d8733a728a2a05a029f | 0ce315602e34ab8cfac70d8733a728a2a05a029f |
+| 10848cb319e68b1e80f2f3eab1a1c32f3888674b | 10848cb319e68b1e80f2f3eab1a1c32f3888674b |
+| 1584b564d86e10f862786dc56046d04221a88b9e | 1584b564d86e10f862786dc56046d04221a88b9e |
+| 19177132e1ef6f3ee8c9b349cd9d89f4615616eb | 19177132e1ef6f3ee8c9b349cd9d89f4615616eb |
+| 19e6afafa621200f3a1669a0d08aca91603ed156 | 19e6afafa621200f3a1669a0d08aca91603ed156 |
+| 1b2d460715bbdd66a24cf7c4c19f03784f02f064 | 1b2d460715bbdd66a24cf7c4c19f03784f02f064 |
+| 1f518bb3a69f3f9d64d3cbe9b79f4831b8055845 | 1f518bb3a69f3f9d64d3cbe9b79f4831b8055845 |
+| 1f9053fce116b354e8105766a3c34b7e1b729f23 | 1f9053fce116b354e8105766a3c34b7e1b729f23 |
+| 1fc0bbf95f98f00978b725fbb65137312341c6d4 | 1fc0bbf95f98f00978b725fbb65137312341c6d4 |
+| 1ffbfe0d59c087fb3120c40f1a374a1520649dbc | 1ffbfe0d59c087fb3120c40f1a374a1520649dbc |
+| 21a0a71a901edd0057125f02021ebc57aad0e9af | 21a0a71a901edd0057125f02021ebc57aad0e9af |
+| 25adb47bc68883ef9d421ebaa37c7e0e12c98b42 | 25adb47bc68883ef9d421ebaa37c7e0e12c98b42 |
+| 2752fd3a4ef3013e946c887c1a927865d332b7d9 | 2752fd3a4ef3013e946c887c1a927865d332b7d9 |
+| 28535de5b7947a303f697b17bd19e78f25c85d8b | 28535de5b7947a303f697b17bd19e78f25c85d8b |
+| 2f9e04620033300a4f91c66cec9b139c02fc52cf | 2f9e04620033300a4f91c66cec9b139c02fc52cf |
+| 30e00a21778810698e53499e62e517428e050207 | 30e00a21778810698e53499e62e517428e050207 |
+| 332fc767d038cfef9c112f9db1965379b1098853 | 332fc767d038cfef9c112f9db1965379b1098853 |
+| 341c5d1cf36e858423627ab101c107ebbed82055 | 341c5d1cf36e858423627ab101c107ebbed82055 |
+| 3d5365c91dc0cd17f9bdc01baaea3875b250c47e | 0700e66544fd3febceb7cfc75b91673aa6864050 |
+| 3d73e74ffcbc9ba9086870e46be0a58f78ef29c9 | 3d73e74ffcbc9ba9086870e46be0a58f78ef29c9 |
+| 3f219a8698fa92538f04a8a9e7a0a48c15882e41 | 3f219a8698fa92538f04a8a9e7a0a48c15882e41 |
+| 40e334f6bfd970c8881afefce38a91f4bc4be2e9 | 40e334f6bfd970c8881afefce38a91f4bc4be2e9 |
+| 4ba59f56925968e86a7b2951cf00ec3ad1f05fda | 4ba59f56925968e86a7b2951cf00ec3ad1f05fda |
+| 4f887de3977dfd799de389c253f85ac774b33a3d | 4f887de3977dfd799de389c253f85ac774b33a3d |
+| 590a232d731bb9725aa3e74e5a9af30037eb7286 | 590a232d731bb9725aa3e74e5a9af30037eb7286 |
+| 5952061c2e0afe8a6e41d3ff588d596d22845670 | 5952061c2e0afe8a6e41d3ff588d596d22845670 |
+| 5b2b2d0bb73050d4f3601cfc0967a90a40c1460f | 5b2b2d0bb73050d4f3601cfc0967a90a40c1460f |
+| 5bd0600e5fefb04183bc1c21a82bedaf391034e7 | 5bd0600e5fefb04183bc1c21a82bedaf391034e7 |
+| 5da50875e53dfefc144b9399ced2e12ff63674bc | 5da50875e53dfefc144b9399ced2e12ff63674bc |
+| 6112335cb5e12e549ed2fe24deaefa31636e9eb8 | 6112335cb5e12e549ed2fe24deaefa31636e9eb8 |
+| 65c4b6a2bf8a437c0ffa4791530647ddacef5f82 | 65c4b6a2bf8a437c0ffa4791530647ddacef5f82 |
+| 668bb161fddcdb64576d0f06cef5fc242a31d9db | 668bb161fddcdb64576d0f06cef5fc242a31d9db |
+| 6794c1ee0a3d8136e3c199436c2d765f3d42a02c | 6794c1ee0a3d8136e3c199436c2d765f3d42a02c |
+| 68071e2d742cf658b047289b2220e8f1a3fd4c0b | 68071e2d742cf658b047289b2220e8f1a3fd4c0b |
+| 6ae03d14ffc612cdb33e54db1705c4aa55d41528 | 6ae03d14ffc612cdb33e54db1705c4aa55d41528 |
+| 6b3a74b1b142a1be69721221e96d529ac0645466 | 6b3a74b1b142a1be69721221e96d529ac0645466 |
+| 6c3ef53c045ff3cb366921a9e8153bd9f8a32a9e | 6c3ef53c045ff3cb366921a9e8153bd9f8a32a9e |
+| 6cedd60506a8982ec0159268c09bb1f552335056 | 6cedd60506a8982ec0159268c09bb1f552335056 |
+| 6e751bd917e8490490b3d24a60ee083e6313f974 | 6e751bd917e8490490b3d24a60ee083e6313f974 |
+| 6ef1c5f3e49b1494c0e09794d1c376c5ebb41886 | 6ef1c5f3e49b1494c0e09794d1c376c5ebb41886 |
+| 70c43a8cb4dfd7e95af63bd6452ccf706d62607b | 9a9c4d9fe425fbe97b7057e21cfa99b7fe7b9489 |
+| 7102739b307167403cab374c58e2bfc8203c00d6 | 7102739b307167403cab374c58e2bfc8203c00d6 |
+| 710b4023c4933dd147f80d8bb7905c66f6c579b5 | 710b4023c4933dd147f80d8bb7905c66f6c579b5 |
+| 73d9570b8be0c0ccf46573c3c480c5bf92b9f042 | 73d9570b8be0c0ccf46573c3c480c5bf92b9f042 |
+| 75676ede9c554a9517a72d80025b65bf05c0e8db | 75676ede9c554a9517a72d80025b65bf05c0e8db |
+| 778168e4ab7edac243997c26bcb8e4031955fb19 | 778168e4ab7edac243997c26bcb8e4031955fb19 |
+| 83edae818a57d2b7a6ce05ba936ed76d6d2e4b7d | 83edae818a57d2b7a6ce05ba936ed76d6d2e4b7d |
+| 85629b26adc3fdd02d31685ac6f4f3c896538759 | 85629b26adc3fdd02d31685ac6f4f3c896538759 |
+| 8dee806c66c7d17c1271a99dfb7054f66cde41df | 8dee806c66c7d17c1271a99dfb7054f66cde41df |
+| 92e3cc95d0471d2a2e9f9fe5cfa1a5cf6085c08f | 92e3cc95d0471d2a2e9f9fe5cfa1a5cf6085c08f |
+| 9938e9c19334cbf84f2a24d25e7a7870877262a2 | 9938e9c19334cbf84f2a24d25e7a7870877262a2 |
+| 9b42e18f58bbb5fd96bd4d947ddffa0dba3111fa | 9b42e18f58bbb5fd96bd4d947ddffa0dba3111fa |
+| a0d3e9eb40560cb1de6c0d2c00e2a7b9365e9c9d | a0d3e9eb40560cb1de6c0d2c00e2a7b9365e9c9d |
+| a171aa43432736dfca1883190218edf7ee7fe0e4 | a171aa43432736dfca1883190218edf7ee7fe0e4 |
+| a1f2e30179732f24cf2ee88d1d5858051b6f70a7 | a1f2e30179732f24cf2ee88d1d5858051b6f70a7 |
+| a3b3ebece4f82a5f66c03385bc9ae276dd05212a | a3b3ebece4f82a5f66c03385bc9ae276dd05212a |
+| abe2bc932d8d8f2e1450d77a7e71bd56ee692210 | abe2bc932d8d8f2e1450d77a7e71bd56ee692210 |
+| abf2e99540ed39917dc42c63d9438bc30b30e1e2 | abf2e99540ed39917dc42c63d9438bc30b30e1e2 |
+| b13f10b5c5223edeaee7ef95073129ffbd536b3d | b13f10b5c5223edeaee7ef95073129ffbd536b3d |
+| b166d4c3ee61579250fc3ca04b9989ef383575ac | b166d4c3ee61579250fc3ca04b9989ef383575ac |
+| b31bff8fa995392b1e8fd7864d78c30014e5f7bf | b31bff8fa995392b1e8fd7864d78c30014e5f7bf |
+| bbb67bd410647e1b9005946bf80e69ef19239cdd | bbb67bd410647e1b9005946bf80e69ef19239cdd |
+| bd0b58f59bea6964ce637814dcb1446e531b84f5 | bd0b58f59bea6964ce637814dcb1446e531b84f5 |
+| c0245ec24828bf4c1d210a731e6903dfda713051 | c0245ec24828bf4c1d210a731e6903dfda713051 |
+| c43888b5b7f5018141d10cd68cd086f5bcb82e88 | c43888b5b7f5018141d10cd68cd086f5bcb82e88 |
+| c5dcaa729381db6c18e16f8481f26daa25a60aae | 8d02f3c3979ac3c77f357f1ec7655552a31e60f5 |
+| caf0cd907cc6b6fb321b9b58d0899bca04271b55 | caf0cd907cc6b6fb321b9b58d0899bca04271b55 |
+| cc2933f199f18f3355bab96fba3b7748395c1291 | cc2933f199f18f3355bab96fba3b7748395c1291 |
+| d047a86acf3ae4d0bd7737d2a40f23e70be374d1 | d047a86acf3ae4d0bd7737d2a40f23e70be374d1 |
+| d266a569482c78c5ae0c3d9d77341317d52158dd | d266a569482c78c5ae0c3d9d77341317d52158dd |
+| d4b54703d6c3884a5557ef9536eb47f594e1ee3c | a0e038d0999b31b0f32d4b3708dd6938bf94bd8b |
+| d519dc7c25d82bac1a6053959acfd0c367a625ed | d519dc7c25d82bac1a6053959acfd0c367a625ed |
+| d959c1de9070dfc2cc9ccfac200cbd0227b1c7b6 | d959c1de9070dfc2cc9ccfac200cbd0227b1c7b6 |
+| da06f23cb35b0676848cdacb0562b189657d9c43 | da06f23cb35b0676848cdacb0562b189657d9c43 |
+| da3fff2f035e4832fa80204f0022fc8d670f2553 | b35a9d55dbd205a1526145d947fa76d57aef80de |
+| dc56f0d57a8a9d46b6c25e735cb2573f549a3d59 | dc56f0d57a8a9d46b6c25e735cb2573f549a3d59 |
+| ddf23d2efe40f6557e91d7eca5a45a0b5ea92bb8 | ddf23d2efe40f6557e91d7eca5a45a0b5ea92bb8 |
+| e03b5ba1e80fb88df125223e8bf9ac3de90f9532 | 0a33aa8280cbe702bf16aafbe91c24e39f0e4f60 |
+| e07956d509ec320eeec15def19f668c1b7007b61 | e07956d509ec320eeec15def19f668c1b7007b61 |
+| e3cb3bab1ff5ca71fdfd758c643ea1351571f860 | e3cb3bab1ff5ca71fdfd758c643ea1351571f860 |
+| e48c204b9459776cf819b2f633c2f297167135bc | e48c204b9459776cf819b2f633c2f297167135bc |
+| e4a7ba75c7da689a5283f4b2c3310b9096065077 | da82a8a10269d00c03134ab1f49cad35e043ef6a |
+| e6ba829f56343f5b65761ddc44b7c2b4343187bd | e6ba829f56343f5b65761ddc44b7c2b4343187bd |
+| e74c80a7233103635dece04ef2073ca684731dca | e74c80a7233103635dece04ef2073ca684731dca |
+| e8dcaa009d6eae454174d11f7ca0c2b4368dda5c | e8dcaa009d6eae454174d11f7ca0c2b4368dda5c |
+| e996828b983dcf88f9e8346b97ea83b858a6320f | e996828b983dcf88f9e8346b97ea83b858a6320f |
+| ec9da459f2336db7904e9a1107278aa96e24ea2c | ec9da459f2336db7904e9a1107278aa96e24ea2c |
+| ed95a9913e62afea06f5d7a2bfb606eb4abf9762 | 36a636634e7eafa014a67a4bad565fc575513026 |
+| efa0e4094d6c05faff5af21726c80f60c792cce5 | efa0e4094d6c05faff5af21726c80f60c792cce5 |
+| f4a7a2a17ad335940b62fa11daf283f4f32a7c59 | f4a7a2a17ad335940b62fa11daf283f4f32a7c59 |
+| f4b192dea03ef895f182c05198dc941fdef0b0bf | f4b192dea03ef895f182c05198dc941fdef0b0bf |
+| f89125b6df335d5c4542d580c8409287ac96fc57 | f89125b6df335d5c4542d580c8409287ac96fc57 |
+| fbc5e849f2f92d19dcc51fcbb4cdc6f493098ff8 | fbc5e849f2f92d19dcc51fcbb4cdc6f493098ff8 |
+| fc9ee01cdec7b72954250666066f03593b425f9a | fc9ee01cdec7b72954250666066f03593b425f9a |
+| fe7ac075c78f51ccbe997d8c43e5f730129f3ca6 | b248bc4be3aaa2c9d630f9894cfc38b219fb4540 |
+| ffb28e880932572917e52784d3095b79c3506475 | ffb28e880932572917e52784d3095b79c3506475 |
