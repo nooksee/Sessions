@@ -1,6 +1,6 @@
 # Sessions Operations Manual (Command Console)
 
-Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at the operator's request for a help system and a manual, both taken from the STELA framework, by a workflow agent under Shannon's assignment. Framework: STELA (`Projects/STELA/docs/MANUAL.md`), filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
+Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at the operator's request for a help system and a manual, both taken from the STELA framework, by a workflow agent under Shannon's assignment. Framework: STELA's manual, the house convention, kept in the operator's Control tree and not in this repository; filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
 
 Authority order:
 - **Law:** `PoT.md` is the single Sessions constitution, below Control policy.
@@ -11,7 +11,7 @@ Authority order:
   each domain's source; it does not expand authorization.
 - **Craft and mechanics:** this manual explains procedures; it neither
   restates nor overrides PoT or the contracts.
-- **Identity:** `ops/etc/resident-identities.json` (the registry) wins over any prose, including this manual.
+- **Identity:** `ops/etc/resident-identities.json` (the registry; private, not in this repository) wins over any prose, including this manual.
 - **Behavior of a tool:** its spec in `docs/ops/specs/` wins over the summary here.
 - **Decisions:** the operator decides; this manual records how his decisions are carried out.
 
@@ -114,7 +114,7 @@ Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.m
 
 ## 2. Top Commands
 
-Run from the room root, `/media/nos4r2/user_vol/Sessions`. Python runs isolated (`-I -B`) so that no bytecode is written beside the tools.
+Run from the room root, `<room>` (on a clone, the clone's root). Python runs isolated (`-I -B`) so that no bytecode is written beside the tools.
 
 ### Gauge (read the meters)
 ~~~bash
@@ -342,7 +342,7 @@ Spec: `docs/ops/specs/scripts/rotate.md`. Status: spec only; `rotate.py` is not 
 Every donor is preserved whole. A rotation, a relabel or a removal never proceeds until custody is verified.
 
 **Two tiers.**
-- **Tier 1, canonical copy:** `/media/nos4r2/user_vol/Backup/Codex-Session-Preservation/<batch>/`, on the always-present internal drive.
+- **Tier 1, canonical copy:** `<control>/Backup/Codex-Session-Preservation/<batch>/`, on the always-present internal drive.
 - **Tier 2, redundant cold copy:** the same batch on a mounted hot-swap drive (`hard_vol1` or `hard_vol2`, interchangeable peers per `DOCTRINE.md` section 8).
 
 **The batch.** One folder per operation, named for what and when (for example `central-donors-20261026/`, `claudio-spare-relabel-20261030/`), holding the files and a `SHA256SUMS` file. Verification is a fresh hash of every file in both tiers against `SHA256SUMS`, with tier 2 read directly from the drive, never assumed from the copy step.

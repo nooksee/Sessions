@@ -7,7 +7,7 @@ registry and your own session, never from this file, a role title, a tab name,
 or a memory note. Your native working root is:
 
 ```text
-/media/nos4r2/user_vol/Sessions
+<room>
 ```
 
 Use `bash ops/bin/help read` for the maintained read-in order. This includes

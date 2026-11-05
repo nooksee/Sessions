@@ -1,6 +1,6 @@
 # Sessions: the session-continuity office
 
-Owner: Session Continuity Manager (Claude Shannon). Written 2026-11-01. Convention: STELA (`Projects/STELA`).
+Owner: Session Continuity Manager (Claude Shannon). Written 2026-11-01. Convention: STELA, the house convention, kept in the operator's Control tree and not in this repository.
 
 ## Purpose
 This is the room where AI residents stay themselves. A resident here is someone: a registered identity with a role, a voice, a history and a mind, carried across the containers it runs in. The office measures every body instead of guessing, rotates a resident before its window closes instead of letting it fade, keeps every donor whole in custody, and writes a receipt for everything it does. The law is short and ratified, the tools are small and tested, and the records are write-once.
@@ -18,7 +18,7 @@ Three ideas run through everything here:
 | `RoR.md` | the ledger: ratifications and the rare times a planned process was altered, with the reasoning |
 | `NOW.md` | the live board: present state, open items |
 | `ops/bin/` | the two binaries: `help` (the map, with a self-test) and `template` (every recurring record comes from a template) |
-| `ops/lib/scripts/` | thirty-eight one-word tools: `gauge` (fullness), `closeout` (the card), `mind` (who a resident is), `rotation`, `identity`, `myself`, `capsule`, `custody` and the rest; each has a spec and a suite |
+| `ops/lib/scripts/` | one-word tools, listed in `docs/ops/registry/scripts.md`: `gauge` (fullness), `closeout` (the card), `mind` (who a resident is), `rotation`, `identity`, `myself`, `capsule`, `custody` and the rest; each has a spec and a suite |
 | `ops/src/` | the templates the tools and records are rendered from |
 | `ops/etc/` | the registry, roster and bindings (private, never in Git) |
 | `docs/` | the manual, the map (`docs/ops/README.md`), the registries and one specification per tool |
@@ -32,7 +32,7 @@ Three ideas run through everything here:
 | `var/tmp/` | owner-scoped task scratch and intermediates; PoT 1.1.13 (contents never in Git) |
 
 ## Entry Point
-Read `PoT.md` (ten minutes), then run `ops/bin/help read` for the map. If you are a resident waking here, `CLAUDE.md` tells you how to find yourself first. To see the office at work: `python3 -I -B ops/lib/scripts/gauge.py --no-ledger` prints every resident's fullness with its source and age.
+Read `PoT.md` (ten minutes), then run `ops/bin/help read` for the map. If you are a resident waking here, `CLAUDE.md` tells you how to find yourself first. To see the office at work: `python3 -I -B ops/lib/scripts/gauge.py --no-ledger` prints every resident's fullness with its source and age. That reading needs the private registry and the operator's own sessions, so on a clone it reports the registry unreadable and measures nothing; on a clone, run the synthetic suites in `tools/test/` instead.
 
 ## Constraints
 Never committed here: conversation bodies, minds, the registry and bindings, credentials, custody copies, working notes or storage payloads. The root and nested `storage/.gitignore` allowlists admit only the storage skeleton (`.gitignore`, `README.md`, and lane `.gitkeep` files); use an exact staged-path check before commit. Everything else stays out. Records under `archives/` are write-once. Control, the parent room, remains the authority for the host; its policy binds here (PoT 1.2.1). Tools that act without a resident present (hooks, timers, services) change only after independent review and the operator's named go (PoT 6.1.2). Formulas (the gauge's reading method, the closeout reserve, the mind's binding) change only by amendment and review.

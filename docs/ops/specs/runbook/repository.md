@@ -1,6 +1,6 @@
 # Sessions repository
 
-The operator directed George on 2026-10-31, in the morning, to make Sessions a repository at once. George Friend owns this Git bootstrap. The repository root is /media/nos4r2/user_vol/Sessions; it is kept at the same filesystem path so existing room, launcher and runtime references continue to resolve. The GitHub home is private, nooksee/sessions.
+The operator directed George on 2026-10-31, in the morning, to make Sessions a repository at once. George Friend owns this Git bootstrap. The repository root is `<room>` (the map's path convention); it is kept at the same filesystem path so existing room, launcher and runtime references continue to resolve. The GitHub home is private, nooksee/sessions.
 
 ## Versioned boundary
 
@@ -30,9 +30,9 @@ The current GitHub connection cannot upload workflow files. The proposed .github
 
 The bootstrap and transition sections above describe their original state.
 The Block 7 landing moved the frozen `Scripts/`, `Config/` and
-`Resident-Center/` runtime roots to `/media/nos4r2/user_vol/Control-Runtime/`.
+`Resident-Center/` runtime roots to `<control>/Control-Runtime/`.
 Product source authority remains
-`/media/nos4r2/user_vol/Projects/Resident-Center`. The canonical private
+`<control>/Projects/Resident-Center`. The canonical private
 registry, roster and host-binding inputs remain under `Sessions/ops/etc/`;
 they are not duplicated into Git.
 
