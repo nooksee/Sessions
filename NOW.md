@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-05 10:56 EST, JoJo Git, for the W4 source merge and the W5 projection slice; earlier 2026-11-05 00:45 EST, the Session Continuity Manager, after the B1 merge; earlier 2026-11-04 23:39 EST for the public gate; earlier by Joe Codex on 2026-11-04 for the RoR-18 policy and reader adoption.
+Updated: 2026-11-05 13:36 EST, the Session Continuity Manager, for the continuity loop's state after F1, the notebook home and the F1 contract; earlier 2026-11-05 10:56 EST, JoJo Git, for the W4 source merge and the W5 projection slice; earlier 2026-11-05 00:45 EST, the Session Continuity Manager, after the B1 merge; earlier 2026-11-04 23:39 EST for the public gate; earlier by Joe Codex on 2026-11-04 for the RoR-18 policy and reader adoption.
 The operation receipt records the actual application time and source head.
 Other observations retain their stated measurement times and were not
 refreshed in this change. The dated boards below are historical context,
@@ -25,22 +25,36 @@ lineage history.
 
 The structural port and public gate are delivered milestones, not completion
 of the end-to-end continuity loop. The operator named Joe Codex acting team
-lead on 2026-11-05 while the Session Continuity Manager is away; this is a
-temporary assignment, not a replacement identity or permanent registry role.
+lead from 01:31:35 on 2026-11-05, by his case record's start clock, while the
+Session Continuity Manager was away; the Manager resumed coordination at 12:25
+the same day, and Joe's acting cover ended there. That was a temporary assignment, not a replacement identity
+or permanent registry role.
 
 - W4: the operator-only notice source is on `main` at commit 7a740a06
-  (2026-11-05, PR #10, source PASS by the Independent Reviewer); it is not
-  activated. Its live use waits on the registry permission finding (F1)
-  and George's activation; resident-context delivery remains unproved.
-- W5: the mind tool exists. The Assistant reports its first operator-approved
-  mind write in the private handoff, section 52, on 2026-11-05; this is not
-  fleet adoption or notebook integration. The `project` command (a verified
-  leaf copied into a named notebook folder) is source only: no notebook home
-  is chosen, folder ownership is not proved, no provider read-in is shown, and
-  a real invocation needs the notebook's writer stopped. Sealing, unsealing,
-  the launch wrapper and restoration remain unfinished.
-- W6: the guided `rotate.py` runner and provider-specific native acceptance
-  remain unfinished; existing builders are ingredients, not that runner.
+  (2026-11-05, PR #10, source PASS by the Independent Reviewer). The
+  registry permission finding (F1) is settled: the registry file is at mode
+  0600 since 12:26 on 2026-11-05, George's metadata-only act on the operator's
+  go, audited after the act; the registry privacy contract is on `main` at
+  commit 93978946 (PR #13). The gauge and notice dry runs accept the 0600
+  registry. The notice is still not activated: its live use waits on George's
+  wiring and the operator-only canary, and resident-context delivery remains
+  unproved.
+- W5: the mind tool exists. The Assistant's first operator-approved mind
+  leaf was written on 2026-11-05 (her handoff, section 52) and is in custody
+  on the three roots as batch `sessions-minds-20261105`, verified; this is
+  not fleet adoption. The `project` command (a verified leaf copied into a
+  named notebook folder) is on `main` (PR #12), source only. The notebook
+  home is decided and its ignore rule is on `main` (PR #14): one folder per
+  registry key under `ops/etc/notebooks/` at mode 0700, never a default
+  project slot; the parent folder exists, and George's F2 verification of
+  the first child folder is in progress. Sealing and unsealing are being
+  built by the Assistant on synthetic rooms. No projection has run; folder
+  ownership, the launch wrapper and provider read-in remain unproved, and a
+  real invocation needs the notebook's writer stopped by the operator.
+- W6: the guided `rotate.py` runner's first slice (a dry-run skeleton with
+  phases 0 to 2 real and the rest as stop points) is assigned to Joe Codex on
+  synthetic rooms; provider-specific native acceptance remains unfinished;
+  existing builders are ingredients, not that runner.
 
 Current work is carried by the existing private first-wins plan and bounded
 W4 case. This board grants no live settings, provider, mind or body action.
