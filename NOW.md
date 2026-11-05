@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-04, Joe Codex, for the RoR-18 policy and reader adoption.
+Updated: 2026-11-04 23:39 EST, the Session Continuity Manager, for the public gate; earlier by Joe Codex on 2026-11-04 for the RoR-18 policy and reader adoption.
 The operation receipt records the actual application time and source head.
 Other observations retain their stated measurement times and were not
 refreshed in this change. The dated boards below are historical context,
@@ -12,6 +12,13 @@ specifications. Historical changes and
 rollback evidence live in `archives/receipts/` and ignored backup custody.
 This file records the current operating state rather than repeating full
 lineage history.
+
+## Current state, 2026-11-04 night (the public gate complete)
+
+- **Repository:** `nooksee/Sessions` on GitHub, public since 23:10:05 EST on 2026-11-04, `main` protected (pull requests only, strict `sessions-gates`, no force push, no deletion), secret scanning and push protection on. Its history was rewritten under RoR-15 so that no operator words, session identifiers or personal email addresses remain; the receipt with the two commit maps and the pull-request map is `archives/receipts/history-rewrite-20261104.md`. The live room at this path tracks it; the room's git identity is the operator's GitHub noreply address.
+- **Custody of 2026-11-04** (tier 1, the failing tier under direct-read verification, the interim boot-drive tier): `sessions-history-20261104` (every ref and worktree head before the refs were settled), `sessions-prerewrite-20261104` (the settled refs, with the export of the 38 pull requests of the old repository), `sessions-identities-20261104` (the first public-gate repository before its re-creation, with the export of its four pull requests and the mailmap), `sessions-port-110126-retired-20261104` (the porter's working copy of the room, retired from `Projects/` with its manifest).
+- **The maintained documents name the role,** the operator, where they named the person (2026-11-04); records, code and tests are as written, and the code-and-tests pass is a later programme.
+- **Open, none urgent:** the refreshed B1 candidate on current main (JoJo); the leftover private repository `nooksee/Sessions-identities-20261104` (the operator's to delete); the last unowned `storage/` directory, `privacy-ignore-review-20261102.IZuV1B` (Joe); Control canon for the retired porter project (George); the prune of this room's old objects after a quiet day (the Session Continuity Manager); the replacement of the failing custody medium (PoT 5.3.3).
 
 ## Current policy and read-in
 
