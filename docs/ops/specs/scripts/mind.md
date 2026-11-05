@@ -71,6 +71,7 @@ change: add <ids>; amend <ids>; retire <ids>
 yes: <date>, "<the operator's words>"
 issued: core=N bond=N lesson=N commitment=N pointer=N
 policy: <16 hex: digest of the rules in mind.py>
+notebook: archives/NOTEBOOK-<key>-<date>-<hash8>.tar sha256=<64 hex>   (version 2 only)
 
 ## Who I am
 
@@ -89,7 +90,13 @@ policy: <16 hex: digest of the rules in mind.py>
 - "What I owe" (`commitment`);
 - "Where things live" (`pointer`).
 
-**Canonical form.** A leaf is valid only in canonical form: parsing it and rendering the result gives back the same bytes. So any edit by hand that does not re-render exactly fails.
+**Canonical form.** A leaf is valid only in canonical form: parsing it and rendering the result gives back the same bytes. So any edit by hand that does not re-render exactly fails. The rule holds for both formats.
+
+**Leaf formats** (2026-11-05, W5 third slice).
+- **Version 1** is the eight header lines from `resident` to `policy`. Every leaf written before this slice is version 1 and parses exactly as before.
+- **Version 2** is the same eight lines and one more, directly after `policy`: `notebook: archives/NOTEBOOK-<key>-<date>-<hash8>.tar sha256=<64 hex>`, naming the seal taken at the same seam by its path and its full SHA-256. Its key must be the leaf's resident, the 8 digits in its name must begin the recorded digest, and its date must be a date; otherwise the entries gate fails. `write --seal` writes it; a write without `--seal` writes version 1, also after a version 2 leaf.
+- **Later versions.** Any version after 2 adds an explicit `format: N` header line. A reader treats the absence of both `notebook:` and `format:` as version 1, `notebook:` without `format:` as version 2, and `format:` as authoritative when present. No leaf carries `format:` yet, and this tool refuses one as not understood.
+- **The policy** digest covers the formats (`leaf_formats` in its body), so it changed with this slice: from `a92a7c3f6a3b6112` (leaves written before it) to `f02e457320b4b4df`. An older leaf is reported under `policy`, not blocked.
 
 **Fields by layer:**
 
@@ -107,14 +114,15 @@ policy: <16 hex: digest of the rules in mind.py>
 
 All commands take `--room` (default: the Sessions room) and `--registry`.
 
-- **`preview <key> --changes <file>`.** Shows exactly what a change would do: each addition in full, each amendment as before and after, and each retirement with the text it removes. Writes nothing. This is what the operator reads before he says yes.
+- **`preview <key> --changes <file> [--seal <name>]`.** Shows exactly what a change would do: each addition in full, each amendment as before and after, and each retirement with the text it removes. With `--seal`, it also shows the `notebook:` line the leaf would carry, verified as `write --seal` verifies it, and its closing instruction names the same `--seal`. Writes nothing. This is what the operator reads before he says yes.
 - **The binding.** `preview` ends with the line `binding: <64 hex>`. It is the SHA-256 of the canonical JSON (sorted keys, no spaces) of three parts:
   - the resident's key;
   - the predecessor reference: `none`, or the current leaf's path and SHA-256;
-  - the parsed change file.
+  - the parsed change file;
+  - with `--seal` only, the seal reference (its path and full SHA-256), under the name `notebook`. Without a seal the body is exactly the three parts above, so a binding without a seal is what it always was.
 
-  The change file's layout does not matter, but its content does.
-- **`write <key> --changes <file> --preview <binding> --yes "<the operator's words>" --by <writer key>`.** Does nothing until every check below has passed. Then:
+  The change file's layout does not matter, but its content does. A yes given to a shown seal binds that seal: a write with another seal, or none, is refused.
+- **`write <key> --changes <file> --preview <binding> --yes "<the operator's words>" --by <writer key> [--seal <name>]`.** Does nothing until every check below has passed. With `--seal`, the seal must be at the archives root, this key's, a regular file (not a link) at mode 0600, hash to the 8 digits in its name and validate whole (the `unseal` validation, reused); the new leaf is version 2 and records the seal's path and full SHA-256. A seal-only leaf, with no change to the entries, is not possible: the change file must still change something. Then:
   1. under the lock, verify the current mind with every blocking gate, and refuse to build on a mind that fails;
   2. compute the binding again from the change it reads now and the current predecessor, and refuse on any difference from `--preview`. A change file edited after the preview, other input on standard input, or a pointer that moved since the preview is refused, and preview must be shown to the operator again;
   3. apply the change;
@@ -130,7 +138,7 @@ All commands take `--room` (default: the Sessions room) and `--registry`.
   - **Everything else is a refusal that names its cause:** Git missing, a timeout, any other error from a Git call, any other exit code, or an answer other than `true`.
 - **`check [--key K] [--notebook <folder>]`.** Every gate, for one resident or every resident in the room. Exit 1 on any blocking failure. `--notebook` needs `--key` and adds the projection gate for that folder; there is no default folder.
 - **`show <key> [--ref]`.** Prints the verified current leaf byte for byte, or nothing (exit 2) when any blocking gate fails. `--ref` prints `leaf=<path>|sha256=<digest>` for the rotation capsule, so the capsule's mind part is bound to a hash.
-- **`history <key>`.** The chain: when, by whom, what changed, and the operator's words.
+- **`history <key>`.** The chain: when, by whom, what changed, and the operator's words; for a version 2 leaf, also its `notebook` reference. `show` prints the leaf byte for byte, so it prints the line too.
 - **`project --key <key> --notebook <folder>`** (W5, first slice, 2026-11-05). Copies the verified current leaf, byte for byte, into one marked block at the top of `<folder>/MEMORY.md`, so the provider loads the resident's mind at start. The leaf stays the authority; the block is a copy. The folder is mandatory: the tool has no notebook home, names none and creates none (the home is the operator's choice under the plan's W5). In order:
   1. **Read-only preflight, before the lock.** The key passes every blocking gate of `check` (registered once in this room, pointer, leaf, entries, chain, newest), or nothing is projected. The folder and each ancestor exist and none is a symbolic link; the folder is a directory of this user at mode 0700; an existing `MEMORY.md` is a regular file of this user at 0600 with one hard link, in UTF-8. The Git rule above (F1, with the nearest-Git B1 check) is applied to the folder: outside Git, or inside a work tree that ignores `MEMORY.md` (exit 0). A refusal here writes nothing, not even the lock.
   2. **Markers.** The block is `<!-- mind-projection begin key=<key> leaf=archives/<leaf> sha256=<64 hex>: a copy written by mind.py project; the leaf is the authority -->`, the leaf, and `<!-- mind-projection end key=<key> -->`, each marker a whole line ending in a newline. Any line that starts `<!-- mind-projection ` is a marker. With no marker, the block is inserted at the top and every existing byte follows unchanged. With markers, there must be exactly one begin and one end, in that order, both for this key, the begin on the first line; otherwise (another key's block, a duplicate, a malformed or CRLF marker, an end alone, a block below the top) the index is refused and left as it is. A block whose text does not hash to the SHA-256 it names is reported as edited by hand and replaced, never trusted.
@@ -146,7 +154,7 @@ All commands take `--room` (default: the Sessions room) and `--registry`.
   2. **The target.** Its parent exists, holds no link in its path, and is this user's folder. The target may be absent, an empty folder, or a non-empty folder; an existing target passes the private-path rules. A non-empty target refuses without `--replace`. The Git rule is applied with the target's parent as the start: `MEMORY.md` and every file the seal holds under the target, a staging name beside it and, for a replacement, the name the earlier folder will be kept under, must all be outside Git or ignored.
   3. **Staged, then the name.** Under the room's mind lock the preflight runs again. The members are written into a fresh staging folder beside the target (`.<name>.unseal-*`, mode 0700): folders at 0700, files created exclusively at 0600 without following links, each with its recorded modification time. The staged tree must then equal the seal exactly (the same paths, types, modes 0700 and 0600, and bytes), or it is removed and nothing is replaced. The staging folder then takes the target's name by rename: onto an absent name or an empty folder directly; for `--replace`, the earlier folder is first renamed to `.<name>.replaced-<UTC time>` beside it and kept, unread, and is renamed back if the second rename fails. The tool deletes no notebook.
   The output names the seal, the target, the counts and, for a replacement, where the earlier folder is kept. Seal and unseal say nothing about a provider's own writes: like `project`, they belong at a seam with the notebook's writer stopped, which the tool cannot detect.
-  **Left out of this slice:** `write --seal` and a `notebook:` line in the leaf. Recording a seal in a leaf changes what the operator's yes binds: the preview binding would have to cover the seal, so the leaf format and the binding change together. That is its own versioned slice, with its own review. Every existing leaf is unchanged and still valid.
+  **Left out of the second slice, built in the third:** `write --seal` and the `notebook:` line. Recording a seal in a leaf changes what the operator's yes binds, so the leaf format and the binding changed together in their own versioned slice (see Leaf formats and The binding).
 
 ### The change file
 
@@ -191,10 +199,12 @@ Blocking:
   - the immediate predecessor of the current leaf must be on disk.
 - **newest:** no leaf of this key names the current leaf as its predecessor. A pointer moved back to an older genuine leaf fails here.
 - **seal:** every `archives/NOTEBOOK-<key>-*.tar` of this key is a regular file, not a link, hashes to the digits in its name, and validates whole as `unseal` validates it, its manifest belonging to this key. No seals is a pass. The gate runs in `check` only: `show` and `project` do not consult seals.
+- **leaf-seal:** every leaf of the chain that names a seal names one that is at the archives root, belongs to the key, hashes to the digits in its name, validates whole (the `unseal` validation, reused through the same reader as the `seal` gate), and hashes to the full SHA-256 the leaf records. A named seal that is not on disk is not a failure: it is reported under **seal-history**, as **chain-history** reports a missing ancestor.
 - **projection** (only with `--notebook`): the folder's `MEMORY.md` is a regular file whose markers are exactly one begin and one end for this key, the begin naming the current leaf and its SHA-256, and the file opens with exactly the block `project` would write now. A missing, stale, foreign, malformed or hand-edited projection fails.
 
 Reports (not blocking), plus a room-level report of `NOTEBOOK-` files in `archives/` whose name does not parse or names no resident in `MIND.md`:
 - **chain-history:** an older ancestor is missing, for example moved to custody.
+- **seal-history:** a seal a leaf names is not on disk, for example moved to custody.
 - **outside-chain:** a leaf of this key is not in the chain.
 - **live-state:** percentages, PIDs or ports in an entry.
 - **sources:** a path source not found in the room.
