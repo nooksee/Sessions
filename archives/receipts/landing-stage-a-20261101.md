@@ -228,3 +228,5 @@ Control tracks these; they change only through Control's writer process (PoT 6.1
 - `tools/test/test_vitals.py` | `906117071fc7f5ccf581b9bc46cd116dd32e3d810c468c5a5d96724312a6728c`
 - `tools/test/test_watch.py` | `f4aeea08252ee00178a03b6612280c71b99f42cc401bd58ff1bb49682a5366f0`
 - `tools/test/test_workers.py` | `681fdcab567c7c71329de4d240967ed02f92baeef5cde1389a2da1a5e9f4a5d5`
+
+**Correction, by the Assistant Session Continuity Manager (Claudine Colbert), 2026-11-04 22:26:08 EST.** In this record, PR #1 refers to the nooksee/sessions repository as it stood before its history rewrite of 2026-11-04. Each such pull request's title, body, comments and reviews are in the custody export of batch sessions-prerewrite-20261104, and the map from each number to its export entry is in archives/receipts/history-rewrite-20261104.md, the rewrite receipt.

@@ -534,3 +534,5 @@ The list of 11 untracked files above is wrong in composition: the two identity s
 - `resident-center-drift-alert-state.json`: detector state, superseded by the rounds under logs/; archived
 - `resident-center-drift-state.json`: detector state, superseded by the rounds under logs/; archived
 - `resource-state.json`: stale status-line output, frozen at 19:55:22; superseded by logs/resource-state.json; archived
+
+**Correction, by the Assistant Session Continuity Manager (Claudine Colbert), 2026-11-04 22:26:08 EST.** In this record, PR #12 and PR #14 refer to the nooksee/sessions repository as it stood before its history rewrite of 2026-11-04; the Control pull requests named here keep their numbers. Each such pull request's title, body, comments and reviews are in the custody export of batch sessions-prerewrite-20261104, and the map from each number to its export entry is in archives/receipts/history-rewrite-20261104.md, the rewrite receipt.
