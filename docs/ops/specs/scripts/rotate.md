@@ -1,16 +1,15 @@
 # Technical Specification: rotate
 
-Script: `Sessions/ops/lib/scripts/rotate.py` (to write; Claude residents first). Spec writer: Claude Shannon, 2026-10-30. It is ported from Claudine Colbert's runbook (`storage/candidates/mind-manifest-20261029/package/docs/ops/specs/runbook/transition.md`) and adds:
+Script: `Sessions/ops/lib/scripts/rotate.py` (Claude-first synthetic runner). Spec writer: Claude Shannon, 2026-10-30. It is ported from Claudine Colbert's runbook (`storage/candidates/mind-manifest-20261029/package/docs/ops/specs/runbook/transition.md`) and adds:
 - Claudio Freeman's conditions C11 to C13 (`claudio.md` section 130);
 - The operator's decisions of 2026-10-30, and the install decision Shannon made under his deferral.
 
 Map: `docs/ops/README.md`.
 
-Status: first source slice implemented 2026-11-05 by Joe Codex and
-independently source-reviewed by Claudio Freeman (section 260, PASS, 0
-conditions): synthetic, read-only phase gates 0 to 2; phases 3 to 9 refuse
-and remain unimplemented. Integration review pending. No live rotation or
-provider-load proof.
+Status: first slice integrated as PR #18 at main b0d2970e (Claudio sections
+260 and 269). Second slice prepared 2026-11-05 by Joe Codex, independent
+review pending: synthetic phases 0 to 5, with Claude-only window/build
+rehearsal; phases 6 to 9 refuse. No live rotation or provider-load proof.
 
 ## First Principles Rationale
 
@@ -23,14 +22,14 @@ The operator, 2026-10-30: the rotation had never been formalized, and to him it 
 
 ## Mechanics and Sequencing
 
-### Implemented first slice: one dry-run stop at a time
+### Implemented synthetic slices: one dry-run stop at a time
 
 The specification below describes the complete intended rotation. The first
-source slice is deliberately smaller: it checks supplied synthetic evidence
-for phases 0 to 2, rechecks earlier gates on each invocation, and stops after
-the requested phase. Phases 3 to 9 return exit 2 with their named unmet
+runner is deliberately smaller: it checks supplied synthetic evidence
+for phases 0 to 5, rechecks earlier gates on each invocation, and stops after
+the requested phase. Phases 6 to 9 return exit 2 with their named unmet
 requirements before any input is read. They execute no builder, launcher,
-custody, body, label, registry or installation operation. In particular, the
+custody, native body, native label, registry or installation operation. In particular, the
 planned rollback below is not executable authority: donor handling must
 follow CONSTRAINTS C09, not an unconditional donor restore.
 
@@ -52,6 +51,10 @@ It contains `.rotate-synthetic.json`, exactly
 fixture intent; it authenticates no operator and grants no live authority.
 Registry bindings must use invented `0000`-prefix identifiers. No default
 native store or real body is opened, and `.jsonl` input paths are refused.
+Phases 4 and 5 accept only hash-bound `.fixture` synthetic-body inputs,
+with invented session/message identifiers, inside that same private room.
+The source room is the executing checkout; this is a cooperating-writer
+fixture boundary, not permission to copy or inspect a real body in a clone.
 
 All evidence paths are relative to this room, confined against parent/final
 symlinks and `..`; regular 0600 owner files with one link are required.
@@ -59,7 +62,9 @@ The registry is `ops/etc/resident-identities.json`. JSON uses the existing
 strict duplicate/nonfinite parser; input limits are 1 MiB, or 64 KiB for
 the gauge snapshot, closing record, handoff/approval references and pointer.
 Evidence is rechecked for content and identity changes before a successful
-stop. Files, modes, locks and progress records are never written. Parents
+stop. Existing inputs, their modes, locks and progress records are never
+written. Phase 5 alone creates and removes private temporary fixture
+artifacts as described below. Parents
 above the private fixture root retain the trusted cooperating-writer bound;
 this is not hostile same-user descriptor confinement.
 
@@ -100,11 +105,90 @@ this is not hostile same-user descriptor confinement.
    and amended entry count equals the declared proposal count.
    Preflight pointer and archive leaf privacy before invoking show. No mind
    content, approval words, handoff text or native identifier is printed.
+3. **Synthetic destination.** Require `--build-plan`, a bounded
+   `rotate-build/1` JSON object binding `key`, `writer`, the phase-0 hashed
+   `binding`, and `closing_sha256` to the exact closing record. Its
+   `destination` is a retained `{path, sha256}` reference to
+   `rotate-spare/1` metadata: exact provider, `session_id`, `room`, `cwd`,
+   the registry's plain label plus ` - spare body, do not open`, an
+   EXPLICIT `owner: null`, literal `fresh: true`, and integer `work_rows: 0`.
+   `created_at` is zoned and no earlier than closeout. A missing owner is
+   unknown, not unowned. The plan's zoned `built_at` must follow spare
+   creation. This verifies supplied synthetic metadata, not
+   native creation, labeling or human authorship. The existing `gate.holders`
+   reader checks the exact fixture file, preceded by a same-user process
+   observability check. Inaccessible same-user descriptor evidence refuses;
+   it is not silently an empty holder list. Other privileged users and a
+   writer opening after the last check are outside the cooperating-writer
+   boundary. Tests use an explicit synthetic process model; no real host
+   holder clearance is inferred from them. A `.rotate-build.*` sibling is
+   preserved and blocks this phase, never adopted as prior completion.
+4. **Synthetic window.** `donor` is a hash-bound `.fixture` reference,
+   at most 1 MiB and 4,096 strictly parsed, terminated JSONL rows. Every row
+   must carry the exact invented donor session; nonfixture identifiers,
+   including those in prose, refuse. Call the existing `gauge.read_claude`
+   on that confined file: tokens, model and reading time must equal phase 0,
+   with no later compaction. This reuses gauge usage extraction; it does
+   not calibrate a model window. The window remains the validated supplied
+   gauge snapshot's value/provenance. Require the last compact boundary
+   and exactly one compact-summary row before the chosen cut.
+
+   `cut` names integer zero-based `user_row` and `exchange_row`, retained
+   `{path, sha256}` `reason`, and a referenced `estimate` object. The cut and
+   substantive exchange must be ordinary user-role rows: no summary, side
+   chain, metadata, tool result, known injected prefix or slash command.
+   A non-metadata, main-chain assistant reply must follow the exchange.
+   That is a structural synthetic-prompt check, not proof a human authored
+   native conversation. Splice the boundary, its summary and the tail;
+   reparent only the cut row to that summary, leaving prose unchanged.
+
+   `rotate-estimate/1` binds `donor_sha256`, `cut_row`, `window`, positive
+   integer `tokens` no greater than 20 percent of that window, and a
+   nonempty `method`. This is a retained SUPPLIED wake estimate and target
+   check, not a calculated or measured native wake. No token estimator or
+   pressure formula is invented. Codex window/build remains refused as
+   `provider-window-build-unsupported`: its accepted ingredient omits the
+   native compaction summary. It needs its own reviewed design and load test.
+5. **Temporary synthetic build and gates.** `transition` is a nonempty
+   retained text reference in the build plan, not a path substituted for
+   text. Assemble the four capsule parts here: registry header, the exact
+   leaf returned through `mind show --ref`, transition, first-turn line.
+   The legacy six-question Codex capsule generator is not this composer.
+
+   Recheck all evidence and fixture holders, then create one 0700
+   `.rotate-build.<unique>` directory directly inside the synthetic room.
+   No output path is selected by the caller. Invoke the actual existing
+   Claude `successor.main` on the selected private fixture, including its
+   field-scoped re-ID and native orientation construction. Use the existing
+   `media.Externalizer` on both supported payload shapes. Append the plain
+   custom-title/agent-name pair; these are fixture records, not native labels.
+   Only the new orientation and label rows receive `built_at`; no historical
+   donor timestamp is changed, and the builder's old orientation-date literal
+   is not carried into the new row.
+   All temporary files are 0600 independently of the caller's umask.
+
+   Run and record each applicable static predicate: termination, strict
+   parse and row equality, exact destination identities, structural donor
+   residue, unique message IDs and non-dangling parent chain, boundary head,
+   matched/unique tool uses and results, one exact capsule orientation,
+   named destination, orientation cwd, final plain label pair, zero inline
+   media, orientation privacy, media-file fixity and pointer linkage, and
+   carried window length/text. A media pointer must name the actual private
+   staged file, not merely a matching short digest somewhere else.
+   Recheck inputs and holders again before success. Always remove this
+   invocation's temporary directory through its own context manager. This
+   rehearses real construction/gates but retains no successor or media.
+   A killed process can leave staging; the next phase-3-or-later attempt
+   refuses it without cleanup or inferred ownership. It is not durable
+   recovery or a candidate ready for custody.
 
 Exit 0 means only that the requested dry-run gate stopped successfully;
 output lists `completed`, `next_phase` and `needs`, never whole-rotation
 acceptance. A refusal or unsupported phase exits 2. Every output states
-dry-run, zero writes, no native-load proof and no operator acceptance.
+dry-run, no native-load proof and no operator acceptance. `writes` is zero
+through phase 4; phase 5 reports the number of temporary file artifacts
+created (not syscall count), their write scope and successful removal.
+No input or persistent state is changed, and no artifact content is printed.
 An interruption leaves no runner state to adopt: repeat the same phase
 with unchanged evidence, or supply corrected evidence and recheck from 0.
 There is no inferred persisted completion, automatic resume or journal.
@@ -113,7 +197,7 @@ Tests: `tools/test/test_rotate.py`; test contract:
 `docs/ops/specs/tools/test/rotate.md`. The existing template generator
 supplied the initial script/test skeleton while preserving this spec.
 
-### Complete target workflow (phases 3 to 9 remain unimplemented)
+### Complete target workflow (phases 6 to 9 and all native acts remain unimplemented)
 
 **Roles.**
 - **The operator:** chooses the tier, creates the destination container, gives the go, accepts or does not.
