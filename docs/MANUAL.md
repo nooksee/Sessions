@@ -106,7 +106,7 @@ The authority for who each resident is lives only in the registry. A resident ch
 | gauge | `ops/lib/scripts/gauge.py` | `docs/ops/specs/scripts/gauge.md` | `tools/test/test_gauge.py` | built; see its specification for measurement behavior and installed scope |
 | closeout | `ops/lib/scripts/closeout.py` | `docs/ops/specs/scripts/closeout.md` | `tools/test/test_closeout.py` | implemented and synthetically tested; current-hash review and native delivery proof precede installation (PoT 6.1.2) |
 | notice (operator backstop) | `ops/lib/scripts/notice.py` | `docs/ops/specs/scripts/notice.md` | `tools/test/test_notice.py` | source implemented; review/integration pending, unwired; consumes one exact gauge row, submits an operator-only notice, never delivers resident context |
-| mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; actual use and notebook integration have separate acceptance |
+| mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; `project` writes a leaf copy into a named notebook folder (source only, no default home); actual use, a real notebook and the launch wrapper have separate acceptance |
 | rotate | `ops/lib/scripts/rotate.py` (not written) | `docs/ops/specs/scripts/rotate.md` | none yet | spec only; rotations still run by hand, by the spec |
 
 Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.md`.
@@ -280,7 +280,10 @@ does not reopen its expired live window.
 
 Spec: `docs/ops/specs/scripts/mind.md`. Source and synthetic tests exist;
 current test results belong to their validation receipt, not a frozen count
-here. A first mind write and notebook integration remain separate operations.
+here. The `project` command exists in source (W5 first slice): it copies a
+verified leaf into a notebook folder the operator names, and only after the
+writer of that notebook is stopped. No notebook home is chosen, no sealing or
+wrapper exists, and a projection is not proof that a provider loaded it.
 
 **What a mind is.** The small curated record of who a resident is, what it has learned and what it owes. It travels into every successor beside the donor's own summary and window, and never replaces them.
 
