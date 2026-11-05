@@ -1,8 +1,9 @@
 # Technical Specification: test_rotate.py
 
 Tool: `ops/lib/scripts/rotate.py` (`SCRIPT-04`).
-Test: `tools/test/test_rotate.py` (`TEST-47`). Writer: Joe Codex.
-Status: synthetic first-slice proof; independent review pending.
+Test: `tools/test/test_rotate.py` (`TEST-48`). Writer: Joe Codex.
+Status: synthetic first-slice proof; source review passed, integration review
+pending.
 
 ## First Principles Rationale
 

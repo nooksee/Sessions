@@ -107,7 +107,8 @@ The authority for who each resident is lives only in the registry. A resident ch
 | closeout | `ops/lib/scripts/closeout.py` | `docs/ops/specs/scripts/closeout.md` | `tools/test/test_closeout.py` | implemented and synthetically tested; current-hash review and native delivery proof precede installation (PoT 6.1.2) |
 | notice (operator backstop) | `ops/lib/scripts/notice.py` | `docs/ops/specs/scripts/notice.md` | `tools/test/test_notice.py` | source integrated on `main` (PR #10, 2026-11-05) with the Independent Reviewer's source PASS and post-integration audit; unwired, live go pending the registry permission finding (F1) and George's activation; consumes one exact gauge row, submits an operator-only notice, never delivers resident context |
 | mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; `project` writes a leaf copy into a named notebook folder (source only, no default home); actual use, a real notebook and the launch wrapper have separate acceptance |
-| rotate | `ops/lib/scripts/rotate.py` (not written) | `docs/ops/specs/scripts/rotate.md` | none yet | spec only; rotations still run by hand, by the spec |
+| Claude resident wrapper | `ops/bin/claude-resident` | `docs/ops/specs/scripts/claude-resident.md` | `tools/test/test_claude_resident.py` | source implemented and reviewed; dry-run only; `cliPath` untouched |
+| rotate | `ops/lib/scripts/rotate.py` | `docs/ops/specs/scripts/rotate.md` | `tools/test/test_rotate.py` | source implemented by Joe and independently source-reviewed by Claudio (section 260); synthetic dry-run only for phases 0 to 2; phases 3 to 9 remain unimplemented; no live rotation or provider-load proof |
 
 Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.md`.
 
@@ -158,8 +159,10 @@ Reviewers also run each suite at the host umasks 0002 and 0022 as well as 0077; 
 ### Closeout and rotate
 `closeout.py` is an implemented hook entry point, not an interactive phase
 runner; its specification defines JSON input and the staged validation route.
-`rotate.py` remains unimplemented. These facts do not authorize hook wiring
-or a native canary (PoT 6.1.2, 6.1.5).
+`rotate.py` is implemented and independently source-reviewed, with synthetic
+read-only gates for phases 0 to 2 only. Phases 3 to 9 remain unimplemented;
+there is no live rotation or provider-load proof. These facts do not authorize
+hook wiring or a native canary (PoT 6.1.2, 6.1.5).
 
 ### Help and template (entry points; registry `docs/ops/registry/binaries.md`)
 ~~~bash
@@ -319,7 +322,11 @@ historical missing-ignore observation is not a current permission gate.
 
 ## 6. Running a Rotation
 
-Spec: `docs/ops/specs/scripts/rotate.md`. Status: spec only; `rotate.py` is not written, so each rotation follows the spec by hand, phase by phase, and stops at each stop point.
+Spec: `docs/ops/specs/scripts/rotate.md`. Status: source implemented and
+independently source-reviewed (Claudio section 260); synthetic dry-run gates
+for phases 0 to 2 only; phases 3 to 9 remain unimplemented. Rotations still
+follow the spec by hand, phase by phase, and stop at each stop point. No live
+rotation or provider-load proof.
 
 **Roles.** the operator decides, opens the container, gives the go, accepts or does not. Exactly one writer, named before work starts and never the resident being moved. The donor closes well and never builds its own successor. Claudio audits afterwards.
 
@@ -353,7 +360,9 @@ change follows from this procedure.
 
 **Codex residents.** `ops/lib/scripts/rotation.py` does not carry the native compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
 
-[PLACEHOLDER: `ops/lib/scripts/rotate.py` (Claude residents first), its tests and its test spec. Owner: Claude Shannon assigns the writer; Claudio reviews; ingredients are `splice_window.py` and the gates in `storage/candidates/joy-anne-rotation-20261030/` and `storage/candidates/shannon-rebuild-20261029/`.]
+`rotate.py` has a source-reviewed synthetic, read-only first slice for phases
+0 to 2. Phases 3 to 9 remain unimplemented. There is no live rotation or
+provider-load proof; this integration remains subject to exact-head review.
 
 ---
 
