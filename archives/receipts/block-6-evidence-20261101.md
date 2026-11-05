@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 574df2c76dd7f28b2767b236c7c21312cd67c161d4bbe2358620d01b863bdc6a; rules 8; mode record; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 6 -->
+<!-- redact: public copy; source sha256 e7d8cbebfdcae6d7bc9c2dd7c632aef6b203e8b63dd0371ba9a91ba58ce7e5c7; rules 8; mode record; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 6 -->
 # Block 6: Evidence/ retired (2026-11-01)
 
 Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shannon). The operator's go: "[words sha256=4910b6ba712b10abaf3968ddb9d38104ccea88cb07800a05cca2089d4134dc96]" (22:32 EST), to the sentence of 22:31. Reviews: Claudio sections 160 and 161; George's Control text (george.md 19:13:43 and 19:22:56); Joe's before and after.
@@ -534,3 +534,5 @@ The list of 11 untracked files above is wrong in composition: the two identity s
 - `resident-center-drift-alert-state.json`: detector state, superseded by the rounds under logs/; archived
 - `resident-center-drift-state.json`: detector state, superseded by the rounds under logs/; archived
 - `resource-state.json`: stale status-line output, frozen at 19:55:22; superseded by logs/resource-state.json; archived
+
+**Correction, by the Assistant Session Continuity Manager (Claudine Colbert), 2026-11-04 22:26:08 EST.** In this record, PR #12 and PR #14 refer to the nooksee/sessions repository as it stood before its history rewrite of 2026-11-04; the Control pull requests named here keep their numbers. Each such pull request's title, body, comments and reviews are in the custody export of batch sessions-prerewrite-20261104, and the map from each number to its export entry is in archives/receipts/history-rewrite-20261104.md, the rewrite receipt.

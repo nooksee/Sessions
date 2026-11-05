@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 13500d054a1795cbc1b2b15a5ad28fe3d5dca601814070d6105c83a47abab588; rules 7; words 21; sessions 0 whole, 0 truncated; host paths 2; decisions 4 -->
+<!-- redact: public copy; source sha256 d16ac7dfccc180778d0aa4018f51d75917d0403317b9e18b2883acbd35dde412; rules 8; mode record; words 22; sessions 0 whole, 0 truncated; host paths 2; decisions 4 -->
 # RoR: the decision ledger of the Sessions room
 
 This is the room's decision ledger (PoT 1.2.10, 1.3.2). Each entry records one operator decision, standing direction, exception, acting holder, or anomaly that needs a decision: the operator's exact words, when they were given, the act they authorize, and a pointer to the record of that act.
@@ -143,7 +143,6 @@ Entries are appended only, generated from `ops/src/reports/ror.md.tpl` (`ops/bin
 - **Record:** PoT.md; archives/PoT-457fe859.md; archives/PoT-authority-457fe859.md; private words source archives/RoR-words.md; Words SHA-256: 6cd97026509801d7f00af3e2a1e090893fd06cdd0182f3a5c9bb2d45cfc8a038
 - **Entered by:** Chief Repository Operations Officer (JoJo Git), registry key jojo-git, at 2026-11-03 02:00:20 EST (-0500)
 
-<!-- redact: public copy; source sha256 9a77fda0b3da073aa63dd83b5b80d95067999e595d4aa690b8b5d050cbfa25d8; rules 7; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 0 -->
 ### RoR-18: ratification of reviewed foundational policy and connected readers
 
 - **Given:** 2026-11-04T12:12:26-05:00, first observed current operator instruction; utterance time was not supplied. Effective only on actual recorded application, not a backdated event.
@@ -151,3 +150,7 @@ Entries are appended only, generated from `ops/src/reports/ror.md.tpl` (`ops/bin
 - **Act:** Decision: Operator. Scope: PoT.md. Target policy SHA-256: 2dc41d8754189cbb52d65bca4bc387ba508eedf1cd2156f2e62f408b86eb21e7. Apply the exact reviewed foundational policy and its eleven-path reader wiring under the current named instruction. The target/hash attribution is the operation writer's explicit binding of the current direction, not a quotation of a hash typed by the operator. No native, host-service or operational-state change is part of this adoption.
 - **Record:** PoT.md; archives/PoT-2dc41d87.md; archives/PoT-authority-2dc41d87.md; private words source archives/RoR-words.md; Words SHA-256: b1b34b0d43225bac58b69bcb05c87867e1ff84f18b687b9cb48dd3f5052ae67c
 - **Entered by:** Session Continuity Apprentice (Joe Codex), joe-codex; prepared 2026-11-04T12:21:17-0500; actual application recorded in operation receipt
+
+- **Correction to RoR-14, by its writer (2026-11-04 16:30:03 EST):** the Record field names storage/PoT-amendment-2.diff and storage/PoT-amendment-2-notes.md; on 2026-11-04 at 14:27:34 EST the Apprentice moved those files, with the candidate storage/PoT-amendment-2.md, to archives/working-records/20261102-policy-a2/ by copy, hash verification and unlink, on the Session Continuity Manager's written consent (shannon.md, block 10 close), because a record's cited evidence does not live in the disposable lane (1.1.4, 1.1.5). The candidate's bytes are the law snapshot archives/PoT-5b93c454.md. The entry above is left as written (1.2.13); RoR.md shows this note at its next render.
+
+**Correction, by the Assistant Session Continuity Manager (Claudine Colbert), 2026-11-04 22:26:08 EST.** In this record, PR #9 refers to the nooksee/sessions repository as it stood before its history rewrite of 2026-11-04. Each such pull request's title, body, comments and reviews are in the custody export of batch sessions-prerewrite-20261104, and the map from each number to its export entry is in archives/receipts/history-rewrite-20261104.md, the rewrite receipt.
