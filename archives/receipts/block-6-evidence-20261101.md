@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 574df2c76dd7f28b2767b236c7c21312cd67c161d4bbe2358620d01b863bdc6a; rules 8; mode history; words 1; sessions 0 whole, 41 truncated; host paths 0; decisions 0 -->
+<!-- redact: public copy; source sha256 574df2c76dd7f28b2767b236c7c21312cd67c161d4bbe2358620d01b863bdc6a; rules 8; mode record; words 1; sessions 0 whole, 0 truncated; host paths 0; decisions 6 -->
 # Block 6: Evidence/ retired (2026-11-01)
 
 Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shannon). The operator's go: "[words sha256=4910b6ba712b10abaf3968ddb9d38104ccea88cb07800a05cca2089d4134dc96]" (22:32 EST), to the sentence of 22:31. Reviews: Claudio sections 160 and 161; George's Control text (george.md 19:13:43 and 19:22:56); Joe's before and after.
@@ -6,8 +6,8 @@ Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shanno
 ## What moved, in order
 
 1. 19:55:21: the status-line setting to the landed `resources.py` (Kevin's go of 19:5x; Claudio 160 text 1); `logs/resource-state.json` written from 19:55:33; the old file frozen at 19:55:22 (Joe).
-2. 22:31: the rounds wrapper at `[session prefix 1]` live (PR #12, Claudio 161); the two drift-state files copied to `logs/` at mode 0600.
-3. 22:43:29: George applied the detector's output constant to `logs/` and released the 478 tracked paths (Control PR #123, `[session prefix 2]`); the 22:45 round wrote both drift files under `logs/` at 22:45:17.
+2. 22:31: the rounds wrapper at `19e5908e` live (PR #12, Claudio 161); the two drift-state files copied to `logs/` at mode 0600.
+3. 22:43:29: George applied the detector's output constant to `logs/` and released the 478 tracked paths (Control PR #123, `312413b7`); the 22:45 round wrote both drift files under `logs/` at 22:45:17.
 4. 22:5x: custody copy of `Evidence/` whole, two tiers, verified (`custody-sessions-evidence-20261101.md`).
 5. 22:57: `Evidence/` moved whole to `archives/legacy/Evidence/`, 489 files, copy and sha256 verify then unlink; nothing written under `logs/`; the final check before the unlinks: 0 files written into `Evidence/` after 22:43:29, and the two identity sources byte-equal to their `ops/etc` copies.
 
@@ -72,27 +72,27 @@ Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shanno
 - `codex-compact-context-pressure-george2-active-shrink-20260703-target14000-context-summary.txt` | `6c6c5836db42db6b5254c563d1c60c504e2d3070c633e4ab9c269e4eb6465838` | 0o664
 - `codex-compact-context-pressure-george2-active-shrink-20260703-target14000-context.csv` | `d23aac4782bac6ca97b2933304d0ab06821ca57b7ba82eb77dc3a26dadb3c643` | 0o664
 - `codex-compact-context-pressure-george2-active-shrink-20260703-target14000-context.json` | `1f60940e9ae26c12bb2b0fb9de59fa26ddce8fffbbe0f195423c5ac9ee9ee653` | 0o664
-- `codex-compact-context-pressure-round10-[session prefix 3]inal-target15000-summary.txt` | `a8cc52a3759b918d8ba9d443b28da74690ef1776a5562b71be639314b3cfbdc0` | 0o664
-- `codex-compact-context-pressure-round10-[session prefix 3]inal-target15000.csv` | `e67c72b63d00e2092cb41dba2a802e44b788ff89de3b4f52933eb2e4f3005096` | 0o664
-- `codex-compact-context-pressure-round10-[session prefix 3]inal-target15000.json` | `71691edf3bba5fb1304d2cd5b6ce4cb5fde87580818c4123485485991019a53a` | 0o664
-- `codex-compact-context-pressure-round10-[session prefix 3]inal-target16000-summary.txt` | `832e6922259608d868e975edd596c4bf32c86633f6c7caa5311fec4cc7a9b16d` | 0o664
-- `codex-compact-context-pressure-round10-[session prefix 3]inal-target16000.csv` | `579e1425c29dd54d512f87a8eb35c359e1c83cae0a88da4832cf4ccf9df9d55c` | 0o664
-- `codex-compact-context-pressure-round10-[session prefix 3]inal-target16000.json` | `59150a816b6f979c52665d4bd9caa820b0b1e522fc2762fb75892668f9c298ff` | 0o664
+- `codex-compact-context-pressure-round10-20260703-final-target15000-summary.txt` | `a8cc52a3759b918d8ba9d443b28da74690ef1776a5562b71be639314b3cfbdc0` | 0o664
+- `codex-compact-context-pressure-round10-20260703-final-target15000.csv` | `e67c72b63d00e2092cb41dba2a802e44b788ff89de3b4f52933eb2e4f3005096` | 0o664
+- `codex-compact-context-pressure-round10-20260703-final-target15000.json` | `71691edf3bba5fb1304d2cd5b6ce4cb5fde87580818c4123485485991019a53a` | 0o664
+- `codex-compact-context-pressure-round10-20260703-final-target16000-summary.txt` | `832e6922259608d868e975edd596c4bf32c86633f6c7caa5311fec4cc7a9b16d` | 0o664
+- `codex-compact-context-pressure-round10-20260703-final-target16000.csv` | `579e1425c29dd54d512f87a8eb35c359e1c83cae0a88da4832cf4ccf9df9d55c` | 0o664
+- `codex-compact-context-pressure-round10-20260703-final-target16000.json` | `59150a816b6f979c52665d4bd9caa820b0b1e522fc2762fb75892668f9c298ff` | 0o664
 - `codex-compact-context-pressure-round10-20260703-images-summary.txt` | `bb076663ba5cabb9ee0e8bf6d088169092312e6f71a88f1243c7ea475875a87c` | 0o664
 - `codex-compact-context-pressure-round10-20260703-images.csv` | `d09cb35f6d0cf9b69954f52dc0a3ed015826c63154012dee50e1891ee147286b` | 0o664
 - `codex-compact-context-pressure-round10-20260703-images.json` | `fa8e51ed3a961eedb6c2e76775a71621d7b382db2d7af83fb614eddb825e96c8` | 0o664
-- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ompact32-context-summary.txt` | `699bb590046d3e321dbc519b59410b0b73b412d7470aec2306ec49be14360389` | 0o664
-- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ompact32-context.csv` | `69869d8266a66528d459266cf27fcc3ffc67ee3985feceb68b182f362686239e` | 0o664
-- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ompact32-context.json` | `0f1de9d18752dfad4d5a366ae84a2db2390779e3ff1eeccced2be681a43ae6c1` | 0o664
-- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ontext-protect1000-summary.txt` | `83d68ba2b52b644b5de798efaa957afe5c898b9271de5d78cb364086c97c6d83` | 0o664
-- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ontext-protect1000.csv` | `e50c1c2b7f54ba2d7dc7fb61895b049e3e7630851b3596e11a3c490abad3afc9` | 0o664
-- `codex-compact-context-pressure-round11-april26-big-brother-[session prefix 3]ontext-protect1000.json` | `d9e07986c7f975c2494c63d0be5ee4c5f1509adb9a776f56e2296df845e780ba` | 0o664
-- `codex-compacted-history-condensation-desktop-continuity-part-ii-[session prefix 3]ompact-history-groups.csv` | `1682caffa4028019037119bc91dfb6669b03fcbc2194fc1bcc7575cea7a7d4c7` | 0o664
-- `codex-compacted-history-condensation-desktop-continuity-part-ii-[session prefix 3]ompact-history-summary.txt` | `eb32d1c0b039b667f03f050eaba63d43e07707baf5df23cde6e5042a466c864a` | 0o664
-- `codex-compacted-history-condensation-desktop-continuity-part-ii-[session prefix 3]ompact-history.json` | `18869f0a429883f785ccbf0fad8685d73e171b89522c50b976edb9eba3dae2fe` | 0o664
-- `codex-compacted-history-condensation-round11-april26-big-brother-[session prefix 3]ompact32-groups.csv` | `383bc6caecd4f12598abcfc70d47b4e8145535918c69668647764cd44f06db01` | 0o664
-- `codex-compacted-history-condensation-round11-april26-big-brother-[session prefix 3]ompact32-summary.txt` | `c46b0b53ac6f5c40049a57aa09bb4c0c95a2576458ccf281c38e71c380700c60` | 0o664
-- `codex-compacted-history-condensation-round11-april26-big-brother-[session prefix 3]ompact32.json` | `e4824b8fbb27292e45ab253542fdba9b31b67216b7e8c8451887a6a5f2f13953` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-20260703-compact32-context-summary.txt` | `699bb590046d3e321dbc519b59410b0b73b412d7470aec2306ec49be14360389` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-20260703-compact32-context.csv` | `69869d8266a66528d459266cf27fcc3ffc67ee3985feceb68b182f362686239e` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-20260703-compact32-context.json` | `0f1de9d18752dfad4d5a366ae84a2db2390779e3ff1eeccced2be681a43ae6c1` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-20260703-context-protect1000-summary.txt` | `83d68ba2b52b644b5de798efaa957afe5c898b9271de5d78cb364086c97c6d83` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-20260703-context-protect1000.csv` | `e50c1c2b7f54ba2d7dc7fb61895b049e3e7630851b3596e11a3c490abad3afc9` | 0o664
+- `codex-compact-context-pressure-round11-april26-big-brother-20260703-context-protect1000.json` | `d9e07986c7f975c2494c63d0be5ee4c5f1509adb9a776f56e2296df845e780ba` | 0o664
+- `codex-compacted-history-condensation-desktop-continuity-part-ii-20260703-compact-history-groups.csv` | `1682caffa4028019037119bc91dfb6669b03fcbc2194fc1bcc7575cea7a7d4c7` | 0o664
+- `codex-compacted-history-condensation-desktop-continuity-part-ii-20260703-compact-history-summary.txt` | `eb32d1c0b039b667f03f050eaba63d43e07707baf5df23cde6e5042a466c864a` | 0o664
+- `codex-compacted-history-condensation-desktop-continuity-part-ii-20260703-compact-history.json` | `18869f0a429883f785ccbf0fad8685d73e171b89522c50b976edb9eba3dae2fe` | 0o664
+- `codex-compacted-history-condensation-round11-april26-big-brother-20260703-compact32-groups.csv` | `383bc6caecd4f12598abcfc70d47b4e8145535918c69668647764cd44f06db01` | 0o664
+- `codex-compacted-history-condensation-round11-april26-big-brother-20260703-compact32-summary.txt` | `c46b0b53ac6f5c40049a57aa09bb4c0c95a2576458ccf281c38e71c380700c60` | 0o664
+- `codex-compacted-history-condensation-round11-april26-big-brother-20260703-compact32.json` | `e4824b8fbb27292e45ab253542fdba9b31b67216b7e8c8451887a6a5f2f13953` | 0o664
 - `codex-log-compaction-events-20260704.md` | `c25cd3d011a65839c1c547271584b63466bf876a21d9511e586dad85969c9cbe` | 0o664
 - `codex-session-archive-20260609-102051-summary.txt` | `81dda8aa9eeac00e1413656d777d71ec6dcf2c388a16f8f79ad4118d747b6e38` | 0o664
 - `codex-session-archive-20260609-102051.csv` | `7b9b720d47021f4f3e94f40d2a36dec6b0455ef9ba7530855d3854760c4f6ca2` | 0o664
@@ -274,9 +274,9 @@ Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shanno
 - `codex-session-image-externalization-george2-active-shrink-20260703-images-summary.txt` | `c9b744cb639557c6c053b6762fdc995f37c1083d84350bdba39713d82b66b886` | 0o664
 - `codex-session-image-externalization-george2-active-shrink-20260703-images.csv` | `d01d81c1feb1e74f7d2826d278b48e5da89df45c3d07ef9e98859911b2394e2d` | 0o664
 - `codex-session-image-externalization-george2-active-shrink-20260703-images.json` | `8f65e2e00897fd6a5a9ae0e41f51eeb4cb5731a8b6f2a601b0fba3bc8b1e3fff` | 0o664
-- `codex-session-image-externalization-round10-[session prefix 3]mergency-hygiene-summary.txt` | `4383126b3c9a17d9c06f6f27f4766eaacf9a6d0aa43e7d7eead53acd68c70876` | 0o664
-- `codex-session-image-externalization-round10-[session prefix 3]mergency-hygiene.csv` | `60d4621e840954d5321386ab182aea5a526d6eda104e1fd04e748424fdb8cb6b` | 0o664
-- `codex-session-image-externalization-round10-[session prefix 3]mergency-hygiene.json` | `55fbcbf886075c657740d56e6031147be6821654963095eecb794301704fffa5` | 0o664
+- `codex-session-image-externalization-round10-20260703-emergency-hygiene-summary.txt` | `4383126b3c9a17d9c06f6f27f4766eaacf9a6d0aa43e7d7eead53acd68c70876` | 0o664
+- `codex-session-image-externalization-round10-20260703-emergency-hygiene.csv` | `60d4621e840954d5321386ab182aea5a526d6eda104e1fd04e748424fdb8cb6b` | 0o664
+- `codex-session-image-externalization-round10-20260703-emergency-hygiene.json` | `55fbcbf886075c657740d56e6031147be6821654963095eecb794301704fffa5` | 0o664
 - `codex-session-image-externalization-round11-april26-big-brother-20260703-images-summary.txt` | `6f87651c6701315db260259d9f82572ba943c1fc8ce3657bd8e7e56ec323dbaf` | 0o664
 - `codex-session-image-externalization-round11-april26-big-brother-20260703-images.csv` | `66777399258a4d6f7ca236c3fcb4933dd13eec06d43fa8dcccff8b309b4c92e2` | 0o664
 - `codex-session-image-externalization-round11-april26-big-brother-20260703-images.json` | `1193fde0a58d23dd7f9ead10eac8b03c57a8b2c17e7c72092aa8fbedb9b05bdd` | 0o664
@@ -320,18 +320,18 @@ Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shanno
 - `codex-session-loader-limit-validation-george2-active-shrink-20260703-target14000-loader-summary.txt` | `f08d99d8084b9b11fe222fe47b88d577f33e0383ee51b972f4071adc8f61f666` | 0o664
 - `codex-session-loader-limit-validation-george2-active-shrink-20260703-target14000-loader.csv` | `4c79273c5b607c61625536d5bc5692ac7d14797fca116f0194df2cb9094afa09` | 0o664
 - `codex-session-loader-limit-validation-george2-active-shrink-20260703-target14000-loader.json` | `e3101672f048b4e1a9904661b633aaef3c81e4f478e1df350bd5249aad35398b` | 0o664
-- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target15000-summary.txt` | `e326c2664d40ff62dc7424b5f7be641caa690c770d8076588a43ebeb196178c9` | 0o664
-- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target15000.csv` | `c84b357667374e6901c1b3d1d4a4a9d56bd41e52463fd9174cd8f1c2935785b3` | 0o664
-- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target15000.json` | `e62b49d54eb23cefd97f7a1b5952010fc89f2a38e4d87677c1d17d7cc8634200` | 0o664
-- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target16000-summary.txt` | `8422ac4350d579eef313ab03bdc84d5d257c9ddfe0e3c2aa5071c15227f4c01a` | 0o664
-- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target16000.csv` | `8ef5c98ca8be1316fb7c675a6d9945166b758101521b3ff9df73cc308bf2a2ca` | 0o664
-- `codex-session-loader-limit-validation-round10-[session prefix 3]inal-target16000.json` | `7aac22410d6aa8fd28dc7cb03bc4f7f412647a37cd64214bf50a1db06e6717bf` | 0o664
+- `codex-session-loader-limit-validation-round10-20260703-final-target15000-summary.txt` | `e326c2664d40ff62dc7424b5f7be641caa690c770d8076588a43ebeb196178c9` | 0o664
+- `codex-session-loader-limit-validation-round10-20260703-final-target15000.csv` | `c84b357667374e6901c1b3d1d4a4a9d56bd41e52463fd9174cd8f1c2935785b3` | 0o664
+- `codex-session-loader-limit-validation-round10-20260703-final-target15000.json` | `e62b49d54eb23cefd97f7a1b5952010fc89f2a38e4d87677c1d17d7cc8634200` | 0o664
+- `codex-session-loader-limit-validation-round10-20260703-final-target16000-summary.txt` | `8422ac4350d579eef313ab03bdc84d5d257c9ddfe0e3c2aa5071c15227f4c01a` | 0o664
+- `codex-session-loader-limit-validation-round10-20260703-final-target16000.csv` | `8ef5c98ca8be1316fb7c675a6d9945166b758101521b3ff9df73cc308bf2a2ca` | 0o664
+- `codex-session-loader-limit-validation-round10-20260703-final-target16000.json` | `7aac22410d6aa8fd28dc7cb03bc4f7f412647a37cd64214bf50a1db06e6717bf` | 0o664
 - `codex-session-loader-limit-validation-round10-20260703-images-summary.txt` | `4f5bd1dc5acbf5678089bd5433770eeadc20d4684a4e46796d68721667c0bf11` | 0o664
 - `codex-session-loader-limit-validation-round10-20260703-images.csv` | `3118bec0c3e7fc6c4f316b3edd1a44fa42eff71ce4fbafc45a24d4111c5bd0ff` | 0o664
 - `codex-session-loader-limit-validation-round10-20260703-images.json` | `1195edf86f25658a9d8b9f3fed5622c1a66e9004f465f508e0a46c48c88a5b72` | 0o664
-- `codex-session-loader-limit-validation-round11-april26-big-brother-[session prefix 3]ompact32-loader-summary.txt` | `d0e7f1a13aa9d396357efbd6e2a91a24c55fc12a79008343bebd8d8fc69087fa` | 0o664
-- `codex-session-loader-limit-validation-round11-april26-big-brother-[session prefix 3]ompact32-loader.csv` | `9e5199d4403b4a5490cce518d8304d68a7cebf6039cbd23d075dd703f2fa0b55` | 0o664
-- `codex-session-loader-limit-validation-round11-april26-big-brother-[session prefix 3]ompact32-loader.json` | `779da4f52642acfb5059a53d4d8dc4694a273b055d0f64a6056e43ebc57bdf19` | 0o664
+- `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-compact32-loader-summary.txt` | `d0e7f1a13aa9d396357efbd6e2a91a24c55fc12a79008343bebd8d8fc69087fa` | 0o664
+- `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-compact32-loader.csv` | `9e5199d4403b4a5490cce518d8304d68a7cebf6039cbd23d075dd703f2fa0b55` | 0o664
+- `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-compact32-loader.json` | `779da4f52642acfb5059a53d4d8dc4694a273b055d0f64a6056e43ebc57bdf19` | 0o664
 - `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-loader-protect1000-summary.txt` | `c3c7b9f879c3e4fc139566c414802b5cccd0c9cab04f83d2ed13389428b8910f` | 0o664
 - `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-loader-protect1000.csv` | `0188ffbddc9e22db8c588977a24567c1855605f13b238e3eb5a89ea5d8c1d32a` | 0o664
 - `codex-session-loader-limit-validation-round11-april26-big-brother-20260703-loader-protect1000.json` | `82dcf41319377aa2f9fc3f94c3187a12003768cc9ba655e243418380c71aebe1` | 0o664
@@ -447,7 +447,7 @@ Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shanno
 - `codex-session-sandbox-baseline-20260623.md` | `ebba3390cae8a35476d2807d9ad6cf712f37c9b319e14f70e10cee7eb77ab87c` | 0o664
 - `codex-session-size-watch-current.json` | `2d44bf1f6abd3a1ff89bac3227f1f27f5712e7734bd2a5e92ebb89b963c756dd` | 0o664
 - `codex-session-size-watch-summary.txt` | `64cf9fb4d2f1d30dab12e40f3af51357d325ca1f23345a1b7c319a5f173e01e7` | 0o664
-- `codex-session-word-density-sample-[session prefix 4]iles.csv` | `7dce8b484c9a4234a5d2f067490dc6e028427db951ef28b5c23d99b00f60b361` | 0o664
+- `codex-session-word-density-sample-20260609-105349-files.csv` | `7dce8b484c9a4234a5d2f067490dc6e028427db951ef28b5c23d99b00f60b361` | 0o664
 - `codex-session-word-density-sample-20260609-105349-paths.csv` | `b55191b100e62ed348d3a06fd2c305073573c89ad22f7cb888e9a5e268a0804a` | 0o664
 - `codex-session-word-density-sample-20260609-105349-safety-terms.csv` | `4d843a679c5ddbc76a5786be3b2973ee819b4a7b0fd48a754530904a392aa624` | 0o664
 - `codex-session-word-density-sample-20260609-105349-summary.txt` | `6e7ca1ce6363399b2991afe070335f8d67e57e0a51131e47ded837e88790996a` | 0o664
@@ -493,12 +493,12 @@ Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shanno
 - `codex-tool-transcript-condensation-george2-active-shrink-20260703-target14000-groups.csv` | `b85b8cc7f9d4758cbdb06c33d3ebdf145a7238311e87171f078cee6bd5740c15` | 0o664
 - `codex-tool-transcript-condensation-george2-active-shrink-20260703-target14000-summary.txt` | `157c4e9e326856e50799e05a9596054e91f582af7388b444797af5881415c43c` | 0o664
 - `codex-tool-transcript-condensation-george2-active-shrink-20260703-target14000.json` | `4851979fc6880bac087ccc3dc310008e378fe00045d69c7cb0ef603cadf8e108` | 0o664
-- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target15000-groups.csv` | `bb513307810f63fc032fc4860dda39b90363fc83eff2764701dfaee10d03f635` | 0o664
-- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target15000-summary.txt` | `1f387ad7474a0a8c37bf56775c4140486fa990115ef67a1bf835a24548f41823` | 0o664
-- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target15000.json` | `ed08786f37ac9b16dd90445c71be3c0df8ddd17e6e144014749476972795403b` | 0o664
-- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target16000-groups.csv` | `b41f1c8c12fcbcd3b002d84c8ba2e0e2043356a0a6352816c112cc4c3ea3e76e` | 0o664
-- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target16000-summary.txt` | `27076bc848b934b9f72bc5fe904ed8c971b6eafbed00ccd2bea841eabce63a34` | 0o664
-- `codex-tool-transcript-condensation-round10-[session prefix 3]mergency-hygiene-target16000.json` | `359c1b772c786ea77b50542b8427e13460bc06a643b3a686320d5928dceca8e7` | 0o664
+- `codex-tool-transcript-condensation-round10-20260703-emergency-hygiene-target15000-groups.csv` | `bb513307810f63fc032fc4860dda39b90363fc83eff2764701dfaee10d03f635` | 0o664
+- `codex-tool-transcript-condensation-round10-20260703-emergency-hygiene-target15000-summary.txt` | `1f387ad7474a0a8c37bf56775c4140486fa990115ef67a1bf835a24548f41823` | 0o664
+- `codex-tool-transcript-condensation-round10-20260703-emergency-hygiene-target15000.json` | `ed08786f37ac9b16dd90445c71be3c0df8ddd17e6e144014749476972795403b` | 0o664
+- `codex-tool-transcript-condensation-round10-20260703-emergency-hygiene-target16000-groups.csv` | `b41f1c8c12fcbcd3b002d84c8ba2e0e2043356a0a6352816c112cc4c3ea3e76e` | 0o664
+- `codex-tool-transcript-condensation-round10-20260703-emergency-hygiene-target16000-summary.txt` | `27076bc848b934b9f72bc5fe904ed8c971b6eafbed00ccd2bea841eabce63a34` | 0o664
+- `codex-tool-transcript-condensation-round10-20260703-emergency-hygiene-target16000.json` | `359c1b772c786ea77b50542b8427e13460bc06a643b3a686320d5928dceca8e7` | 0o664
 - `codex-tool-transcript-condensation-round11-april26-big-brother-20260703-target7000-protect1000-groups.csv` | `0c9aba480b78926fb6a325fc0af7b68ce144febeabeb6b1b2126ffd08844e7ce` | 0o664
 - `codex-tool-transcript-condensation-round11-april26-big-brother-20260703-target7000-protect1000-summary.txt` | `3ce8021f9e8787fe5c3f5c3241d21751383260ebe8658b07bd9a5890b66eef57` | 0o664
 - `codex-tool-transcript-condensation-round11-april26-big-brother-20260703-target7000-protect1000.json` | `19d7295babc6b86c627d38480f64dbfa4ff5f91023a43c535c84424938b75526` | 0o664
@@ -521,7 +521,7 @@ Written 2026-11-01 22:58:29 EST by the Session Continuity Manager (Claude Shanno
 
 ## Correction appended 2026-11-01 23:46:22 EST, after the Independent Reviewer's section 162 (PR #14, 1 condition)
 
-The list of 11 untracked files above is wrong in composition: the two identity sources were Control-tracked and released (their disposition stands: archived, byte-equal to the ops/etc copies), and two July size-watch outputs were untracked and omitted. A first version of this correction, committed at 23:3x and replaced by this one, listed all 489 files as untracked because its measurement read the merge commit without its parent; the writer's deviation, 1. The 11 untracked files, measured as the archive's 489 names minus the 478 that Control PR #123 released (`git diff --name-only --diff-filter=D [session prefix 2]^1 [session prefix 2]`), are:
+The list of 11 untracked files above is wrong in composition: the two identity sources were Control-tracked and released (their disposition stands: archived, byte-equal to the ops/etc copies), and two July size-watch outputs were untracked and omitted. A first version of this correction, committed at 23:3x and replaced by this one, listed all 489 files as untracked because its measurement read the merge commit without its parent; the writer's deviation, 1. The 11 untracked files, measured as the archive's 489 names minus the 478 that Control PR #123 released (`git diff --name-only --diff-filter=D 312413b7^1 312413b7`), are:
 
 - `.clinic-claude-raw.txt`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived
 - `.clinic-codex-raw.txt`: rounds output, superseded by the fresher same-name file under logs/ (not overwritten); archived

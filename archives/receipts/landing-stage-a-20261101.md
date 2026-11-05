@@ -1,11 +1,11 @@
-<!-- redact: public copy; source sha256 96754c78e9db93e1c35d3c307ce9e3bb4e1e0861cfa391c2d1bad04158f43374; rules 8; mode history; words 1; sessions 0 whole, 1 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 96754c78e9db93e1c35d3c307ce9e3bb4e1e0861cfa391c2d1bad04158f43374; rules 8; mode record; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 1 -->
 # Landing, stage A: the code and the documents (2026-11-01)
 
 Written 2026-11-01 11:57:01 EST by the Session Continuity Manager (Claude Shannon), writer of the landing branch `agent/landing-a-20261101`. Plan: `storage/landing-plan.md` (working copy; its text is quoted in the pull request). Direction: Kevin, 2026-11-01 02:2x EST, "[words sha256=cf0305b3aee64c76a193153db4e3b6f037929985ee590d484ea6b17e12a44881]".
 
 **Source:** the port `[host path 1]` at the hashes of Claudine section 14 and Joe's pinned manifest (2026-11-01 02:03 to 02:13 EST), after Claudio sections 134 to 137.
 
-**Lanes replaced whole from the port:** `ops/bin`, `ops/lib`, `ops/src`, `tools`, `docs`. **Single files from the port:** `logs/.gitkeep`, `ops/etc/.gitkeep`; the five root pointers were copied and then restored (see Deferred). **Untouched:** `CLAUDE.md` (the live door, PR #1), `PoT.md` (`[session prefix 1]`, RoR-12), `RoR.md`, `NOW.md`, `Scripts/`, `Evidence/`, `Receipts/`, `Config/`, `Resident-Center/`, `storage/`, every body and mind. **Not landed on purpose:** `ops/etc/*.json` (stage B), `archives/receipts/` and `archives/legacy/` (stage D), `.github/workflows/` (the connection cannot push workflows).
+**Lanes replaced whole from the port:** `ops/bin`, `ops/lib`, `ops/src`, `tools`, `docs`. **Single files from the port:** `logs/.gitkeep`, `ops/etc/.gitkeep`; the five root pointers were copied and then restored (see Deferred). **Untouched:** `CLAUDE.md` (the live door, PR #1), `PoT.md` (`ef2e16c0`, RoR-12), `RoR.md`, `NOW.md`, `Scripts/`, `Evidence/`, `Receipts/`, `Config/`, `Resident-Center/`, `storage/`, every body and mind. **Not landed on purpose:** `ops/etc/*.json` (stage B), `archives/receipts/` and `archives/legacy/` (stage D), `.github/workflows/` (the connection cannot push workflows).
 
 **Counts (corrected 2026-11-01 12:14:17 EST after Claudine section 19):** rows copied from the port 163; in the commit 152; on disk only 5; Control-tracked files restored to their recorded bytes and deferred to stage D 6; live files removed from the replaced lanes 41, each listed below with its pre-removal sha256 and disposition; unlinked outside those lanes 0; services, timers, hooks, settings, registry changed 0.
 

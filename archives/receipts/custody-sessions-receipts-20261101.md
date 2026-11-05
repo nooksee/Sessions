@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 0c0db3498cd8d707e94b16bc50b72daa87617f6de73aed55589eb7c078768a44; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
+<!-- redact: public copy; source sha256 0c0db3498cd8d707e94b16bc50b72daa87617f6de73aed55589eb7c078768a44; rules 8; mode record; words 0; sessions 0 whole, 0 truncated; host paths 2; decisions 0 -->
 # Custody receipt: sessions-receipts-20261101
 
 - **Date:** 2026-11-01 14:43:42 EST

@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 3d8168a2c666195d0ec36408470f128d2da8d8dde95e1e5040c0f6d7426c3c15; rules 8; mode history; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
+<!-- redact: public copy; source sha256 3d8168a2c666195d0ec36408470f128d2da8d8dde95e1e5040c0f6d7426c3c15; rules 8; mode record; words 0; sessions 0 whole, 0 truncated; host paths 1; decisions 0 -->
 # Sessions repository bootstrap
 
 Owner: Desktop Continuity Manager (George Friend). Written 2026-10-31T05:45:04.554Z. Convention: STELA (`Projects/STELA`).
