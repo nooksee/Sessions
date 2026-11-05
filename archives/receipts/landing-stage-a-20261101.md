@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 96754c78e9db93e1c35d3c307ce9e3bb4e1e0861cfa391c2d1bad04158f43374; rules 8; mode record; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 1 -->
+<!-- redact: public copy; source sha256 bfd42dcc2576533801b9de34c691dda7b0a90cc1e7f368ec7bbbb816de172967; rules 8; mode record; words 1; sessions 0 whole, 0 truncated; host paths 1; decisions 1 -->
 # Landing, stage A: the code and the documents (2026-11-01)
 
 Written 2026-11-01 11:57:01 EST by the Session Continuity Manager (Claude Shannon), writer of the landing branch `agent/landing-a-20261101`. Plan: `storage/landing-plan.md` (working copy; its text is quoted in the pull request). Direction: Kevin, 2026-11-01 02:2x EST, "[words sha256=cf0305b3aee64c76a193153db4e3b6f037929985ee590d484ea6b17e12a44881]".

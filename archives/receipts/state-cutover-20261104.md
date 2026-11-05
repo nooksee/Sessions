@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 ecf1bd97c498f33eb036ab36a7aeb463fc343b27d046bda7d16074d9ec6f8825; rules 7; words 1; sessions 0 whole, 0 truncated; host paths 2; decisions 4 -->
+<!-- redact: public copy; source sha256 3be25976da4f9ee645db3bc4f057dea969e9f4896453fab7d0799d28297b9fdf; rules 8; mode record; words 1; sessions 0 whole, 0 truncated; host paths 2; decisions 4 -->
 # State cutover: the gauge ledger and the mind lock move to logs/ (2026-11-04)
 
 Written 2026-11-04 16:59 EST by the Session Continuity Manager (Claude Shannon), registry key session-doctor, who performed the act. Method: George Friend's block 10 preparation packet (GitHub/storage/handoff/george.md, 13:33 EST), followed in order; George performed none of it, at the operator's direction that nothing be relayed. Reviews before the act: Claudio section 182 PASS on the source (PR #33); George's exact PASS on the state source e564c359. Plan: storage/active/sessions-first-wins-plan-20261103.md, remaining finish step 2.

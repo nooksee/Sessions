@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 a9065868a871f1a671239ebe7a5a6a8ea710226c2be6c699e356bccb4dd7613c; rules 8; mode record; words 0; sessions 0 whole, 0 truncated; host paths 8; decisions 66 -->
+<!-- redact: public copy; source sha256 762d6660b59276cb58e4388505c47d7cdfa5b94b74f2b6fdd999b69a27fdd87c; rules 8; mode record; words 0; sessions 0 whole, 0 truncated; host paths 8; decisions 66 -->
 # The first render: the tracked receipts become the redact tool's public copies (2026-11-04)
 
 Written 2026-11-04 19:32:18 EST by the Session Continuity Manager (Claude Shannon), registry key session-doctor, under RoR-15 (the public gate, route B) and the plan's revision 8, step 3, after the Independent Reviewer's PASS on the redact tool at rules 8 and 9 (PR #37, claudio.md section 192). Each record's source stays in the private words lane; the tracked file is the tool's derived copy, carrying its header. Words become the digest the redact specification defines; host paths become placeholders; every other undecided span takes the decision listed here by the tool's id and class. Nothing in any source changed.
