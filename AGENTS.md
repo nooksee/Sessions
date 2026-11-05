@@ -12,7 +12,7 @@ The project root is:
 ```
 
 This project owns session health, inventory, succession, handoffs, evidence,
-receipts, reversible retirement, and continuity tooling. It remains governed by Control policy and now has its own private Git
+receipts, reversible retirement, and continuity tooling. It remains governed by Control policy and has its own Git repository, nooksee/Sessions, public since 2026-11-04 under the public gate; it keeps its own private Git
 repository at this same path.
 
 ## Ownership
