@@ -1,0 +1,234 @@
+#!/usr/bin/env -S python3 -I -B
+"""claude-resident: the launch wrapper for Claude residents, dry run only (W5).
+
+Resolves the session a launch names (--resume or --session-id) to exactly
+one Claude row of the room's registry, and that row's key to its own
+notebook folder, <room>/ops/etc/notebooks/<key>/. Six branches: registered
+here (one match in this room: the notebook is attached), registered
+elsewhere (one match in another room: the launch passes through untouched),
+unregistered (no match), ambiguous (more than one match), new (no session
+named) and broken registry. The last four, a registered row whose notebook
+is unusable, and any error turn auto memory off for the run and attach no
+notebook. No branch blocks the launch.
+
+In this slice the wrapper runs only as
+
+    claude-resident --dry-run [--room DIR] [--registry FILE] -- <provider arguments>
+
+and prints, as JSON, the argv and the environment changes it would run
+with, then exits 0 without executing anything. The provider's path, the
+exec and the route that points the provider at the notebook are native
+proofs for the wiring, named in the spec, not asserted here. It never prints
+a registry value; a session identifier appears only inside the provider's
+own arguments, passed through unchanged. Standard library only.
+
+Spec: docs/ops/specs/scripts/claude-resident.md.
+"""
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import re
+import stat
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+HERE = Path(__file__).resolve()
+ROOM = HERE.parents[2]
+REGISTRY = Path("ops") / "etc" / "resident-identities.json"
+NOTEBOOKS = Path("ops") / "etc" / "notebooks"
+INDEX = "MEMORY.md"
+PROVIDER = "claude"
+DISABLE = "CLAUDE_CODE_DISABLE_AUTO_MEMORY"
+REGISTRY_LIMIT = 1_048_576
+KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+FIELDS = ("key", "provider", "session_id", "room")
+UNPROVEN = [
+    "the provider executable the real run would exec, and that the exec passes every argument, the standard "
+    "streams and the exit status through unchanged",
+    "the route that points the provider at the attached notebook (a --settings file naming the folder, an "
+    "environment variable, or another provider-documented route), and that the provider then loads that "
+    "folder's MEMORY.md and writes its memory there",
+    f"that {DISABLE}=1 turns auto memory off for that run in the installed provider",
+    "that every launch path of the plugin (a new chat, a resume, a continue, a fork) passes its session as "
+    "--resume or --session-id as measured",
+    "the modes the provider gives files it writes in the notebook (F2: unknown)",
+]
+USAGE = ("usage: claude-resident --dry-run [--room DIR] [--registry FILE] -- <provider arguments>\n"
+         "This slice accepts only --dry-run and executes nothing.\n")
+
+
+class Broken(Exception):
+    """The registry cannot be trusted; the reason names no registry value."""
+
+
+def load_mind():
+    """The room's mind tool, for its private-path, marker and Git rules."""
+    path = HERE.parents[1] / "lib" / "scripts" / "mind.py"
+    spec = importlib.util.spec_from_file_location("claude_resident_mind", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def parse(argv: list[str]):
+    """(room, registry, provider arguments), or None for a usage refusal."""
+    if not argv or argv[0] != "--dry-run":
+        return None
+    room, registry, i = ROOM, None, 1
+    while i < len(argv) and argv[i] != "--":
+        if argv[i] in ("--room", "--registry") and i + 1 < len(argv) and argv[i + 1] != "--":
+            value = Path(os.path.abspath(argv[i + 1]))
+            room, registry = (value, registry) if argv[i] == "--room" else (room, value)
+            i += 2
+            continue
+        return None
+    if i >= len(argv):
+        return None
+    return room, registry or room / REGISTRY, argv[i + 1:]
+
+
+def named_sessions(args: list[str]) -> tuple[list[str], str]:
+    """The sessions the provider's arguments name, and, when they name none, why the run counts as new."""
+    names, why = [], "no --resume or --session-id names a session"
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--":
+            break
+        if arg.startswith("--resume=") or arg.startswith("--session-id="):
+            names.append(arg.split("=", 1)[1])
+        elif arg in ("--resume", "-r", "--session-id"):
+            value = args[i + 1] if i + 1 < len(args) else ""
+            if value and not value.startswith("-"):
+                names.append(value)
+                i += 1
+            else:
+                why = f"{arg} names no session"
+        elif arg in ("-c", "--continue"):
+            why = f"{arg} names no session"
+        i += 1
+    if "--fork-session" in args[:i]:
+        return [], "--fork-session gives the run a new session"
+    return [n for n in names if n], why
+
+
+def read_rows(path: Path) -> list[dict]:
+    """The registry's rows, or Broken. Read only, without following a link, at mode 0600."""
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        raise Broken("the registry is absent") from None
+    except OSError:
+        raise Broken("the registry cannot be inspected") from None
+    if not stat.S_ISREG(st.st_mode):
+        raise Broken("the registry is not a regular file")
+    if st.st_uid != os.geteuid():
+        raise Broken("the registry is not owned by this user")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        raise Broken(f"the registry is mode {stat.S_IMODE(st.st_mode):04o}, not 0600")
+    if st.st_size > REGISTRY_LIMIT:
+        raise Broken("the registry is larger than a registry can be")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            now = os.fstat(fd)
+            if (now.st_dev, now.st_ino) != (st.st_dev, st.st_ino):
+                raise Broken("the registry changed while it was read")
+            data = os.read(fd, REGISTRY_LIMIT + 1)
+        finally:
+            os.close(fd)
+        identities = json.loads(data.decode("utf-8")).get("identities")
+    except Broken:
+        raise
+    except (OSError, UnicodeDecodeError, ValueError, AttributeError):
+        raise Broken("the registry is unreadable") from None
+    if not isinstance(identities, list):
+        raise Broken("the registry has no identities list")
+    for row in identities:
+        if not isinstance(row, dict) or not all(isinstance(row.get(f), str) and row.get(f) for f in FIELDS):
+            raise Broken("a registry row lacks a key, a provider, a session or a room")
+        if not KEY_RE.match(row["key"]):
+            raise Broken("a registry key is not a plain key")
+    keys = [row["key"] for row in identities]
+    if len(set(keys)) != len(keys):
+        raise Broken("a registry key appears in more than one row")
+    return identities
+
+
+def notebook_problems(mind, room: Path, key: str) -> list[str]:
+    """Why the key's folder cannot be attached, or nothing. Paths are given as tokens, never with the key."""
+    folder = room / NOTEBOOKS / key
+    problems = mind.private_path_problems(folder)
+    if not problems:
+        problems = mind.git_exposed(folder, [folder / INDEX])
+    if not problems and (folder / INDEX).exists():
+        try:
+            text = (folder / INDEX).read_bytes().decode("utf-8")
+        except (OSError, UnicodeDecodeError):
+            problems = [f"{folder / INDEX} is unreadable"]
+        else:
+            for line in mind.nl_lines(text):
+                if line.startswith(mind.MARK):
+                    m = mind.BEGIN_RE.match(line) or mind.END_RE.match(line)
+                    if not m or m.group(1) != key:
+                        problems = [f"{folder / INDEX} holds a projection marker of another key, or a malformed one"]
+                        break
+    return [p.replace(str(folder), "<notebook>").replace(str(room), "<room>") for p in problems]
+
+
+def decide(room: Path, registry: Path, args: list[str]) -> dict:
+    """One branch for this launch, and what the run would be."""
+    try:
+        rows = read_rows(registry)
+    except Broken as exc:
+        return off("broken-registry", str(exc))
+    names, why = named_sessions(args)
+    if not names:
+        return off("new", why)
+    if len(set(names)) > 1:
+        return off("ambiguous", "the arguments name more than one session")
+    matches = [row for row in rows if row["provider"] == PROVIDER and row["session_id"] == names[0]]
+    if not matches:
+        return off("unregistered", "no Claude row of the registry names this session")
+    if len(matches) > 1:
+        return off("ambiguous", "more than one Claude row of the registry names this session")
+    row = matches[0]
+    if os.path.realpath(row["room"]) != os.path.realpath(room):
+        return {"branch": "registered-elsewhere", "notebook": "none", "env": {}, "notebook_route": None,
+                "auto_memory": "unchanged: the provider's default for that resident's own room",
+                "reason": "one Claude row names this session, registered to another room; this wrapper has no say "
+                          "over other rooms, so the launch passes through untouched"}
+    problems = notebook_problems(load_mind(), room, row["key"])
+    if problems:
+        return off("registered", "the key's notebook cannot be attached: " + "; ".join(problems))
+    return {"branch": "registered", "notebook": "attached", "auto_memory": "the attached notebook", "env": {},
+            "reason": "one Claude row names this session; its notebook folder is private, out of Git and its own",
+            "notebook_route": "unproven: the route is the wiring's native proof (see unproven)"}
+
+
+def off(branch: str, reason: str) -> dict:
+    return {"branch": branch, "notebook": "none", "auto_memory": "off", "env": {DISABLE: "1"}, "reason": reason,
+            "notebook_route": None}
+
+
+def main(argv=None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    parsed = parse(argv)
+    if parsed is None:
+        sys.stderr.write(USAGE)
+        return 2
+    room, registry, args = parsed
+    try:
+        result = decide(room, registry, args)
+    except Exception as exc:                 # any error: no notebook, auto memory off, the launch not blocked
+        result = off("error", f"the wrapper could not decide ({exc.__class__.__name__}); nothing is attached")
+    result.update(mode="dry-run", executed=False, argv=["<provider>"] + list(args), unproven=UNPROVEN)
+    sys.stdout.write(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
