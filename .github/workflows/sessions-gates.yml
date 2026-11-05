@@ -39,6 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          case "$BASE_SHA" in 0000000000000000000000000000000000000000) BASE_SHA=$(git rev-parse "$GITHUB_SHA~1");; esac
           python -I -B ops/lib/scripts/constitution.py \
             --root "$GITHUB_WORKSPACE" \
             --base "$BASE_SHA" \
