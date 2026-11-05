@@ -40,7 +40,7 @@ from pathlib import Path
 
 SESSIONS = Path(__file__).resolve().parents[3]
 SPEC = SESSIONS / "docs" / "ops" / "specs" / "scripts" / "redact.md"
-RULES = "7"                                   # bumped whenever a rule below changes; printed in the header
+RULES = "8"                                   # bumped whenever a rule below changes; printed in the header
 DECISIONS = ("words", "keep", "session")
 HEADER_START = "<!-- redact: public copy; "
 
@@ -69,7 +69,19 @@ WORDS_LABEL_RE = re.compile(r"^\s*(?:[-*]\s*)?\*\*([^*]+)\*\*")
 WORDS_LABEL_WORDS = re.compile(r"\b(?:words|direction)\b", re.I)
 ATTRIBUTION_RE = re.compile(r"\b(?:kevin|operator)\b", re.I)
 ATTRIBUTION_WINDOW = 80
-FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
+FENCE_RE = re.compile(r"^\s*(?:(?:[-*+]|\d+[.)])\s+)?(`{3,}|~{3,})(.*)$")   # also on a list item's own line (h15)
+# A blockquote that quotes the operator (the Independent Reviewer's section 172, C6): a heading, an HTML
+# heading, a setext heading or a bold label line that names the operator, the go, the words or a direction,
+# and the blockquote under it; or a blockquote line labelled as a go, the words or a direction.
+HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s|^\s*<h[1-6][\s>]", re.I)
+ATX_RE = re.compile(r"^\s{0,3}(#{1,6})\s")
+HTML_HEADING_RE = re.compile(r"^\s*<h([1-6])[\s>]", re.I)
+SETEXT_RE = re.compile(r"^\s{0,3}(?:=+|-+)\s*$")
+OPERATOR_NAMED_RE = re.compile(r"(?<![A-Za-z0-9])(?:kevin|operator|go|words|direction)(?![A-Za-z0-9])", re.I)
+BLOCKQUOTE_RE = re.compile(r"^\s*(?:(?:[-*+]|\d+[.)])\s+)?(?:>\s*)+")
+BLOCKQUOTE_LABEL_RE = re.compile(r"^\s*(?:(?:[-*+]|\d+[.)])\s+)?(?:>\s*)+(?:\*\*|__)?(?:the\s+)?(?:go|words|direction)"
+                                 r"(?![A-Za-z0-9])[^:\n]{0,40}:(?:\*\*|__)?\s*", re.I)
+LINE_SPLIT_RE = re.compile(r"(\r(?!\n)|\n)")         # a newline, or a carriage return alone (a CR-only record)
 
 
 class Refused(Exception):
@@ -101,9 +113,16 @@ def in_regions(pos: int, regions: list[tuple[int, int]]) -> bool:
     return any(a <= pos < b for a, b in regions)
 
 
-def quote_spans(line: str) -> list[dict]:
-    """Quoted spans outside code, each with its class: 'words', or None when unclassified."""
-    code = code_regions(line)
+def eol(line: str) -> int:
+    """The end of a line's text: a carriage return before the newline is in no span."""
+    return len(line) - 1 if line.endswith("\r") else len(line)
+
+
+def quote_spans(line: str, history: bool = False) -> list[dict]:
+    """Quoted spans outside code, each with its class: 'words', or None when unclassified. In history
+    mode every mark counts, code or not, and every quoted stretch is words: the stretch from the first mark
+    to the last when the marks are even in number, and the whole line's text when they are odd."""
+    code = [] if history else code_regions(line)
     marks = [i for i, c in enumerate(line) if c in QUOTE_MARKS and not in_regions(i, code)]
     label = WORDS_LABEL_RE.match(line)
     if label and WORDS_LABEL_WORDS.search(label.group(1)):
@@ -117,21 +136,121 @@ def quote_spans(line: str) -> list[dict]:
             a += 1
         why = ("a words field without quote marks" if len(marks) < 2 else
                "a malformed words field: expected one balanced outer quoted payload")
-        finding = span("quote", a, len(line), line[a:], None, why)
+        finding = span("quote", a, eol(line), line[a:eol(line)], "words" if history else None, why)
         finding["words_field"] = True
         return [finding]
     if not marks:
         return []
+    if history:
+        if len(marks) % 2 == 0:
+            a, b = marks[0] + 1, marks[-1]
+        else:
+            a, b = len(line) - len(line.lstrip()), eol(line)
+        return [span("quote", a, b, line[a:b], "words", "a quoted stretch, digested by history mode")]
     spans = []
     for i in range(0, len(marks) - len(marks) % 2, 2):
         a, b = marks[i] + 1, marks[i + 1]
         before = line[max(0, marks[i] - ATTRIBUTION_WINDOW):marks[i]]
         cls = "words" if ATTRIBUTION_RE.search(before) else None
-        spans.append(span("quote", a, b, line[a:b], cls, "attributed to the operator" if cls else "[words sha256=8746c4c78c1778ebb72b892888660bcbc0637e3a3368d7387c53b390fe287587]"))
+        spans.append(span("quote", a, b, line[a:b], cls, "attributed to the operator" if cls else "an unattributed quote"))
     if len(marks) % 2:
         a = marks[-1] + 1
-        spans.append(span("quote", a, len(line), line[a:], None, "an unbalanced quote"))
+        spans.append(span("quote", a, eol(line), line[a:eol(line)], None, "an unbalanced quote"))
     return spans
+
+
+def blockquote_words(lines: list[str]) -> tuple[dict[int, tuple[int, int, str]], set[int]]:
+    """The section 172 C6 rule: line index -> (start, end, why) of a words span. Where the quoted text
+    begins and ends with a quote mark, the span is the text between them, as a words field's is."""
+    out: dict[int, tuple[int, int, str]] = {}
+    heads: set[int] = set()                                    # heading or label lines whose blockquote was taken
+
+    def take(k: int, a: int, why: str) -> None:
+        line = lines[k]
+        b = eol(line)
+        while a < b and line[a] in " \t":
+            a += 1
+        body = line[a:b].rstrip()
+        if len(body) >= 2 and body[0] in QUOTE_MARKS and body[-1] in QUOTE_MARKS:
+            a, b = a + 1, a + len(body) - 1
+        if b > a:
+            out[k] = (a, b, why)
+
+    def level(j: int):
+        """The heading level of line j (ATX, HTML or setext), or None."""
+        cur = lines[j]
+        m = ATX_RE.match(cur)
+        if m:
+            return len(m.group(1))
+        m = HTML_HEADING_RE.match(cur)
+        if m:
+            return int(m.group(1))
+        if j + 1 < len(lines) and cur.strip() and not BLOCKQUOTE_RE.match(cur) and SETEXT_RE.match(lines[j + 1]):
+            return 1 if "=" in lines[j + 1] else 2
+        return None
+
+    why = "a blockquote under a heading or label that names the operator, the go, the words or a direction"
+    for k, line in enumerate(lines):
+        label = BLOCKQUOTE_LABEL_RE.match(line)
+        if label:
+            take(k, label.end(), "a blockquote labelled as the operator's go, words or direction")
+            continue
+        if BLOCKQUOTE_RE.match(line) or not OPERATOR_NAMED_RE.search(line):
+            continue
+        lv = level(k)
+        if lv is not None:                                     # a heading: every blockquote of its section
+            j, prev = k + 1, False
+            while j < len(lines):
+                lj = level(j)
+                if lj is not None and lj <= lv:
+                    break                                      # the next heading of the same or a higher level
+                cur = lines[j]
+                bq = BLOCKQUOTE_RE.match(cur)
+                if bq:
+                    heads.add(k)
+                    if j not in out:
+                        lab = BLOCKQUOTE_LABEL_RE.match(cur)
+                        take(j, lab.end() if lab else bq.end(), why)
+                    prev = True
+                elif prev and cur.strip() and lj is None:
+                    take(j, 0, why + " (a lazy continuation line)")
+                else:
+                    prev = False
+                j += 1
+            continue
+        if not (WORDS_LABEL_RE.match(line) or line.rstrip().endswith(":")):
+            continue                                           # a bold label, or a plain line ending in a colon
+        j, in_quote = k + 1, False
+        while j < len(lines):
+            cur = lines[j]
+            if not cur.strip():
+                n = j
+                while n < len(lines) and not lines[n].strip():
+                    n += 1
+                if n < len(lines) and BLOCKQUOTE_RE.match(lines[n]) and (in_quote or j == k + 1):
+                    j, in_quote = n, False                     # a blank line, then the next blockquote
+                    continue
+                break
+            bq = BLOCKQUOTE_RE.match(cur)
+            if bq:
+                heads.add(k)
+                if j not in out:
+                    lab = BLOCKQUOTE_LABEL_RE.match(cur)
+                    take(j, lab.end() if lab else bq.end(), why)
+                in_quote = True
+            elif in_quote and level(j) is None:
+                take(j, 0, why + " (a lazy continuation line)")
+            else:
+                break
+            j += 1
+    return out, heads
+
+
+def split_lines(text: str) -> tuple[list[str], list[str]]:
+    """Lines and the separator after each: a newline, or a carriage return alone; a CRLF line keeps its
+    carriage return at its end, as before."""
+    parts = LINE_SPLIT_RE.split(text)
+    return parts[0::2], parts[1::2] + [""]
 
 
 def free(a: int, b: int, taken: list[tuple[int, int]]) -> bool:
@@ -243,8 +362,12 @@ def survey(text: str) -> dict:
     return {"digests": digests, "identifiers": identifiers}
 
 
-def decide(s: dict, decisions: dict[str, str], used: set[str]) -> None:
-    s["id"] = span_id(s["kind"], s["text"])
+def decide(s: dict, decisions: dict[str, str], used: set[str], history: bool = False) -> None:
+    s["id"] = span_id(s["kind"], s.get("group", s["text"]))  # every line of one open block shares one id
+    if s["cls"] is None and history:                           # the redacting choice, without a decision
+        s["cls"] = "words" if s["kind"] == "quote" else ("session" if s["kind"] == "session" else "prefix")
+        s["why"] += "; redacted by history mode"
+        return
     if s["cls"] is None and s["id"] in decisions:
         d = decisions[s["id"]]
         if s.get("words_field") and d != "words":
@@ -280,23 +403,103 @@ def next_fence(line: str, current):
     return marker[0], len(marker)
 
 
-def classify(text: str, decisions: dict[str, str]) -> tuple[list[dict], set[str]]:
+def open_blocks(lines: list[str], quoted: dict) -> dict[int, tuple[int, int, str, str]]:
+    """Revision 3 (the Independent Reviewer's section 190, C2): line index -> (start, end, group, why) for
+    every line of a fenced block and every blockquote line (with its lazy continuation lines) that no rule
+    has classified. In record mode each such block fails closed for one decision that covers all its lines;
+    in history mode it is digested. A label's wording can always be probed again; an unclassified block cannot
+    leak, whatever introduces it."""
+    out: dict[int, tuple[int, int, str, str]] = {}
+    fence, group, groups, fenced = None, [], [], set()
+    for k, line in enumerate(lines):
+        following = next_fence(line, fence)
+        if fence is not None or following is not None:
+            fenced.add(k)                                       # fence lines and content lines alike
+        if fence is not None and following is not None:
+            group.append(k)                                     # a content line
+        if fence is not None and following is None:
+            groups.append(group)
+            group = []
+        fence = following
+    if group:
+        groups.append(group)
+
+    def bounds(k: int, a: int) -> tuple[int, int]:
+        line, b = lines[k], eol(lines[k])
+        while a < b and line[a] in " \t":
+            a += 1
+        return a, b
+
+    for g in groups:
+        text = "\n".join(lines[k][bounds(k, 0)[0]:bounds(k, 0)[1]] for k in g)
+        for k in g:
+            a, b = bounds(k, 0)
+            if b > a:
+                out[k] = (a, b, "fence\n" + text, "a fenced block that no rule classifies")
+    k = 0
+    while k < len(lines):
+        if k in quoted or k in fenced or not BLOCKQUOTE_RE.match(lines[k]):
+            k += 1
+            continue
+        members, j, prev = [], k, False
+        while j < len(lines) and j not in fenced and j not in quoted:
+            cur = lines[j]
+            bq = BLOCKQUOTE_RE.match(cur)
+            if bq:
+                members.append((j, bq.end()))
+                prev = True
+            elif prev and cur.strip() and not HEADING_RE.match(cur):
+                members.append((j, 0))                          # a lazy continuation line
+            else:
+                break
+            j += 1
+        text = "\n".join(lines[i][bounds(i, a)[0]:bounds(i, a)[1]] for i, a in members)
+        for i, a in members:
+            a2, b = bounds(i, a)
+            if b > a2:
+                out[i] = (a2, b, "blockquote\n" + text, "a blockquote that no rule classifies")
+        k = max(j, k + 1)
+    return out
+
+
+def classify(text: str, decisions: dict[str, str], history: bool = False) -> tuple[list[dict], set[str]]:
     """Every span of the record, in document order, with its class; returns (spans, decision ids used).
     Quotes are decided before the hex pass, so a kept or undecided quote still has the identifiers
     and paths inside it claimed and placeholdered; only a words span is digested whole."""
     spans, used = [], set()
     record = survey(text)
     fence = None
-    for n, line in enumerate(text.split("\n"), 1):
+    lines, _ = split_lines(text)
+    quoted, quote_heads = blockquote_words(lines)
+    blocks = open_blocks(lines, quoted)
+    for n, line in enumerate(lines, 1):
         following_fence = next_fence(line, fence)
-        quotes = [] if fence is not None or following_fence is not None else quote_spans(line)
+        if n - 1 in quoted:
+            a, b, why = quoted[n - 1]
+            quotes = [span("quote", a, b, line[a:b], "words", why)]
+        elif n - 1 in blocks:
+            a, b, group, why = blocks[n - 1]
+            block = span("quote", a, b, line[a:b], None, why)
+            block["group"] = group
+            decide(block, decisions, used, history)
+            if block["cls"] == "words":
+                quotes = [block]                               # digested whole; nothing inside it is found again
+            else:                                              # kept or undecided: what lies inside is still found
+                inner = [] if fence is not None else quote_spans(line)
+                quotes = [block] + inner
+        elif history:
+            quotes = quote_spans(line, history=True)
+        else:
+            quotes = [] if fence is not None or following_fence is not None else quote_spans(line)
+        if n - 1 in quote_heads:                               # an empty words label over a taken blockquote is a heading
+            quotes = [q for q in quotes if not (q.get("words_field") and not q["text"].strip())]
         fence = following_fence
         for s in quotes:
-            decide(s, decisions, used)
+            decide(s, decisions, used, history)
         taken = [(s["start"], s["end"]) for s in quotes if s["cls"] == "words"]
         hexes = hex_spans(line, taken, record)
         for s in hexes:
-            decide(s, decisions, used)
+            decide(s, decisions, used, history)
         for s in sorted(quotes + hexes, key=lambda s: (s["start"], -s["end"])):
             s["line"] = n
             spans.append(s)
@@ -311,7 +514,9 @@ def classify(text: str, decisions: dict[str, str]) -> tuple[list[dict], set[str]
             if s["why"].startswith("decided"):
                 raise Refused(f"decision {s['id']}=keep would keep a run that matches a session identifier placeholdered in this record")
             s["cls"], s["why"] = None, "a kept run that matches a session identifier placeholdered in this record"
-            decide(s, decisions, used)
+            decide(s, decisions, used, history)
+            if s["cls"] == "keep":
+                raise Refused(f"decision {s['id']}=keep would keep a run that matches a session identifier placeholdered in this record")
     return spans, used
 
 
@@ -346,7 +551,7 @@ def replacement(s: dict) -> str | None:
 
 
 def render(text: str, spans: list[dict]) -> str:
-    lines = text.split("\n")
+    lines, seps = split_lines(text)
     by_line: dict[int, list[dict]] = {}
     for s in spans:
         if replacement(s) is not None:
@@ -356,7 +561,7 @@ def render(text: str, spans: list[dict]) -> str:
         for s in sorted(group, key=lambda s: s["start"], reverse=True):
             line = line[:s["start"]] + replacement(s) + line[s["end"]:]
         lines[n - 1] = line
-    return "\n".join(lines)
+    return "".join(line + sep for line, sep in zip(lines, seps))
 
 
 def counts(spans: list[dict]) -> dict[str, int]:
@@ -477,17 +682,22 @@ def parse_decisions(values: list[str]) -> dict[str, str]:
 # Commands.
 # --------------------------------------------------------------------------
 def run(args) -> int:
+    history = bool(args.history)
+    if history and args.decide:
+        raise Refused("history mode asks no decision and takes none")
     decisions = parse_decisions(args.decide)
     record = Path(args.record)
     data, text = read_record(record)
-    spans, used = classify(text, decisions)
+    spans, used = classify(text, decisions, history)
     unused = set(decisions) - used
     if unused:
         raise Refused("decision for a span that is not unclassified in this record: " + ", ".join(sorted(unused)))
     number(spans)
     c = counts(spans)
+    if history and c["unclassified"]:
+        raise Refused("history mode left a span unclassified; the tool is at fault, nothing written")
     report(spans, sys.stdout)
-    summary = (f"redact {args.command}: words {c['words']}, sessions {c['sessions']} whole and {c['truncated']} truncated, "
+    summary = (f"redact {args.command}{' --history' if history else ''}: words {c['words']}, sessions {c['sessions']} whole and {c['truncated']} truncated, "
                f"host paths {c['paths']}, kept by rule {c['kept_rule']} and by decision {c['kept_decision']}, "
                f"unclassified {c['unclassified']}")
     if c["unclassified"]:
@@ -505,7 +715,7 @@ def run(args) -> int:
         if not p.parent.is_dir():
             raise Refused(f"{p.parent} is not a directory; nothing written")
     source = sha256(data)
-    header = (f"{HEADER_START}source sha256 {source}; rules {RULES}; "
+    header = (f"{HEADER_START}source sha256 {source}; rules {RULES}; mode {'history' if history else 'record'}; "
               f"words {c['words']}; sessions {c['sessions']} whole, {c['truncated']} truncated; host paths {c['paths']}; "
               f"decisions {len(decisions)} -->\n")
     outputs = [(out, (header + render(text, spans)).encode("utf-8"), 0o644)]
@@ -526,6 +736,8 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("record", help="the record to classify (a Markdown or text file; never a body)")
         p.add_argument("--decide", action="append", metavar="ID=words|keep|session",
                        help="class for one unclassified span, by the id check printed (repeatable)")
+        p.add_argument("--history", action="store_true",
+                       help="digest every quoted span, attributed or not, and redact every open span; takes no decision")
         if name == "render":
             p.add_argument("--out", required=True, help="the public copy; must not exist")
             p.add_argument("--words-out", help="the private words file (mode 0600); must not exist")
