@@ -57,7 +57,8 @@ class Fixture:
         self.registry = root / "resident-identities.json"
         self.roster = root / "residents.json"
         self.bindings = root / "host-bindings.json"
-        self.resource = root / "resource-state.json"
+        self.resource = root / "resource-state.json"     # the shared status-line record: never read by the leg
+        self.window_spec = root / "gauge-window-table.md"
         self.proc_root = root / "proc"
         self.codex_lock_root = root / "codex-writer-locks"
         self.codex_root = root / "codex"
@@ -66,9 +67,9 @@ class Fixture:
             registry=self.registry,
             roster=self.roster,
             bindings=self.bindings,
-            resource_state=self.resource,
             codex_lock_root=self.codex_lock_root,
             proc_root=self.proc_root,
+            window_spec=self.window_spec,
         )
         self.write_layers()
         self.write_body()
@@ -154,6 +155,16 @@ class Fixture:
                 }
             )
             + "\n",
+            encoding="utf-8",
+        )
+        self.write_table()
+
+    def write_table(self, rows: tuple = (("claude-fixture", 1000),)) -> None:
+        """A synthetic copy of the gauge's reviewed window table, in the gauge spec's row form."""
+        self.window_spec.write_text(
+            "# Synthetic window table\n\n"
+            + "".join(f"model={model}|window={window}|source=fixture table|observed=2026-08-09\n"
+                      for model, window in rows),
             encoding="utf-8",
         )
 
@@ -493,7 +504,7 @@ class ResidentSelfCheckTests(unittest.TestCase):
 
     def test_incomplete_coverage_exits_nonzero(self) -> None:
         fixture = Fixture(self.root, "claude")
-        fixture.resource.unlink()
+        fixture.window_spec.unlink()
         pid = fixture.fake_claude_parent()
         report = fixture.run(
             environ={"CLAUDE_CODE_SESSION_ID": fixture.session_id},
@@ -501,33 +512,7 @@ class ResidentSelfCheckTests(unittest.TestCase):
         )
         self.assertEqual(1, report.exit_code)
         self.assertGreater(report.unresolved, 0)
-        self.assertIn(str(fixture.resource), check_myself.render(report))
-
-    def test_older_matching_claude_capability_record_resolves_with_age(self) -> None:
-        fixture = Fixture(self.root, "claude")
-        payload = json.loads(fixture.resource.read_text(encoding="utf-8"))
-        payload["generated_at"] = (NOW - dt.timedelta(hours=18)).isoformat()
-        fixture.resource.write_text(json.dumps(payload) + "\n", encoding="utf-8")
-        pid = fixture.fake_claude_parent()
-        report = fixture.run(environ={}, start_pid=pid)
-        self.assertEqual(0, report.exit_code, check_myself.render(report))
-        self.assertEqual("pass", report.legs[6].status)
-        self.assertIn("capability_record_age_seconds=64800", report.legs[6].detail)
-        self.assertIn(
-            "capability_record_class=older-model-capability-evidence",
-            report.legs[6].detail,
-        )
-
-    def test_future_dated_claude_capability_record_fails_closed(self) -> None:
-        fixture = Fixture(self.root, "claude")
-        payload = json.loads(fixture.resource.read_text(encoding="utf-8"))
-        payload["generated_at"] = (NOW + dt.timedelta(minutes=10)).isoformat()
-        fixture.resource.write_text(json.dumps(payload) + "\n", encoding="utf-8")
-        pid = fixture.fake_claude_parent()
-        report = fixture.run(environ={}, start_pid=pid)
-        self.assertEqual(1, report.exit_code)
-        self.assertEqual("undetermined", report.legs[6].status)
-        self.assertIn("future-dated", report.legs[6].detail)
+        self.assertIn(str(fixture.window_spec), check_myself.render(report))
 
     def test_every_material_leg_names_an_exact_surface(self) -> None:
         fixture = Fixture(self.root, "codex")
@@ -937,9 +922,7 @@ class SharedGaugePressureTests(unittest.TestCase):
 
     def _fixture(self, provider):
         fixture = Fixture(self.root, provider)
-        resource = json.loads(fixture.resource.read_text())
-        resource["context"]["window_size"] = 1_000_000
-        fixture.resource.write_text(json.dumps(resource))
+        fixture.write_table((("claude-fixture", 1_000_000),))
         if provider == "codex":
             rows = [row for row in fixture.codex_rows() if row["type"] != "event_msg"]
             rows.append({"timestamp": "2026-08-09T22:10:00Z", "type": "turn_context",
@@ -1107,6 +1090,96 @@ class SharedGaugePressureTests(unittest.TestCase):
         self.assertEqual("undetermined", leg.status)
         self.assertIn("no verified model", leg.detail)
         self.assertNotEqual(0, report.exit_code)
+
+
+class WindowTableTests(unittest.TestCase):
+    """W3: the Claude window comes from the gauge's reviewed table for the caller's own model, through
+    gauge.resolve_window; strict unknown otherwise; the shared status-line record is never used."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def leg(self, fixture):
+        if not hasattr(fixture, "synthetic_parent"):
+            fixture.synthetic_parent = fixture.fake_claude_parent()
+        report = fixture.run(environ={}, start_pid=fixture.synthetic_parent)
+        return report, {leg.name: leg for leg in report.legs}["context pressure"]
+
+    def test_a_model_in_the_table_resolves_with_provenance(self) -> None:
+        fixture = Fixture(self.root, "claude")
+        report, leg = self.leg(fixture)
+        self.assertEqual("pass", leg.status, check_myself.render(report))
+        self.assertIn("window=1000;", leg.detail)
+        self.assertIn("model=claude-fixture; tokens_source=caller-native-body", leg.detail)
+        self.assertIn("window_source=gauge spec table: fixture table, observed 2026-08-09", leg.detail)
+        self.assertIn(str(fixture.window_spec), leg.surfaces)
+        self.assertNotIn(str(fixture.resource), check_myself.render(report))
+        self.assertEqual(0, report.exit_code)
+
+    def test_a_model_absent_from_the_table_is_undetermined(self) -> None:
+        fixture = Fixture(self.root, "claude")
+        fixture.write_table((("claude-other", 1000),))
+        report, leg = self.leg(fixture)
+        self.assertEqual("undetermined", leg.status)
+        self.assertIn("no reviewed window for claude-fixture", leg.detail)
+        self.assertIn("the shared status-line record is not used", leg.detail)
+        self.assertNotEqual(0, report.exit_code)
+
+    def test_the_shared_record_is_never_used(self) -> None:
+        fixture = Fixture(self.root, "claude")
+        for model, window in (("claude-other", 5), ("claude-fixture", 7)):
+            with self.subTest(record=model):
+                payload = json.loads(fixture.resource.read_text(encoding="utf-8"))
+                payload["model"]["id"], payload["context"]["window_size"] = model, window
+                fixture.resource.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+                report, leg = self.leg(fixture)
+                self.assertEqual("pass", leg.status, check_myself.render(report))
+                self.assertIn("window=1000;", leg.detail)                # the table's, not the record's
+        fixture.resource.unlink()
+        self.assertEqual("pass", self.leg(fixture)[1].status)
+        fixture.write_table((("claude-other", 1000),))
+        payload = {"generated_at": NOW.isoformat(), "model": {"id": "claude-fixture"}, "context": {"window_size": 1000}}
+        fixture.resource.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+        self.assertEqual("undetermined", self.leg(fixture)[1].status)   # no fallback to a matching record
+
+    def test_a_pre_compaction_reading_stays_unknown(self) -> None:
+        fixture = Fixture(self.root, "claude")
+        with fixture.body.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps({"timestamp": "2026-08-09T22:30:00Z", "type": "system",
+                                     "subtype": "compact_boundary", "isSidechain": False}) + "\n")
+        report, leg = self.leg(fixture)
+        self.assertEqual("undetermined", leg.status)
+        self.assertIn("before compaction", leg.detail)
+
+    def test_an_unreadable_table_is_undetermined(self) -> None:
+        fixture = Fixture(self.root, "claude")
+        cases = {"absent": lambda: fixture.window_spec.unlink(),
+                 "not UTF-8": lambda: fixture.window_spec.write_bytes(b"model=claude-fixture|window=1000|\xff\n"),
+                 "no rows": lambda: fixture.window_spec.write_text("# no rows\n", encoding="utf-8"),
+                 "a folder": lambda: (fixture.window_spec.unlink(), fixture.window_spec.mkdir())}
+        for name, breaker in cases.items():
+            with self.subTest(case=name):
+                if fixture.window_spec.is_dir():
+                    fixture.window_spec.rmdir()
+                fixture.write_table()
+                breaker()
+                report, leg = self.leg(fixture)
+                self.assertEqual("undetermined", leg.status, name)
+                self.assertIn("unreadable or has no rows", leg.detail)
+
+    def test_a_gauge_that_cannot_load_is_undetermined(self) -> None:
+        fixture = Fixture(self.root, "claude")
+        report = fixture.run(environ={}, start_pid=fixture.fake_claude_parent())
+        self.assertEqual(0, report.exit_code)
+        with mock.patch.object(check_myself, "_load_gauge", side_effect=ImportError("synthetic")):
+            window, detail, path = check_myself._claude_window(
+                check_myself.BodyAnalysis(path=fixture.body, provider="claude", size=0), fixture.window_spec)
+        self.assertEqual((window, path), (None, fixture.window_spec))
+        self.assertIn("window table is unavailable: ImportError", detail)
 
 
 if __name__ == "__main__":

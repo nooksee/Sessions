@@ -35,8 +35,6 @@ ORIENTATION_IDENTITY_RE = re.compile(
 ROMAN_ROLE_SUFFIX_RE = re.compile(r"\s+[IVXLCDM]+$", re.IGNORECASE)
 ROTATION_PERCENT = 70.0
 TIMESTAMP_CLUSTER_MINIMUM = 20
-RESOURCE_FRESHNESS_REFERENCE_SECONDS = 1800
-RESOURCE_FUTURE_TOLERANCE_SECONDS = 300
 EXPECTED_LEGS = 9
 GAUGE_PATH = Path(__file__).resolve().with_name("gauge.py")
 LIMIT_TEXT = (
@@ -44,8 +42,9 @@ LIMIT_TEXT = (
     "native-body, compaction-count, and timestamp-cluster failure classes "
     "that it measures. It proves nothing about unknown failure classes and "
     "grants repair authority 0. Claude token usage is caller-body native; its "
-    "model window is model-matched capability evidence whose age is reported "
-    "and which is not caller-bound telemetry."
+    "model window is the gauge's reviewed table row for the caller's own model, "
+    "reported with the row's source and observation date, and is not caller-bound "
+    "telemetry."
 )
 
 
@@ -54,9 +53,9 @@ class CheckPaths:
     registry: Path
     roster: Path
     bindings: Path
-    resource_state: Path
     codex_lock_root: Path
     proc_root: Path = Path("/proc")
+    window_spec: Path | None = None      # the gauge's reviewed window table; None is the gauge's own SPEC
 
     @classmethod
     def live(cls) -> "CheckPaths":
@@ -65,7 +64,6 @@ class CheckPaths:
             registry=sessions / "ops/etc/resident-identities.json",
             roster=sessions / "ops/etc/residents.json",
             bindings=sessions / "ops/etc/host-bindings.json",
-            resource_state=sessions / "logs/resource-state.json",
             codex_lock_root=Path.home() / ".codex/thread-writer-locks",
         )
 
@@ -658,44 +656,29 @@ def _candidate_bodies(
     return sorted(set(matches))
 
 
-def _claude_window(
-    analysis: BodyAnalysis,
-    path: Path,
-    now: dt.datetime,
-) -> tuple[int | None, str]:
-    payload, error = _load_json(path)
-    if error is not None or not isinstance(payload, dict):
-        return None, error or "resource state is not an object"
-    generated = _parse_timestamp(payload.get("generated_at"))
-    if generated is None:
-        return None, "resource state generated_at is absent or invalid"
-    age = (now.astimezone(dt.timezone.utc) - generated).total_seconds()
-    if age < -RESOURCE_FUTURE_TOLERANCE_SECONDS:
-        return None, f"resource state is future-dated: age_seconds={age:.0f}"
-    age = max(0.0, age)
-    model = payload.get("model")
-    context = payload.get("context")
-    if not isinstance(model, dict) or not isinstance(context, dict):
-        return None, "resource state model or context is absent"
-    if model.get("id") != analysis.model_id:
-        return None, (
-            "resource model does not match the caller body: "
-            f"resource={model.get('id')!r} body={analysis.model_id!r}"
-        )
-    window = context.get("window_size")
-    if not isinstance(window, int) or window <= 0:
-        return None, "resource state context window is absent"
-    freshness = (
-        "recent"
-        if age <= RESOURCE_FRESHNESS_REFERENCE_SECONDS
-        else "older-model-capability-evidence"
-    )
-    return (
-        window,
-        f"model={analysis.model_id}; capability_record_age_seconds={age:.0f}; "
-        f"capability_record_class={freshness}; tokens_source=caller-native-body; "
-        "window_source=model-matched-identifier-free-capability-record",
-    )
+def _claude_window(analysis: BodyAnalysis, window_spec: Path | None) -> tuple[int | None, str, Path | None]:
+    """The window for the caller's own model, from the gauge's reviewed table through gauge.resolve_window.
+
+    Strict unknown when the table cannot be read or has no row for the model. The shared status-line
+    record, which whichever session last ran writes, is never consulted: it is passed to resolve_window
+    as absent. Returns (window, detail, the table path read)."""
+    try:
+        gauge = _load_gauge()
+        spec = window_spec if window_spec is not None else gauge.SPEC
+        table = gauge.window_table(spec)
+    except Exception as exc:
+        return None, f"the gauge's window table is unavailable: {type(exc).__name__}", window_spec
+    if not table:
+        return None, "the gauge's reviewed window table is unreadable or has no rows", spec
+    reading = {"model": analysis.model_id}
+    gauge.resolve_window(reading, table, None)
+    if not isinstance(reading.get("window"), int) or reading["window"] <= 0:
+        return None, (f"window unknown: {reading.get('window_reason') or 'no reviewed window'}; "
+                      "the shared status-line record is not used"), spec
+    return reading["window"], (
+        f"model={analysis.model_id}; tokens_source=caller-native-body; "
+        f"window_source=gauge {reading['window_source']}"
+    ), spec
 
 
 def _identity_rows(payload: object) -> list[dict[str, Any]]:
@@ -741,8 +724,7 @@ def run_check(
     start_pid: int | None,
     now: dt.datetime | None = None,
 ) -> Report:
-    report = Report()
-    current_time = now or dt.datetime.now(dt.timezone.utc)
+    report = Report()                    # now is accepted for callers; no leg reads the clock
     caller, signal_surfaces, signal_errors = resolve_caller(
         environ, paths.proc_root, start_pid, paths.codex_lock_root
     )
@@ -1124,10 +1106,9 @@ def run_check(
         context_surfaces = [_surface(analysis.path), _surface(GAUGE_PATH)]
         context_detail = ""
         if analysis.provider == "claude":
-            window, context_detail = _claude_window(
-                analysis, paths.resource_state, current_time
-            )
-            context_surfaces.append(_surface(paths.resource_state))
+            window, context_detail, table_path = _claude_window(analysis, paths.window_spec)
+            if table_path is not None:
+                context_surfaces.append(_surface(table_path))
             analysis.context_window = window
         if analysis.context_window is None or analysis.context_window <= 0:
             report.add(
