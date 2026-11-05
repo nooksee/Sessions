@@ -58,6 +58,12 @@ class RedactTests(unittest.TestCase):
         r = run("render", str(rec), "--out", str(out), *[a for d in decide for a in ("--decide", d)])
         return (out.read_bytes().decode("utf-8") if out.exists() else ""), r      # bytes, so CRLF survives the read
 
+    def keep_blocks(self, text: str, name: str = "keep-blocks.md") -> list:
+        """The keep decisions for every open block (a fence or a neutral blockquote) the check names."""
+        r = run("check", str(self.record(text, name)))
+        ids = re.findall(r"UNCLASSIFIED quote \[id ([0-9a-f]{12})\]: a (?:fenced block|blockquote) that no rule classifies", r.stdout)
+        return [f"{i}=keep" for i in dict.fromkeys(ids)]
+
     def body(self, public: str) -> str:
         """The rendered text without the header line."""
         self.assertTrue(public.startswith("<!-- redact: public copy; source sha256 "), public[:80])
@@ -113,7 +119,7 @@ class RedactTests(unittest.TestCase):
     def test_p1_mixed_fence_markers_do_not_expose_following_prose(self):
         words = "invented private note after the fence"
         text = '~~~markdown\n```\n~~~\nKevin: "%s"\n' % words
-        public, result = self.rendered(text)
+        public, result = self.rendered(text, *self.keep_blocks(text))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn(words, public)
         self.assertIn('[words sha256=%s]' % sha256(words), public)
@@ -122,7 +128,7 @@ class RedactTests(unittest.TestCase):
         inside = "invented code text"
         outside = "invented prose text"
         text = '````markdown\n```\nKevin: "%s"\n````\nKevin: "%s"\n' % (inside, outside)
-        public, result = self.rendered(text)
+        public, result = self.rendered(text, *self.keep_blocks(text))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(inside, public)
         self.assertNotIn(outside, public)
@@ -132,7 +138,7 @@ class RedactTests(unittest.TestCase):
         for marker in ("`", "~"):
             with self.subTest(marker=marker):
                 text = marker * 3 + 'text\nplain code\n' + marker * 5 + '\nKevin: "%s"\n' % words
-                public, result = self.rendered(text)
+                public, result = self.rendered(text, *self.keep_blocks(text))
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertNotIn(words, public)
                 (self.dir / "public.md").unlink()
@@ -141,7 +147,7 @@ class RedactTests(unittest.TestCase):
         inside = "invented text within the block"
         outside = "invented text outside the block"
         text = '~~~markdown\n~~~not-a-close\nKevin: "%s"\n~~~\nKevin: "%s"\n' % (inside, outside)
-        public, result = self.rendered(text)
+        public, result = self.rendered(text, *self.keep_blocks(text))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(inside, public)
         self.assertNotIn(outside, public)
@@ -149,7 +155,7 @@ class RedactTests(unittest.TestCase):
     def test_p1_tilde_info_can_contain_a_literal_tilde_marker(self):
         outside = "invented private note after a tilde info string"
         text = '~~~language ~~~\nplain code\n~~~\nKevin: "%s"\n' % outside
-        public, result = self.rendered(text)
+        public, result = self.rendered(text, *self.keep_blocks(text))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn(outside, public)
         self.assertIn('[words sha256=%s]' % sha256(outside), public)
@@ -349,9 +355,10 @@ class RedactTests(unittest.TestCase):
         text = f'```json\n{{"session_id": "{UUID}", "cwd": "/home/example/room"}}\n```\nAfter the fence "a quote" is a quote again.\n'
         r = run("check", str(self.record(text)))
         self.assertEqual(r.returncode, 1)
-        self.assertEqual(r.stdout.count("UNCLASSIFIED quote"), 1)      # only the one after the fence
-        sid = re.search(r"UNCLASSIFIED quote \[id ([0-9a-f]{12})\]", r.stdout).group(1)
-        public, r = self.rendered(text, f"{sid}=keep")
+        self.assertEqual(r.stdout.count("UNCLASSIFIED quote"), 2)      # the fence (revision 3) and the quote after it
+        self.assertIn("a fenced block that no rule classifies", r.stdout)
+        sids = list(dict.fromkeys(re.findall(r"UNCLASSIFIED quote \[id ([0-9a-f]{12})\]", r.stdout)))
+        public, r = self.rendered(text, *[f"{sid}=keep" for sid in sids])
         self.assertEqual(self.body(public), '```json\n{"session_id": "[session 1]", "cwd": "[host path 1]"}\n```\nAfter the fence "a quote" is a quote again.\n')
 
     def test_context_words_are_whole_words_and_kept_runs_are_reported(self):
@@ -617,7 +624,7 @@ class RedactTests(unittest.TestCase):
         go = "synthetic go text, do the named act now"
         text = ("# Receipt: a synthetic stage\n\nText of the receipt.\n\n## The operator's go (2026-11-01, about 15:27)\n\n"
                 f"> Go: {go}\n> and a second line of it\n\n## What was done\n\n> A plain quote under a plain heading stays.\n")
-        body, r = self.redacted(text, "c6-stage-b")
+        body, r = self.redacted(text, "c6-stage-b", *[a for d in self.keep_blocks(text) for a in ("--decide", d)])
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(body, ("# Receipt: a synthetic stage\n\nText of the receipt.\n\n## The operator's go (2026-11-01, about 15:27)\n\n"
                                 f"> Go: {self.W(go)}\n> {self.W('and a second line of it')}\n\n## What was done\n\n"
@@ -666,7 +673,7 @@ class RedactTests(unittest.TestCase):
         self.assertIn("; mode history; ", head)
         self.assertIn("decisions 0 -->", head)
         self.assertEqual(self.body(public), (f'The file says "{self.W("hello world")}" twice.\n'
-                                             f'Run `grep "{self.W("pattern")}" file` too.\n```\nx = "{self.W("in a fence")}"\n```\n'
+                                             f'Run `grep "{self.W("pattern")}" file` too.\n```\n{self.W('x = "in a fence"')}\n```\n'
                                              f'{self.W(chr(72) + "e wrote " + chr(34) + "unclosed words")}\n'
                                              f'Kevin: "{self.W("attributed words")}".\nThe spare was [session prefix 1].\n'
                                              f"See https://claude.ai/code/artifact/[session 2] here.\n"))
@@ -693,12 +700,46 @@ class RedactTests(unittest.TestCase):
         ]
         for i, (text, want) in enumerate(cases):
             with self.subTest(case=i):
-                body, r = self.redacted(text, f"c6r2-{i}")
+                body, r = self.redacted(text, f"c6r2-{i}", *[a for d in self.keep_blocks(text, f"kb{i}.md") for a in ("--decide", d)])
                 self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
                 self.assertEqual(body, want)
                 hbody, r = self.redacted(text, f"c6r2-h{i}", "--history")
                 self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
                 self.assertNotIn(go, hbody)
+    def test_c2_r3_every_open_blockquote_or_fence_fails_closed_and_history_digests_it(self):
+        go = "synthetic words of a go"
+        probes = {
+            "g03": f"The operator's go\n> {go}\n",
+            "g04": f"The operator's go: given at noon\n> {go}\n",
+            "g07": f"The operator's go:\nIt was given as follows.\n> {go}\n",
+            "f18": f"## The operator's go\n\n```\n{go}\n```\n",
+        }
+        for name, text in probes.items():
+            with self.subTest(probe=name):
+                r = run("check", str(self.record(text, f"{name}.md")))
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn("that no rule classifies", r.stdout)
+                self.assertNotIn(go, r.stdout + r.stderr)
+                sid = re.search(r"UNCLASSIFIED quote \[id ([0-9a-f]{12})\]: a (?:fenced block|blockquote) that no rule classifies", r.stdout).group(1)
+                body, r = self.redacted(text, f"{name}-words", "--decide", f"{sid}=words")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertNotIn(go, body)
+                self.assertIn(self.W(go), body)
+                body, r = self.redacted(text, f"{name}-history", "--history")
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertNotIn(go, body)
+                self.assertIn(self.W(go), body)
+
+    def test_c2_r3_one_keep_decision_covers_a_whole_neutral_blockquote(self):
+        text = f"## Notes\n\n> a neutral quoted line\n> and its second line at /home/example/x\n\nAfter.\n"
+        r = run("check", str(self.record(text, "neutral.md")))
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        ids = re.findall(r"UNCLASSIFIED quote \[id ([0-9a-f]{12})\]: a blockquote that no rule classifies", r.stdout)
+        self.assertEqual(len(ids), 2)
+        self.assertEqual(len(set(ids)), 1)                             # one id for the whole blockquote
+        body, r = self.redacted(text, "neutral-keep", "--decide", f"{ids[0]}=keep")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(body, "## Notes\n\n> a neutral quoted line\n> and its second line at [host path 1]\n\nAfter.\n")
 
 if __name__ == "__main__":
     unittest.main()

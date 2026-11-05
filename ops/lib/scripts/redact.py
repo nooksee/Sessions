@@ -363,7 +363,7 @@ def survey(text: str) -> dict:
 
 
 def decide(s: dict, decisions: dict[str, str], used: set[str], history: bool = False) -> None:
-    s["id"] = span_id(s["kind"], s["text"])
+    s["id"] = span_id(s["kind"], s.get("group", s["text"]))  # every line of one open block shares one id
     if s["cls"] is None and history:                           # the redacting choice, without a decision
         s["cls"] = "words" if s["kind"] == "quote" else ("session" if s["kind"] == "session" else "prefix")
         s["why"] += "; redacted by history mode"
@@ -403,6 +403,65 @@ def next_fence(line: str, current):
     return marker[0], len(marker)
 
 
+def open_blocks(lines: list[str], quoted: dict) -> dict[int, tuple[int, int, str, str]]:
+    """Revision 3 (the Independent Reviewer's section 190, C2): line index -> (start, end, group, why) for
+    every line of a fenced block and every blockquote line (with its lazy continuation lines) that no rule
+    has classified. In record mode each such block fails closed for one decision that covers all its lines;
+    in history mode it is digested. A label's wording can always be probed again; an unclassified block cannot
+    leak, whatever introduces it."""
+    out: dict[int, tuple[int, int, str, str]] = {}
+    fence, group, groups, fenced = None, [], [], set()
+    for k, line in enumerate(lines):
+        following = next_fence(line, fence)
+        if fence is not None or following is not None:
+            fenced.add(k)                                       # fence lines and content lines alike
+        if fence is not None and following is not None:
+            group.append(k)                                     # a content line
+        if fence is not None and following is None:
+            groups.append(group)
+            group = []
+        fence = following
+    if group:
+        groups.append(group)
+
+    def bounds(k: int, a: int) -> tuple[int, int]:
+        line, b = lines[k], eol(lines[k])
+        while a < b and line[a] in " \t":
+            a += 1
+        return a, b
+
+    for g in groups:
+        text = "\n".join(lines[k][bounds(k, 0)[0]:bounds(k, 0)[1]] for k in g)
+        for k in g:
+            a, b = bounds(k, 0)
+            if b > a:
+                out[k] = (a, b, "fence\n" + text, "a fenced block that no rule classifies")
+    k = 0
+    while k < len(lines):
+        if k in quoted or k in fenced or not BLOCKQUOTE_RE.match(lines[k]):
+            k += 1
+            continue
+        members, j, prev = [], k, False
+        while j < len(lines) and j not in fenced and j not in quoted:
+            cur = lines[j]
+            bq = BLOCKQUOTE_RE.match(cur)
+            if bq:
+                members.append((j, bq.end()))
+                prev = True
+            elif prev and cur.strip() and not HEADING_RE.match(cur):
+                members.append((j, 0))                          # a lazy continuation line
+            else:
+                break
+            j += 1
+        text = "\n".join(lines[i][bounds(i, a)[0]:bounds(i, a)[1]] for i, a in members)
+        for i, a in members:
+            a2, b = bounds(i, a)
+            if b > a2:
+                out[i] = (a2, b, "blockquote\n" + text, "a blockquote that no rule classifies")
+        k = max(j, k + 1)
+    return out
+
+
 def classify(text: str, decisions: dict[str, str], history: bool = False) -> tuple[list[dict], set[str]]:
     """Every span of the record, in document order, with its class; returns (spans, decision ids used).
     Quotes are decided before the hex pass, so a kept or undecided quote still has the identifiers
@@ -412,11 +471,22 @@ def classify(text: str, decisions: dict[str, str], history: bool = False) -> tup
     fence = None
     lines, _ = split_lines(text)
     quoted, quote_heads = blockquote_words(lines)
+    blocks = open_blocks(lines, quoted)
     for n, line in enumerate(lines, 1):
         following_fence = next_fence(line, fence)
         if n - 1 in quoted:
             a, b, why = quoted[n - 1]
             quotes = [span("quote", a, b, line[a:b], "words", why)]
+        elif n - 1 in blocks:
+            a, b, group, why = blocks[n - 1]
+            block = span("quote", a, b, line[a:b], None, why)
+            block["group"] = group
+            decide(block, decisions, used, history)
+            if block["cls"] == "words":
+                quotes = [block]                               # digested whole; nothing inside it is found again
+            else:                                              # kept or undecided: what lies inside is still found
+                inner = [] if fence is not None else quote_spans(line)
+                quotes = [block] + inner
         elif history:
             quotes = quote_spans(line, history=True)
         else:
