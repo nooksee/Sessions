@@ -101,6 +101,7 @@ class House:
         """Run the checker again on the fixture files as they now stand."""
         with mock.patch.object(self.mod, "body_identity", side_effect=self.body), \
                 mock.patch.object(self.mod, "pycharm_titles", return_value=dict(self.labels)), \
+                mock.patch.object(self.mod, "body_custom_title", return_value=None), \
                 mock.patch.object(self.mod, "copilot_body", side_effect=AssertionError), \
                 mock.patch.object(self.mod, "agent_dock_title", side_effect=AssertionError):
             return run(self.mod, *argv)

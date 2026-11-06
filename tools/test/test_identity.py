@@ -612,5 +612,180 @@ class ReadOnly(OfficeTest):
         self.assertEqual(snap(), before)
 
 
+
+class LiveFolderAndTitleRows(unittest.TestCase):
+    """The label leg reads the live IDE folder, and a Claude body's title row."""
+
+    UID = "11111111-2222-4333-8444-555555555555"
+    THREAD = "0aaaaaaa-0000-7000-8000-000000000000"
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.home = Path(self.tmp.name)
+        self.mod = load(SCRIPT, "cand_live")
+        patcher = mock.patch.object(self.mod.Path, "home", return_value=self.home)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.mod.CLAUDE_PROJECTS = self.home / "claude"
+
+    def folder(self, name: str, label: str | None = None, *, bind: bool = True,
+               name_it: bool = True) -> Path:
+        root = self.home / ".config/JetBrains" / name
+        (root / "aia-task-history").mkdir(parents=True)
+        (root / "workspace").mkdir()
+        if label is not None and bind:
+            (root / "aia-task-history" / f"{self.UID}.agentsession").write_text(
+                f"acp.registry.codex-acp:{self.THREAD}\n", encoding="utf-8")
+        if label is not None and name_it:
+            (root / "workspace" / "w.xml").write_text(
+                '<SerializedChat><option name="custom" value="true" />\n'
+                f'<option name="text" value="{label}" />\n'
+                f'<option name="uid" value="{self.UID}" />\n</SerializedChat>', encoding="utf-8")
+        return root
+
+    def body(self, sid: str, rows: list[str], project: str = "p") -> None:
+        d = self.mod.CLAUDE_PROJECTS / project
+        d.mkdir(parents=True, exist_ok=True)
+        (d / f"{sid}.jsonl").write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    def test_the_highest_version_is_live_by_number_not_by_name(self) -> None:
+        for name in ("PyCharm2026.1", "PyCharm2026.3", "PyCharm2026.10", "PyCharmCE2027.1",
+                     "PyCharm2027.1-backup"):
+            self.folder(name)
+        (self.home / ".config/JetBrains/PyCharm2028.1").write_text("a file", encoding="utf-8")
+        self.assertEqual(self.mod.live_pycharm_config().name, "PyCharm2026.10")
+
+    def test_no_folder_gives_no_titles(self) -> None:
+        self.assertIsNone(self.mod.live_pycharm_config())
+        self.assertEqual(self.mod.acp_titles(), {})
+
+    def test_a_chat_only_in_a_dead_folder_does_not_count(self) -> None:
+        self.folder("PyCharm2026.1", "Fixture Label (Dead Folder)")
+        self.folder("PyCharm2026.3")
+        self.assertEqual(self.mod.acp_titles(), {})
+
+    def test_a_live_binding_does_not_borrow_a_label_from_a_dead_folder(self) -> None:
+        self.folder("PyCharm2026.1", "Fixture Label (Dead Folder)", bind=False)
+        self.folder("PyCharm2026.3", "unused", name_it=False)
+        self.assertEqual(self.mod.acp_titles(), {})
+
+    def test_a_live_label_does_not_borrow_a_binding_from_a_dead_folder(self) -> None:
+        self.folder("PyCharm2026.1", "unused", name_it=False)
+        self.folder("PyCharm2026.3", "Fixture Label (Live Folder)", bind=False)
+        self.assertEqual(self.mod.acp_titles(), {})
+
+    def test_the_live_label_is_read_and_a_dead_one_cannot_win(self) -> None:
+        self.folder("PyCharm2026.1", "Old Label (Dead Folder)")
+        self.folder("PyCharm2026.3", "Live Label (Live Folder)")
+        self.assertEqual(self.mod.acp_titles(), {self.THREAD: "Live Label (Live Folder)"})
+
+    def test_the_last_title_row_wins_and_other_rows_do_not_count(self) -> None:
+        self.body("s1", ['{"type":"custom-title","customTitle":"First (One)"}', "not json",
+                         '{"type":"ai-title","aiTitle":"Hello"}',
+                         '{"type":"custom-title","customTitle":"Second (Two)"}',
+                         '{"type":"user","text":"\\"custom-title\\" in a message"}'])
+        self.assertEqual(self.mod.body_custom_title("s1"), "Second (Two)")
+
+    def test_no_title_row_and_no_body_give_none(self) -> None:
+        self.body("s2", ['{"type":"ai-title","aiTitle":"Hello"}'])
+        self.assertIsNone(self.mod.body_custom_title("s2"))
+        self.assertIsNone(self.mod.body_custom_title("absent"))
+
+    def test_two_bodies_that_disagree_are_ambiguous(self) -> None:
+        self.body("s3", ['{"type":"custom-title","customTitle":"A (One)"}'], "p")
+        self.body("s3", ['{"type":"custom-title","customTitle":"B (Two)"}'], "q")
+        self.assertIsNone(self.mod.body_custom_title("s3"))
+
+    def test_rows_that_are_not_title_rows_do_not_count(self) -> None:
+        self.body("s4", ['{"type":"custom-title","customTitle":"Kept (One)"}', '["custom-title"]',
+                         '{"type":"note","tag":"custom-title","customTitle":"Other (Two)"}',
+                         '{"type":"custom-title","customTitle":7}',
+                         '{"type":"custom-title","customTitle":""}', '{"type":"custom-title", bad'])
+        self.assertEqual(self.mod.body_custom_title("s4"), "Kept (One)")
+
+    def test_a_titleless_body_beside_a_titled_one_leaves_the_title(self) -> None:
+        self.body("s5", ['{"type":"ai-title","aiTitle":"Hello"}'], "p")
+        self.body("s5", ['{"type":"custom-title","customTitle":"A (One)"}'], "q")
+        self.assertEqual(self.mod.body_custom_title("s5"), "A (One)")
+
+    @unittest.skipIf(os.geteuid() == 0, "root ignores file modes")
+    def test_an_unreadable_body_gives_none(self) -> None:
+        self.body("s6", ['{"type":"custom-title","customTitle":"A (One)"}'])
+        path = self.mod.CLAUDE_PROJECTS / "p" / "s6.jsonl"
+        path.chmod(0)
+        self.addCleanup(path.chmod, 0o600)
+        self.assertIsNone(self.mod.body_custom_title("s6"))
+
+
+class LabelLegInMain(unittest.TestCase):
+    """The label leg as main runs it: the source named, and only Claude reading a body."""
+
+    SID = "0000aaaa-0000-4000-8000-00000000aaaa"
+    WANT = "Lead (Claude One)"
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.o = Office(Path(tmp.name))
+        self.project = Path(tmp.name) / "claude" / "p"
+        self.project.mkdir()
+
+    def row(self, provider: str = "claude") -> dict:
+        return {"key": "claude-one", "role": "Lead", "person": "Claude One", "provider": provider,
+                "session_id": self.SID, "room": "/x", "verified": "kevin"}
+
+    def title_row(self, title: str) -> None:
+        (self.project / f"{self.SID}.jsonl").write_text(
+            json.dumps({"type": "custom-title", "customTitle": title}) + "\n", encoding="utf-8")
+
+    def store(self, title: str) -> None:
+        (self.project / ".claude-code-gui-session-titles.json").write_text(
+            json.dumps({self.SID: title}), encoding="utf-8")
+
+    def test_a_body_title_that_matches_is_compared_and_named_as_its_source(self) -> None:
+        self.title_row(self.WANT)
+        _, out = self.o.run(self.row())
+        self.assertIn("PyCharm leg compared: 1/1", out)
+        self.assertIn("[label from the body's title row]", out)
+        self.assertIn("1 of those compared from a body's title row", out)
+        self.assertNotIn("title row 'Lead", out)
+
+    def test_a_body_title_that_differs_is_a_mismatch_naming_the_body(self) -> None:
+        self.title_row("Someone (Another Person)")
+        _, out = self.o.run(self.row())
+        self.assertIn("MISMATCH  claude-one: body title row 'Someone (Another Person)' does not match", out)
+        self.assertNotIn("PyCharm label 'Someone", out)
+
+    def test_the_store_alone_is_the_ide_label_and_carries_no_mark(self) -> None:
+        self.store("Someone (Another Person)")
+        _, out = self.o.run(self.row())
+        self.assertIn("MISMATCH  claude-one: PyCharm label 'Someone (Another Person)'", out)
+        self.assertNotIn("title row", out)
+
+    def test_store_and_row_that_agree_read_as_the_ide_label(self) -> None:
+        self.store(self.WANT)
+        self.title_row(self.WANT)
+        _, out = self.o.run(self.row())
+        self.assertIn("PyCharm leg compared: 1/1", out)
+        self.assertNotIn("title row", out)
+
+    def test_store_and_row_that_disagree_are_left_uncompared(self) -> None:
+        self.store(self.WANT)
+        self.title_row("Renamed (Since Then)")
+        _, out = self.o.run(self.row())
+        self.assertIn("PyCharm label store and body title row disagree", out)
+        self.assertIn("PyCharm leg compared: 0/1", out)
+
+    def test_no_label_anywhere_is_not_on_disk(self) -> None:
+        _, out = self.o.run(self.row())
+        self.assertIn("PyCharm label not on disk", out)
+        self.assertIn("PyCharm leg compared: 0/1", out)
+
+    def test_a_codex_row_never_reads_a_body_for_its_label(self) -> None:
+        with mock.patch.object(self.o.mod, "body_custom_title", side_effect=AssertionError):
+            _, out = self.o.run(self.row("codex"))
+        self.assertIn("PyCharm label not on disk", out)
+
 if __name__ == "__main__":
     unittest.main()

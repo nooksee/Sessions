@@ -373,6 +373,78 @@ def agent_dock_title(sid: str, room: str) -> str | None:
     return titles.pop() if len(titles) == 1 else None
 
 
+def live_pycharm_config() -> Path | None:
+    """The settings folder of the newest PyCharm version on this host, or None.
+
+    An IDE upgrade copies what it imports into a new versioned folder and leaves
+    the old folders in place. Reading them all let a chat that exists only in a
+    dead folder compare as present: on 2026-11-06 two residents read `ok` from a
+    folder two versions old while the IDE could not show them at all.
+    """
+    best, best_version = None, None
+    try:
+        entries = list((Path.home() / ".config/JetBrains").iterdir())
+    except OSError:
+        return None
+    for path in entries:
+        m = re.fullmatch(r"PyCharm(\d{4})\.(\d+)", path.name)
+        if m and path.is_dir():
+            version = (int(m.group(1)), int(m.group(2)))
+            if best_version is None or version > best_version:
+                best, best_version = path, version
+    return best
+
+
+def body_custom_title(sid: str) -> str | None:
+    """The title the operator set on a Claude session, from its own body.
+
+    The chat plugin now records a tab's name as a `custom-title` row and no
+    longer updates the older title store. Reads that row type and its title
+    only, never message content. Two bodies with different titles are ambiguous
+    and left uncompared.
+    """
+    titles: set[str] = set()
+    for path in CLAUDE_PROJECTS.glob(f"*/{sid}.jsonl"):
+        last = None
+        try:
+            with path.open("rb") as body:
+                for line in body:
+                    if b'"custom-title"' not in line[:200]:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except ValueError:
+                        continue
+                    if (isinstance(row, dict) and row.get("type") == "custom-title"
+                            and isinstance(row.get("customTitle"), str)):
+                        last = row["customTitle"] or last
+        except OSError:
+            continue
+        if last:
+            titles.add(last)
+    return titles.pop() if len(titles) == 1 else None
+
+
+def label_for(ident: dict, titles: dict[str, str]) -> tuple[str | None, str | None]:
+    """A resident's label and the name of its source, or None and why not.
+
+    The IDE's own record speaks for what the operator sees. A Claude body's title
+    row is a different witness, so it is named as such wherever it is used, and
+    a disagreement between the two is left uncompared rather than settled: the
+    older store can hold a name the operator has since changed.
+    """
+    sid = ident["session_id"]
+    store = titles.get(sid)
+    row = body_custom_title(sid) if ident.get("provider") == "claude" else None
+    if store and row and store != row:
+        return None, "conflict"
+    if store:
+        return store, "PyCharm label"
+    if row:
+        return row, "body title row"
+    return None, None
+
+
 def acp_titles() -> dict[str, str]:
     """Map a Codex thread identifier to the chat label the operator sees.
 
@@ -390,9 +462,11 @@ def acp_titles() -> dict[str, str]:
     the identity lock needs and what nobody had assembled. Neither half is
     sufficient alone, which is why the gap survived so long.
     """
+    config = live_pycharm_config()
+    if config is None:
+        return {}
     bindings: dict[str, str] = {}
-    for path in Path.home().glob(
-            ".config/JetBrains/PyCharm*/aia-task-history/*.agentsession"):
+    for path in config.glob("aia-task-history/*.agentsession"):
         try:
             bindings[path.stem] = path.read_text(encoding="utf-8").strip().rsplit(":", 1)[-1]
         except OSError:
@@ -403,7 +477,7 @@ def acp_titles() -> dict[str, str]:
     uid = re.compile(r'<option name="uid" value="([0-9a-f-]{36})" />\s*</SerializedChat>')
     custom = re.compile(
         r'<option name="custom" value="true" />\s*<option name="text" value="([^"]*)"')
-    for path in Path.home().glob(".config/JetBrains/PyCharm*/workspace/*.xml"):
+    for path in config.glob("workspace/*.xml"):
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -440,6 +514,7 @@ def main() -> int:
     problems: list[str] = []
     unverified: list[str] = []
     uncompared: list[str] = []   # a leg that could not be read at all
+    from_body: list[str] = []   # compared against a body's title row, not the IDE's record
     dock_uncompared: list[str] = []   # the same, for Copilot's Agent Dock leg
     incomplete: list[str] = []   # any resident with an uncompared leg
 
@@ -561,7 +636,7 @@ def main() -> int:
         elif bad_session:
             uncompared.append(f"{key}: {want}")
             notes.append("PyCharm label NOT compared: session_id is not a string")
-        elif (title := titles.get(ident["session_id"])) is None:
+        elif (labelled := label_for(ident, titles))[0] is None:
             # Found by Claudine Winslow, Auditor, on 2026-08-08: this leg was
             # compared for 8 of 22 residents and skipped for the other 14, all
             # of them Codex, whose ACP tab names are not written to disk while
@@ -571,10 +646,15 @@ def main() -> int:
             # A version upgrade is exactly the event that relocates label
             # files, so the tool was most confident when least informed.
             uncompared.append(f"{key}: {want}")
-            notes.append("PyCharm label not on disk; this leg was NOT compared")
-        elif title != want and ident["person"] not in title:
-            problems.append(
-                f"{key}: PyCharm label {title!r} does not match registry {want!r}")
+            notes.append("PyCharm label store and body title row disagree; this leg was NOT compared"
+                         if labelled[1] == "conflict"
+                         else "PyCharm label not on disk; this leg was NOT compared")
+        else:
+            title, source = labelled
+            if source == "body title row":
+                from_body.append(key)
+            if title != want and ident["person"] not in title:
+                problems.append(f"{key}: {source} {title!r} does not match registry {want!r}")
 
         if ident.get("verified") == "unverified":
             unverified.append(f"{key}: {want}" +
@@ -586,7 +666,8 @@ def main() -> int:
         if not args.quiet:
             mark = "ok " if not notes else "?  "
             print(f"  {mark} {key:26s} {want}"
-                  + ("   [held from launcher]" if held else ""))
+                  + ("   [held from launcher]" if held else "")
+                  + ("   [label from the body's title row]" if key in from_body else ""))
             for n in notes:
                 print(f"        {n}")
 
@@ -602,6 +683,9 @@ def main() -> int:
           + (f"   Agent Dock leg compared: "
              f"{docked - len(dock_uncompared)}/{docked}" if docked else "")
           + (f"   held from launcher: {held_total}" if held_total else ""))
+    if from_body:
+        print(f"  {len(from_body)} of those compared from a body's title row, not the IDE's "
+              f"record: {', '.join(from_body)}")
     for p in problems:
         print(f"  MISMATCH  {p}")
     if uncompared and not args.quiet:
