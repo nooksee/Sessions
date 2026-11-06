@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-06 01:51 EST, the Session Continuity Manager: the state after the merges of 2026-11-05 and 2026-11-06, the custody batches, the team, the first W4 trial and the host's journal flood; the dated boards and the earlier Updated lines are in `archives/board-history-20261105.md`.
+Updated: 2026-11-06 12:53 EST, the Session Continuity Manager: the staffing amendment as law, the Integrator seated, the merges through PR #35 and the custody batches of the day; the dated boards and the earlier Updated lines are in `archives/board-history-20261105.md`.
 Observations retain their stated measurement times. The dated boards that
 stood below until 2026-11-06 are in `archives/board-history-20261105.md`: historical
 context, not current Git, telemetry or health measurements (PoT 1.2.12, 1.3.3).
@@ -14,11 +14,11 @@ lineage history.
 
 ## Current state, 2026-11-06 early morning
 
-- **Repository:** `nooksee/Sessions` on GitHub, public since 23:10:05 EST on 2026-11-04, `main` protected (pull requests only, strict `sessions-gates`, no force push, no deletion), secret scanning and push protection on. Its history was rewritten under RoR-15 so that no operator words, session identifiers or personal email addresses remain in its tracked content (correction 2026-11-05: commit metadata lies outside the rewrite's scope, and by the operator's decision of 2026-11-05 the history stands; correction 2026-11-06: older tracked text carries quotations that the rewrite's rules did not classify, wrapped across a line break, found on 2026-11-06 and with the operator; not compared with a private words file, and how the rewrite treated them not established); the receipt with the two commit maps and the pull-request map is `archives/receipts/history-rewrite-20261104.md`. The live room at this path tracks it; the room's git identity is the operator's GitHub noreply address. `main` is at commit 9c959d71 since 2026-11-06 01:49 EST: pull requests #23 to #30 merged on 2026-11-05 and 2026-11-06, each by rebase at its exact head on the Auditor's PASS and audited after (the porter's review admitted, the wrapper's third slice, W6 phases 3 to 5, the ignore rule tightened, the redact tool registered, the board's dated history moved to its own record).
-- **Custody** (tier 1; tier 2 the failing medium under direct-read verification; the interim boot-drive tier): the batches of 2026-11-04 (`sessions-history-20261104`, `sessions-prerewrite-20261104`, `sessions-identities-20261104`, `sessions-port-110126-retired-20261104`, `sessions-storage-candidates-20261104`, `sessions-storage-lab-20261104`); of 2026-11-05 (`sessions-minds-20261105` and its suffix b, the Assistant's two mind leaves and the pointer); of 2026-11-06 (`sessions-minds-20261106`, the Auditor's first leaf, audited; `sessions-words-20261106`, the private source of the board's history record, audited). Each verified on three roots by hash and on tier 2 by direct read.
-- **The team:** the Session Continuity Manager, the Assistant, the Apprentice and the Auditor (seated 2026-11-05 at 18:59 by a reviewed registry change, the operator's appointment under PoT 4.1.6). An Integrator seat, a Copilot resident cloned from the Central Repository office for the room's repository mechanics, was prepared on 2026-11-06 as a registry-only row and waits on the Auditor's pass of its seat script, the operator's go, and the adoption of the office's line and the room's constraints line before it merges anything. The one-clause staffing amendment (4.1.9 Auditor) passed its three reviewers at revision 6 under PoT 7.3 and waits on the operator's scope and ratification sentence.
+- **Repository:** `nooksee/Sessions` on GitHub, public since 23:10:05 EST on 2026-11-04, `main` protected (pull requests only, strict `sessions-gates`, no force push, no deletion), secret scanning and push protection on. Its history was rewritten under RoR-15 so that no operator words, session identifiers or personal email addresses remain in its tracked content (correction 2026-11-05: commit metadata lies outside the rewrite's scope, and by the operator's decision of 2026-11-05 the history stands; correction 2026-11-06: older tracked text carries quotations that the rewrite's rules did not classify, wrapped across a line break, found on 2026-11-06 and with the operator; not compared with a private words file, and how the rewrite treated them not established); the receipt with the two commit maps and the pull-request map is `archives/receipts/history-rewrite-20261104.md`. The live room at this path tracks it; the room's git identity is the operator's GitHub noreply address. `main` is at commit 86e5ac76 since 2026-11-06 12:51 EST: pull requests #23 to #35 merged on 2026-11-05 and 2026-11-06, each by rebase at its exact head on the Auditor's PASS and audited after (the porter's review admitted; the wrapper's third slice; W6 phases 3 to 5; the ignore rule tightened; the redact tool registered and its rules revision 5; the board's dated history moved to its own record; the Integrator's constraints section; the staffing amendment applied; the ledger's header re-bound).
+- **Custody** (tier 1; tier 2 the failing medium under direct-read verification; the interim boot-drive tier): the batches of 2026-11-04 (`sessions-history-20261104`, `sessions-prerewrite-20261104`, `sessions-identities-20261104`, `sessions-port-110126-retired-20261104`, `sessions-storage-candidates-20261104`, `sessions-storage-lab-20261104`); of 2026-11-05 (`sessions-minds-20261105` and its suffix b, the Assistant's two mind leaves and the pointer); of 2026-11-06 (`sessions-minds-20261106`, the Auditor's first leaf; `sessions-words-20261106`, the private source of the board's history record; `sessions-registry-backup-20261106`, the registry as it stood before the Integrator's row; `sessions-ror-words-20261106`, the ledger's private source with its earlier state preserved as a prefix; `sessions-words-receipts-20261106`, the twelve receipts' private sources, seven of them in custody for the first time; all five audited). Each verified on three roots by hash and on tier 2 by direct read.
+- **The team:** the Session Continuity Manager, the Assistant, the Apprentice and the Auditor (seated 2026-11-05 at 18:59 by a reviewed registry change, the operator's appointment under PoT 4.1.6). The Integrator, Jo Hamming, a Copilot resident cloned from the Central Repository office for the room's repository mechanics, was seated on 2026-11-06 by a reviewed registry-only row on the operator's authorization, audited; the room's constraints section C16 binds the seat, and the Integrator holds and merges nothing until Control adopts the office's line in its policy. The one-clause staffing amendment (4.1.9 Auditor) was ratified by the operator on 2026-11-06 and applied as RoR-19 by its reviewed script, audited.
 - **The maintained documents name the role,** the operator, where they named the person (2026-11-04); records, code and tests are as written, and the code-and-tests pass is programme W8, packeted on 2026-11-06 with its owner to be named.
-- **Open:** the replacement of the failing custody medium (PoT 5.3.3; the drive is bought; the swap is George's reviewed operation on the operator's word); the host's journal flood (a GNOME indexer unit logging about 880,000 rows in ten minutes since the evening of 2026-11-05, so journald suppresses the user units' messages for part of each interval, 12 and 18 dark seconds of 30 measured, while the forwarded syslog grows by about 2 GiB an hour with days of root disk left at that rate; Control's surface, reported to the operator on 2026-11-06; a clock of days); Control's rounds timer failing with status 2 at every run (known since the Apprentice's audit of 2026-11-03; Control's to repoint); the redact tool's next rules revision (item 3 of the review, the Assistant's, in progress); the README first screen and the repository's presence (Central's, on the operator's sequence); Central's word on its two `storage/lab/` folders.
+- **Open:** the replacement of the failing custody medium (PoT 5.3.3; the drive is bought; the swap is George's reviewed operation on the operator's word); the host's journal flood (a GNOME indexer unit logging about 880,000 rows in ten minutes since the evening of 2026-11-05, so journald suppresses the user units' messages for part of each interval, 12 and 18 dark seconds of 30 measured, while the forwarded syslog grows by about 2 GiB an hour with days of root disk left at that rate; Control's surface, reported to the operator on 2026-11-06; a clock of days); Control's rounds timer failing with status 2 at every run (known since the Apprentice's audit of 2026-11-03; Control's to repoint); the README first screen and the repository's presence (Central's, on the operator's sequence); Central's word on its two `storage/lab/` folders.
 
 ## Outstanding continuity delivery
 
@@ -35,7 +35,7 @@ Auditor for the programme, the operator's appointment under PoT 4.1.6, by a
 reviewed registry change at 18:59 (the seating receipt is in the Manager's
 record). Control's Desktop Audit and Review ended its programme assignment
 the same evening and keeps its Control seat. A one-clause staffing amendment
-(4.1.9 Auditor) is in review under PoT 7.3.
+(4.1.9 Auditor) was applied on 2026-11-06 as RoR-19 under PoT 7.3.
 
 - W3: the health desk is measured and corrected. The read-only
   measurement of 2026-11-05 (the Apprentice) found the clinic's chronic set
@@ -53,10 +53,10 @@ the same evening and keeps its Control seat. A one-clause staffing amendment
   operator's go on 2026-11-06 and withdrew whole after 1 of 4 events: the
   event ran and exited 0, but the journal lost its evidence row under the
   host's flood; the row stands in syslog (the Auditor's finding). Not a pass;
-  the stop was right by the design; nothing left installed, audited. A
-  revision 5 of the design (syslog as the witness, a preflight) is drafted
-  for the Apprentice; the retry needs the operator's word again, after his
-  choice on the flood and the design. The real notification is a later act.
+  the stop was right by the design; nothing left installed, audited. The
+  Apprentice is writing revision 5 of the design (syslog as the witness, a
+  preflight) on the operator's choice; the retry needs the operator's word
+  again after the Auditor passes it. The real notification is a later act.
 - W5: the mind tool carries projection, seal, unseal and the seal recorded
   in the leaf (PRs #12, #16, #19); the launch wrapper is on `main` in its
   final form (PRs #17, #24, #27: the real launch, the notebook route, the
@@ -79,7 +79,7 @@ The Chief Repository Operations Officer and the Desktop Continuity Manager
 left the Sessions programme on 2026-11-05 at the operator's word; the W6
 integration is the Apprentice's after the Auditor's pass; the cadence's
 design is the Apprentice's and its trial the Assistant's; the repository
-mechanics pass to the Integrator once seated and its lines are adopted.
+mechanics pass to the Integrator once Control adopts the office's line.
 
 Current work is carried by the existing private first-wins plan and bounded
 W4 case. This board grants no live settings, provider, mind or body action.
