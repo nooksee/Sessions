@@ -63,6 +63,7 @@ unwritten runner, unwired hook or notebook integration exists.
 | **Claude Shannon** | Session Continuity Manager (registry key `session-doctor`) | continuity, the Sessions room, the specs, coordination of the team, running rotations for other residents | his own rotation (Claudine runs it) |
 | **Claudine Colbert** | Assistant Session Continuity Manager | the tools she is assigned as sole writer (`gauge.py`, `mind.py`), and Shannon's rotation | a surface another writer holds |
 | **Joe Codex** | Session Continuity Apprentice | read-only measurement and the Codex side (methods, runway figures, Codex hooks) | any write without the operator's named go |
+| **Jo Hamming** | Integrator (registry key `jo-hamming`; a Copilot resident, prompts only by the operator's paste; CONSTRAINTS C16) | the exact-head merge of other writers' passed pull requests on the writer's handoff, the fast-forward of `main`, the proof and the branch cleanup | review, source, documents, records, any merge without the Auditor's PASS at the exact head and the writer's handoff; every merge until C16's mechanics take effect (the bound binds from seating) |
 | **Claudio Freeman** | independent reviewer and auditor (Control) | review before reliance, audit after change | implementation, repair or rollout writing on work he reviews |
 | **George** | Control authority, desktop continuity and cross-project coordination | routing and the exact packet for cross-room work | the operator's acceptance |
 
