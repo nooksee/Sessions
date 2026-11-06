@@ -33,9 +33,52 @@ Two choices follow from the room's experience. First, a digest, not a blank: the
      render. An explicit words decision can digest that whole malformed
      payload; keep or session decisions for it are refused. Never digest
      only an inner fragment and leave a private tail public.
-     Elsewhere, quote markers pair in order: attribution within the preceding
-     80 characters classifies words; unattributed or unbalanced quotes remain
-     unknown. A quote within inline backticks is code, not a quote.
+     Elsewhere, quote markers form outermost pairs (rules 8, revision 5; the
+     review of 2026-11-05, item 3; the Auditor's section 50 and its successor): attribution
+     within the 80 characters before the outermost opening mark classifies
+     words; unattributed or unbalanced quotes remain unknown. A quote within
+     inline backticks is code, not a quote.
+   - **Nested quotes and empty pairs (revision 5).** Inner quote marks are part
+     of the digested text: one span runs from the first opening mark to the
+     mark that closes it. A mark cannot say which way it faces, so what follows
+     it decides, whatever its glyph. The first mark on a line opens. Inside an
+     open quote, a mark closes when the line's end, whitespace or another mark
+     follows it, or closing punctuation after a non-space; any other mark opens
+     an inner quote, and only the closing of the outermost one ends the span.
+     So `"a" and "b"` and `"a""b"` are two spans, `"a "b" c"` and `"a "b""` are
+     one, and a quote still open at the line's end is unbalanced from its
+     outermost mark, nothing of it digested and nothing of it placed in the
+     clear. An empty pair holds no words and is never a digest: it is
+     unclassified whether attributed or not, a `words` decision on it is
+     refused, and `keep` leaves its marks as they are. History mode, which asks
+     no decision, leaves it as it is. The public copy's header and the words
+     file name the revision beside the rules, in the form item 6 gives.
+   - **The limits of revision 5: two, and neither raises a flag.** In an
+     attributed line each reads a mark as a close, digests both sides, and
+     leaves what stands between them in the clear. The revision exists because
+     the next inner quote could be anything, so a record that may hold either
+     form needs a reader before it leaves the room.
+     A mark followed by whitespace closes: `the operator said "a " b " c"` is
+     two spans, and `b` stands in the clear. This one is unchanged from the old
+     rules, and a spaced mark is truly ambiguous.
+     An inner quote whose opening mark follows a non-space and comes straight
+     before closing punctuation reads as a close: `the operator said "x".y" z"`
+     is two spans, and `.y` stands in the clear.
+   - **Open, for the next revision: two cases.** An empty words label, a
+     words or direction label with nothing after it and no blockquote under
+     it, fails closed and has no way through. In record mode it is unclassified,
+     and a `words` decision and a `keep` decision on it are both refused with
+     exit 2. In history mode the render stops at it with exit 2 and writes
+     nothing, where revision 4 wrote the empty digest. The refusal says the tool
+     is at fault, and here it is not. No source in the room holds one.
+     A quote wrapped across a line break reads as two unbalanced spans, one
+     decision each, because spans are found line by line. Decided `words` on
+     both lines, it digests the first line's text and the second line's text
+     after its mark, and the second line's text before its mark stands in the
+     clear, which the words-field rule above says never to do. Where the second
+     line ends at its mark, the second decision is refused as an empty span.
+     Until then a record holding one joins the lines before the render, as
+     PR #30 did (the Auditor's section 38).
    - **Workflow ids.** `wf_` followed by 8 and then 3 hexadecimal characters is the Workflow tool's run id and stays; nothing longer after `wf_` is one.
    - **Host paths.** An absolute path beginning `/media/`, `/home/`, `/mnt/`, `/tmp/`, `/root/`, `/Users/`, `/var/`, `/opt/`, `/srv/` or `/run/`, or a path beginning `~/` or `~user/`, wherever it starts (after `file://`, a doubled slash, a bracket or a colon alike), up to the next whitespace, quote mark, backtick, pipe, closing square bracket, comma or semicolon; parentheses inside it are kept while balanced; it continues past a space when the next segment still carries a slash (`/home/x/My Documents/notes.md`); a trailing `.`, `,`, `:` or `;` is left to the sentence. Class `path`. A host path in Claude's project-slug form (`-media-...`, `-home-...`, also after `projects/`) is a host path too. System paths such as `/usr/bin/python3`, `/etc/...`, `/proc/...` and room-relative paths such as `Sessions/PoT.md` are not host paths and stay; a Windows path is out of scope and is named in the warnings.
    - **Session identifiers, whole.** The 8-4-4-4-12 hexadecimal shape. Only a hexadecimal neighbour blocks a match, so `agent-<id>.jsonl`, `session_<id>`, `<id>_old` and `wf_<id>` are found. Class `session`. One inside a URL (after `http://` or `https://` with no space between) is unclassified, since a link may carry an identifier that is not a session.
@@ -43,9 +86,9 @@ Two choices follow from the room's experience. First, a digest, not a blank: the
    - **Bare hex runs** of 8 or more characters with at least one letter and one digit (so a date such as `20261101` is never one). A run whose preceding characters end in the whole word `session`, `body`, `bodies`, `donor`, `container`, `thread`, `successor`, `rotation`, `spare` or `uuid`, with an optional `:`, `=`, `_` or `-` between, is class `prefix` (`id` alone is no context: a commit id or a build id is not a session). Otherwise, a run that begins any session identifier found anywhere in the record, whole or truncated, is unclassified whatever stands before it: a kept run beside its own placeholder would hand a reader the mapping. Otherwise a run of 40 or 64 characters is a Git object hash or a sha256 and stays, as does a run whose 24 preceding characters end in the whole word `sha256`, `sha`, `hash`, `digest`, `commit`, `head`, `merge`, `blob`, `tree`, `object` or `PR` (so `overhead` keeps nothing, and a heading marker `##` or a `#` is no context). A run that begins a Git hash or sha256 written whole elsewhere in the same record is the head of that digest and stays. Any other run is unclassified. Every run the rules keep is reported as kept, with its reason, so that the check output is a complete account.
 4. **Decisions.** A quote is decided before the identifier rules run over its line, so a quote that is kept, or still undecided, has the paths and identifiers inside it found and placeholdered as anywhere else; only a `words` span is digested whole. After every line is classified, a second pass holds the whole record to one rule: no kept run may equal or head an identifier the record placeholders, whatever placed that identifier (its shape, a context word or a decision); such a run becomes unclassified, and a `keep` decision that would keep one is refused, since the copy would otherwise carry the identifier beside its own placeholder. Every span has an id, the first 12 hexadecimal characters of the sha256 of its kind and its exact text; `check` prints the id of every unclassified span. `--decide ID=words`, `ID=keep` or `ID=session` classifies that span and no other: `words` and `keep` for a quote, `session` (a truncated identifier) and `keep` for a hex run. A decision for a span the rules classified themselves, for a span not in the record, or with a value the kind does not take, is refused: the tool offers no override of its own classification, so that a decision can never silently keep an operator's words. Decisions live on the command line of the run and are counted in the header of the public copy; the run's command line is the record of them.
 5. **Numbering.** Whole identifiers are numbered by first appearance; a truncated identifier takes the number of the whole identifier it begins, if one is in the record, and otherwise the number of its 8-hex head, so two truncated forms of one body are one placeholder. Host paths are numbered by first appearance of the exact text. The same identifier or path is therefore the same placeholder throughout the copy.
-6. **Rendering.** Class `words` becomes `[words sha256=<64 hex>]`, the digest of the exact UTF-8 text between the quote marks, the quote marks kept; `path` becomes `[host path N]`; `session` becomes `[session N]`; `prefix` becomes `[session prefix N]`; `keep` is left as it is. A host path or identifier inside a `words` span is digested with the words and never placeholdered. Every character outside a replaced span is written as it was read: line endings, tabs, non-ASCII, a missing final newline. The public copy begins with one added line, an HTML comment naming the source by its sha256 only (never by its file name, which may itself carry an identifier or a path), the rules version, the counts and the number of decisions, so that a reader can tell a copy from a record and re-render to verify it. From rules 8 the header names the mode after the rules version: `<!-- redact: public copy; source sha256 <64 hex>; rules 8; mode record|history; words N; sessions N whole, N truncated; host paths N; decisions N -->`. This is the header PoT 1.3.2 points at; copies rendered under rules 7 keep theirs.
+6. **Rendering.** Class `words` becomes `[words sha256=<64 hex>]`, the digest of the exact UTF-8 text between the quote marks, the quote marks kept; `path` becomes `[host path N]`; `session` becomes `[session N]`; `prefix` becomes `[session prefix N]`; `keep` is left as it is. A host path or identifier inside a `words` span is digested with the words and never placeholdered. Every character outside a replaced span is written as it was read: line endings, tabs, non-ASCII, a missing final newline. The public copy begins with one added line, an HTML comment naming the source by its sha256 only (never by its file name, which may itself carry an identifier or a path), the rules version, the counts and the number of decisions, so that a reader can tell a copy from a record and re-render to verify it. From rules 8 the header names the mode after the rules version, and from revision 5 it names the revision before the rules version: `<!-- redact: public copy; source sha256 <64 hex>; revision 5; rules 8; mode record|history; words N; sessions N whole, N truncated; host paths N; decisions N -->`. This is the header PoT 1.3.2 points at. Copies rendered earlier keep theirs: copies rendered under rules 7 keep theirs, and a copy rendered under rules 8 before revision 5 has no revision field. At revision 5, 1 of the 15 tracked public copies carries the field, `RoR.md`, and 14 do not. A fresh render of one of those 14 from its source differs from it by that field on the header line, so a reader verifying one removes that field first. The receipt `landing-stage-a` is the proof of that sentence: its fresh render is byte-equal to its tracked copy with the field removed. Across the room's 14 sources the revision's change to the rules touches one line, in the ledger's source, which is why `RoR.md` alone was rendered again. One of the 14 copies without the field, the review of 2026-11-05, binds its own body in its header and has no separate source to render.
 7. **Outputs.** `--out` and `--words-out` are created exclusively, mode 0644 and 0600: a temporary file in the same directory, then a hard link to the final name, which fails if the name exists; the temporary file is always removed. An existing file at either name, or a parent that is not a directory, is refused before any write; both temporary files are written before either is linked, and a failure removes everything this run created, so a two-output render writes both or neither. The words file holds a header and one line per digested span, `sha256=<64> | line N | <the words>`, in record order; it is private by construction and never enters Git.
-8. **Exit codes.** 0: check found nothing unclassified, or render wrote. 1: something is unclassified; check lists it and render writes nothing. 2: a refusal or a usage error (input missing or not UTF-8, a body as input, an existing output, a write failure such as a missing directory, a bad or stale decision). `check` prints a report line per span and a summary line; `render` prints the same and the paths written. The report never prints words, and prints a path or a hex run by its first eight characters only, since either may carry an identifier.
+8. **Exit codes.** 0: check found nothing unclassified, or render wrote. 1: something is unclassified; check lists it and render writes nothing. 2: a refusal or a usage error (input missing or not UTF-8, a body as input, an existing output, a write failure such as a missing directory, a bad or stale decision, an empty words label decided or met in history mode). `check` prints a report line per span and a summary line; `render` prints the same and the paths written. The report never prints words, and prints a path or a hex run by its first eight characters only, since either may carry an identifier.
 
 ## Research successor and ledger-join proof
 

@@ -41,6 +41,7 @@ from pathlib import Path
 SESSIONS = Path(__file__).resolve().parents[3]
 SPEC = SESSIONS / "docs" / "ops" / "specs" / "scripts" / "redact.md"
 RULES = "8"                                   # bumped whenever a rule below changes; printed in the header
+REVISION = "5"                                # the reviewed revision of these rules; printed in the header
 DECISIONS = ("words", "keep", "session")
 HEADER_START = "<!-- redact: public copy; "
 
@@ -51,6 +52,7 @@ HEADER_START = "<!-- redact: public copy; "
 HEX = r"[0-9a-f]"
 HOST_ROOTS = ("media", "home", "mnt", "tmp", "root", "Users", "var", "opt", "srv", "run")
 HOST_START_RE = re.compile(r"(?<![A-Za-z0-9.-])(?:/(?:" + "|".join(HOST_ROOTS) + r")/|~[\w-]*/)")   # an underscore may precede: italics
+CLOSING_PUNCTUATION = set(".,;:!?)]}|>*_'")
 QUOTE_MARKS = "".join(chr(c) for c in (0x22, 0x201C, 0x201D, 0x201E, 0xAB, 0xBB))   # straight, curly, low, angle
 PATH_STOP = set(" \t\r\n`'|]>,;") | set(QUOTE_MARKS)
 PATH_TRAIL = ".,:;"
@@ -118,6 +120,40 @@ def eol(line: str) -> int:
     return len(line) - 1 if line.endswith("\r") else len(line)
 
 
+def closes_quote(line: str, mark: int) -> bool:
+    """Whether a mark met inside an open quote closes one. A mark cannot say which way it faces, so what follows it
+    decides: the line's end, whitespace or another mark close; closing punctuation closes after a non-space; anything
+    else starts inner content, so the mark opens an inner quote."""
+    before = line[mark - 1] if mark else ""
+    after = line[mark + 1] if mark + 1 < len(line) else ""
+    if not after or after.isspace() or after in QUOTE_MARKS:
+        return True
+    return after in CLOSING_PUNCTUATION and bool(before) and not before.isspace()
+
+
+def outer_pairs(line: str, marks: list[int]) -> tuple[list[tuple[int, int]], int | None]:
+    """The outermost pairs of a line's quote marks, and the outermost mark never closed, if any. Inner marks belong
+    to the span around them."""
+    pairs, stack = [], []
+    for m in marks:
+        if not stack:
+            stack.append(m)
+        elif closes_quote(line, m):
+            opened = stack.pop()
+            if not stack:
+                pairs.append((opened, m))
+        else:
+            stack.append(m)
+    return pairs, (stack[0] if stack else None)
+
+
+def empty_quote(at: int) -> dict:
+    """An empty pair holds no words: it is never a digest. Unclassified, like every span the rules cannot place."""
+    finding = span("quote", at, at, "", None, "an empty quote")
+    finding["empty"] = True
+    return finding
+
+
 def quote_spans(line: str, history: bool = False) -> list[dict]:
     """Quoted spans outside code, each with its class: 'words', or None when unclassified. In history
     mode every mark counts, code or not, and every quoted stretch is words: the stretch from the first mark
@@ -130,6 +166,8 @@ def quote_spans(line: str, history: bool = False) -> list[dict]:
                 and not line[label.end():marks[0]].strip()
                 and not line[marks[-1] + 1:].strip()):
             a, b = marks[0] + 1, marks[-1]
+            if a == b:
+                return [empty_quote(a)]
             return [span("quote", a, b, line[a:b], "words", "a words field")]
         a = label.end()
         while a < len(line) and line[a] == " ":
@@ -146,15 +184,21 @@ def quote_spans(line: str, history: bool = False) -> list[dict]:
             a, b = marks[0] + 1, marks[-1]
         else:
             a, b = len(line) - len(line.lstrip()), eol(line)
+        if a == b:
+            return [span("quote", a, b, "", "keep", "an empty quote holds no words")]
         return [span("quote", a, b, line[a:b], "words", "a quoted stretch, digested by history mode")]
     spans = []
-    for i in range(0, len(marks) - len(marks) % 2, 2):
-        a, b = marks[i] + 1, marks[i + 1]
-        before = line[max(0, marks[i] - ATTRIBUTION_WINDOW):marks[i]]
+    pairs, unclosed = outer_pairs(line, marks)
+    for opened, closed in pairs:
+        a, b = opened + 1, closed
+        if a == b:
+            spans.append(empty_quote(a))
+            continue
+        before = line[max(0, opened - ATTRIBUTION_WINDOW):opened]
         cls = "words" if ATTRIBUTION_RE.search(before) else None
         spans.append(span("quote", a, b, line[a:b], cls, "attributed to the operator" if cls else "an unattributed quote"))
-    if len(marks) % 2:
-        a = marks[-1] + 1
+    if unclosed is not None:
+        a = unclosed + 1
         spans.append(span("quote", a, eol(line), line[a:eol(line)], None, "an unbalanced quote"))
     return spans
 
@@ -364,12 +408,18 @@ def survey(text: str) -> dict:
 
 def decide(s: dict, decisions: dict[str, str], used: set[str], history: bool = False) -> None:
     s["id"] = span_id(s["kind"], s.get("group", s["text"]))  # every line of one open block shares one id
+    if s.get("empty") and history:                             # no words to redact, and history mode asks nothing
+        s["cls"] = "keep"
+        s["why"] += "; holds no words"
+        return
     if s["cls"] is None and history:                           # the redacting choice, without a decision
         s["cls"] = "words" if s["kind"] == "quote" else ("session" if s["kind"] == "session" else "prefix")
         s["why"] += "; redacted by history mode"
         return
     if s["cls"] is None and s["id"] in decisions:
         d = decisions[s["id"]]
+        if s.get("empty") and d == "words":
+            raise Refused(f"decision {s['id']}=words names an empty quote; it holds no words, and an empty span is never a digest")
         if s.get("words_field") and d != "words":
             raise Refused(f"decision {s['id']} cannot keep a known words field")
         if s["kind"] == "quote" and d == "session":
@@ -540,6 +590,8 @@ def number(spans: list[dict]) -> None:
 
 def replacement(s: dict) -> str | None:
     if s["cls"] == "words":
+        if not s["text"]:
+            raise Refused("an empty span reached the digest; the tool is at fault, nothing written")
         return f"[words sha256={sha256(s['text'].encode('utf-8'))}]"
     if s["cls"] == "path":
         return f"[host path {s['n']}]"
@@ -715,12 +767,12 @@ def run(args) -> int:
         if not p.parent.is_dir():
             raise Refused(f"{p.parent} is not a directory; nothing written")
     source = sha256(data)
-    header = (f"{HEADER_START}source sha256 {source}; rules {RULES}; mode {'history' if history else 'record'}; "
+    header = (f"{HEADER_START}source sha256 {source}; revision {REVISION}; rules {RULES}; mode {'history' if history else 'record'}; "
               f"words {c['words']}; sessions {c['sessions']} whole, {c['truncated']} truncated; host paths {c['paths']}; "
               f"decisions {len(decisions)} -->\n")
     outputs = [(out, (header + render(text, spans)).encode("utf-8"), 0o644)]
     if words_out is not None:
-        lines = [f"# redact words file: private; source sha256 {source}; rules {RULES}"]
+        lines = [f"# redact words file: private; source sha256 {source}; rules {RULES}; revision {REVISION}"]
         lines += [f"sha256={sha256(s['text'].encode('utf-8'))} | line {s['line']} | {s['text']}" for s in spans if s["cls"] == "words"]
         outputs.append((words_out, ("\n".join(lines) + "\n").encode("utf-8"), 0o600))
     write_outputs(outputs)
