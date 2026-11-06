@@ -20,6 +20,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -97,7 +98,7 @@ class Room:
     def run(self, *provider_args, wrapper_args=(), env=None, direct=False):
         head = [str(WRAPPER)] if direct else [sys.executable, "-I", "-B", str(WRAPPER)]
         cmd = head + ["--dry-run", "--room", str(self.room), *wrapper_args, "--", *provider_args]
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env, cwd=self.room)
 
 
 class WrapperTests(unittest.TestCase):
@@ -296,6 +297,8 @@ class WrapperTests(unittest.TestCase):
         self.assertEqual(out["notebook"], "attached")
 
     def test_an_unexpected_error_fails_closed_without_blocking(self):
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.r.room)
         stdout = io.StringIO()
         with mock.patch.object(wrapper, "load_mind", side_effect=RuntimeError("synthetic")), \
                 mock.patch("sys.stdout", new=stdout):
@@ -333,20 +336,29 @@ class ExecTests(unittest.TestCase):
         self.env = {"PATH": f"{self.bin}{os.pathsep}{SAFE_PATH}", "FAKE_CAPTURE": str(self.capture),
                     "HOME": str(self.r.base)}
         self.settings = self.r.room / "logs" / "claude-resident" / "alpha-one.settings.json"
+        self.log = self.settings.parent / "decisions.log"
 
     def tearDown(self):
         self.tmp.cleanup()
 
     def launch(self, *provider_args, wrapper=(), env=None, stdin=b"", cwd=None, head=None):
         head = head or [sys.executable, "-I", "-B", str(WRAPPER), "--room", str(self.r.room), *wrapper, "--"]
-        return subprocess.run([*head, *provider_args], input=stdin, capture_output=True, timeout=60, cwd=cwd,
+        return subprocess.run([*head, *provider_args], input=stdin, capture_output=True, timeout=60, cwd=cwd or self.r.room,
                               env={**self.env, **(env or {})})
 
-    def dry(self, *provider_args):
-        done = subprocess.run([sys.executable, "-I", "-B", str(WRAPPER), "--dry-run", "--room", str(self.r.room), "--",
-                               *provider_args], capture_output=True, text=True, timeout=60, env=self.env)
+    def dry(self, *provider_args, cwd=None, env=None, room=None):
+        done = subprocess.run([sys.executable, "-I", "-B", str(WRAPPER), "--dry-run", "--room", str(room or self.r.room), "--",
+                               *provider_args], capture_output=True, text=True, timeout=60, cwd=cwd or self.r.room,
+                              env={**self.env, **(env or {})})
         self.assertEqual(done.returncode, 0, done.stderr)
         return json.loads(done.stdout)
+
+    def rows(self):
+        return [json.loads(line) for line in self.log.read_text().splitlines()]
+
+    def enter_room(self):
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.r.room)
 
     def argv(self):
         return [a.decode() for a in self.capture.with_suffix(".argv").read_bytes().split(b"\0")[:-1]]
@@ -399,14 +411,14 @@ class ExecTests(unittest.TestCase):
         self.launch("--resume", S_ALPHA)
         again = self.settings.stat()
         self.assertEqual((first.st_ino, first.st_mtime_ns), (again.st_ino, again.st_mtime_ns))
-        self.assertEqual(os.listdir(self.settings.parent), [self.settings.name])
+        self.assertEqual(sorted(os.listdir(self.settings.parent)), [self.settings.name, self.log.name])
         good = self.settings.read_text()
         for damage in (lambda: self.settings.write_text("{}"), lambda: self.settings.chmod(0o644)):
             damage()
             self.assert_ran(self.launch("--resume", S_ALPHA))
             self.assertEqual(self.settings.read_text(), good)
             self.assertEqual(stat.S_IMODE(self.settings.stat().st_mode), 0o600)
-            self.assertEqual(os.listdir(self.settings.parent), [self.settings.name])
+            self.assertEqual(sorted(os.listdir(self.settings.parent)), [self.settings.name, self.log.name])
 
     def test_a_settings_place_in_doubt_turns_memory_off_and_does_not_block(self):
         home = self.settings.parent
@@ -443,6 +455,9 @@ class ExecTests(unittest.TestCase):
                 self.assert_off(["--resume", S_ALPHA])
                 if name == "the file is a link":
                     self.assertEqual((elsewhere / "target").read_text(), "keep")
+                self.assertFalse((elsewhere / self.log.name).exists())       # the log never follows a linked folder
+                if name == "the folder is loose":
+                    self.assertFalse(self.log.exists())
                 if os.path.lexists(home):
                     os.unlink(home) if home.is_symlink() else shutil.rmtree(home)
                 (self.r.room / "logs").mkdir(exist_ok=True)
@@ -501,6 +516,7 @@ class ExecTests(unittest.TestCase):
         self.assert_ran(self.launch("--resume", S_ALPHA))
         self.assert_off(["--resume", S_ALPHA])
         self.assertFalse(self.settings.exists())
+        self.assertFalse(self.log.exists())                               # the log is under the same Git rule
         (self.r.room / ".gitignore").write_text("/ops/etc/\n/logs/*\n")
         self.assert_ran(self.launch("--resume", S_ALPHA))
         self.assertEqual(self.argv()[:2], ["--settings", str(self.settings)])
@@ -509,13 +525,18 @@ class ExecTests(unittest.TestCase):
         saved = {s: signal.getsignal(s) for s in (signal.SIGPIPE, signal.SIGXFSZ)}
         self.addCleanup(lambda: [signal.signal(s, h) for s, h in saved.items()])
         argv = ["--room", str(self.r.room), "--provider", str(self.fake), "--", "--resume", S_ALPHA]
+        self.enter_room()
         with mock.patch.object(wrapper.os, "replace", side_effect=OSError("synthetic")), \
                 mock.patch.object(wrapper.os, "execve", side_effect=OSError("stop here")) as ran, \
                 mock.patch("sys.stderr", new=io.StringIO()):
             self.assertEqual(wrapper.main(argv), 126)
         self.assertEqual(ran.call_args.args[2]["CLAUDE_CODE_DISABLE_AUTO_MEMORY"], "1")
         self.assertEqual(ran.call_args.args[1][1:], ["--resume", S_ALPHA])
-        self.assertEqual(os.listdir(self.settings.parent), [])
+        self.assertEqual(os.listdir(self.settings.parent), [self.log.name])
+        first, second = self.rows()
+        self.assertEqual((first["notebook"], first["memory_off"], first["key"]), ("none", True, "alpha-one"))
+        self.assertIn("could not be written", first["reason"])
+        self.assertEqual(second["provider"], "could not be executed")
 
     def test_a_launch_that_carries_settings_gets_memory_off(self):
         for args in (["--settings", "own.json", "--resume", S_ALPHA], [f"--settings=own.json", "--resume", S_ALPHA],
@@ -526,7 +547,7 @@ class ExecTests(unittest.TestCase):
                 self.assertFalse(self.settings.exists())
         out = json.loads(subprocess.run(
             [sys.executable, "-I", "-B", str(WRAPPER), "--dry-run", "--room", str(self.r.room), "--", "--settings", "x",
-             "--resume", S_ALPHA], capture_output=True, text=True, timeout=60).stdout)
+             "--resume", S_ALPHA], capture_output=True, text=True, timeout=60, cwd=self.r.room).stdout)
         self.assertEqual((out["branch"], out["notebook"], out["auto_memory"]), ("registered", "none", "off"))
         self.assertIn("--settings", out["reason"])
 
@@ -543,7 +564,7 @@ class ExecTests(unittest.TestCase):
                 self.assert_ran(self.launch("-p", "--resume", S_ELSEWHERE, env=env))
                 self.assertEqual(self.argv(), ["-p", "--resume", S_ELSEWHERE])
                 self.assertEqual(self.disable(), expect)
-        self.assertFalse(self.settings.parent.exists())
+        self.assertFalse(self.settings.exists())
 
     def test_every_other_branch_turns_memory_off_even_against_an_inherited_zero(self):
         cases = {"unregistered": ["--resume", S_UNKNOWN], "new": ["-p"], "continue": ["-c"],
@@ -556,7 +577,7 @@ class ExecTests(unittest.TestCase):
         self.r.save(raw=b"{not json")
         self.assert_ran(self.launch("--resume", S_ALPHA))
         self.assert_off(["--resume", S_ALPHA])
-        self.assertFalse(self.settings.parent.exists())
+        self.assertFalse(self.settings.exists())
 
     def test_an_inherited_switch_is_left_on_an_attached_launch(self):
         self.assert_ran(self.launch("--resume", S_ALPHA, env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}))
@@ -567,6 +588,7 @@ class ExecTests(unittest.TestCase):
         saved = {s: signal.getsignal(s) for s in (signal.SIGPIPE, signal.SIGXFSZ)}
         self.addCleanup(lambda: [signal.signal(s, h) for s, h in saved.items()])
         argv = ["--room", str(self.r.room), "--provider", str(self.fake), "--", "--resume", S_ALPHA]
+        self.enter_room()
         for target, name in ((wrapper, "load_mind"), (wrapper, "write_settings")):
             with self.subTest(name), mock.patch.object(target, name, side_effect=RuntimeError("synthetic")), \
                     mock.patch.object(wrapper.os, "execve", side_effect=OSError("stop here")) as ran, \
@@ -664,6 +686,532 @@ class ExecTests(unittest.TestCase):
         self.assertEqual(self.argv(), ["--", "x"])
         self.assert_ran(self.launch("-p", head=[sys.executable, "-I", "-B", str(self.installed()), "--"]))
         self.assertEqual(self.argv(), ["-p"])
+
+    # -- the working directory --------------------------------------------------------------
+    def start_after(self, folder, act, *provider_args, dry=False):
+        """Start the wrapper from a shell that entered the folder and then did something to it."""
+        head = [sys.executable, "-I", "-B", str(WRAPPER), *(["--dry-run"] if dry else []), "--room", str(self.r.room),
+                "--", *provider_args]
+        return subprocess.run(["/bin/sh", "-c", f'cd "$1" && {act} && shift && exec "$@"', "sh", str(folder), *head],
+                              capture_output=True, timeout=60, env=self.env, stdin=subprocess.DEVNULL, cwd=self.r.base)
+
+    def test_a_subfolder_of_the_room_counts_as_in_the_room(self):
+        sub = self.r.room / "var" / "deep"
+        sub.mkdir(parents=True)
+        self.assert_ran(self.launch("--resume", S_ALPHA, cwd=sub))
+        self.assertEqual(self.argv()[:2], ["--settings", str(self.settings)])
+        self.assertEqual(self.dry("-p", cwd=sub)["branch"], "new")
+
+    def test_a_launch_outside_the_room_passes_through_untouched(self):
+        for args in (["-p"], ["--resume", S_ALPHA], ["--resume", S_UNKNOWN], ["--resume", S_ELSEWHERE],
+                     ["--resume", S_ALPHA, "--session-id", S_BETA], ["-c"]):
+            for inherited, expect in ((None, "<unset>"), ("0", "0"), ("1", "1")):
+                with self.subTest(args=args, inherited=inherited):
+                    env = {} if inherited is None else {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": inherited}
+                    self.assert_ran(self.launch(*args, env=env, cwd=self.r.other))
+                    self.assertEqual(self.argv(), args)
+                    self.assertEqual(self.disable(), expect)
+        self.assertFalse(self.settings.exists())
+        out = self.dry("--resume", S_ALPHA, cwd=self.r.other)
+        self.assertEqual((out["branch"], out["notebook"], out["env"], out["notebook_route"]),
+                         ("outside-the-room", "none", {}, None))
+        self.assertIn("unchanged", out["auto_memory"])
+        self.assertEqual(out["argv"], ["<provider>", "--resume", S_ALPHA])
+
+    def test_a_folder_whose_name_begins_with_the_rooms_is_outside_it(self):
+        sibling = self.r.base / "room-two"
+        sibling.mkdir()
+        self.assertEqual(self.dry("--resume", S_ALPHA, cwd=sibling)["branch"], "outside-the-room")
+
+    def test_a_room_named_through_a_link_is_still_the_room(self):
+        alias = self.r.base / "alias-of-room"
+        alias.symlink_to(self.r.room)
+        self.assertEqual(self.dry("-p", room=alias)["branch"], "new")
+
+    def test_outside_the_room_a_broken_registry_changes_nothing(self):
+        self.r.save(raw=b"{not json")
+        self.assert_ran(self.launch("--resume", S_ALPHA, cwd=self.r.other))
+        self.assertEqual(self.disable(), "<unset>")
+        self.assertEqual(self.dry("--resume", S_ALPHA, cwd=self.r.other)["branch"], "outside-the-room")
+        self.assert_ran(self.launch("--resume", S_ALPHA))
+        self.assertEqual(self.disable(), "1")
+        self.assertEqual(self.rows()[-1]["branch"], "broken-registry")
+
+    def test_a_session_of_this_room_launched_from_outside_is_logged_and_gets_no_notebook(self):
+        self.assert_ran(self.launch("--resume", S_ALPHA, cwd=self.r.other))
+        self.assertEqual(self.argv(), ["--resume", S_ALPHA])
+        row = self.rows()[-1]
+        self.assertEqual((row["branch"], row["notebook"], row["key"]), ("outside-the-room", "none", None))
+
+    def test_an_absent_working_directory_turns_memory_off_and_does_not_block(self):
+        gone = self.r.room / "gone"
+        gone.mkdir()
+        done = self.start_after(gone, 'rmdir "$PWD"', "--resume", S_ALPHA, dry=True)
+        out = json.loads(done.stdout)
+        self.assertEqual((out["branch"], out["notebook"], out["auto_memory"]), ("working-directory", "none", "off"))
+        self.assertIn("absent", out["reason"])
+        gone.mkdir()
+        done = self.start_after(gone, 'rmdir "$PWD"', "--resume", S_ALPHA)
+        self.assertEqual((done.returncode, done.stdout), (0, b"fake-out\n"))
+        self.assert_off(["--resume", S_ALPHA])
+        self.assertEqual(self.rows()[-1]["branch"], "working-directory")
+
+    def test_an_unreadable_working_directory_turns_memory_off_and_does_not_block(self):
+        locked = self.r.room / "locked"
+        locked.mkdir()
+        for mode in ("000", "300", "600"):
+            with self.subTest(mode=mode):
+                locked.chmod(0o700)
+                done = self.start_after(locked, f'chmod {mode} "$PWD"', "--resume", S_ALPHA, dry=True)
+                out = json.loads(done.stdout)
+                self.assertEqual((out["branch"], out["auto_memory"]), ("working-directory", "off"))
+                self.assertIn("cannot be read", out["reason"])
+                locked.chmod(0o700)
+                done = self.start_after(locked, f'chmod {mode} "$PWD"', "--resume", S_ALPHA)
+                self.assertEqual((done.returncode, done.stdout), (0, b"fake-out\n"))
+                self.assert_off(["--resume", S_ALPHA])
+        locked.chmod(0o700)
+        self.assertFalse(self.settings.exists())
+
+    def test_a_link_through_the_room_that_resolves_elsewhere_turns_memory_off(self):
+        elsewhere = self.r.base / "elsewhere-place"
+        elsewhere.mkdir()
+        link = self.r.room / "door"
+        link.symlink_to(elsewhere)
+        alias = self.r.base / "alias-of-room"
+        alias.symlink_to(self.r.room)
+        for pwd in (link, alias / "door"):
+            with self.subTest(pwd=pwd):
+                out = self.dry("--resume", S_ALPHA, cwd=link, env={"PWD": str(pwd)})
+                self.assertEqual((out["branch"], out["notebook"], out["auto_memory"]), ("working-directory", "none", "off"))
+                self.assertIn("link", out["reason"])
+                self.assert_ran(self.launch("--resume", S_ALPHA, cwd=link, env={"PWD": str(pwd), "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "0"}))
+                self.assert_off(["--resume", S_ALPHA])
+                self.assertNotIn(str(elsewhere), out["reason"])
+
+    def test_the_pwd_variable_can_only_turn_memory_off_and_only_when_it_names_this_place(self):
+        elsewhere = self.r.base / "elsewhere-place"
+        elsewhere.mkdir()
+        door = self.r.room / "door"
+        door.symlink_to(elsewhere)
+        inner = self.r.room / "inner"
+        inner.mkdir()
+        (self.r.room / "inner-door").symlink_to(inner)
+        into = self.r.base / "way-in"
+        into.symlink_to(inner)
+        cases = {"stale, naming the room": (elsewhere, str(self.r.room), "outside-the-room"),
+                 "this place, by its own path": (elsewhere, str(elsewhere), "outside-the-room"),
+                 "relative": (elsewhere, "../room/door", "outside-the-room"),
+                 "absent": (elsewhere, "", "outside-the-room"),
+                 "a path that is gone": (elsewhere, str(self.r.room / "no-such"), "outside-the-room"),
+                 "a link in the room that stays in the room": (inner, str(self.r.room / "inner-door"), "registered"),
+                 "a link outside that resolves into the room": (inner, str(into), "registered"),
+                 "naming the other room while the room is here": (inner, str(self.r.other), "registered")}
+        for name, (cwd, pwd, branch) in cases.items():
+            with self.subTest(name):
+                out = self.dry("--resume", S_ALPHA, cwd=cwd, env={"PWD": pwd})
+                self.assertEqual(out["branch"], branch, out["reason"])
+                self.assertEqual(out["notebook"], "attached" if branch == "registered" else "none")
+
+    def test_a_relative_option_under_a_working_directory_that_is_gone_is_refused(self):
+        gone = self.r.room / "gone"
+        gone.mkdir()
+        head = [sys.executable, "-I", "-B", str(WRAPPER), "--room", "relative", "--", "-p"]
+        done = subprocess.run(["/bin/sh", "-c", 'cd "$1" && rmdir "$PWD" && shift && exec "$@"', "sh", str(gone), *head],
+                              capture_output=True, timeout=60, env=self.env, stdin=subprocess.DEVNULL, cwd=self.r.base)
+        self.assertEqual((done.returncode, done.stdout), (2, b""))
+        self.assertIn(b"usage:", done.stderr)
+        self.assertNotIn(b"Traceback", done.stderr)
+
+    # -- the decision log -------------------------------------------------------------------
+    def test_every_real_launch_writes_one_private_row_and_no_identifier(self):
+        def check(args, branch, notebook, off, key, cwd=None):
+            before = len(self.rows()) if self.log.exists() else 0
+            self.assert_ran(self.launch(*args, cwd=cwd))
+            rows = self.rows()
+            self.assertEqual(len(rows), before + 1)
+            row = rows[-1]
+            self.assertEqual(sorted(row), ["branch", "key", "memory_off", "notebook", "provider", "reason", "time"])
+            self.assertEqual((row["branch"], row["notebook"], row["memory_off"], row["key"], row["provider"]),
+                             (branch, notebook, off, key, "found"))
+            self.assertRegex(row["time"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+            self.assertTrue(row["reason"])
+
+        check(["-p", "secret-argument", "--resume", S_ALPHA], "registered", "attached", False, "alpha-one")
+        check(["--resume", S_BETA], "registered", "none", True, "beta-two")
+        check(["--settings", "secret-file", "--resume", S_ALPHA], "registered", "none", True, "alpha-one")
+        check(["--resume", S_ELSEWHERE], "registered-elsewhere", "none", False, None)
+        check(["--resume", S_UNKNOWN], "unregistered", "none", True, None)
+        check(["--resume", S_ALPHA, "--session-id", S_BETA], "ambiguous", "none", True, None)
+        check(["-p", "secret-prompt"], "new", "none", True, None)
+        check(["--resume", S_ALPHA], "outside-the-room", "none", False, None, cwd=self.r.other)
+        rows = self.r.rows
+        self.r.save(raw=b"{not json")
+        check(["--resume", S_ALPHA], "broken-registry", "none", True, None)
+        text = self.log.read_text()
+        for row in rows:
+            for field in ("session_id", "person", "role", "note", "room"):
+                self.assertNotIn(row[field], text, field)
+        for word in ("secret-", "delta-elsewhere", "gamma-codex", str(self.r.base)):
+            self.assertNotIn(word, text)
+        self.assertEqual(stat.S_IMODE(self.log.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(self.log.parent.stat().st_mode), 0o700)
+
+    def test_the_row_states_a_notebook_lost_to_an_inherited_switch(self):
+        self.assert_ran(self.launch("--resume", S_ALPHA, env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}))
+        row = self.rows()[-1]
+        self.assertEqual((row["notebook"], row["memory_off"]), ("attached", True))
+
+    def test_the_dry_run_writes_no_row(self):
+        self.dry("--resume", S_ALPHA)
+        self.dry("-p")
+        self.assertFalse(self.log.exists())
+
+    def test_the_row_states_a_provider_that_was_not_found_or_could_not_run(self):
+        plain = self.r.base / "plain"
+        plain.write_text("not executable")
+        done = self.launch("-p", wrapper=("--provider", str(plain)))
+        self.assertEqual(done.returncode, 127)
+        self.assertEqual(self.rows()[-1]["provider"], "none")
+        bad = self.bin / "bad"
+        bad.write_text("#!/nonexistent/interpreter\n")
+        bad.chmod(0o755)
+        done = self.launch("-p", wrapper=("--provider", str(bad)))
+        self.assertEqual(done.returncode, 126)
+        self.assertEqual([r["provider"] for r in self.rows()[-2:]], ["found", "could not be executed"])
+
+    def test_a_log_in_doubt_writes_nothing_and_does_not_block(self):
+        home = self.settings.parent
+        home.mkdir(mode=0o700)
+        elsewhere = self.r.base / "keep"
+        elsewhere.write_text("keep")
+        other = self.r.base / "other-link"
+
+        def as_link():
+            self.log.symlink_to(elsewhere)
+
+        def as_fifo():
+            os.mkfifo(self.log, 0o600)
+
+        def as_folder():
+            self.log.mkdir()
+
+        def as_hard_link():
+            self.log.write_text("old\n")
+            self.log.chmod(0o600)
+            os.link(self.log, other)
+
+        for make in (as_link, as_fifo, as_folder, as_hard_link):
+            with self.subTest(make.__name__):
+                make()
+                self.assert_ran(self.launch("--resume", S_ALPHA))
+                self.assertEqual(self.argv()[:2], ["--settings", str(self.settings)])
+                self.assertEqual(elsewhere.read_text(), "keep")
+                if make is as_hard_link:
+                    self.assertEqual(self.log.read_text(), "old\n")
+                    self.assertEqual(other.read_text(), "old\n")
+                if self.log.is_dir() and not self.log.is_symlink():
+                    self.log.rmdir()
+                else:
+                    self.log.unlink()
+
+    def test_the_log_checks_again_at_the_write(self):
+        home = self.settings.parent
+        home.mkdir(mode=0o700)
+        keep = self.r.base / "keep"
+        keep.write_text("keep")
+        result = {"branch": "new", "notebook": "none", "reason": "synthetic"}
+
+        def write():
+            with mock.patch.object(wrapper, "place_problems", return_value=[]):
+                wrapper.record(self.r.room, result, {}, "found")
+
+        self.log.symlink_to(keep)
+        write()
+        self.assertEqual(keep.read_text(), "keep")
+        self.log.unlink()
+        os.mkfifo(self.log, 0o600)
+        write()                                                      # opening a pipe with no reader must not wait
+        self.assertTrue(stat.S_ISFIFO(os.lstat(self.log).st_mode))
+        reader = os.open(self.log, os.O_RDONLY | os.O_NONBLOCK)
+        self.addCleanup(os.close, reader)
+        write()                                                      # with a reader the open succeeds; nothing is written
+        self.assertEqual(os.read(reader, 4096), b"")
+        self.log.unlink()
+        self.log.write_text("old\n")
+        self.log.chmod(0o600)
+        os.link(self.log, keep.with_name("second"))
+        write()
+        self.assertEqual(self.log.read_text(), "old\n")
+        keep.with_name("second").unlink()
+        with mock.patch.object(wrapper.os, "geteuid", return_value=os.geteuid() + 1):
+            write()
+        self.assertEqual(self.log.read_text(), "old\n")
+        write()
+        self.assertEqual(len(self.log.read_text().splitlines()), 2)
+
+    def test_a_loose_log_is_tightened_and_kept(self):
+        self.log.parent.mkdir(mode=0o700)
+        self.log.write_text("old\n")
+        self.log.chmod(0o644)
+        self.assert_ran(self.launch("-p"))
+        self.assertEqual(stat.S_IMODE(self.log.stat().st_mode), 0o600)
+        text = self.log.read_text().splitlines()
+        self.assertEqual(text[0], "old")
+        self.assertEqual(json.loads(text[1])["branch"], "new")
+
+    def test_a_new_log_is_born_private(self):
+        self.addCleanup(os.umask, os.umask(0o002))
+        self.settings.parent.mkdir(mode=0o700)
+        result = {"branch": "new", "notebook": "none", "reason": "synthetic"}
+        with mock.patch.object(wrapper.os, "fchmod", wraps=os.fchmod) as tighten:
+            wrapper.record(self.r.room, result, {}, "found")
+        self.assertEqual(stat.S_IMODE(self.log.stat().st_mode), 0o600)
+        tighten.assert_not_called()                                  # no moment at a looser mode to tighten from
+
+    def test_the_log_turns_over_at_its_limit_and_keeps_one_earlier_file(self):
+        self.log.parent.mkdir(mode=0o700)
+        self.log.write_text("")
+        self.log.chmod(0o600)
+        os.truncate(self.log, wrapper.LOG_LIMIT - 1)
+        self.assert_ran(self.launch("-p"))
+        self.assertFalse(self.log.with_name(self.log.name + ".1").exists())
+        os.truncate(self.log, wrapper.LOG_LIMIT)
+        self.assert_ran(self.launch("-p"))
+        earlier = self.log.with_name(self.log.name + ".1")
+        self.assertEqual(earlier.stat().st_size, wrapper.LOG_LIMIT)
+        self.assertEqual(stat.S_IMODE(earlier.stat().st_mode), 0o600)
+        self.assertEqual(len(self.rows()), 1)
+
+    def test_a_log_whose_earlier_file_cannot_be_placed_stays_as_it_is(self):
+        if shutil.which("git") is None:
+            self.skipTest("git is not installed")
+        subprocess.run(["git", "init", "-q", str(self.r.room)], check=True, capture_output=True, timeout=60)
+        (self.r.room / ".gitignore").write_text("/ops/etc/\n/logs/claude-resident/decisions.log\n")
+        earlier = self.log.with_name(self.log.name + ".1")
+        self.log.parent.mkdir(mode=0o700)
+        self.log.write_text("")
+        self.log.chmod(0o600)
+        os.truncate(self.log, wrapper.LOG_LIMIT)
+        self.assert_ran(self.launch("-p"))                           # Git would see the earlier file: no turn, no line
+        self.assertFalse(earlier.exists())
+        self.assertEqual(self.log.stat().st_size, wrapper.LOG_LIMIT)
+        (self.r.room / ".gitignore").write_text("/ops/etc/\n/logs/*\n")
+        earlier.mkdir()                                              # out of Git now, but a folder holds the name
+        self.assert_ran(self.launch("-p"))
+        self.assertEqual(self.log.stat().st_size, wrapper.LOG_LIMIT)
+        earlier.rmdir()
+        keep = self.r.base / "keep"
+        keep.write_text("keep")
+        earlier.symlink_to(keep)                                     # a link holds the name: it is not replaced
+        self.assert_ran(self.launch("-p"))
+        self.assertEqual(self.log.stat().st_size, wrapper.LOG_LIMIT)
+        self.assertTrue(earlier.is_symlink())
+        self.assertEqual(keep.read_text(), "keep")
+        earlier.unlink()
+        self.assert_ran(self.launch("-p"))                           # the place is good again: it turns over
+        self.assertEqual(earlier.stat().st_size, wrapper.LOG_LIMIT)
+        self.assertEqual(len(self.rows()), 1)
+
+    def test_a_failing_log_does_not_stop_the_launch(self):
+        saved = {s: signal.getsignal(s) for s in (signal.SIGPIPE, signal.SIGXFSZ)}
+        self.addCleanup(lambda: [signal.signal(s, h) for s, h in saved.items()])
+        self.enter_room()
+        argv = ["--room", str(self.r.room), "--provider", str(self.fake), "--", "--resume", S_UNKNOWN]
+        with mock.patch.object(wrapper, "make_home", side_effect=RuntimeError("synthetic")), \
+                mock.patch.object(wrapper.os, "execve", side_effect=OSError("stop here")) as ran, \
+                mock.patch("sys.stderr", new=io.StringIO()):
+            self.assertEqual(wrapper.main(argv), 126)
+        self.assertEqual(ran.call_args.args[1][1:], ["--resume", S_UNKNOWN])
+
+    def test_two_first_launches_both_keep_the_route(self):
+        real = os.mkdir
+
+        def lose(path, mode=0o777):
+            real(path, 0o700)
+            raise FileExistsError(path)
+
+        with mock.patch.object(wrapper.os, "mkdir", side_effect=lose):
+            target = wrapper.write_settings(wrapper.load_mind(), self.r.room, "alpha-one")
+        self.assertEqual(target, self.settings)
+        self.assertTrue(self.settings.exists())
+        shutil.rmtree(self.settings.parent)
+
+        def lose_loose(path, mode=0o777):
+            real(path, 0o755)
+            os.chmod(path, 0o755)
+            raise FileExistsError(path)
+
+        with mock.patch.object(wrapper.os, "mkdir", side_effect=lose_loose), self.assertRaises(OSError):
+            wrapper.write_settings(wrapper.load_mind(), self.r.room, "alpha-one")
+
+    # -- the Auditor's list: the four pinned first ------------------------------------------
+    def test_an_index_that_cannot_be_read_attaches_nothing(self):
+        self.r.index.write_bytes(b"\xff\xfe not utf-8\n")
+        out = self.dry("--resume", S_ALPHA)
+        self.assertEqual((out["branch"], out["notebook"], out["auto_memory"]), ("registered", "none", "off"))
+        self.assertIn("<notebook>/MEMORY.md is unreadable", out["reason"])
+        self.assert_ran(self.launch("--resume", S_ALPHA))
+        self.assert_off(["--resume", S_ALPHA])
+
+    def test_a_regular_file_at_logs_gives_one_answer_from_the_preview_and_the_launch(self):
+        logs = self.r.room / "logs"
+        logs.rmdir()
+        logs.write_text("a file")
+        for mode in (0o644, 0o700):
+            with self.subTest(mode=oct(mode)):
+                logs.chmod(mode)
+                out = self.dry("--resume", S_ALPHA)
+                self.assertEqual((out["branch"], out["notebook"]), ("registered", "none"))
+                self.assertIn("cannot be made", out["reason"])
+                self.assert_ran(self.launch("--resume", S_ALPHA))
+                self.assert_off(["--resume", S_ALPHA])
+                self.assertEqual(logs.read_text(), "a file")
+
+    def test_a_folder_named_like_the_provider_is_skipped(self):
+        first = self.r.base / "folder-first"
+        (first / "claude").mkdir(parents=True)
+        self.assert_ran(self.launch("-p", env={"PATH": f"{first}{os.pathsep}{self.bin}{os.pathsep}{SAFE_PATH}"}))
+        self.assertEqual(self.argv(), ["-p"])
+
+    def test_a_later_dry_run_belongs_to_the_provider(self):
+        self.assert_ran(self.launch("-p", "--dry-run"))
+        self.assertEqual(self.argv(), ["-p", "--dry-run"])
+
+    # -- the Auditor's list: the rest -------------------------------------------------------
+    def test_a_separator_cannot_be_an_options_value(self):
+        for name in ("--room", "--registry", "--provider"):
+            with self.subTest(name):
+                done = self.launch("-p", head=[sys.executable, "-I", "-B", str(WRAPPER), name, "--", "--"])
+                self.assertEqual((done.returncode, done.stdout), (2, b""))
+                self.assertIn(b"usage:", done.stderr)
+                self.assertFalse(self.capture.with_suffix(".argv").exists())
+
+    def test_a_relative_option_value_is_made_absolute(self):
+        self.assert_ran(self.launch("--resume", S_ALPHA, head=[sys.executable, "-I", "-B", str(WRAPPER), "--room", ".", "--"]))
+        self.assertEqual(self.argv()[:2], ["--settings", os.path.realpath(self.settings)])
+        self.assertEqual(json.loads(self.settings.read_text()), {"autoMemoryDirectory": os.path.realpath(self.r.notebook)})
+        out = json.loads(subprocess.run(
+            [sys.executable, "-I", "-B", str(WRAPPER), "--dry-run", "--room", str(self.r.room), "--provider",
+             os.path.relpath(self.fake, self.r.room), "--", "-p"], capture_output=True, text=True, timeout=60,
+            cwd=self.r.room, env=self.env).stdout)
+        self.assertEqual(out["provider"], os.path.realpath(self.fake))
+
+    def test_a_fork_flag_after_the_providers_separator_is_not_read(self):
+        args = ["--resume", S_ALPHA, "--", "--fork-session"]
+        self.assert_ran(self.launch(*args))
+        self.assertEqual(self.argv(), ["--settings", str(self.settings), *args])
+
+    def test_an_empty_session_value_names_nothing(self):
+        self.assertEqual(self.dry("--resume=")["branch"], "new")
+        out = self.dry("--session-id=", "--resume", S_ALPHA)
+        self.assertEqual((out["branch"], out["notebook"]), ("registered", "attached"))
+
+    def test_a_registry_over_the_limit_is_refused_by_its_size(self):
+        self.r.save(raw=json.dumps({"identities": self.r.rows, "pad": "x" * wrapper.REGISTRY_LIMIT}).encode())
+        out = self.dry("--resume", S_ALPHA)
+        self.assertEqual(out["branch"], "broken-registry")
+        self.assertIn("larger", out["reason"])
+
+    def test_a_registry_of_another_user_is_refused(self):
+        with mock.patch.object(wrapper.os, "geteuid", return_value=os.geteuid() + 1), \
+                self.assertRaises(wrapper.Broken) as caught:
+            wrapper.read_rows(self.r.registry)
+        self.assertIn("not owned", str(caught.exception))
+
+    def test_a_settings_file_of_another_user_is_refused(self):
+        self.settings.parent.mkdir(mode=0o700)
+        self.settings.write_text("{}")
+        calm = types.SimpleNamespace(private_path_problems=lambda path: [], git_exposed=lambda start, paths: [])
+        self.assertEqual(wrapper.settings_problems(calm, self.r.room, "alpha-one"), [])
+        with mock.patch.object(wrapper.os, "geteuid", return_value=os.geteuid() + 1):
+            self.assertEqual(wrapper.settings_problems(calm, self.r.room, "alpha-one"), ["the settings file cannot be used"])
+
+    def test_a_row_of_the_wrong_shape_is_a_broken_registry(self):
+        whole, rest = self.r.rows[0], self.r.rows[1:]
+        shapes = {"a number": 1, "a list": ["key"], "a string": "row"}
+        for field in ("key", "provider", "session_id", "room"):
+            shapes[f"{field} missing"] = {k: v for k, v in whole.items() if k != field}
+            shapes[f"{field} a number"] = dict(whole, **{field: 5})
+            shapes[f"{field} a list"] = dict(whole, **{field: ["x"]})
+        for name, row in shapes.items():
+            with self.subTest(name):
+                self.r.save([row] + rest)
+                out = self.dry("--resume", S_ALPHA)
+                self.assertEqual(out["branch"], "broken-registry", out["reason"])
+                self.assertIn("lacks", out["reason"])
+
+    def test_a_key_with_a_trailing_newline_is_not_a_plain_key(self):
+        self.r.save([dict(self.r.rows[0], key="alpha-one\n")] + self.r.rows[1:])
+        out = self.dry("--resume", S_ALPHA)
+        self.assertEqual(out["branch"], "broken-registry")
+        self.assertIn("not a plain key", out["reason"])
+
+    def test_a_logs_folder_that_cannot_be_entered_gives_one_answer(self):
+        logs = self.r.room / "logs"
+        logs.chmod(0o600)
+        out = self.dry("--resume", S_ALPHA)
+        self.assertEqual((out["branch"], out["notebook"]), ("registered", "none"))
+        self.assertIn("cannot be made", out["reason"])
+        self.assert_ran(self.launch("--resume", S_ALPHA))
+        self.assert_off(["--resume", S_ALPHA])
+        logs.chmod(0o700)
+        self.assertEqual(os.listdir(logs), [])
+
+    def test_a_row_whose_room_is_written_another_way_is_this_room(self):
+        alias = self.r.base / "alias-of-room"
+        alias.symlink_to(self.r.room)
+        for form in (str(alias), f"{self.r.room}/"):
+            with self.subTest(form=form):
+                self.r.save([dict(self.r.rows[0], room=form)] + self.r.rows[1:])
+                out = self.dry("--resume", S_ALPHA)
+                self.assertEqual((out["branch"], out["notebook"]), ("registered", "attached"))
+
+    def test_a_registry_swapped_after_its_check_is_refused(self):
+        real_lstat = os.lstat
+        other = self.r.base / "other-registry.json"
+        other.write_text(json.dumps({"identities": self.r.rows}))
+        other.chmod(0o600)
+
+        def to_link(path, *a, **k):
+            st = real_lstat(path, *a, **k)
+            os.unlink(path)
+            os.symlink(other, path)
+            return st
+
+        with mock.patch.object(wrapper.os, "lstat", side_effect=to_link), self.assertRaises(wrapper.Broken) as caught:
+            wrapper.read_rows(self.r.registry)
+        self.assertIn("unreadable", str(caught.exception))
+        self.r.save()
+        moved = self.r.base / "moved-registry.json"
+
+        def to_new_file(path, *a, **k):
+            st = real_lstat(path, *a, **k)
+            os.rename(path, moved)                                  # kept, so the new file cannot reuse its inode
+            shutil.copy(other, path)
+            return st
+
+        with mock.patch.object(wrapper.os, "lstat", side_effect=to_new_file), self.assertRaises(wrapper.Broken) as caught:
+            wrapper.read_rows(self.r.registry)
+        self.assertIn("changed", str(caught.exception))
+
+    def test_a_link_high_above_an_absent_settings_folder_is_seen(self):
+        real = self.r.base / "real-parent"
+        real.mkdir()
+        self.r.room.rename(real / "room")
+        high = self.r.base / "high"
+        high.symlink_to(real)
+        problems = wrapper.settings_problems(wrapper.load_mind(), high / "room", "alpha-one")
+        self.assertEqual(problems, ["a link stands in the settings folder's path"])
+        (real / "room").rename(self.r.room)
+
+    def test_the_settings_file_reaches_the_disk_before_it_replaces_the_old_one(self):
+        order = []
+        real_fsync, real_replace = os.fsync, os.replace
+        with mock.patch.object(wrapper.os, "fsync", side_effect=lambda fd: (order.append("fsync"), real_fsync(fd))[1]), \
+                mock.patch.object(wrapper.os, "replace", side_effect=lambda a, b: (order.append("replace"), real_replace(a, b))[1]):
+            wrapper.write_settings(wrapper.load_mind(), self.r.room, "alpha-one")
+        self.assertEqual(order, ["fsync", "replace"])
 
 
 if __name__ == "__main__":

@@ -1,8 +1,13 @@
 #!/usr/bin/env -S python3 -I -B
 """claude-resident: the launch wrapper for Claude residents (W5).
 
-Resolves the session a launch names (--resume or --session-id) to exactly
-one Claude row of the room's registry, and that row's key to its own
+The working directory comes first. A launch outside this room passes through
+untouched, whatever it names and whatever state the registry is in. A working
+directory in doubt (absent, unreadable, or a link through the room that resolves
+elsewhere) turns auto memory off.
+
+Inside the room, resolves the session a launch names (--resume or --session-id)
+to exactly one Claude row of the room's registry, and that row's key to its own
 notebook folder, <room>/ops/etc/notebooks/<key>/. Six branches: registered
 here (one match in this room: the notebook is attached), registered
 elsewhere (one match in another room: the launch passes through untouched),
@@ -20,7 +25,8 @@ Three forms:
 The dry run prints, as JSON, the argv and the environment changes the run
 would have, then exits 0, executing nothing and writing nothing. The other two
 replace this process with the provider, so every argument, the standard
-streams and the exit status pass through. The last, the bare form, is how a
+streams and the exit status pass through, after one line in a private decision
+log that holds no session and no argument. The last, the bare form, is how a
 launcher calls a provider. It applies only when the first argument is neither
 one of the wrapper's option names nor --; it takes no options, and every
 argument belongs to the provider, a later -- included.
@@ -43,6 +49,7 @@ import signal
 import stat
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -52,12 +59,14 @@ REGISTRY = Path("ops") / "etc" / "resident-identities.json"
 NOTEBOOKS = Path("ops") / "etc" / "notebooks"
 SETTINGS = Path("logs") / "claude-resident"
 ROUTE_KEY = "autoMemoryDirectory"
+LOG = "decisions.log"
+LOG_LIMIT = 1_048_576
 OPTIONS = ("--dry-run", "--room", "--registry", "--provider")
 INDEX = "MEMORY.md"
 PROVIDER = "claude"
 DISABLE = "CLAUDE_CODE_DISABLE_AUTO_MEMORY"
 REGISTRY_LIMIT = 1_048_576
-KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]*\Z")
 FIELDS = ("key", "provider", "session_id", "room")
 UNPROVEN = [
     "the provider executable the real run would exec, and that the exec passes every argument, the standard "
@@ -152,6 +161,34 @@ def carries_settings(args: list[str]) -> bool:
     return False
 
 
+def under(path: str, top: str) -> bool:
+    return os.path.commonpath([path, top]) == top
+
+
+def working_place(room: Path) -> tuple[str, str]:
+    """Where this launch stands: "in" the room, "out" of it, or in "doubt" with fixed text. The kernel's resolved
+    path decides, and a subfolder counts as in the room. PWD is read for the link case only: when it names this same
+    directory by a path through the room while the resolved path is outside. It can only turn memory off."""
+    try:
+        here = os.getcwd()
+    except OSError:
+        return "doubt", "the working directory is absent or cannot be reached"
+    if not os.access(".", os.R_OK | os.X_OK):
+        return "doubt", "the working directory cannot be read"
+    top = os.path.realpath(room)
+    if under(here, top):
+        return "in", ""
+    pwd = os.environ.get("PWD", "")
+    if os.path.isabs(pwd):
+        try:
+            same = os.path.samefile(pwd, ".")
+        except OSError:
+            same = False
+        if same and any(under(os.path.realpath(p), top) for p in Path(pwd).parents):
+            return "doubt", "the working directory is a link through the room that resolves elsewhere"
+    return "out", ""
+
+
 def read_rows(path: Path) -> list[dict]:
     """The registry's rows, or Broken. Read only, without following a link, at mode 0600."""
     try:
@@ -216,8 +253,9 @@ def notebook_problems(mind, room: Path, key: str) -> list[str]:
     return [p.replace(str(folder), "<notebook>").replace(str(room), "<room>") for p in problems]
 
 
-def settings_problems(mind, room: Path, key: str) -> list[str]:
-    """Why the route's file cannot be used, read only, so the dry run and the launch give one answer. Fixed text."""
+def place_problems(mind, room: Path, name: str) -> list[str]:
+    """Why a file of the wrapper's private folder cannot be used, read only, so the dry run and the launch give one
+    answer. Fixed text."""
     home = room / SETTINGS
     if not os.path.lexists(home):
         if any(p.is_symlink() for p in (home.parent, *home.parent.parents)):
@@ -226,7 +264,7 @@ def settings_problems(mind, room: Path, key: str) -> list[str]:
             return ["the settings folder cannot be made"]
     elif mind.private_path_problems(home):
         return ["the settings folder is not private"]
-    target = home / f"{key}.settings.json"
+    target = home / name
     start = home if os.path.lexists(home) else home.parent
     if mind.git_exposed(start, [target]):
         return ["the settings file would not be out of Git"]
@@ -239,8 +277,20 @@ def settings_problems(mind, room: Path, key: str) -> list[str]:
     return []
 
 
+def settings_problems(mind, room: Path, key: str) -> list[str]:
+    return place_problems(mind, room, f"{key}.settings.json")
+
+
 def decide(room: Path, registry: Path, args: list[str]) -> dict:
     """One branch for this launch, and what the run would be."""
+    place, doubt = working_place(room)
+    if place == "doubt":
+        return off("working-directory", doubt)
+    if place == "out":
+        return {"branch": "outside-the-room", "notebook": "none", "env": {}, "notebook_route": None,
+                "auto_memory": "unchanged: the provider's default for that place",
+                "reason": "the working directory is outside this room; this wrapper has no say there, so the launch "
+                          "passes through untouched"}
     try:
         rows = read_rows(registry)
     except Broken as exc:
@@ -261,6 +311,11 @@ def decide(room: Path, registry: Path, args: list[str]) -> dict:
                 "auto_memory": "unchanged: the provider's default for that resident's own room",
                 "reason": "one Claude row names this session, registered to another room; this wrapper has no say "
                           "over other rooms, so the launch passes through untouched"}
+    return {**attach_or_off(room, row, args), "_who": row["key"]}
+
+
+def attach_or_off(room: Path, row: dict, args: list[str]) -> dict:
+    """A row of this room: its notebook attached, or nothing attached with the reason."""
     mind = load_mind()
     problems = notebook_problems(mind, room, row["key"])
     problems = problems or settings_problems(mind, room, row["key"])
@@ -296,14 +351,25 @@ def find_provider(named, env: dict):
     return None
 
 
+def make_home(mind, room: Path) -> Path:
+    """The wrapper's private folder, made at 0700 if absent. Two first launches can meet here: the second finds it
+    made, and checks it."""
+    home = room / SETTINGS
+    if not os.path.lexists(home):
+        try:
+            os.mkdir(home, 0o700)
+        except FileExistsError:
+            if mind.private_path_problems(home):
+                raise OSError("the settings folder is not private") from None
+    return home
+
+
 def write_settings(mind, room: Path, key: str) -> Path:
     """The route: one 0600 file per key, in a 0700 folder under logs/, replaced atomically and only when it
     differs. The exec leaves nothing behind to clean up, so a launch must leave no growth. Raises on any doubt."""
     if settings_problems(mind, room, key):       # asked again at the launch: it may have changed since the decision
         raise OSError("the settings place cannot be used")
-    home = room / SETTINGS
-    if not os.path.lexists(home):
-        os.mkdir(home, 0o700)
+    home = make_home(mind, room)
     target = home / f"{key}.settings.json"
     data = (json.dumps({ROUTE_KEY: str(room / NOTEBOOKS / key)}, indent=2, sort_keys=True) + "\n").encode("utf-8")
     try:
@@ -332,6 +398,39 @@ def write_settings(mind, room: Path, key: str) -> Path:
     return target
 
 
+def record(room: Path, result: dict, env: dict, provider: str) -> None:
+    """One line in the private decision log: what this launch got, so a lost notebook can be seen afterwards. It holds
+    the branch, the fixed reason and, for a row of this room, its key: no session, argument, room or person. Any doubt
+    writes nothing, and nothing here can stop the launch."""
+    try:
+        mind = load_mind()
+        if place_problems(mind, room, LOG):
+            return
+        home = make_home(mind, room)
+        target = home / LOG
+        try:
+            if os.lstat(target).st_size >= LOG_LIMIT:
+                if place_problems(mind, room, f"{LOG}.1"):   # the earlier file answers to the same place rules
+                    return
+                os.replace(target, home / f"{LOG}.1")
+        except FileNotFoundError:
+            pass
+        row = {"time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "branch": result["branch"],
+               "notebook": result["notebook"], "memory_off": env.get(DISABLE) == "1", "reason": result["reason"],
+               "key": result.get("_who"), "provider": provider}
+        log = os.open(target, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+        try:
+            st = os.fstat(log)
+            if stat.S_ISREG(st.st_mode) and st.st_uid == os.geteuid() and st.st_nlink == 1:
+                if stat.S_IMODE(st.st_mode) != 0o600:
+                    os.fchmod(log, 0o600)
+                os.write(log, (json.dumps(row, sort_keys=True) + "\n").encode("utf-8"))
+        finally:
+            os.close(log)
+    except Exception:
+        pass
+
+
 def launch(result: dict, room: Path, named, args: list[str]) -> int:
     """Replace this process with the provider. Returns only when that cannot happen."""
     env = dict(os.environ)
@@ -342,7 +441,9 @@ def launch(result: dict, room: Path, named, args: list[str]) -> int:
             extra = ["--settings", str(write_settings(load_mind(), room, result["_key"]))]
         except Exception:                    # no route, no notebook: auto memory off, the launch not blocked
             env[DISABLE] = "1"
+            result = {**result, "notebook": "none", "reason": "the notebook's route could not be written at the launch"}
     provider = find_provider(named, env)
+    record(room, result, env, "found" if provider else "none")
     if provider is None:
         sys.stderr.write("claude-resident: no provider executable was found\n")
         return 127
@@ -352,12 +453,16 @@ def launch(result: dict, room: Path, named, args: list[str]) -> int:
         os.execve(provider, [provider, *extra, *args], env)
     except OSError as exc:
         sys.stderr.write(f"claude-resident: the provider could not be executed ({exc.__class__.__name__})\n")
+        record(room, result, env, "could not be executed")
     return 126
 
 
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    parsed = parse(argv)
+    try:
+        parsed = parse(argv)
+    except OSError:                          # a relative option value under a working directory that is gone
+        parsed = None
     if parsed is None:
         sys.stderr.write(USAGE)
         return 2
@@ -369,6 +474,7 @@ def main(argv=None) -> int:
     if not dry:
         return launch(result, room, named, args)
     route = ["--settings", "<settings>"] if result.pop("_key", None) else []
+    result.pop("_who", None)
     result.update(mode="dry-run", executed=False, argv=["<provider>", *route, *args], unproven=UNPROVEN,
                   provider=find_provider(named, {**os.environ, **result["env"]}))
     sys.stdout.write(json.dumps(result, indent=2, sort_keys=True) + "\n")
