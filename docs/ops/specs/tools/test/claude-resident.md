@@ -8,7 +8,7 @@ Scope: synthetic registries, rooms and notebooks only; the real provider is neve
 
 Prove, on synthetic data, that the wrapper's dry run reaches each of eight branches (the design's five, with a registered row split into this room and another room, and the two of the working directory), attaches a notebook only for a registered row of this room, passes a registered row of another room and any launch from outside the room through untouched, turns auto memory off in every other outcome, never blocks a launch, never executes anything in a dry run and never prints a registry value.
 
-Run from the room root: `python3 -I -B tools/test/test_claude_resident.py`. Exit 0 when all 80 tests pass (three skip if `git` is not installed); 1 on any failure. Reviewers also run it at umask 0002, 0022 and 0077.
+Run from the room root: `python3 -I -B tools/test/test_claude_resident.py`. Exit 0 when all 86 tests pass (three skip if `git` is not installed, and four skip as root, which ignores the modes they rely on); 1 on any failure. Reviewers also run it at umask 0002, 0022 and 0077.
 
 Each test builds a room with a registry at 0600 holding four rows (two Claude rows of this room, one Codex row, one Claude row of another room), each with an invented zero-block session, and one notebook folder at 0700 with a `MEMORY.md` at 0600 for the first key only. The wrapper runs as a subprocess with `python3 -I -B`, once directly through its interpreter line, and once in process for the error path.
 
@@ -102,6 +102,15 @@ The working directory, the decision log and the Auditor's clause list (section 1
 78. `test_a_registry_swapped_after_its_check_is_refused`: in process, swapped for a link or a new file between the check and the read.
 79. `test_a_link_high_above_an_absent_settings_folder_is_seen`: in process, a link far above the folder is named.
 80. `test_the_settings_file_reaches_the_disk_before_it_replaces_the_old_one`: in process, sync before replace.
+
+The Auditor's second list (section 22), the first two pinned first:
+
+81. `test_a_link_deep_through_the_room_that_resolves_elsewhere_turns_memory_off`: `PWD` two levels through a link in the room gives memory off from the dry run and the launch, against an inherited 0.
+82. `test_a_pwd_that_cannot_be_resolved_is_ignored_outside_the_room`: a `PWD` through a file or a link loop, from outside the room, stays `outside-the-room` with the switch untouched.
+83. `test_an_unreadable_working_directory_outside_the_room_turns_memory_off`: modes 000, 300 and 600 outside the room give the working-directory branch, not a pass-through.
+84. `test_the_row_reads_the_switch_by_its_value`: an inherited 0 or `yes` reads `memory_off` false, and 1 reads true.
+85. `test_the_rows_time_is_utc_whatever_the_zone`: with `TZ` five hours behind, the row's time is within 120 seconds of UTC.
+86. `test_the_log_turns_over_at_one_mebibyte_by_its_literal_size`: one byte under 1,048,576 stays; at 1,048,576 it moves. The sizes are literals, so the constant cannot drift.
 
 **Mutation check, 2026-11-05.** Each guard was disabled in turn (25 mutations: `--dry-run` only, the `--` separator, unknown wrapper options, the session value, `--fork-session`, the provider's own `--`, two sessions named, Claude rows only, no match, several matches, the room, the registered-elsewhere run left untouched, the folder's private path, its Git rule, its markers, the registry's absence, regular file, mode, duplicate keys, row fields, plain keys and identities list, the auto-memory switch, the error path, and the key kept out of reasons); the suite caught 25 of 25.
 

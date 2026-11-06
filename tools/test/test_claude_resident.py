@@ -9,6 +9,7 @@ zero-block values. Run:
 
     python3 -I -B tools/test/test_claude_resident.py
 """
+import calendar
 import importlib.machinery
 import importlib.util
 import io
@@ -20,6 +21,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import types
 import unittest
 from pathlib import Path
@@ -43,6 +45,8 @@ def tearDownModule():
     _TRIP.cleanup()
     if reached:
         raise AssertionError("a case reached a provider on the suite's PATH")
+
+NOT_AS_ROOT = unittest.skipIf(os.geteuid() == 0, "root ignores the modes this case relies on")
 
 WRAPPER = Path(__file__).resolve().parents[2] / "ops" / "bin" / "claude-resident"
 _loader = importlib.machinery.SourceFileLoader("claude_resident", str(WRAPPER))
@@ -467,6 +471,7 @@ class ExecTests(unittest.TestCase):
         self.assertEqual(self.settings.stat().st_nlink, 1)
         self.assertEqual((elsewhere / "other").read_text(), "x")
 
+    @NOT_AS_ROOT
     def test_the_dry_run_previews_a_folder_it_would_make_without_making_it(self):
         out = self.dry("--resume", S_ALPHA)
         self.assertEqual((out["notebook"], out["env"]), ("attached", {}))
@@ -756,6 +761,7 @@ class ExecTests(unittest.TestCase):
         self.assert_off(["--resume", S_ALPHA])
         self.assertEqual(self.rows()[-1]["branch"], "working-directory")
 
+    @NOT_AS_ROOT
     def test_an_unreadable_working_directory_turns_memory_off_and_does_not_block(self):
         locked = self.r.room / "locked"
         locked.mkdir()
@@ -1147,6 +1153,7 @@ class ExecTests(unittest.TestCase):
         self.assertEqual(out["branch"], "broken-registry")
         self.assertIn("not a plain key", out["reason"])
 
+    @NOT_AS_ROOT
     def test_a_logs_folder_that_cannot_be_entered_gives_one_answer(self):
         logs = self.r.room / "logs"
         logs.chmod(0o600)
@@ -1212,6 +1219,70 @@ class ExecTests(unittest.TestCase):
                 mock.patch.object(wrapper.os, "replace", side_effect=lambda a, b: (order.append("replace"), real_replace(a, b))[1]):
             wrapper.write_settings(wrapper.load_mind(), self.r.room, "alpha-one")
         self.assertEqual(order, ["fsync", "replace"])
+
+    # -- the Auditor's second list: the two pinned first ---------------------------------------
+    def test_a_link_deep_through_the_room_that_resolves_elsewhere_turns_memory_off(self):
+        elsewhere = self.r.base / "elsewhere-place"
+        (elsewhere / "sub").mkdir(parents=True)
+        (self.r.room / "door").symlink_to(elsewhere)
+        deep = self.r.room / "door" / "sub"
+        out = self.dry("--resume", S_ALPHA, cwd=deep, env={"PWD": str(deep)})
+        self.assertEqual((out["branch"], out["notebook"], out["auto_memory"]), ("working-directory", "none", "off"))
+        self.assert_ran(self.launch("--resume", S_ALPHA, cwd=deep, env={"PWD": str(deep), "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "0"}))
+        self.assert_off(["--resume", S_ALPHA])
+
+    def test_a_pwd_that_cannot_be_resolved_is_ignored_outside_the_room(self):
+        a_file = self.r.room / "a-file"
+        a_file.write_text("x")
+        loop = self.r.room / "loop"
+        loop.symlink_to(loop)
+        for pwd in (a_file / "below", loop / "below"):
+            with self.subTest(pwd=pwd.parent.name):
+                out = self.dry("--resume", S_ALPHA, cwd=self.r.other, env={"PWD": str(pwd)})
+                self.assertEqual((out["branch"], out["env"]), ("outside-the-room", {}))
+                self.assert_ran(self.launch("--resume", S_ALPHA, cwd=self.r.other, env={"PWD": str(pwd)}))
+                self.assertEqual(self.argv(), ["--resume", S_ALPHA])
+                self.assertEqual(self.disable(), "<unset>")
+
+    @NOT_AS_ROOT
+    def test_an_unreadable_working_directory_outside_the_room_turns_memory_off(self):
+        locked = self.r.other / "locked"
+        locked.mkdir()
+        for mode in ("000", "300", "600"):
+            with self.subTest(mode=mode):
+                locked.chmod(0o700)
+                done = self.start_after(locked, f'chmod {mode} "$PWD"', "--resume", S_ALPHA, dry=True)
+                out = json.loads(done.stdout)
+                self.assertEqual((out["branch"], out["auto_memory"]), ("working-directory", "off"))
+                locked.chmod(0o700)
+                done = self.start_after(locked, f'chmod {mode} "$PWD"', "--resume", S_ALPHA)
+                self.assertEqual((done.returncode, done.stdout), (0, b"fake-out\n"))
+                self.assert_off(["--resume", S_ALPHA])
+        locked.chmod(0o700)
+
+    def test_the_row_reads_the_switch_by_its_value(self):
+        for inherited, off in (("0", False), ("yes", False), ("1", True)):
+            with self.subTest(inherited=inherited):
+                self.assert_ran(self.launch("--resume", S_ALPHA, env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": inherited}))
+                row = self.rows()[-1]
+                self.assertEqual((row["notebook"], row["memory_off"]), ("attached", off))
+
+    def test_the_rows_time_is_utc_whatever_the_zone(self):
+        self.assert_ran(self.launch("-p", env={"TZ": "XXX5"}))                 # five hours behind, no zone database needed
+        stamp = calendar.timegm(time.strptime(self.rows()[-1]["time"], "%Y-%m-%dT%H:%M:%SZ"))
+        self.assertLess(abs(time.time() - stamp), 120)
+
+    def test_the_log_turns_over_at_one_mebibyte_by_its_literal_size(self):
+        self.log.parent.mkdir(mode=0o700)
+        self.log.write_text("")
+        self.log.chmod(0o600)
+        os.truncate(self.log, 1_048_575)
+        self.assert_ran(self.launch("-p"))
+        earlier = self.log.with_name(self.log.name + ".1")
+        self.assertFalse(earlier.exists())
+        os.truncate(self.log, 1_048_576)
+        self.assert_ran(self.launch("-p"))
+        self.assertEqual(earlier.stat().st_size, 1_048_576)
 
 
 if __name__ == "__main__":
