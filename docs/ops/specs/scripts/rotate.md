@@ -202,7 +202,7 @@ supplied the initial script/test skeleton while preserving this spec.
 - **The operator:** chooses the tier, creates the destination container, gives the go, accepts or does not.
 - **Writer:** exactly one, named before work starts, never the resident being moved. Builds, gates, takes custody, installs, writes the receipt.
 - **Donor:** closes well; never builds its own successor.
-- **Claudio:** the audit afterwards, read-only.
+- **Auditor:** the audit afterwards, read-only.
 
 **Tiers, declared in writing before work starts.**
 - **B, transplant:** the default. The capsule plus the donor's compaction summary and a measured slice of its own window, word for word.
