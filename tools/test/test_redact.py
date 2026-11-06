@@ -13,6 +13,7 @@ sha256 and Git hashes stay; byte-for-byte elsewhere; check writes nothing; rende
 output; decisions by span id.
 """
 import hashlib
+import importlib.util
 import os
 import re
 import stat
@@ -740,6 +741,146 @@ class RedactTests(unittest.TestCase):
         body, r = self.redacted(text, "neutral-keep", "--decide", f"{ids[0]}=keep")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(body, "## Notes\n\n> a neutral quoted line\n> and its second line at [host path 1]\n\nAfter.\n")
+
+    # -- rules 8, revision 5: nested quotes, and no empty-span digest (item 3 of the review of 2026-11-05) ----------
+    def test_r5_a_nested_quote_is_one_span_from_the_outermost_marks(self):
+        inner = 'add the "term" to it'
+        public, r = self.rendered(f'Kevin said: "{inner}" and left.\n')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.body(public), f'Kevin said: "[words sha256={sha256(inner)}]" and left.\n')
+        self.assertNotIn("term", public)
+
+    def test_r5_a_nested_quote_ending_the_span_leaves_no_empty_digest(self):
+        inner = 'use "term"'                                    # the ledger's own shape: the inner close meets the outer close
+        public, r = self.rendered(f'Kevin: "{inner}"\n')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.body(public), f'Kevin: "[words sha256={sha256(inner)}]"\n')
+        self.assertNotIn(sha256(""), public)
+        self.assertNotIn("term", public)
+
+    def test_r5_a_nested_quote_opening_the_span_and_one_in_curly_marks(self):
+        inner = '"term" first'
+        public, r = self.rendered(f'Kevin: "{inner}" done\n')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.body(public), f'Kevin: "[words sha256={sha256(inner)}]" done\n')
+        (self.dir / "public.md").unlink()
+        curly = "a \u201cterm\u201d b"
+        public, r = self.rendered(f"Kevin: \u201c{curly}\u201d end\n")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.body(public), f"Kevin: \u201c[words sha256={sha256(curly)}]\u201d end\n")
+        (self.dir / "public.md").unlink()
+        marked = 'a "*term*" b'                                 # punctuation after a space opens an inner quote; it does not close
+        public, r = self.rendered(f'Kevin: "{marked}" end\n')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.body(public), f'Kevin: "[words sha256={sha256(marked)}]" end\n')
+
+    def test_r5_each_closing_punctuation_mark_closes_an_inner_quote(self):
+        marks = ".,;:!?)]}|>*_'"
+        self.assertEqual(len(marks), 14)
+        for mark in marks:                                       # off the list, this mark opens a third quote and the span turns unbalanced
+            with self.subTest(mark=mark):
+                inner = f'a "term"{mark} b'
+                public, r = self.rendered(f'The operator said: "{inner}" done\n')
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(self.body(public), f'The operator said: "[words sha256={sha256(inner)}]" done\n')
+                (self.dir / "public.md").unlink(missing_ok=True)
+        r = run("check", str(self.record('The operator said: "a "term"- b" done\n')))      # a mark not on the list opens
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("an unbalanced quote", r.stdout)
+
+    def test_r5_two_adjacent_quotes_stay_two_spans(self):
+        for line, parts in (('Kevin said "first" and "second" then left.\n', ("first", "second")),
+                            ('Kevin: "first" "second"\n', ("first", "second")),
+                            ('Kevin: "first","second"\n', ("first", "second")),
+                            ('Kevin: "first""second"\n', ("first", "second"))):
+            with self.subTest(line=line):
+                public, r = self.rendered(line)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                want = line
+                for part in parts:
+                    want = want.replace(f'"{part}"', f'"[words sha256={sha256(part)}]"', 1)
+                self.assertEqual(self.body(public), want)
+                (self.dir / "public.md").unlink()
+
+    def test_r5_an_empty_pair_is_unclassified_and_never_a_digest(self):
+        for line in ('Kevin said "" and left.\n', 'An unattributed "" here.\n', '- **Words:** ""\n', 'Kevin: \u201c\u201d end\n'):
+            with self.subTest(line=line):
+                rec = self.record(line)
+                r = run("check", str(rec))
+                self.assertEqual(r.returncode, 1, r.stdout)
+                self.assertIn("an empty quote", r.stdout)
+                self.assertNotIn(sha256(""), r.stdout)
+                public, r = self.rendered(line)
+                self.assertEqual((r.returncode, public), (1, ""))
+
+    def test_r5_an_empty_pair_can_be_kept_and_never_digested_by_decision(self):
+        line = 'Kevin said "" and left.\n'
+        rec = self.record(line)
+        ident = re.search(r"\b([0-9a-f]{12})\b", run("check", str(rec)).stdout).group(1)
+        public, r = self.rendered(line, f"{ident}=words")
+        self.assertEqual((r.returncode, public), (2, ""))
+        self.assertIn("names an empty quote", r.stderr)
+        public, r = self.rendered(line, f"{ident}=keep")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.body(public), line)
+        self.assertNotIn(sha256(""), public)
+
+    def test_r5_a_nested_quote_at_the_end_of_the_attribution_window(self):
+        inner = 'a "term" b'
+        inside = "Kevin " + "x" * 74 + f'"{inner}" end\n'            # the outer mark is 80 characters after the K
+        self.assertEqual(inside.index('"'), 80)
+        public, r = self.rendered(inside)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.body(public), "Kevin " + "x" * 74 + f'"[words sha256={sha256(inner)}]" end\n')
+        (self.dir / "public.md").unlink()
+        outside = "Kevin " + "x" * 75 + f'"{inner}" end\n'           # one further: the K has left the window
+        public, r = self.rendered(outside)
+        self.assertEqual((r.returncode, public), (1, ""))
+        self.assertIn("an unattributed quote", r.stdout)
+
+    def test_r5_a_nested_quote_never_closed_fails_closed_from_its_outermost_mark(self):
+        rec = self.record('Kevin said "a "term" and never closed it\n')
+        r = run("check", str(rec))
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("an unbalanced quote", r.stdout)
+        public, r = self.rendered('Kevin said "a "term" and never closed it\n')
+        self.assertEqual((r.returncode, public), (1, ""))
+        whole = 'first part "second part never closed'
+        rec = self.record(f'Kevin said "{whole}\n', "two-open.md")
+        r = run("check", str(rec))
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn(f"{len(whole)} characters", r.stdout)
+        ident = re.search(r"\b([0-9a-f]{12})\b", r.stdout).group(1)
+        public, r = self.rendered(f'Kevin said "{whole}\n', f"{ident}=words")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.body(public), f'Kevin said "[words sha256={sha256(whole)}]\n')
+
+    def test_r5_history_mode_digests_no_empty_span(self):
+        rec = self.record('x = ""\n"quoted" y\n- **Words:** ""\n')
+        out = self.dir / "history.md"
+        r = run("render", str(rec), "--out", str(out), "--history")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        text = out.read_text()
+        self.assertNotIn(sha256(""), text)
+        self.assertIn('x = ""\n', text)
+        self.assertIn(f'"[words sha256={sha256("quoted")}]" y', text)
+        self.assertIn('- **Words:** ""\n', text)
+
+    def test_r5_the_last_guard_refuses_to_digest_an_empty_span(self):
+        spec = importlib.util.spec_from_file_location("redact_under_test", TOOL)
+        tool = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = tool
+        spec.loader.exec_module(tool)
+        with self.assertRaises(tool.Refused):
+            tool.replacement({"cls": "words", "text": ""})
+
+    def test_r5_the_header_and_the_words_file_name_the_revision(self):
+        rec = self.record('- **Words:** "Tonight"\n')
+        out, words = self.dir / "o.md", self.dir / "w.md"
+        r = run("render", str(rec), "--out", str(out), "--words-out", str(words))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("; revision 5; rules 8; mode record; words 1;", out.read_text().split("\n", 1)[0])
+        self.assertIn("rules 8; revision 5", words.read_text().split("\n", 1)[0])
 
     def test_c3_r4_a_fence_opened_on_a_list_items_line_is_a_fenced_block(self):
         go = "synthetic words of a go"
