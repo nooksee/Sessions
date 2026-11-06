@@ -17,8 +17,8 @@ Three ideas run through everything here:
 | `PoT.md` | the law in force, numbered and permanent; amended only through its own route |
 | `RoR.md` | the ledger: ratifications and the rare times a planned process was altered, with the reasoning |
 | `NOW.md` | the live board: present state, open items |
-| `ops/bin/` | the two binaries: `help` (the map, with a self-test) and `template` (every recurring record comes from a template) |
-| `ops/lib/scripts/` | one-word tools, listed in `docs/ops/registry/scripts.md`: `gauge` (fullness), `closeout` (the card), `mind` (who a resident is), `rotation`, `identity`, `myself`, `capsule`, `custody` and the rest; each has a spec and a suite |
+| `ops/bin/` | the two binaries, `help` (the map, with a self-test) and `template` (every recurring record comes from a template), and the launch wrapper `claude-resident`, registered with the scripts |
+| `ops/lib/scripts/` | one-word tools, listed in `docs/ops/registry/scripts.md`: `gauge` (fullness), `closeout` (the card), `mind` (who a resident is), `rotation`, `identity`, `myself`, `capsule`, `redact` and the rest; each has a spec and a suite |
 | `ops/src/` | the templates the tools and records are rendered from |
 | `ops/etc/` | the registry, roster and bindings (private, never in Git) |
 | `docs/` | the manual, the map (`docs/ops/README.md`), the registries and one specification per tool |

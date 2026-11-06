@@ -29,6 +29,10 @@
 !/docs/MANUAL.md
 !/docs/START-HERE.md
 !/docs/ops/
+# docs/reviews/: read-only reviews of the repository, admitted as public copies through the redact tool
+!/docs/reviews/
+/docs/reviews/*
+!/docs/reviews/sessions-review-20261105.md
 !/archives/
 /archives/*
 !/archives/PoT-38854647.md
