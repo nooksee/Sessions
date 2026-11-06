@@ -29,4 +29,4 @@ The 2026-11-05 programme assessment found closeout unwired while structural port
 
 ## Integrity Filter Warnings
 
-Refuse unknown identity, measurement or state before notification. Never inspect native body content or modify the registry. the Auditor independently reviews the frozen source before reliance; George owns any separately authorized host activation. Synthetic proof and a source PASS are not live activation or operator acceptance.
+Refuse unknown identity, measurement or state before notification. Never inspect native body content or modify the registry. The Auditor independently reviews the frozen source before reliance; George owns any separately authorized host activation. Synthetic proof and a source PASS are not live activation or operator acceptance.
