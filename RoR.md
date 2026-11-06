@@ -1,4 +1,4 @@
-<!-- redact: public copy; source sha256 232d720e4e29ec46697e072897f302aaa57b30aced9cbfa26a442b01d31ab852; revision 5; rules 8; mode record; words 25; sessions 0 whole, 0 truncated; host paths 2; decisions 8 -->
+<!-- redact: public copy; source sha256 f966a2ce35dfc40828274d3cad816223eb243ebac9fa8f10964c4d684a393c55; revision 5; rules 8; mode record; words 26; sessions 0 whole, 0 truncated; host paths 2; decisions 8 -->
 # RoR: the decision ledger of the Sessions room
 
 This is the room's decision ledger (PoT 1.2.10, 1.3.2). Each entry records one operator decision, standing direction, exception, acting holder, or anomaly that needs a decision: the operator's exact words, when they were given, the act they authorize, and a pointer to the record of that act.
