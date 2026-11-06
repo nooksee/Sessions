@@ -2,8 +2,9 @@
 
 Tool: `ops/lib/scripts/rotate.py` (`SCRIPT-04`).
 Test: `tools/test/test_rotate.py` (`TEST-48`). Writer: Joe Codex.
-Status: first slice integrated as PR #18. Second-slice synthetic source proof,
-independent review pending; no native rotation or load claim.
+Status: synthetic phases 0 to 5 implemented and independently source-reviewed,
+dry-run only; phases 6 to 9 remain unimplemented. No native rotation or load
+claim.
 
 ## First Principles Rationale
 

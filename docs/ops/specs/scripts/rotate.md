@@ -6,10 +6,9 @@ Script: `Sessions/ops/lib/scripts/rotate.py` (Claude-first synthetic runner). Sp
 
 Map: `docs/ops/README.md`.
 
-Status: first slice integrated as PR #18 at main b0d2970e (Claudio sections
-260 and 269). Second slice prepared 2026-11-05 by Joe Codex, independent
-review pending: synthetic phases 0 to 5, with Claude-only window/build
-rehearsal; phases 6 to 9 refuse. No live rotation or provider-load proof.
+Status: synthetic phases 0 to 5 implemented and independently source-reviewed,
+dry-run only, with Claude-only window/build rehearsal. Phases 6 to 9 remain
+unimplemented and refuse. No live rotation or provider-load proof.
 
 ## First Principles Rationale
 
