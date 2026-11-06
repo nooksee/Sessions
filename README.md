@@ -23,7 +23,7 @@ Three ideas run through everything here:
 | `ops/etc/` | the registry, roster and bindings (private, never in Git) |
 | `docs/` | the manual, the map (`docs/ops/README.md`), the registries and one specification per tool |
 | `tools/test/` | synthetic suites; `python3 -I -B tools/test/test_<word>.py`; inventory in `docs/ops/registry/test.md` |
-| `archives/` | write-once records: receipts, the law's snapshots, mind leaves, the frozen legacy lanes |
+| `archives/` | write-once records: receipts, the law's snapshots, the board's history, mind leaves, the frozen legacy lanes |
 | `logs/` | telemetry the tools write (never in Git) |
 | `storage/` | working-case and handoff payloads under PoT 1.1.4; only the declared directory skeleton is admitted to Git |
 | `storage/intake/` | incoming material awaiting classification; payload stays ignored, data is not installed code or authority |
