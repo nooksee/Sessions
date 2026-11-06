@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-05 19:22 EST, the Session Continuity Manager, a privacy correction to the repository line; earlier 2026-11-05 16:40 EST at the day's close; earlier 2026-11-05 13:36 EST for the continuity loop's state after F1, the notebook home and the F1 contract; earlier 2026-11-05 10:56 EST, JoJo Git, for the W4 source merge and the W5 projection slice; earlier 2026-11-05 00:45 EST, the Session Continuity Manager, after the B1 merge; earlier 2026-11-04 23:39 EST for the public gate; earlier by Joe Codex on 2026-11-04 for the RoR-18 policy and reader adoption.
+Updated: 2026-11-05 20:08 EST, the Session Continuity Manager, the team and the evening's delivery; earlier 2026-11-05 19:22 EST for a privacy correction to the repository line; earlier 2026-11-05 16:40 EST at the day's close; earlier 2026-11-05 13:36 EST for the continuity loop's state after F1, the notebook home and the F1 contract; earlier 2026-11-05 10:56 EST, JoJo Git, for the W4 source merge and the W5 projection slice; earlier 2026-11-05 00:45 EST, the Session Continuity Manager, after the B1 merge; earlier 2026-11-04 23:39 EST for the public gate; earlier by Joe Codex on 2026-11-04 for the RoR-18 policy and reader adoption.
 The operation receipt records the actual application time and source head.
 Other observations retain their stated measurement times and were not
 refreshed in this change. The dated boards below are historical context,
@@ -30,6 +30,14 @@ Session Continuity Manager was away; the Manager resumed coordination at 12:25
 the same day, and Joe's acting cover ended there. That was a temporary assignment, not a replacement identity
 or permanent registry role.
 
+On the evening of 2026-11-05 the operator formed the programme's team as the
+Session Continuity Manager, the Assistant and the Apprentice, and seated an
+Auditor for the programme, the operator's appointment under PoT 4.1.6, by a
+reviewed registry change at 18:59 (the seating receipt is in the Manager's
+record). Control's Desktop Audit and Review ended its programme assignment
+the same evening and keeps its Control seat. A one-clause staffing amendment
+(4.1.9 Auditor) is in review under PoT 7.3.
+
 - W3: the health desk is measured and corrected. The read-only
   measurement of 2026-11-05 (the Apprentice) found the clinic's chronic set
   to be 8 current residents, 57 helpers of live residents and one unresolved
@@ -46,22 +54,29 @@ or permanent registry role.
   correction; its go, and the real notification after it, are later acts.
 - W5: the mind tool carries projection, seal, unseal and the seal recorded
   in the leaf (PRs #12, #16, #19); the launch wrapper's dry run is on `main`
-  (PR #17), a resident of another room passing through untouched. The first
-  mind leaf (the Assistant's) is in custody as `sessions-minds-20261105`. The
-  notebook home exists at `ops/etc/notebooks/<key>/` (PR #14), the first
-  folder created and audited. The seeding sets are marked from the Control
-  notebook's names, one note withheld for the operator's review. Not yet:
-  the provider's route proved, any seeding, any projection or seal run, the
-  launch setting; each a named go.
+  (PR #17), a resident of another room passing through untouched; its real
+  form and notebook route (PR #24) passed review at its head and merge after
+  a rebase, with a third slice decided before any launch setting (the room
+  in the decision, a private decision log). The Assistant's two mind leaves
+  are in custody as `sessions-minds-20261105` and its second batch of the
+  same day, suffixed b, both audited. The notebook home exists at `ops/etc/notebooks/<key>/`
+  (PR #14), the first folder created and audited. The seeding sets are marked
+  from the Control notebook's names, one note withheld for the operator's
+  review. The procedure for the nine native proofs is written and under two
+  corrections; the proofs run on the final wrapper on the operator's go. Not
+  yet: the provider's route proved, any seeding, any projection or seal run,
+  the launch setting; each a named go.
 - W6: the guided `rotate.py` runner has phases 0 to 2 on `main` (PR #18,
   audited) and phases 3 to 5 frozen in the Apprentice's clone, the source
-  passed and its tests under one correction; phases 6 to 9 and the first
-  real rotation remain. Provider-specific native acceptance is unproved.
+  passed and the tests' correction delivered as a second commit, under the
+  Auditor's exact-head review; the Apprentice integrates after that pass;
+  phases 6 to 9 and the first real rotation remain. Provider-specific native
+  acceptance is unproved.
 
 The Chief Repository Operations Officer and the Desktop Continuity Manager
-leave the Sessions programme after 2026-11-05 at the operator's word; their
-open items (the W6 integration, the cadence) are held for the operator's
-new team.
+left the Sessions programme on 2026-11-05 at the operator's word; the W6
+integration is the Apprentice's after the Auditor's pass, and the cadence's
+owner is still to be named.
 
 Current work is carried by the existing private first-wins plan and bounded
 W4 case. This board grants no live settings, provider, mind or body action.
