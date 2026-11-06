@@ -64,7 +64,8 @@ unwritten runner, unwired hook or notebook integration exists.
 | **Claudine Colbert** | Assistant Session Continuity Manager | the tools she is assigned as sole writer (`gauge.py`, `mind.py`), and Shannon's rotation | a surface another writer holds |
 | **Joe Codex** | Session Continuity Apprentice | read-only measurement and the Codex side (methods, runway figures, Codex hooks) | any write without the operator's named go |
 | **Jo Hamming** | Integrator (registry key `jo-hamming`; a Copilot resident, prompts only by the operator's paste; CONSTRAINTS C16) | the exact-head merge of other writers' passed pull requests on the writer's handoff, the fast-forward of `main`, the proof and the branch cleanup | review, source, documents, records, any merge without the Auditor's PASS at the exact head and the writer's handoff; every merge until C16's mechanics take effect (the bound binds from seating) |
-| **Claudio Freeman** | independent reviewer and auditor (Control) | review before reliance, audit after change | implementation, repair or rollout writing on work he reviews |
+| **Claudio Freeman** | independent reviewer and auditor (Control surfaces) | review before reliance, audit after change | implementation, repair or rollout writing on work he reviews |
+| **The Auditor** (the operator's appointed seat; the registry names the holder) | independent reviewer and post-change auditor for this room's material work (PoT 4.1.9) | review before reliance, audit after change | implementation, repair or rollout writing on work it reviews |
 | **George** | Control authority, desktop continuity and cross-project coordination | routing and the exact packet for cross-room work | the operator's acceptance |
 
 Rules that hold for every seat:
@@ -330,7 +331,7 @@ its temporary fixture build; phases 6 to 9 remain unimplemented. Real rotations
 still follow the spec by hand, phase by phase, and stop at each stop point.
 No live rotation or provider-load proof.
 
-**Roles.** the operator decides, opens the container, gives the go, accepts or does not. Exactly one writer, named before work starts and never the resident being moved. The donor closes well and never builds its own successor. Claudio audits afterwards.
+**Roles.** the operator decides, opens the container, gives the go, accepts or does not. Exactly one writer, named before work starts and never the resident being moved. The donor closes well and never builds its own successor. The Auditor audits afterwards.
 
 **Tiers, declared in writing before work starts.**
 - **B, transplant (default):** the capsule plus the donor's compaction summary and a measured slice of its own window, word for word.

@@ -1,6 +1,6 @@
 # Technical Specification: template
 
-Binary: `Sessions/ops/bin/template` (Bash, no library). Templates: `Sessions/ops/src/{scripts,docs,tests,reports}/*.tpl`, 11 files. Self-test: `ops/bin/template --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/template`, its `factory` renderer and its `ops/src/**/*.tpl` form (`Projects/STELA`); rewritten the same day to render from template files instead of inline text. Status: built 2026-10-30; self-test covers all registered templates and the opt-in spec-preserving route. Claudio Freeman reviews it before it is relied on. Map: `docs/ops/README.md`.
+Binary: `Sessions/ops/bin/template` (Bash, no library). Templates: `Sessions/ops/src/{scripts,docs,tests,reports}/*.tpl`, 11 files. Self-test: `ops/bin/template --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/template`, its `factory` renderer and its `ops/src/**/*.tpl` form (`Projects/STELA`); rewritten the same day to render from template files instead of inline text. Status: built 2026-10-30; self-test covers all registered templates and the opt-in spec-preserving route. The Auditor reviews it before it is relied on. Map: `docs/ops/README.md`.
 
 ## First Principles Rationale
 
@@ -150,5 +150,5 @@ Later that day the operator explained STELA's templates: the agent kept changing
 - A rendered report is only as true as its slots. `template` checks that every field is present and filled; it does not check that a hash is right or a gate really passed. The writer stays answerable for every value.
 - A template change is a form change. Editing a `.tpl` changes every future receipt, packet or card; it is done by the template's owner, Claude Shannon, and the self-test is run after it. Case 17 fails if the closeout card drifts from `closeout.md`.
 - The registry row is text for the registry's writer, who owns that file. Its ID is computed from the registry as it stands at that moment. Two skeletons generated before either row is added receive the same ID; the registry writer resolves that.
-- Every generated tool file is a skeleton that says so: the script refuses with exit 2, and the spec's `Status:` reads "skeleton". Nothing generated is fit to run until its writer replaces every `[PLACEHOLDER]` and Claudio Freeman has reviewed it.
+- Every generated tool file is a skeleton that says so: the script refuses with exit 2, and the spec's `Status:` reads "skeleton". Nothing generated is fit to run until its writer replaces every `[PLACEHOLDER]` and the Auditor has reviewed it.
 - `--test` writes only inside its own temporary directory and removes only that directory. It reads `docs/ops/specs/scripts/closeout.md` for case 17.

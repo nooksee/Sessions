@@ -260,7 +260,7 @@ Both were fixed with tests on the same day. A mutation check confirmed that undo
 - **No session body.** The tool reads only the room's `MIND.md`, that key's leaves, the registry and the change file.
 - **No yes, no write.** `write` refuses without `--yes`. Run it only after the operator has said yes in the conversation, and pass his words exactly.
   - The tool cannot detect invented words.
-  - `history`, the per-entry `yes` lines and the declared changes are there so that the operator or Claudio can hold every leaf against the conversation.
+  - `history`, the per-entry `yes` lines and the declared changes are there so that the operator or the Auditor can hold every leaf against the conversation.
 - **Never edit a leaf.** A leaf edited by hand fails its hash, its canonical form, or both. A change is always a new leaf.
 - **Out of Git, on Git's own word** (PoT 5.1). `write` refuses inside a Git work tree that does not ignore the leaf and `MIND.md`, and refuses whenever Git cannot answer.
   - On 10-30 the Sessions room did not yet ignore `MIND.md` or `archives/surfaces/`. George queued the ignore rule for the next Control writer slot.
@@ -270,7 +270,7 @@ Both were fixed with tests on the same day. A mutation check confirmed that undo
 - **Identity stays in the registry.** A mind names no session or container.
 - **Medical content stays out of every mind,** with no statistics.
 - **The trauma guard holds.** An incident enters only as a closed lesson, with its fix. Blame words are refused in core.
-- **Authority.** Wiring the mind into a capsule, a hook or a timer needs Claudio's review and the operator's named go.
+- **Authority.** Wiring the mind into a capsule, a hook or a timer needs the Auditor's review and the operator's named go.
 
 ### Findings, item by item
 

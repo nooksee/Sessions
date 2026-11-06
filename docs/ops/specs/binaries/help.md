@@ -1,6 +1,6 @@
 # Technical Specification: help
 
-Binary: `Sessions/ops/bin/help` (Bash, no library). Self-test: `ops/bin/help --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/help` and its spec (`Projects/STELA`). Status: built 2026-10-30, self-test 14 of 14 passing; read-only, wired to no hook and no timer. Claudio Freeman reviews it before it is relied on. Map: `docs/ops/README.md`.
+Binary: `Sessions/ops/bin/help` (Bash, no library). Self-test: `ops/bin/help --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/help` and its spec (`Projects/STELA`). Status: built 2026-10-30, self-test 14 of 14 passing; read-only, wired to no hook and no timer. The Auditor reviews it before it is relied on. Map: `docs/ops/README.md`.
 
 ## First Principles Rationale
 

@@ -1,6 +1,6 @@
 # Technical Specification: closeout
 
-Script: `Sessions/ops/lib/scripts/closeout.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_closeout.py`. Card: `Sessions/ops/src/reports/closeout.md.tpl`. Spec writer: Claude Shannon, 2026-10-30, from the operator's direction. Status: built and tested by its writer; the independent review of the code is pending. Nothing is installed: wiring a hook into any resident's settings needs Claudio's review and the operator's named go.
+Script: `Sessions/ops/lib/scripts/closeout.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_closeout.py`. Card: `Sessions/ops/src/reports/closeout.md.tpl`. Spec writer: Claude Shannon, 2026-10-30, from the operator's direction. Status: built and tested by its writer; the independent review of the code is pending. Nothing is installed: wiring a hook into any resident's settings needs the Auditor's review and the operator's named go.
 
 ## First Principles Rationale
 
@@ -50,7 +50,7 @@ On 2026-10-29 Joy reached 77.8 percent. A closing packet for her was written and
 - **Silent when unsure.** An unknown reading or window produces no signal and no guess.
 - **Advice, not control.** The card tells the resident what to do; it never blocks a prompt, a tool or a compaction.
 - **No self-written mind.** The resident proposes and the operator decides, in conversation.
-- **Authority.** Wiring the hook into any resident's settings, and any notification, needs Claudio's review and the operator's named go, one resident first (Shannon), then the rest.
+- **Authority.** Wiring the hook into any resident's settings, and any notification, needs the Auditor's review and the operator's named go, one resident first (Shannon), then the rest.
 
 ## State destination and legacy boundary
 

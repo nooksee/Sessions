@@ -98,4 +98,4 @@ The gate's 20-percent bound checks a hash-bound supplied wake estimate; it
 does not implement a tokenizer or claim a measured native wake. Media files
 and candidate bytes exist only while the synthetic build is being gated,
 not as a durable custody package. A killed process's residual is never adopted.
-The Auditor independently reviews the frozen source; JoJo integrates it.
+The Auditor independently reviews the frozen source; the Apprentice integrates it.
