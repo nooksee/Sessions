@@ -69,7 +69,7 @@ remains; the adoption itself moved no state.
 | mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | ported from the Candidates package, simplified to solicited input |
 | mind pointer | `<room>/MIND.md`, one line per resident in the room | durable, out of Git | first one: `Sessions/MIND.md` |
 | mind leaves | `<room>/archives/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | archives-root layout implemented; an actual write follows PoT 5.1 and the mind specification |
-| rotate | `ops/lib/scripts/rotate.py`, `docs/ops/specs/scripts/rotate.md`, `tools/test/test_rotate.py` | tool | Joe's synthetic read-only phases 0 to 2 are implemented and source-reviewed; integration review pending; phases 3 to 9 remain unimplemented |
+| rotate | `ops/lib/scripts/rotate.py`, `docs/ops/specs/scripts/rotate.md`, `tools/test/test_rotate.py` | tool | synthetic phases 0 to 5 implemented and independently source-reviewed, dry-run only; phase 5 removes its temporary fixture build; phases 6 to 9 unimplemented; no live rotation or provider-load proof |
 | Claude resident wrapper | `ops/bin/claude-resident`, `docs/ops/specs/scripts/claude-resident.md`, `tools/test/test_claude_resident.py` | binary | source implemented and reviewed; real form not yet proved against the provider; `cliPath` untouched |
 | team room | `storage/handoff/{shannon,claudine,joe}.md`, and `storage/handoff/port.md` (the port writer's handoff, 2026-11-01) | private, ignored working notes | results are promoted to `archives/receipts/` or the office handoff |
 | task scratch | `var/tmp/<owner>-<operation>.<unique>/`, skeleton described in `var/README.md` | ephemeral, ignored | owner-scoped; PoT 1.1.13; no persistent state or automatic purge |
