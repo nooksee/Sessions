@@ -64,7 +64,7 @@
 #   archives/words/      the sources of other records that quote the operator; their tracked copies are derived by the redact tool (PoT 1.2.10)
 #   MIND.md, archives/MIND-*, archives/NOTEBOOK-*  minds and sealed notebooks: who a resident is
 #   ops/etc/notebooks/  each resident's own notebook home, one folder per registry key at mode 0700, projected from the mind and sealed at closeout (W5)
-#   ops/etc/*.json       the registry, roster, promotions and host bindings: identity
+#   ops/etc/*            the registry, roster, promotions, host bindings and any other binding in any format: identity; only .gitkeep is admitted
 #   logs/*               telemetry: output, not a record
 #   storage/             only its declared skeleton is versioned; payload stays private by default
 #   var/tmp/             task-local scratch; only the skeleton is admitted
@@ -76,8 +76,8 @@
 /archives/legacy/
 /archives/RoR-words.md
 /archives/words/
-/ops/etc/*.json
-/ops/etc/notebooks/
+/ops/etc/*
+!/ops/etc/.gitkeep
 /HANDOFF.md
 /.venv/
 /.idea/
