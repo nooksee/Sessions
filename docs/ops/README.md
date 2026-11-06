@@ -70,7 +70,7 @@ remains; the adoption itself moved no state.
 | mind pointer | `<room>/MIND.md`, one line per resident in the room | durable, out of Git | first one: `Sessions/MIND.md` |
 | mind leaves | `<room>/archives/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | archives-root layout implemented; an actual write follows PoT 5.1 and the mind specification |
 | rotate | `ops/lib/scripts/rotate.py`, `docs/ops/specs/scripts/rotate.md`, `tools/test/test_rotate.py` | tool | synthetic phases 0 to 5 implemented and independently source-reviewed, dry-run only; phase 5 removes its temporary fixture build; phases 6 to 9 unimplemented; no live rotation or provider-load proof |
-| Claude resident wrapper | `ops/bin/claude-resident`, `docs/ops/specs/scripts/claude-resident.md`, `tools/test/test_claude_resident.py` | binary | source implemented and reviewed; real form not yet proved against the provider; `cliPath` untouched |
+| Claude resident wrapper | `ops/bin/claude-resident`, `docs/ops/specs/scripts/claude-resident.md`, `tools/test/test_claude_resident.py` | wrapper in `ops/bin` (`SCRIPT-45`) | source implemented and reviewed; real form not yet proved against the provider; `cliPath` untouched |
 | team room | `storage/handoff/{shannon,claudine,joe}.md`, and `storage/handoff/port.md` (the port writer's handoff, 2026-11-01) | private, ignored working notes | results are promoted to `archives/receipts/` or the office handoff |
 | task scratch | `var/tmp/<owner>-<operation>.<unique>/`, skeleton described in `var/README.md` | ephemeral, ignored | owner-scoped; PoT 1.1.13; no persistent state or automatic purge |
 | incoming payload | `storage/intake/` | working data; only `.gitkeep` admitted | payload ignored; awaiting classification, not executable installation or authority |
@@ -101,7 +101,7 @@ remains; the adoption itself moved no state.
 1. Before creating a folder, find the existing base folder it belongs in.
 2. One word per script; a spec with the same name; tests beside it in `tools/test`.
 3. Apply PoT 1.1.4 and 1.1.13: the active case references its uniquely allocated `var/tmp/` scratch; use `mktemp -d` as shown in `var/README.md`. Kept results follow PoT 1.1.5 and 5.3 before the scratch is closed.
-4. A root file is a pointer, not a document.
+4. A root file is a pointer, not a document, except the surfaces the law places at the root (PoT 1.1.9): `PoT.md`, `RoR.md`, `NOW.md` (orientation, 1.3.3) and `DOCTRINE.md` (historical craft, 1.3.12), and the public front page `README.md`.
 
 ## Existing state consumers held for bounded migration
 

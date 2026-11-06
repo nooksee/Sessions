@@ -18,6 +18,8 @@ This bootstrap changes neither the ratified PoT nor the pending amendments. Root
 
 The initial snapshot is committed on agent/repository-bootstrap-2026-10-31 and then established as main. The private remote receives that exact snapshot only after the allowlist and staged-file checks pass. Future changes use one assigned writer and a bounded agent branch with review before integration. This bootstrap grants no resident admission, body mutation, hook activation or production deployment.
 
+Commit subjects stay under 72 characters and carry the claim alone; the body carries the rest. Integration is by rebase merge at the reviewed exact head, the one merge style since 2026-11-05 (the porter's review, item 10).
+
 ## Recovery
 
 Prior Sessions source history remains in Control; it is not rewritten or imported wholesale. Ignored and untracked host material stays in place. The local .git is new metadata. If this repository setup must be reversed, preserve its commits and the bootstrap receipt first, remove only the new Git boundary under an authorized rollback, and restore README and AGENTS from their recorded preimages after checking that no later writer changed them. Remote deletion requires its own named authority.

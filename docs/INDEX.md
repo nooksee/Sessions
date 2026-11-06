@@ -1,6 +1,6 @@
 # Documentation Index (Front Door)
 
-Every document in `Sessions/docs/`, one line each, and the root files that point into them. Framework: STELA (`Projects/STELA/docs/INDEX.md`). Updated 2026-11-03. Status of each tool lives in its registry, not here.
+Every document in `Sessions/docs/`, one line each, and the root files that point into them. Framework: STELA (`Projects/STELA/docs/INDEX.md`). Updated 2026-11-05. Status of each tool lives in its registry, not here.
 
 ## 0. Primary Read-in (Start Here)
 * [../PoT.md](../PoT.md): the local constitution; the only current Sessions law.
@@ -20,7 +20,7 @@ Every document in `Sessions/docs/`, one line each, and the root files that point
 * [../README.md](../README.md): the room charter and its older map of lanes.
 * [../INDEX.md](../INDEX.md): the room's catalog of lanes and current surfaces.
 * [../NOW.md](../NOW.md): current room state and open items; no rules.
-* [../HANDOFF.md](../HANDOFF.md): the resident's durable handoff and wake note.
+* [../HANDOFF.md](../HANDOFF.md): the resident's durable handoff and wake note (private: ignored by the repository, present on the host only).
 * `../MIND.md`: the room's mind pointer, one line per resident; written only by `mind.py`, out of Git. Not yet created on 2026-10-30.
 
 The former broad method document is preserved in place as historical source;
@@ -39,6 +39,10 @@ Scripts (STELA's sections: rationale, mechanics, anchor, warnings):
 * [ops/specs/scripts/mind.md](ops/specs/scripts/mind.md): the mind as a chain of immutable leaves, written only with the operator's words; commands, gates, screens, and Claudio's section 130 dispositions.
 * [ops/specs/scripts/rounds.md](ops/specs/scripts/rounds.md): clinic report and separate Control source-drift wrapper behavior; no deployment authority.
 * [ops/specs/scripts/rotate.md](ops/specs/scripts/rotate.md): the rotation, phase by phase with stop points; tiers, capsule, custody, install, acceptance, close.
+* [ops/specs/scripts/constitution.md](ops/specs/scripts/constitution.md): the PoT authorization gate; a changed law needs its coupled ledger entry, snapshot and authority leaf.
+* [ops/specs/scripts/redact.md](ops/specs/scripts/redact.md): the public-copy renderer; digests the operator's words, placeholders host paths and session identifiers, fails closed on the unclassified.
+* [ops/specs/scripts/notice.md](ops/specs/scripts/notice.md): the operator-only closeout notice from one gauge row; dry run writes no state.
+* [ops/specs/scripts/claude-resident.md](ops/specs/scripts/claude-resident.md): the launch wrapper; the working directory, then the registry, then the notebook; memory off when the registry cannot answer.
 
 Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each spec opening with the script's own first line:
 * [ops/specs/scripts/pressure.md](ops/specs/scripts/pressure.md): ported from `Scripts/analyze_codex_compact_context_pressure.py`; Gate copied Codex JSONL candidates for compact/context pressure.
@@ -60,7 +64,7 @@ Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each sp
 * [ops/specs/scripts/telemetry.md](ops/specs/scripts/telemetry.md): ported from `Scripts/check_codex_token_health.py`; Report token health for Codex rollout JSONL files.
 * [ops/specs/scripts/identity.md](ops/specs/scripts/identity.md): ported from `Scripts/check_identity_lock.py`; Verify that every resident's identity agrees in all four places it is written.
 * [ops/specs/scripts/myself.md](ops/specs/scripts/myself.md): ported from `Scripts/check_myself.py`; Measure one resident's native identity and session health, without writes.
-* [ops/specs/scripts/drift.md](ops/specs/scripts/drift.md): ported from `Scripts/check_resident_center_drift.py`; Detect drift between the frozen Sessions runtime donor and the product source.
+* [ops/specs/scripts/drift.md](ops/specs/scripts/drift.md): ported from `Scripts/check_resident_center_drift.py`; Detect drift between the frozen Sessions runtime donor and the product source. (no spec in this room; Control's tool, SCRIPT-24.)
 * [ops/specs/scripts/retention.md](ops/specs/scripts/retention.md): ported from `Scripts/check_session_retention.py`; Report, and on explicit request enforce, the official session-folder policy.
 * [ops/specs/scripts/gate.md](ops/specs/scripts/gate.md): ported from `Scripts/check_writer_gate.py`; Verify the single-writer gate before any session-body write.
 * [ops/specs/scripts/alerts.md](ops/specs/scripts/alerts.md): ported from `Scripts/clinic_alert_diff.py`; Edge-triggered alert layer for the clinic rounds report.
@@ -86,21 +90,29 @@ Binaries:
 Runbook:
 * [ops/specs/runbook/agent-input.md](ops/specs/runbook/agent-input.md): how a packet for a resident is written; to, from, owner, scope, authority, inputs, rules, stop condition, report.
 * [ops/specs/runbook/port.md](ops/specs/runbook/port.md): the port of the room's legacy lanes to the STELA base, every lane, with the path map and what Control must still repoint.
+* [ops/specs/runbook/repository.md](ops/specs/runbook/repository.md): the repository's boundary, Git lifecycle, recovery and hosted checks.
 
 Tests:
 * [ops/specs/tools/test/gauge.md](ops/specs/tools/test/gauge.md): what `tools/test/test_gauge.py` proves, test by test (21).
 * [ops/specs/tools/test/mind.md](ops/specs/tools/test/mind.md): what `tools/test/test_mind.py` proves, test by test (43).
 * [ops/specs/tools/test/closeout.md](ops/specs/tools/test/closeout.md): synthetic behavior and non-deployment limits of `tools/test/test_closeout.py`.
 * [ops/specs/tools/test/rounds.md](ops/specs/tools/test/rounds.md): syntax and static-integrity checks in `tools/test/test_rounds.py`.
+* [ops/specs/tools/test/myself.md](ops/specs/tools/test/myself.md): the self-check's suite.
+* [ops/specs/tools/test/notice.md](ops/specs/tools/test/notice.md): the notice's suite.
+* [ops/specs/tools/test/rotate.md](ops/specs/tools/test/rotate.md): the rotate runner's suite, synthetic phases 0 to 5.
+* [ops/specs/tools/test/claude-resident.md](ops/specs/tools/test/claude-resident.md): the launch wrapper's suite.
 
 ## 4. Contracts and Guides (earlier clinic work)
-* [clinic-aggregate-contract.md](clinic-aggregate-contract.md): the public clinic health file (`logs/clinic-aggregate.json`) for consumers outside Sessions.
-* [resource-state-contract.md](resource-state-contract.md): the Resource Governor state file (`logs/resource-state.json`) written by the status-line collector; gauge's last-resort window source.
-* [session-continuity-apprentice-field-guide.md](session-continuity-apprentice-field-guide.md): historical orientation for apprentices and reviewers; its legacy authority wording is not current policy.
-* [session-clinic-integration-review-response.md](session-clinic-integration-review-response.md): the clinic's 2026-07-24 answer to OSAI's integration review request; ownership split and adapter contract.
-* [tray-session-clinic-watchdog-20260724.patch](tray-session-clinic-watchdog-20260724.patch): a 2026-07-24 diff adding clinic status to the Control remote-control tray script; a record, not a document to apply.
+* [clinic-aggregate-contract.md](clinic-aggregate-contract.md): the public clinic health file (`logs/clinic-aggregate.json`) for consumers outside Sessions. (private: not in the repository; on the host only.)
+* [resource-state-contract.md](resource-state-contract.md): the Resource Governor state file (`logs/resource-state.json`) written by the status-line collector; gauge's last-resort window source. (private: not in the repository; on the host only.)
+* [session-continuity-apprentice-field-guide.md](session-continuity-apprentice-field-guide.md): historical orientation for apprentices and reviewers; its legacy authority wording is not current policy. (private: not in the repository; on the host only.)
+* [session-clinic-integration-review-response.md](session-clinic-integration-review-response.md): the clinic's 2026-07-24 answer to OSAI's integration review request; ownership split and adapter contract. (private: not in the repository; on the host only.)
+* [tray-session-clinic-watchdog-20260724.patch](tray-session-clinic-watchdog-20260724.patch): a 2026-07-24 diff adding clinic status to the Control remote-control tray script; a record, not a document to apply. (private: not in the repository; on the host only.)
 
 ## 5. Templates (not documents; listed so they are found)
 * `../ops/src/docs/spec.md.tpl`: the spec template used by `ops/bin/template`.
 * `../ops/src/runbook/agents/agent-input.yaml`: resident packet form fields and delivery boundary.
 * `../ops/src/reports/source-change.md.tpl`: bounded source/configuration change receipt, distinct from rotation and custody receipts.
+
+## 6. Reviews (read-only reviews of the repository, admitted as public copies)
+* [reviews/sessions-review-20261105.md](reviews/sessions-review-20261105.md): the port's writer's review of the room at 90c05f7e, 2026-11-05: verdict, repairs, what is left; admitted through the redact tool with the room's path tokens.
