@@ -127,6 +127,7 @@ with its scope; it does not confer unrelated authority.
 - **4.1.6 Independent Reviewer:** Control-defined independent review; a substitute requires the operator's appointment.
 - **4.1.7 Resident:** follows the applicable closeout contract and proposes its own mind entries.
 - **4.1.8** Role is authority, person is identity. A temporary role does not replace the person or confer another resident's lineage.
+- **4.1.9 Auditor:** the operator's appointed independent reviewer and post-change auditor for this room's material work (4.1.6, 6.1.3); Control surfaces keep Control's review.
 
 ### 4.2 Separation
 - **4.2.1** One named writer per exact surface; standing own-handoff and tool-output scopes follow the operational contract.

@@ -59,7 +59,7 @@ remains; the adoption itself moved no state.
 
 | Piece | Path | Kind | Status |
 | --- | --- | --- | --- |
-| gauge | `ops/lib/scripts/gauge.py`, `docs/ops/specs/scripts/gauge.md`, `tools/test/test_gauge.py` | tool | built 10-30; Claudio reviews |
+| gauge | `ops/lib/scripts/gauge.py`, `docs/ops/specs/scripts/gauge.md`, `tools/test/test_gauge.py` | tool | built 10-30; the Auditor reviews |
 | gauge ledger | `logs/gauges/ledger.jsonl` by default | private telemetry | the history moved here in place on 2026-11-04 with its inodes (`archives/receipts/state-cutover-20261104.md`); `storage/gauges` is absent, and a recreated one would block default append; `--no-ledger` remains read-only |
 | mind write lock | `<room>/logs/mind.lock` | shared room-wide exclusion | no legacy lock existed at the cutover of 2026-11-04, so the first authorized write creates this one; a legacy `<room>/storage/mind.lock` would block new writes; never a per-task lock |
 | closeout | `ops/lib/scripts/closeout.py`, `docs/ops/specs/scripts/closeout.md`, `tools/test/test_closeout.py` | tool | implemented; synthetic coverage is not native delivery or installation proof |

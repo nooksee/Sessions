@@ -1,6 +1,6 @@
 # Technical Specification: gauge
 
-Script: `Sessions/ops/lib/scripts/gauge.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_gauge.py`. Spec writer: Claude Shannon. Status: built in Sessions block 2, 2026-10-30; not on a timer and not wired to any notification. Claudio Freeman reviews it before it is relied on.
+Script: `Sessions/ops/lib/scripts/gauge.py` (writer: Claudine Colbert). Tests: `Sessions/tools/test/test_gauge.py`. Spec writer: Claude Shannon. Status: built in Sessions block 2, 2026-10-30; not on a timer and not wired to any notification. The Auditor reviews it before it is relied on.
 
 ## First Principles Rationale
 
