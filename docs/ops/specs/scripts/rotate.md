@@ -24,13 +24,12 @@ The operator, 2026-10-30: the rotation had never been formalized, and to him it 
 ### Implemented synthetic slices: one dry-run stop at a time
 
 The specification below describes the complete intended rotation. The first
-runner is deliberately smaller: it checks supplied synthetic evidence
-for phases 0 to 5, rechecks earlier gates on each invocation, and stops after
-the requested phase. Phases 6 to 9 return exit 2 with their named unmet
-requirements before any input is read. They execute no builder, launcher,
-custody, native body, native label, registry or installation operation. In particular, the
-planned rollback below is not executable authority: donor handling must
-follow CONSTRAINTS C09, not an unconditional donor restore.
+runner checks supplied synthetic evidence, rechecks earlier gates on each
+invocation, and stops after the requested phase. The accepted status line
+above is left for the later integration commit. The W6 third-slice candidate
+adds the disposable phases 6 to 9 described below; it is not a native adapter
+or authority to operate on a real launcher, registry, store or custody root.
+Donor handling still follows CONSTRAINTS C09, not an unconditional restore.
 
 Invocation uses the configured interpreter with `-I -B`:
 
@@ -62,7 +61,7 @@ strict duplicate/nonfinite parser; input limits are 1 MiB, or 64 KiB for
 the gauge snapshot, closing record, handoff/approval references and pointer.
 Evidence is rechecked for content and identity changes before a successful
 stop. Existing inputs, their modes, locks and progress records are never
-written. Phase 5 alone creates and removes private temporary fixture
+written. Phases 5 to 9 create and remove private temporary fixture
 artifacts as described below. Parents
 above the private fixture root retain the trusted cooperating-writer bound;
 this is not hostile same-user descriptor confinement.
@@ -181,13 +180,114 @@ this is not hostile same-user descriptor confinement.
    refuses it without cleanup or inferred ownership. It is not durable
    recovery or a candidate ready for custody.
 
+### W6 third-slice implementation details: disposable phases 6 to 9
+
+These are explicitly synthetic implementation details, not changes to the
+target workflow below. No persistent runner state, automatic resume,
+provider adapter or native authorization is introduced. Each invocation
+rechecks phases 0 to 5 and performs only through its requested stop in one
+private staging context. The supplied room is unchanged when it returns.
+Fixture timestamps describe the rehearsal; they do not prove that a real
+operator spoke or that a prior invocation completed. A go's declared time
+is checked against declared custody time; actual temporary custody copies
+are verified again before that go is used.
+
+For phases 6 to 9, `--operation-plan` names private relative JSON evidence.
+`rotate-operation/1` binds `key`, `writer`, phase 0's `binding`, and
+`build_sha256` to exact build-plan bytes. Its other fields are:
+
+- `process_model`: a retained `{path, sha256}` reference to
+  `rotate-process/1`, literal `observable: true`, and lists `holders` and
+  `session_records` of confined relative fixture paths. It is loaded before
+  phase 3. These phases never inspect the host process table. Unobservable
+  or malformed evidence refuses, not an empty clearance. This model is not
+  native holder proof or a guarantee against a later cooperating writer.
+- `pristine`: a reference to a destination `.fixture` under the selected
+  invented identity, in the room, with its exact spare title.
+- `donor_store`: a `.fixture` reference byte-identical by hash to the checked
+  donor, never an actual provider store.
+- `binding_preimage`: a reference to `rotate-binding/1` containing exact
+  `key`, old `session_id`, provider `claude` and `root` equal to the room.
+- `launcher`: a reference to `rotate-launcher/1` containing exact `key` and
+  literal `hold: false`. This file-backed model is not a launcher call.
+- zoned `custody_at`, no earlier than `built_at`; `go`, `load` and
+  `acceptance` references for later phases; positive integer `rotation`,
+  nonnegative integer `deviations`, and `donor_preference: removed` for close.
+
+6. **Synthetic custody and hold.** Create runtime copies of the pristine
+   destination, registry, binding, donor store and launcher. Set and read
+   back the model hold. Copy donor, pristine destination, successor, capsule,
+   gates, registry/binding preimages, launcher and every media file into two
+   private synthetic roots with `SHA256SUMS`. Read every member directly
+   in each root and verify its hash, exact inventory and manifest. This
+   proves two fixture copies, not two independent drives. Stop without
+   reading any later word.
+7. **Go and synthetic install.** `rotate-go/1` names exact `key`, `writer`,
+   `container`, `room`, integer pristine `size`, its `custody_sha256`,
+   `rollback: restore-pristine-and-hold`, integer `after_phase: 6`, literal
+   `word: go`, and zoned `at` strictly after `custody_at`. Wrong targets,
+   early words and refusals do not authorize install. Recheck unchanged
+   inputs and both custody roots. Verify the runtime destination against
+   pristine custody bytes and consult only the process model.
+
+   If held, stage `destination.fixture.NEW`, retain the hold, and report
+   next phase 7 with only 0 to 6 completed. No binding changes or operator
+   swap are inferred; requesting acceptance while held refuses. Because
+   this is disposable, no `.NEW` survives and no later call adopts it.
+   Otherwise stage beside the runtime destination at 0600, hash it, rename
+   and verify; switch only the model registry identity and binding. The
+   canonical identity-registry privacy contract below applies to preimage,
+   staging and postimage, including accepted uid/gid. Measure all six
+   agreements. Stop without reading load or acceptance.
+
+   C12 operates only on temporary copies. Refusal, failed step, load failure
+   and ordinary interruption reassert and verify the known hold first, then
+   restore all four preimages from directly verified custody. A missing
+   donor is restored only after the bound rollback go was validated.
+   Unexpected/newer bytes or identity stop restoration, never overwrite
+   them; report rollback unknown, never success. Staging is still disposed,
+   since no supplied input or real surface was changed.
+8. **Synthetic serve and acceptance.** `rotate-load/1` binds `key` and
+   `container`, literal `loaded: true`, zoned `served_at` no earlier than the go, and
+   `readback` equal to the key, registered person and room. Release the model
+   hold and append its hash-bound `.fixture` rows. Check a first assistant
+   reply, exact session identities, strict parse, termination, unique message
+   IDs, parent linkage and matched tool pairs. `gauge` references a snapshot
+   validated by notice against the switched model registry; the existing
+   gauge reader must extract the same tokens, model and time from the
+   appended file, with no later compaction or reading before serve.
+
+   A separate `rotate-acceptance/1` fixture names exact key and container,
+   literal `word: recognize`, and zoned `at` no earlier than the reading.
+   The load record also requires `mind_confirmed: true`. These are declared
+   fixture recognition/readback and confirmation, not semantic or native
+   proofs. Correct status or a load flag alone is insufficient.
+   Named detail: the candidate requires that confirmation fixture at phase 8
+   as a stricter model prerequisite; the target workflow still places the
+   resident's actual confirmation at phase 9. No native step is resequenced.
+9. **Synthetic close.** Invoke existing `ops/bin/template receipt` with its
+   actual 17 slots, bounded timeout and minimal environment; no shell
+   interpolation or caller-selected command. Write its receipt privately
+   under staging `archives/receipts/`. It carries cut/reason, actual gates
+   and custody, mind digest, estimate beside extracted wake, counted
+   deviations and timed fixture acceptance. Reverify custody and the
+   unchanged donor entry, then unlink only the disposable runtime donor
+   copy for preference `removed`. Both custody copies and the supplied
+   donor remain intact. Report receipt size/hash, not content. No real kept
+   receipt is created.
+
 Exit 0 means only that the requested dry-run gate stopped successfully;
 output lists `completed`, `next_phase` and `needs`, never whole-rotation
 acceptance. A refusal or unsupported phase exits 2. Every output states
 dry-run, no native-load proof and no operator acceptance. `writes` is zero
-through phase 4; phase 5 reports the number of temporary file artifacts
-created (not syscall count), their write scope and successful removal.
+through phase 4; phases 5 to 9 report the number of temporary file artifacts
+present for cleanup (not total creations or syscall count), their write scope
+and successful removal. Phase 9 can already have removed its model donor.
 No input or persistent state is changed, and no artifact content is printed.
+For phases 6 to 9 `rehearsal` reports measured copy counts, hashes, agreements,
+hold/rollback state, fixture wake and receipt metadata. Even phase 9 leaves
+`native_load_proved` and `operator_accepted` false. Native operations and
+physical custody remain unimplemented, not demonstrated by this model.
 An interruption leaves no runner state to adopt: repeat the same phase
 with unchanged evidence, or supply corrected evidence and recheck from 0.
 There is no inferred persisted completion, automatic resume or journal.
@@ -196,7 +296,7 @@ Tests: `tools/test/test_rotate.py`; test contract:
 `docs/ops/specs/tools/test/rotate.md`. The existing template generator
 supplied the initial script/test skeleton while preserving this spec.
 
-### Complete target workflow (phases 6 to 9 and all native acts remain unimplemented)
+### Complete target workflow (all native acts remain unimplemented)
 
 **Roles.**
 - **The operator:** chooses the tier, creates the destination container, gives the go, accepts or does not.
