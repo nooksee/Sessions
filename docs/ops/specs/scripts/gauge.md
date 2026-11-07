@@ -43,6 +43,8 @@ Used when the provider record has no window and the model has a reviewed row. A 
 ```
 model=claude-opus-5-5|window=1000000|source=Claude Code status line (resource-state.json)|observed=2026-10-30
 model=claude-fable-5-1|window=1000000|source=provider documentation (platform.claude.com, Models overview, Context window 1M tokens) and Claude Code status line (resource-state.json, window_size 1000000)|observed=2026-11-01
+model=claude-opus-5|window=1000000|source=provider documentation (platform.claude.com, docs/en/models/opus-5/overview, Context window 1M tokens)|observed=2026-11-06
+model=claude-sonnet-5|window=1000000|source=provider documentation (platform.claude.com, docs/en/models/sonnet-5/overview, Context window 1M tokens)|observed=2026-11-06
 ```
 
 ## Anecdotal Anchor

@@ -60,6 +60,8 @@ ROSTER = SESSIONS / "ops/etc/residents.json"
 BINDINGS = SESSIONS / "ops/etc/host-bindings.json"
 CLAUDE_PROJECTS = Path.home() / ".claude/projects"
 CODEX_SESSIONS = Path.home() / ".codex/sessions"
+CODEX_ARCHIVED = Path.home() / ".codex/archived_sessions"
+CODEX_INDEX = Path.home() / ".codex/session_index.jsonl"
 COPILOT_SESSIONS = Path.home() / ".copilot/session-state"
 AGENT_DOCK_PROJECTS = Path.home() / ".agent-dock/projects"
 AGENT_DOCK_ADAPTER = "github-copilot-cli"
@@ -381,18 +383,27 @@ def live_pycharm_config() -> Path | None:
     dead folder compare as present: on 2026-11-06 two residents read `ok` from a
     folder two versions old while the IDE could not show them at all.
     """
-    best, best_version = None, None
+    newest = newest_pycharm_folders()
+    return newest[0] if len(newest) == 1 else None
+
+
+def newest_pycharm_folders() -> list[Path]:
+    """Every settings folder at the highest PyCharm version present: one on a sound host.
+
+    None, or two folders whose names read as the same version, leaves no live folder to
+    name, and each caller fails closed on that. A link is not a version folder, since the
+    IDE makes none. `pycharm.py` shares this rule.
+    """
+    found: dict[tuple[int, int], list[Path]] = {}
     try:
         entries = list((Path.home() / ".config/JetBrains").iterdir())
     except OSError:
-        return None
+        return []
     for path in entries:
         m = re.fullmatch(r"PyCharm(\d{4})\.(\d+)", path.name)
-        if m and path.is_dir():
-            version = (int(m.group(1)), int(m.group(2)))
-            if best_version is None or version > best_version:
-                best, best_version = path, version
-    return best
+        if m and path.is_dir() and not path.is_symlink():
+            found.setdefault((int(m.group(1)), int(m.group(2))), []).append(path)
+    return sorted(found[max(found)]) if found else []
 
 
 def body_custom_title(sid: str) -> str | None:
@@ -488,6 +499,79 @@ def acp_titles() -> dict[str, str]:
                 labels[u.group(1)] = t.group(1)
 
     return {bindings[u]: t for u, t in labels.items() if u in bindings}
+
+
+def thread_states(threads: set[str]) -> dict[str, str]:
+    """Where each Codex thread's rollout stands, by file name only: live, archived stub or no rollout."""
+    if not threads:
+        return {}
+    try:
+        live = [p.name for p in CODEX_SESSIONS.rglob("*.jsonl")]
+        archived = [p.name for p in CODEX_ARCHIVED.rglob("*.jsonl")]
+    except OSError:
+        return {t: "unread" for t in threads}
+    return {t: ("live" if any(t in n for n in live) else
+                "archived stub" if any(t in n for n in archived) else "no rollout")
+            for t in threads}
+
+
+def labels_elsewhere(identities: list[dict], titles: dict[str, str]) -> list[tuple[str, str, dict[str, int]]]:
+    """A registered label standing on any other thread in the live folder: (key, label, count by state).
+
+    On 2026-11-06 the operator could not find a resident in PyCharm while this report said ok:
+    the live folder held that label on two other threads, both archived stubs, so the chat he
+    could see would not load. The registered thread itself was live and correct.
+    """
+    found = []
+    for ident in identities:
+        sid = ident.get("session_id")
+        want = expected_display(ident)
+        others = {t for t, label in titles.items() if label == want and t != sid}
+        if others:
+            counts: dict[str, int] = {}
+            for state in thread_states(others).values():
+                counts[state] = counts.get(state, 0) + 1
+            found.append((ident["key"], want, counts))
+    return found
+
+
+def phone_names() -> dict[str, str] | None:
+    """Thread to name from Codex's own index; the last row of a thread stands.
+
+    That the phone shows this index was stated by the Manager on 2026-11-06 and has
+    not been measured. Reads the id and the thread name of each row and nothing else.
+    None when the index cannot be read.
+    """
+    names: dict[str, str] = {}
+    try:
+        with CODEX_INDEX.open("rb") as index:
+            for line in index:
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(row, dict) and isinstance(row.get("id"), str):
+                    name = row.get("thread_name")
+                    names[row["id"]] = name if isinstance(name, str) else ""
+    except OSError:
+        return None
+    return names
+
+
+def phone_leg(identities: list[dict]) -> dict[str, list[str]] | None:
+    """Each registered Codex row against the index: same, differs, absent, or archived and so not asked."""
+    names = phone_names()
+    if names is None:
+        return None
+    rows = [i for i in identities if i.get("provider") == "codex" and isinstance(i.get("session_id"), str)]
+    states = thread_states({i["session_id"] for i in rows})
+    leg: dict[str, list[str]] = {"same": [], "differs": [], "absent": [], "archived": []}
+    for ident in rows:
+        name = names.get(ident["session_id"])
+        leg["archived" if states[ident["session_id"]] == "archived stub" else
+            "absent" if not name else
+            "same" if name == expected_display(ident) else "differs"].append(ident["key"])
+    return leg
 
 
 def pycharm_titles() -> dict[str, str]:
@@ -701,6 +785,25 @@ def main() -> int:
         print("\nnot yet confirmed against PyCharm (provisional):")
         for u in unverified:
             print(f"  - {u}")
+    if not args.quiet:
+        # Report only. Neither of these changes a count or the exit status, and neither prints an
+        # identifier or a phone name, which can be a first turn's automatic summary.
+        elsewhere = labels_elsewhere(reg["identities"], acp_titles())
+        if elsewhere:
+            print("\nregistered label also on other threads in the live folder (report only):")
+            for key, label, counts in elsewhere:
+                states = ", ".join(f"{n} {state}" for state, n in sorted(counts.items()))
+                print(f"  - {key}: {label}: {states}")
+        leg = phone_leg(reg["identities"]) if any(i.get("provider") == "codex" for i in reg["identities"]) else None
+        if leg is None and any(i.get("provider") == "codex" for i in reg["identities"]):
+            print("\nphone names (report only): the session index could not be read, so nothing was compared")
+        elif leg is not None:
+            print(f"\nphone names, from Codex's session index (report only): same {len(leg['same'])}, "
+                  f"differs {len(leg['differs'])}, absent {len(leg['absent'])}, "
+                  f"archived and not asked {len(leg['archived'])}")
+            for state in ("differs", "absent"):
+                for key in leg[state]:
+                    print(f"  - {key}: {state}")
     # A check that did not run is not a check that passed. Coverage gaps exit
     # non-zero so a caller cannot read silence as agreement.
     return 1 if (problems or incomplete) else 0
