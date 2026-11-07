@@ -55,8 +55,7 @@ Everything else is recoverable. These are the ones that cost real damage.
   has a *low* context percentage precisely because it keeps shedding history.
   The sickest sessions can look the healthiest. See `DOCTRINE.md` §1A and the
   `compact-treadmill` verdict of `ops/lib/scripts/vitals.py`.
-- **Data health and mechanism health are different questions.** "The clinic
-  says everyone is fine" and "the clinic is actually still running" must be
+- **Data health and mechanism health are different questions.** "[words sha256=a54611f4b93d9bea890b4e4c6bf75992b14ba1d9b6ae33ed9d7ec8bf06132cba]" and "[words sha256=18c2ed459c11c425ad2c4a4612740cbcd9ed5d70ad769fdba0920a1dd4e555af]" must be
   checked separately. Stale data looks plausible.
 
 ## Three classes of session
