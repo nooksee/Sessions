@@ -7,14 +7,15 @@ directory in doubt (absent, unreadable, or a link through the room that resolves
 elsewhere) turns auto memory off.
 
 Inside the room, resolves the session a launch names (--resume or --session-id)
-to exactly one Claude row of the room's registry, and that row's key to its own
-notebook folder, <room>/ops/etc/notebooks/<key>/. Six branches: registered
-here (one match in this room: the notebook is attached), registered
-elsewhere (one match in another room: the launch passes through untouched),
-unregistered (no match), ambiguous (more than one match), new (no session
-named) and broken registry. The last four, a registered row whose notebook
-is unusable, and any error turn auto memory off for the run and attach no
-notebook. No branch blocks the launch.
+to exactly one Claude row of the room's registry. A row of this room not on the
+wired list, <room>/ops/etc/notebook-wired.json, passes through untouched; a row
+on it gets its own notebook folder, <room>/ops/etc/notebooks/<key>/. Eight
+branches: registered (on the list: the notebook is attached), registered
+unwired (passes through), registered elsewhere (one match in another room:
+passes through), unregistered (no match), ambiguous (more than one match), new
+(no session named), broken registry and broken wired list. The last five, a
+registered row whose notebook is unusable, and any error turn auto memory off
+for the run and attach no notebook. No branch blocks the launch.
 
 Three forms:
 
@@ -27,9 +28,9 @@ would have, then exits 0, executing nothing and writing nothing. The other two
 replace this process with the provider, so every argument, the standard
 streams and the exit status pass through, after one line in a private decision
 log that holds no session and no argument. The last, the bare form, is how a
-launcher calls a provider. It applies only when the first argument is neither
-one of the wrapper's option names nor --; it takes no options, and every
-argument belongs to the provider, a later -- included.
+launcher calls a provider. It applies when there are no arguments at all, or when
+the first is neither one of the wrapper's option names nor --; it takes no
+options, and every argument belongs to the provider, a later -- included.
 
 The route to an attached notebook is a settings file naming the folder as
 autoMemoryDirectory, given to the provider as its own --settings argument. That
@@ -56,6 +57,8 @@ sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve()
 ROOM = HERE.parents[2]
 REGISTRY = Path("ops") / "etc" / "resident-identities.json"
+WIRED = Path("ops") / "etc" / "notebook-wired.json"
+WIRED_LIMIT = 65_536
 NOTEBOOKS = Path("ops") / "etc" / "notebooks"
 SETTINGS = Path("logs") / "claude-resident"
 ROUTE_KEY = "autoMemoryDirectory"
@@ -83,9 +86,10 @@ UNPROVEN = [
     "that the route and the load limits measured on 2026-10-31 still hold on the installed provider",
     "whether the provider changes the frontmatter of notes copied into a notebook",
 ]
+FAULTS = (Exception, SystemExit)        # the mind tool is run at import: a fault there must not end the launch
 USAGE = ("usage: claude-resident --dry-run [--room DIR] [--registry FILE] [--provider FILE] -- <provider arguments>\n"
          "       claude-resident [--room DIR] [--registry FILE] [--provider FILE] -- <provider arguments>\n"
-         "       claude-resident <provider arguments, the first not a wrapper option>\n")
+         "       claude-resident [<provider arguments, the first not a wrapper option>]\n")
 
 
 class Broken(Exception):
@@ -103,9 +107,7 @@ def load_mind():
 
 def parse(argv: list[str]):
     """(dry run?, room, registry, provider file, provider arguments), or None for a usage refusal."""
-    if not argv:
-        return None
-    if argv[0] not in OPTIONS and argv[0] != "--":     # the bare form: no options, every argument the provider's
+    if not argv or (argv[0] not in OPTIONS and argv[0] != "--"):     # the bare form: no options, every argument the provider's
         return False, ROOM, ROOM / REGISTRY, None, list(argv)
     dry = argv[0] == "--dry-run"
     room, registry, provider, i = ROOM, None, None, 1 if dry else 0
@@ -232,6 +234,49 @@ def read_rows(path: Path) -> list[dict]:
     return identities
 
 
+def read_wired(room: Path, rows: list[dict]) -> frozenset[str]:
+    """The keys wired to their notebooks. No file means nobody is wired. Anything else that is not a private JSON list
+    of distinct keys, each one Claude row of this room, is Broken; the reason names no value."""
+    path = room / WIRED
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return frozenset()
+    except OSError:
+        raise Broken("the wired list cannot be inspected") from None
+    if not stat.S_ISREG(st.st_mode):
+        raise Broken("the wired list is not a regular file")
+    if st.st_uid != os.geteuid():
+        raise Broken("the wired list is not owned by this user")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        raise Broken("the wired list is not mode 0600")
+    if st.st_nlink != 1:
+        raise Broken("the wired list has more than one hard link")
+    if st.st_size > WIRED_LIMIT:
+        raise Broken("the wired list is larger than a wired list can be")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            now = os.fstat(fd)
+            if (now.st_dev, now.st_ino) != (st.st_dev, st.st_ino):
+                raise Broken("the wired list changed while it was read")
+            data = os.read(fd, WIRED_LIMIT + 1)
+        finally:
+            os.close(fd)
+        keys = json.loads(data.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        raise Broken("the wired list is unreadable") from None
+    if not isinstance(keys, list) or not all(isinstance(key, str) for key in keys):
+        raise Broken("the wired list is not a list of registry keys")
+    if len(set(keys)) != len(keys):
+        raise Broken("the wired list names a key twice")
+    top = os.path.realpath(room)
+    ours = {row["key"] for row in rows if row["provider"] == PROVIDER and os.path.realpath(row["room"]) == top}
+    if not set(keys) <= ours:
+        raise Broken("the wired list names a key that is not one Claude row of this room")
+    return frozenset(keys)
+
+
 def notebook_problems(mind, room: Path, key: str) -> list[str]:
     """Why the key's folder cannot be attached, or nothing. Paths are given as tokens, never with the key."""
     folder = room / NOTEBOOKS / key
@@ -311,6 +356,15 @@ def decide(room: Path, registry: Path, args: list[str]) -> dict:
                 "auto_memory": "unchanged: the provider's default for that resident's own room",
                 "reason": "one Claude row names this session, registered to another room; this wrapper has no say "
                           "over other rooms, so the launch passes through untouched"}
+    try:
+        wired = read_wired(room, rows)
+    except Broken as exc:
+        return {**off("broken-wired-list", str(exc)), "_who": row["key"]}
+    if row["key"] not in wired:              # decided before the mind tool loads, so its faults cannot reach this launch
+        return {"branch": "registered-unwired", "notebook": "none", "env": {}, "notebook_route": None, "_who": row["key"],
+                "auto_memory": "unchanged: the provider's default for this room, until this row is wired",
+                "reason": "one Claude row of this room names this session, and it is not on the wired list, so the "
+                          "launch passes through untouched"}
     return {**attach_or_off(room, row, args), "_who": row["key"]}
 
 
@@ -427,32 +481,58 @@ def record(room: Path, result: dict, env: dict, provider: str) -> None:
                 os.write(log, (json.dumps(row, sort_keys=True) + "\n").encode("utf-8"))
         finally:
             os.close(log)
-    except Exception:
+    except FAULTS:
+        pass
+
+
+def undo_locale_coercion(env: dict) -> None:
+    """Python sets LC_CTYPE at start under a C locale (PEP 538), which -I does not stop, and a launch passes through as
+    it came. The kernel's copy of the environment still holds what this process was given."""
+    try:
+        start = Path("/proc/self/environ").read_bytes().split(b"\0")
+    except OSError:
+        return
+    for item in start:
+        if item.startswith(b"LC_CTYPE="):
+            env["LC_CTYPE"] = os.fsdecode(item[len(b"LC_CTYPE="):])
+            return
+    env.pop("LC_CTYPE", None)
+
+
+def say(text: str) -> None:
+    """A message on standard error, which may have no reader by now. Unbuffered, because a failed flush at exit would
+    replace the exit status with 120."""
+    try:
+        os.write(2, text.encode("utf-8", "replace"))
+    except OSError:
         pass
 
 
 def launch(result: dict, room: Path, named, args: list[str]) -> int:
     """Replace this process with the provider. Returns only when that cannot happen."""
-    env = dict(os.environ)
+    env = {name: value for name, value in os.environ.items() if name}     # execve refuses an empty name, and a direct start would run
+    undo_locale_coercion(env)
     env.update(result["env"])
     extra = []
     if result["notebook"] == "attached":
         try:
             extra = ["--settings", str(write_settings(load_mind(), room, result["_key"]))]
-        except Exception:                    # no route, no notebook: auto memory off, the launch not blocked
+        except FAULTS:                       # no route, no notebook: auto memory off, the launch not blocked
             env[DISABLE] = "1"
             result = {**result, "notebook": "none", "reason": "the notebook's route could not be written at the launch"}
     provider = find_provider(named, env)
     record(room, result, env, "found" if provider else "none")
     if provider is None:
-        sys.stderr.write("claude-resident: no provider executable was found\n")
+        say("claude-resident: no provider executable was found\n")
         return 127
     for name in ("SIGPIPE", "SIGXFSZ"):      # Python ignores these at start, and an ignored signal survives an exec
         signal.signal(getattr(signal, name), signal.SIG_DFL)
     try:
         os.execve(provider, [provider, *extra, *args], env)
-    except OSError as exc:
-        sys.stderr.write(f"claude-resident: the provider could not be executed ({exc.__class__.__name__})\n")
+    except (OSError, ValueError) as exc:
+        for name in ("SIGPIPE", "SIGXFSZ"):  # ignored again: the launch stays here, so a write limit must not kill it
+            signal.signal(getattr(signal, name), signal.SIG_IGN)
+        say(f"claude-resident: the provider could not be executed ({exc.__class__.__name__})\n")
         record(room, result, env, "could not be executed")
     return 126
 
@@ -469,7 +549,7 @@ def main(argv=None) -> int:
     dry, room, registry, named, args = parsed
     try:
         result = decide(room, registry, args)
-    except Exception as exc:                 # any error: no notebook, auto memory off, the launch not blocked
+    except FAULTS as exc:                    # any error: no notebook, auto memory off, the launch not blocked
         result = off("error", f"the wrapper could not decide ({exc.__class__.__name__}); nothing is attached")
     if not dry:
         return launch(result, room, named, args)

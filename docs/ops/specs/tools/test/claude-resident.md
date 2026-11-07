@@ -6,11 +6,11 @@ Scope: synthetic registries, rooms and notebooks only; the real provider is neve
 
 ## Purpose and invocation
 
-Prove, on synthetic data, that the wrapper's dry run reaches each of eight branches (the design's five, with a registered row split into this room and another room, and the two of the working directory), attaches a notebook only for a registered row of this room, passes a registered row of another room and any launch from outside the room through untouched, turns auto memory off in every other outcome, never blocks a launch, never executes anything in a dry run and never prints a registry value.
+Prove, on synthetic data, that the wrapper's dry run reaches each of ten branches (the design's five, with a registered row split into this room and another room, the two of the working directory, and the wired list's two), attaches a notebook only for a registered row of this room on the wired list, passes a registered row of another room, a row of this room not on the list and any launch from outside the room through untouched, turns auto memory off in every other outcome, never blocks a launch, never executes anything in a dry run and never prints a registry value.
 
-Run from the room root: `python3 -I -B tools/test/test_claude_resident.py`. Exit 0 when all 86 tests pass (three skip if `git` is not installed, and four skip as root, which ignores the modes they rely on); 1 on any failure. Reviewers also run it at umask 0002, 0022 and 0077.
+Run from the room root: `python3 -I -B tools/test/test_claude_resident.py`. Exit 0 when all 112 tests pass (three skip if `git` is not installed, and four skip as root, which ignores the modes they rely on); 1 on any failure. Reviewers also run it at umask 0002, 0022 and 0077.
 
-Each test builds a room with a registry at 0600 holding four rows (two Claude rows of this room, one Codex row, one Claude row of another room), each with an invented zero-block session, and one notebook folder at 0700 with a `MEMORY.md` at 0600 for the first key only. The wrapper runs as a subprocess with `python3 -I -B`, once directly through its interpreter line, and once in process for the error path.
+Each test builds a room with a registry at 0600 holding four rows (two Claude rows of this room, one Codex row, one Claude row of another room), each with an invented zero-block session, a wired list at 0600 holding both Claude rows of this room, and one notebook folder at 0700 with a `MEMORY.md` at 0600 for the first key only. The wrapper runs as a subprocess with `python3 -I -B`, once directly through its interpreter line, and once in process for the error path.
 
 ## Proofs
 
@@ -25,7 +25,7 @@ Every dry run is checked for: exit 0 and an empty standard error; `mode` `dry-ru
 7. `test_new_turns_auto_memory_off`: no arguments, a prompt alone, `--continue`, `-c`, `--resume` with no value, `--resume` followed by a flag, `--fork-session`, and a session flag after the provider's own `--`.
 8. `test_broken_registry_turns_auto_memory_off`: an absent registry, mode 0644, invalid JSON, a duplicate key, a row with an empty session, a key that is not a plain key, a linked registry and an identities value that is not a list; each also for a run that names no session.
 9. `test_the_dry_run_executes_nothing_and_writes_nothing`: with a fake `claude` first on `PATH` that would leave a marker, two dry runs leave none and no settings folder; the output names that file as `provider`.
-10. `test_a_malformed_wrapper_form_is_refused_and_echoes_nothing`: no arguments, a wrapper option without its value, an unknown option after `--dry-run`, and options with no `--` are each refused with exit 2, empty standard output, the usage line and no session echoed.
+10. `test_a_malformed_wrapper_form_is_refused_and_echoes_nothing`: a wrapper option without its value, an unknown option after `--dry-run`, and options with no `--` are each refused with exit 2, empty standard output, the usage line and no session echoed.
 11. `test_the_wrapper_runs_directly`: the file is executable and its interpreter line runs it.
 12. `test_an_explicit_registry_path_is_read`: `--registry` selects the registry read.
 13. `test_an_unexpected_error_fails_closed_without_blocking`: in process, a failure while deciding gives the error outcome with auto memory off, exit 0 and the arguments still passed through.
@@ -112,6 +112,35 @@ The Auditor's second list (section 22), the first two pinned first:
 85. `test_the_rows_time_is_utc_whatever_the_zone`: with `TZ` five hours behind, the row's time is within 120 seconds of UTC.
 86. `test_the_log_turns_over_at_one_mebibyte_by_its_literal_size`: one byte under 1,048,576 stays; at 1,048,576 it moves. The sizes are literals, so the constant cannot drift.
 
+Part C (2026-11-07), standing before the working directory in the file:
+
+87. `test_no_arguments_is_the_bare_form_inside_the_room`: the provider runs with no arguments, auto memory off, the new branch in the log.
+88. `test_no_arguments_passes_through_outside_the_room`: no arguments, and the inherited switch unset, 0 or 1 unchanged.
+89. `test_no_arguments_reaches_the_provider_by_the_plugins_terminal_form`: `bash -c "cd '<folder>' && exec '<path>'"`, from the room and from another.
+90. `test_an_unwired_row_passes_through_byte_identical`: the environment and arguments the kernel gave a provider, read from its own `/proc` entries, are byte-equal with and without the wrapper, across eleven environments: five that make Python coerce the locale (none, `LANG=C`, `LC_CTYPE=C`, `POSIX` and an unreadable value), `LC_CTYPEX`, which only begins like it, and the switch.
+91. `test_an_environment_entry_with_an_empty_name_is_dropped_and_the_launch_runs`: `execve` would refuse it; a direct start runs, so the launch runs and the rest of the environment arrives.
+92. `test_a_value_error_at_the_exec_is_stated_not_a_traceback`: in process, exit 126.
+93. `test_the_other_pass_throughs_are_byte_identical_too`: a row of another room, and a launch from outside.
+94. `test_the_locale_is_given_back_as_it_came_on_a_launch_that_changes_it`: a launch that gets the switch keeps `LC_CTYPE` as it came, absent or `C`.
+95. `test_the_locale_is_left_alone_if_the_kernels_copy_cannot_be_read`: in process, nothing is changed.
+96. `test_an_unwired_row_reads_as_its_own_branch_in_the_preview_and_the_log`: no key in the preview; the log's row names the key, with `memory_off` false.
+97. `test_no_list_means_nobody_is_wired`: both rows of this room pass through; unregistered and new are unchanged.
+98. `test_an_empty_list_wires_nobody_and_is_not_broken`.
+99. `test_a_row_on_the_list_goes_on_as_before`: attached; a listed row with no folder is off, not the default slot.
+100. `test_a_broken_list_turns_memory_off_for_rows_of_this_room`: 17 states (a link, a dangling link, a folder, a second hard link, modes 0644 and 0400, over the limit, not JSON, not UTF-8, an object, a string, a number in it, a list in it, a duplicate, a key not in the registry, of another room, of another provider), each off from the dry run and the launch, for its own stated reason, with no value in that reason.
+101. `test_a_broken_list_reaches_nothing_else`: unregistered, new, another room's row and a launch from outside are unchanged.
+102. `test_a_list_at_its_exact_limit_is_read`: 65,536 bytes is read, one more is broken above. The size is a literal, so the constant cannot drift.
+103. `test_a_list_that_cannot_be_inspected_is_broken_not_absent`: in process, an inspection error does not read as no list.
+104. `test_a_list_of_another_user_is_refused`: in process, the owner rule.
+105. `test_a_list_swapped_after_its_check_is_refused`: in process, replaced by a new file between the check and the read; by a link, which the open refuses itself; or by a pipe, on which the open does not wait.
+106. `test_a_list_whose_row_writes_the_room_another_way_is_still_this_room`: the row's room through a link, and `--room` through a link.
+107. `test_a_fault_in_the_mind_tool_cannot_reach_an_unwired_launch`: removed, not Python, or exiting as it loads: the provider runs with its arguments and an inherited 0 unchanged, and no log row.
+108. `test_a_fault_in_the_mind_tool_stops_no_wired_launch`: not Python, or exiting as it loads: auto memory off, the provider runs.
+109. `test_a_route_that_exits_as_it_is_written_stops_no_launch`: in process, auto memory off and the provider still called.
+110. `test_the_outside_path_and_a_new_launch_survive_a_mind_tool_that_exits`: the log's own load of the tool cannot stop them.
+111. `test_a_failed_exec_under_a_write_limit_still_exits_126`: with `ulimit -f` below the log's size, the message and exit 126, not SIGXFSZ.
+112. `test_the_exit_status_comes_through_with_standard_error_closed`: 126 and 127 with no reader on standard error, neither SIGPIPE nor Python's exit 120.
+
 **Mutation check, 2026-11-05.** Each guard was disabled in turn (25 mutations: `--dry-run` only, the `--` separator, unknown wrapper options, the session value, `--fork-session`, the provider's own `--`, two sessions named, Claude rows only, no match, several matches, the room, the registered-elsewhere run left untouched, the folder's private path, its Git rule, its markers, the registry's absence, regular file, mode, duplicate keys, row fields, plain keys and identities list, the auto-memory switch, the error path, and the key kept out of reasons); the suite caught 25 of 25.
 
 **Mutation check, third slice, 2026-11-05.** One run at umask 0002, on private copies, with no provider on `PATH`, the unmutated suite passing first and a pattern that does not occur exactly once counted as bad: the Auditor's 95 clause mutations (their section 15, sha 8bf781f93654f8ba), the 22 that survived the second slice among them, all 95 applying and all 95 caught; and 47 fresh clause mutations of the new code, 0 bad, 46 caught, one of them by timeout (`log-waits`: a pipe with no reader would stop the launch). One survives as equivalent: `wd-access-no-exec`, because resolving `.` already needs search permission on the directory (measured at mode 600: `R_OK` is false). No mutation reached the suite's tripwire. A list the writer has seen is not an independent check of its own; the Auditor adds fresh clause mutations at review.
@@ -119,5 +148,5 @@ The Auditor's second list (section 22), the first two pinned first:
 ## Not proved
 
 - That any provider loads the attached folder, or obeys `CLAUDE_CODE_DISABLE_AUTO_MEMORY`: the tests run only a fake provider (the tool spec lists the native proof still needed).
-- The plugin's real argument forms on every launch path, and its working directory and `PWD` at a launch.
+- The plugin's real argument forms on every launch path: read in its code, not exercised here. Its working directory and `PWD` at a launch were measured on the live host, not here.
 - The real registry or the real notebook home: no test reads either.

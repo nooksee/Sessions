@@ -9,7 +9,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - Command, from the room root: `python3 -I -B tools/test/test_mind.py`
 - Required flags: none. Positional arguments: none (standard `unittest` arguments are accepted).
 - Expected exit behavior:
-  - `0` when all 92 tests pass (four tests skip if `git` is not installed).
+  - `0` when all 93 tests pass (four tests skip if `git` is not installed).
   - `1` when any test fails or errors.
 - Reviewers also run it at umask 0002, 0022 and 0077.
 
@@ -20,12 +20,12 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - No real room, registry, mind or body is read or written.
 
 ## Outputs
-- Stdout: `unittest` progress and a summary line (`Ran 92 tests`, `OK`).
+- Stdout: `unittest` progress and a summary line (`Ran 93 tests`, `OK`).
 - Writes only inside its own temporary directory, which is removed after each test.
 - Exit codes the tests assert on the tool: `0` success, `1` a failed `check`, `2` a refusal.
 
 ## Invariants and failure modes
-92 tests. The 43 numbered below, the 10 projection, 15 sealing and 8 seal-field tests listed after them, and 16 tests of the legacy-state guard, the lock location and the nearest-Git rule (B1) that this list does not yet itemize; the base suite at d7e9ae51 measured 59.
+93 tests. The 43 numbered below, the 10 projection, 16 sealing and 8 seal-field tests listed after them, and 16 tests of the legacy-state guard, the lock location and the nearest-Git rule (B1) that this list does not yet itemize; the base suite at d7e9ae51 measured 59.
 
 **The basic loop (3).**
 1. `test_write_check_show_round_trip`: write, check and show agree; `show` returns the leaf byte for byte; the leaf records the operator's words, the writer, `predecessor: none` and the declared change.
@@ -98,6 +98,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - `test_w5_seal_refuses_links_specials_hard_links_and_an_unregistered_key`: a linked member, a pipe, a file with two hard links, an unregistered key, a folder not 0700, a blank or missing `--notebook` are each refused; no seal is written and no lock is created.
 - `test_w5_seal_needs_positive_git_exclusion`: in a room inside a Git work tree that does not ignore the seal, it is refused; once ignored, it is written. Skips if `git` is absent.
 - `test_w5_unseal_restores_byte_for_byte_into_an_absent_folder`: every file comes back byte for byte, folders 0700 and files 0600, and no staging folder is left.
+- `test_w5_a_note_the_provider_wrote_at_0664_seals_and_comes_back_at_0600`: a note at 0664 in the 0700 folder, as proof 5 recorded, seals, and comes back byte for byte at 0600; the wrapper's rule reads only the folder and the index.
 - `test_w5_unseal_fills_an_empty_folder_and_replaces_only_with_replace`: an empty folder is filled; a non-empty one is refused without `--replace`; with it, the seal takes the name and the earlier folder is kept beside it with its bytes.
 - `test_w5_unseal_checks_fixity_before_extracting`: one flipped bit in the seal is refused on its name hash; no target and no staging folder exist afterwards.
 - `test_w5_unseal_refuses_hostile_members_without_extracting`: an absolute member, a `..` escape, a symbolic link, a hard link, a character device, a pipe, a foreign owner, a member outside `notebook/`, a member before its folder, a manifest of another key, a manifest hash that does not match and a manifest that omits a member are each refused, and nothing is extracted.
