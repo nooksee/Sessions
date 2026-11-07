@@ -57,7 +57,7 @@ class TestClaudeMediaShapes(unittest.TestCase):
     def test_moves_tool_result_file_base64(self):
         """The shape the first pass missed, worth 199.8 MB on one body."""
         row = {"toolUseResult": {"type": "image", "file": {
-            "filePath": "/home/nos4r2/Downloads/Septic Plan.pdf",
+            "filePath": "/home/example/Downloads/Septic Plan.pdf",
             "base64": PNG_B64, "originalSize": 1574967}}}
         self.assertTrue(self.ex.walk(row))
         self.assertNotIn(PNG_B64, json.dumps(row))
@@ -65,12 +65,12 @@ class TestClaudeMediaShapes(unittest.TestCase):
     def test_tool_result_keeps_operator_metadata(self):
         """Clearing the node destroyed filePath on 17 rows; it must survive."""
         row = {"toolUseResult": {"type": "image", "file": {
-            "filePath": "/home/nos4r2/Downloads/Soil Evaluation Report.pdf",
+            "filePath": "/home/example/Downloads/Soil Evaluation Report.pdf",
             "base64": PNG_B64, "originalSize": 1574967}}}
         self.ex.walk(row)
         f = row["toolUseResult"]["file"]
         self.assertEqual(f["filePath"],
-                         "/home/nos4r2/Downloads/Soil Evaluation Report.pdf")
+                         "/home/example/Downloads/Soil Evaluation Report.pdf")
         self.assertEqual(f["originalSize"], 1574967)
         self.assertIn("externalized_to", f)
 

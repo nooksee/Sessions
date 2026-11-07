@@ -35,7 +35,7 @@ class HolderClassificationTests(unittest.TestCase):
     def test_editor_bridge(self) -> None:
         self.assertEqual(
             conflicts.classify_holder(
-                "/home/nos4r2/.cache/JetBrains/PyCharm/acp-agents/codex-acp",
+                "/home/example/.cache/JetBrains/PyCharm/acp-agents/codex-acp",
                 "codex-acp",
             ),
             "editor-bridge",
@@ -44,7 +44,7 @@ class HolderClassificationTests(unittest.TestCase):
     def test_remote_daemon(self) -> None:
         self.assertEqual(
             conflicts.classify_holder(
-                "/home/nos4r2/.codex/packages/standalone/current/codex",
+                "/home/example/.codex/packages/standalone/current/codex",
                 "codex app-server --remote-control --listen unix://",
             ),
             "background-daemon",
@@ -53,7 +53,7 @@ class HolderClassificationTests(unittest.TestCase):
     def test_visible_resume_console(self) -> None:
         self.assertEqual(
             conflicts.classify_holder(
-                "/home/nos4r2/.codex/packages/standalone/current/codex",
+                "/home/example/.codex/packages/standalone/current/codex",
                 "codex resume 00000000-0000-0000-0000-000000000000",
             ),
             "terminal-cli",
@@ -62,7 +62,7 @@ class HolderClassificationTests(unittest.TestCase):
     def test_ordinary_terminal_cli(self) -> None:
         self.assertEqual(
             conflicts.classify_holder(
-                "/home/nos4r2/.local/bin/codex",
+                "/home/example/.local/bin/codex",
                 "codex",
             ),
             "terminal-cli",
