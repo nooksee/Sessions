@@ -2,8 +2,8 @@
 """rotate: dry-run phase gates in an explicitly synthetic room.
 
 Generated with ops/bin/template; implemented by Joe Codex. Phases 0 to 4
-inspect synthetic evidence; phase 5 builds only temporary fixture artifacts.
-Phases 6 to 9 refuse. No native bodies, providers, custody or installation.
+inspect synthetic evidence; phases 5 to 9 use disposable fixture artifacts.
+No native bodies, providers, physical custody or production installation.
 Spec: docs/ops/specs/scripts/rotate.md. Tests: tools/test/test_rotate.py.
 """
 from __future__ import annotations
@@ -19,6 +19,7 @@ import os
 import re
 import stat
 import sys
+import subprocess
 import tempfile
 from fractions import Fraction
 from pathlib import Path
@@ -281,6 +282,23 @@ def no_fixture_holders(path):
     require(not gate.holders(path), "synthetic-destination-held")
 
 
+def fixture_holders(evidence, path, allow_held=False):
+    """Later slices use only the explicitly supplied process model."""
+    if not hasattr(evidence, "process_model"):
+        no_fixture_holders(path)
+        return False
+    model = evidence.notice.decode(evidence.reference(evidence.process_model))
+    require(model.get("schema") == "rotate-process/1", "process-model-schema")
+    require(model.get("observable") is True, "process-model-unobservable")
+    holders = model.get("holders")
+    records = model.get("session_records")
+    require(isinstance(holders, list) and isinstance(records, list), "process-model-lists")
+    confined = [evidence.path(name) for name in holders + records]
+    held = path in confined
+    require(allow_held or not held, "synthetic-destination-held")
+    return held
+
+
 def destination_ready(args, evidence, row, plan):
     spare = evidence.notice.decode(evidence.reference(plan.get("destination")))
     registry = evidence.object("ops/etc/resident-identities.json")["identities"]
@@ -299,7 +317,7 @@ def destination_ready(args, evidence, row, plan):
     require(evidence.notice.stamp(plan.get("built_at")) >= evidence.notice.stamp(spare["created_at"]),
             "synthetic-build-predates-spare")
     path = evidence.path(plan["destination"]["path"])
-    no_fixture_holders(path)
+    fixture_holders(evidence, path)
     return {"identity": identity, "plain": plain, "spare_path": path}
 
 
@@ -498,10 +516,10 @@ def static_gates(raw, rows, args, evidence, capsule, media_dir, externalizer, wi
     return results
 
 
-def build_preview(args, evidence, mind_ref, admission, plan, window, result):
+def build_preview(args, evidence, mind_ref, admission, plan, window, result, continuation=None):
     capsule = capsule_text(args, evidence, mind_ref, admission, plan)
     evidence.unchanged()
-    no_fixture_holders(admission["spare_path"])
+    fixture_holders(evidence, admission["spare_path"])
     # Actual existing Claude builder and externalizer, in disposable private
     # fixture staging only. No caller-selected output or production path.
     old_umask = os.umask(0o077)
@@ -543,19 +561,365 @@ def build_preview(args, evidence, mind_ref, admission, plan, window, result):
                 for path in (selected, output, *media_dir.iterdir()):
                     evidence.notice.private_node(path)
                 evidence.unchanged()
-                no_fixture_holders(admission["spare_path"])
+                fixture_holders(evidence, admission["spare_path"])
                 preview = {"sha256": digest(raw), "bytes": len(raw), "rows": len(rows), "gates": gates,
                            "capsule_sha256": digest(capsule.encode()), "mind_sha256": mind_ref["sha256"],
                            "media_files": externalizer.written, "media_blocks": externalizer.blocks,
                            "artifacts_retained": False, "native_load_proved": False}
+                if continuation is not None:
+                    continuation(stage, output, capsule, media_dir, externalizer, preview)
             finally:
-                # Counts are created file artifacts, not write syscalls.
+                # Count the files present for disposal, not all creations,
+                # logical operations or write syscalls (close can unlink).
                 result["writes"] = sum(p.is_file() for p in stage.rglob("*"))
-                result["write_scope"] = "temporary synthetic file artifacts; removed before return"
+                result["write_scope"] = "temporary synthetic file artifacts present at cleanup; not total creations or syscalls"
         result["temporary_artifacts_removed"] = True
     finally:
         os.umask(old_umask)
     return preview
+
+
+def json_bytes(value):
+    return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def node_id(node):
+    return (node.st_dev, node.st_ino, node.st_uid, node.st_gid, node.st_mode,
+            node.st_nlink, node.st_size, node.st_mtime_ns, node.st_ctime_ns)
+
+
+def private_write(path, raw, notice, owner=None):
+    """Exclusive private staging; all callers select paths in owned staging."""
+    notice.parent_chain(path.parent)
+    require(not path.exists() and not path.is_symlink(), "staged-target-exists")
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "wb") as handle:
+        if owner is not None:
+            os.fchown(handle.fileno(), *owner)
+        os.fchmod(handle.fileno(), 0o600)
+        handle.write(raw)
+        handle.flush()
+        os.fsync(handle.fileno())
+    after = notice.private_node(path)
+    require(owner is None or (after.st_uid, after.st_gid) == owner, "staged-ownership-mismatch")
+    require(digest(path.read_bytes()) == digest(raw), "staged-hash-mismatch")
+    return node_id(after)
+
+
+def replace_private(path, raw, notice, expected, on_publish=None):
+    """Guarded same-directory replacement of a disposable runtime fixture."""
+    notice.parent_chain(path.parent)
+    before = notice.private_node(path)
+    require(node_id(before) == expected[0], "swap-preimage-identity")
+    require(digest(path.read_bytes()) == expected[1], "swap-preimage-hash")
+    staged = path.with_name(path.name + ".swap")
+    owner = (before.st_uid, before.st_gid)
+    staged_identity = private_write(staged, raw, notice, owner)
+    require(node_id(notice.private_node(path)) == expected[0], "swap-preimage-changed")
+    os.replace(staged, path)
+    after = notice.private_node(path)
+    require((after.st_dev, after.st_ino) == staged_identity[:2], "swap-postimage-identity")
+    require((after.st_uid, after.st_gid) == owner, "swap-postimage-ownership")
+    require(digest(path.read_bytes()) == digest(raw), "swap-postimage-hash")
+    # Only a verified postimage can become authority for a later inverse.
+    if on_publish is not None:
+        on_publish((node_id(after), digest(raw)))
+    return (node_id(after), digest(raw))
+
+
+def operation_plan(args, evidence, binding):
+    operation = evidence.object(args.operation_plan, SMALL)
+    expected = {"schema": "rotate-operation/1", "key": args.key, "writer": args.writer,
+                "binding": binding, "build_sha256": digest(evidence.read(args.build_plan, SMALL))}
+    require(all(operation.get(k) == v for k, v in expected.items()), "operation-plan-mismatch")
+    evidence.process_model = operation.get("process_model")
+    # Prove the model before phase 3, so these slices never inspect /proc.
+    fixture_holders(evidence, evidence.path(".rotate-synthetic.json"))
+    return operation
+
+
+def custody_verify(tiers, files, notice):
+    manifest = b"".join((digest(raw) + "  " + name + "\n").encode()
+                        for name, raw in sorted(files.items()))
+    for tier in tiers:
+        notice.private_node(tier, True)
+        require({p.name for p in tier.iterdir()} == set(files) | {"SHA256SUMS"}, "custody-inventory")
+        notice.private_node(tier / "SHA256SUMS")
+        require((tier / "SHA256SUMS").read_bytes() == manifest, "custody-manifest")
+        for name, raw in files.items():
+            path = tier / name
+            notice.private_node(path)
+            require(digest(path.read_bytes()) == digest(raw), "custody-file-hash")
+    return digest(manifest)
+
+
+def fixture_go(args, evidence, operation, pristine):
+    word = evidence.notice.decode(evidence.reference(operation.get("go")))
+    expected = {"schema": "rotate-go/1", "key": args.key, "writer": args.writer,
+                "container": args.destination, "room": str(evidence.room),
+                "size": len(pristine), "custody_sha256": digest(pristine),
+                "rollback": "restore-pristine-and-hold", "after_phase": 6}
+    require(all(word.get(k) == v for k, v in expected.items()), "replacement-go-mismatch")
+    require(type(word.get("size")) is int and type(word.get("after_phase")) is int, "replacement-go-types")
+    require(evidence.notice.stamp(word.get("at")) > evidence.notice.stamp(operation.get("custody_at")),
+            "replacement-go-predates-custody")
+    require(word.get("word") == "go", "replacement-declined")
+    return word
+
+
+def six_agreements(args, notice, paths, plain):
+    registry = notice.decode(paths["registry"].read_bytes())["identities"]
+    identity = [r for r in registry if r.get("key") == args.key]
+    require(len(identity) == 1, "join-registry-ambiguous")
+    binding = notice.decode(paths["binding"].read_bytes())
+    raw = paths["destination"].read_bytes()
+    require(raw.endswith(b"\n"), "join-body-termination")
+    rows = [notice.decode(line) for line in raw.splitlines()]
+    titles = [r.get("customTitle") for r in rows if r.get("type") == "custom-title"]
+    names = [r.get("agentName") for r in rows if r.get("type") == "agent-name"]
+    tests = {
+        "registry-id": identity[0].get("session_id") == args.destination,
+        "binding-id": binding.get("session_id") == args.destination,
+        "body-id": all(r.get("sessionId") == args.destination for r in rows),
+        "root-cwd": binding.get("root") == str(args.room)
+                    and all(r.get("cwd") == str(args.room) for r in rows if "cwd" in r),
+        "registry-room": identity[0].get("room") == str(args.room),
+        "body-label": bool(titles) and bool(names) and titles[-1] == plain and names[-1] == plain,
+    }
+    for name, ok in tests.items():
+        require(ok, "six-way-" + name)
+    return tests
+
+
+def append_proof(args, evidence, operation, paths, admission, go, replace):
+    load = evidence.notice.decode(evidence.reference(operation.get("load")))
+    require(load.get("schema") == "rotate-load/1", "load-schema")
+    require(load.get("loaded") is True, "synthetic-load-failed")
+    require(load.get("key") == args.key and load.get("container") == args.destination,
+            "load-target-mismatch")
+    stamp = evidence.notice.stamp
+    require(stamp(load.get("served_at")) >= stamp(go["at"]), "load-predates-go")
+    readback = load.get("readback")
+    expected = {"key": args.key, "person": admission["identity"]["person"], "room": str(evidence.room)}
+    require(readback == expected, "load-readback-mismatch")
+    rows, appended = synthetic_rows(evidence, load.get("append"), args.destination)
+    require(any(r.get("type") == "assistant" and (r.get("message") or {}).get("role") == "assistant"
+                for r in rows), "append-first-reply-required")
+    original = paths["destination"].read_bytes()
+    combined = original + appended
+    all_rows = [evidence.notice.decode(line) for line in combined.splitlines()]
+    seen, pending = set(), set()
+    def tools(value):
+        if isinstance(value, dict):
+            if value.get("type") == "tool_use":
+                token = value.get("id")
+                require(isinstance(token, str) and token not in pending, "append-tool-use")
+                pending.add(token)
+            if value.get("type") == "tool_result":
+                token = value.get("tool_use_id")
+                require(token in pending, "append-tool-result")
+                pending.remove(token)
+            for v in value.values():
+                tools(v)
+        elif isinstance(value, list):
+            for v in value:
+                tools(v)
+    for row in all_rows:
+        if "uuid" in row:
+            require(row["uuid"] not in seen, "append-duplicate-message")
+            require(row.get("parentUuid") is None if not seen else row.get("parentUuid") in seen,
+                    "append-parent-chain")
+            seen.add(row["uuid"])
+        tools(row)
+    require(not pending, "append-unmatched-tools")
+    replace("destination", combined)
+    measurement_raw = evidence.reference(load.get("gauge"))
+    measurement, _, _ = evidence.notice.measurement(measurement_raw, paths["registry"], args.key)
+    reading = sibling("gauge").read_claude(paths["destination"])
+    require(all(reading.get(k) == measurement.get(k) for k in ("tokens", "model", "reading_at"))
+            and not reading.get("compaction_after"), "wake-reading-mismatch")
+    require(stamp(measurement["reading_at"]) >= stamp(load["served_at"]), "wake-reading-predates-load")
+    acceptance = evidence.notice.decode(evidence.reference(operation.get("acceptance")))
+    require(acceptance.get("schema") == "rotate-acceptance/1" and acceptance.get("key") == args.key
+            and acceptance.get("container") == args.destination and acceptance.get("word") == "recognize",
+            "operator-fixture-acceptance-required")
+    require(stamp(acceptance.get("at")) >= stamp(measurement["reading_at"]), "acceptance-predates-wake")
+    require(load.get("mind_confirmed") is True, "mind-confirmation-required")
+    return {"tokens": measurement["tokens"], "window": measurement["window"],
+            "reading_at": measurement["reading_at"], "acceptance_at": acceptance["at"],
+            "gauge_sha256": digest(measurement_raw), "native_load_proved": False}
+
+
+def fixture_receipt(args, evidence, stage, operation, admission, window, preview, outcome, go):
+    number = operation.get("rotation")
+    require(type(number) is int and number > 0, "rotation-number-required")
+    require(type(operation.get("deviations")) is int and operation["deviations"] >= 0, "deviations-count-required")
+    wake = outcome["wake"]
+    slots = {
+        "RESIDENT": admission["plain"] + "; " + args.key, "ROTATION": str(number),
+        "DATE": wake["acceptance_at"] + " (synthetic fixture clock)", "WRITER": args.writer,
+        "AUTHORITY": "Synthetic go fixture at " + go["at"] + "; not production authority",
+        "TIER": "B; synthetic only", "DONOR": window["donor_sha256"],
+        "DESTINATION": "Synthetic destination; pristine sha256=" + outcome["pristine_sha256"],
+        "CUT_AND_REASON": str(window["start"]) + "; reason sha256=" + window["reason_sha256"],
+        "GATES": json.dumps(preview["gates"], sort_keys=True),
+        "CUSTODY": "Two synthetic roots, direct reads; manifest sha256=" + outcome["custody_sha256"]
+                   + "; not independent physical-drive custody",
+        "MIND_LEAF": preview["mind_sha256"], "INSTALL": "Synthetic verified swap; six agreements="
+                   + json.dumps(outcome["agreements"], sort_keys=True),
+        "ESTIMATE_VS_MEASURED": str(window["estimate"]["tokens"]) + " estimated; " + str(wake["tokens"])
+                   + "/" + str(wake["window"]) + " measured from fixture append at " + wake["reading_at"],
+        "DEVIATIONS": str(operation["deviations"]),
+        "ACCEPTANCE": "Synthetic mechanical append and explicit recognize fixture at " + wake["acceptance_at"]
+                      + "; no native or real operator acceptance",
+        "ROLLBACK": "restore-pristine-and-hold; rehearsed inverse retained until acceptance",
+    }
+    command = ["/bin/bash", str(SESSIONS / "ops/bin/template"), "receipt"]
+    for key, value in slots.items():
+        command.extend(["--slot", key + "=" + value])
+    rendered = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              timeout=15, check=False, cwd=stage, env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"})
+    require(rendered.returncode == 0 and bool(rendered.stdout.strip()), "receipt-template-refused")
+    directory = stage / "archives"
+    directory.mkdir(mode=0o700)
+    directory = directory / "receipts"
+    directory.mkdir(mode=0o700)
+    path = directory / (args.key + "-rotation-" + str(number) + ".md")
+    private_write(path, rendered.stdout, evidence.notice)
+    return {"sha256": digest(rendered.stdout), "bytes": len(rendered.stdout),
+            "template": "ops/src/reports/receipt.md.tpl", "artifacts_retained": False}
+
+
+def late_phases(args, evidence, operation, admission, plan, window, result,
+                stage, output, capsule, media_dir, externalizer, preview):
+    """Every mutation is on disposable copies, never the supplied inputs."""
+    notice = evidence.notice
+    require(notice.stamp(operation.get("custody_at")) >= notice.stamp(plan["built_at"]),
+            "custody-predates-build")
+    pristine_rows, pristine = synthetic_rows(evidence, operation.get("pristine"), args.destination)
+    require(all(r.get("type") in ("custom-title", "agent-name", "system") and "message" not in r
+                for r in pristine_rows), "pristine-not-empty")
+    require(all(r.get("cwd", str(evidence.room)) == str(evidence.room) for r in pristine_rows), "pristine-room")
+    require([r.get("customTitle") for r in pristine_rows if r.get("type") == "custom-title"]
+            == [admission["plain"] + " - spare body, do not open"], "pristine-label")
+    donor_store = evidence.reference(operation.get("donor_store"), LIMIT)
+    require(operation["donor_store"]["path"].endswith(".fixture"), "donor-store-fixture-required")
+    require(digest(donor_store) == window["donor_sha256"], "donor-store-mismatch")
+    binding_raw = evidence.reference(operation.get("binding_preimage"))
+    binding = notice.decode(binding_raw)
+    donor_id = admission["identity"]["session_id"]
+    require(binding == {"schema": "rotate-binding/1", "key": args.key, "session_id": donor_id,
+                        "root": str(evidence.room), "provider": "claude"}, "binding-preimage-mismatch")
+    launcher_raw = evidence.reference(operation.get("launcher"))
+    launcher = notice.decode(launcher_raw)
+    require(launcher == {"schema": "rotate-launcher/1", "key": args.key, "hold": False}
+            and launcher.get("hold") is False, "launcher-preimage-mismatch")
+    registry_raw = evidence.read("ops/etc/resident-identities.json")
+    files = {"donor.fixture": donor_store, "destination.fixture": pristine, "successor.fixture": output.read_bytes(),
+             "capsule.txt": capsule.encode(), "gates.json": json_bytes(preview["gates"]),
+             "registry.json": registry_raw, "binding.json": binding_raw, "launcher.json": launcher_raw}
+    for path in media_dir.iterdir():
+        files["media-" + path.name] = path.read_bytes()
+    runtime = stage / "runtime"
+    runtime.mkdir(mode=0o700)
+    paths = {key: runtime / name for key, name in (("destination", "destination.fixture"),
+             ("registry", "registry.json"), ("binding", "binding.json"), ("donor", "donor.fixture"),
+             ("launcher", "launcher.json"))}
+    accepted_owner = evidence.path("ops/etc/resident-identities.json").lstat()
+    owners = (accepted_owner.st_uid, accepted_owner.st_gid)
+    for key, path in paths.items():
+        private_write(path, files[path.name], notice, owners if key == "registry" else None)
+    hold = json_bytes({**launcher, "hold": True})
+    replace_private(paths["launcher"], hold, notice,
+                    (node_id(paths["launcher"].lstat()), digest(files["launcher.json"])))
+    require(paths["launcher"].read_bytes() == hold, "synthetic-hold-unproved")
+    tiers = [stage / "tier-1", stage / "tier-2"]
+    manifest = b"".join((digest(raw) + "  " + name + "\n").encode() for name, raw in sorted(files.items()))
+    for tier in tiers:
+        tier.mkdir(mode=0o700)
+        for name, raw in {**files, "SHA256SUMS": manifest}.items():
+            private_write(tier / name, raw, notice)
+    outcome = {"custody_sha256": custody_verify(tiers, files, notice), "custody_rows_per_tier": len(files),
+               "pristine_sha256": digest(pristine), "hold": True, "rollback": False,
+               "physical_custody_proved": False, "artifacts_retained": False}
+    result["rehearsal"] = outcome
+    if args.phase == 6:
+        evidence.unchanged()
+        return
+    changed = {key: (node_id(path.lstat()), digest(path.read_bytes())) for key, path in paths.items()}
+    def replace(key, raw):
+        def published(postimage):
+            changed[key] = postimage
+        changed[key] = replace_private(paths[key], raw, notice, changed[key], published)
+    def rollback():
+        # Reassert the known hold even when custody or another surface later
+        # refuses restoration. Unknown/newer bytes are never overwritten.
+        outcome["hold"] = None
+        replace("launcher", hold)
+        require(paths["launcher"].read_bytes() == hold, "rollback-hold-unproved")
+        outcome["hold"] = True
+        custody_verify(tiers, files, notice)
+        for key in ("destination", "registry", "binding", "donor"):
+            # Never overwrite a concurrent or unrecognized postimage.
+            saved = (tiers[1] / paths[key].name).read_bytes()
+            if key == "donor" and not paths[key].exists() and not paths[key].is_symlink():
+                require(restore_absent_donor, "absent-donor-needs-rollback-go")
+                private_write(paths[key], saved, notice)
+                changed[key] = (node_id(paths[key].lstat()), digest(saved))
+            else:
+                replace(key, saved)
+        outcome.update(rollback=True, hold=True)
+    restore_absent_donor = False
+    try:
+        go = fixture_go(args, evidence, operation, pristine)
+        restore_absent_donor = True
+        evidence.unchanged()
+        custody_verify(tiers, files, notice)
+        require(paths["destination"].read_bytes() == (tiers[1] / "destination.fixture").read_bytes(),
+                "destination-custody-mismatch")
+        held = fixture_holders(evidence, evidence.path(operation["pristine"]["path"]), allow_held=True)
+        if held:
+            private_write(paths["destination"].with_name("destination.fixture.NEW"), output.read_bytes(), notice)
+            require(args.phase == 7, "operator-new-swap-pending")
+            outcome["fallback"] = "NEW staged only; operator closure and swap not simulated"
+            result["next_phase"] = 7
+            return
+        replace("destination", output.read_bytes())
+        registry = notice.decode(registry_raw)
+        for identity in registry["identities"]:
+            if identity["key"] == args.key:
+                identity["session_id"] = args.destination
+        replace("registry", json_bytes(registry))
+        require((paths["registry"].lstat().st_uid, paths["registry"].lstat().st_gid) == owners,
+                "canonical-registry-owner")
+        replace("binding", json_bytes({**binding, "session_id": args.destination}))
+        outcome["agreements"] = six_agreements(args, notice, paths, admission["plain"])
+        if args.phase == 7:
+            evidence.unchanged()
+            return
+        replace("launcher", json_bytes(launcher))
+        require(paths["launcher"].read_bytes() == json_bytes(launcher), "serve-hold-not-released")
+        outcome["hold"] = False
+        outcome["wake"] = append_proof(args, evidence, operation, paths, admission, go, replace)
+        outcome["agreements"] = six_agreements(args, notice, paths, admission["plain"])
+        outcome["fixture_accepted"] = True
+        if args.phase == 8:
+            evidence.unchanged()
+            return
+        evidence.unchanged()
+        custody_verify(tiers, files, notice)
+        outcome["receipt"] = fixture_receipt(args, evidence, stage, operation, admission, window, preview, outcome, go)
+        require(operation.get("donor_preference") == "removed", "donor-preference-required")
+        require(node_id(paths["donor"].lstat()) == changed["donor"][0]
+                and paths["donor"].read_bytes() == (tiers[1] / "donor.fixture").read_bytes(), "donor-disposition-changed")
+        paths["donor"].unlink()
+        outcome["donor_store_removed"] = True
+    except BaseException:
+        try:
+            rollback()
+        except Exception:
+            outcome.update(rollback=False, rollback_status="unknown; changed fixture preserved until context cleanup")
+        raise
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -568,8 +932,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--destination", help="declared invented spare identifier; no body is opened or verified")
     ap.add_argument("--gauge-row", help="one gauge JSON snapshot, relative to the synthetic room")
     ap.add_argument("--closeout-state", help="closeout state.json, relative to the synthetic room")
-    ap.add_argument("--closing-record", help="hash-bound closing evidence, needed for phases 1 and 2")
-    ap.add_argument("--build-plan", help="hash-bound synthetic spare/window/build plan for phases 3 to 5")
+    ap.add_argument("--closing-record", help="hash-bound closing evidence, needed for phases 1 to 9")
+    ap.add_argument("--build-plan", help="hash-bound synthetic spare/window/build plan for phases 3 to 9")
+    ap.add_argument("--operation-plan", help="hash-bound synthetic process, custody, go and acceptance fixtures for phases 6 to 9")
     return ap
 
 
@@ -578,10 +943,6 @@ def main(argv=None) -> int:
     result = {"schema": "rotate/1", "phase": args.phase, "name": PHASES[args.phase][0],
               "dry_run": True, "writes": 0, "native_load_proved": False, "operator_accepted": False,
               "completed": [], "next_phase": args.phase + 1 if args.phase < 9 else None}
-    if args.phase >= 6:
-        result.update(status="unsupported", reason="phase-not-implemented", needs=PHASES[args.phase][1])
-        print(json.dumps(result, sort_keys=True))
-        return 2
     try:
         if args.room is None or not args.gauge_row or not args.closeout_state:
             raise Refused("explicit-synthetic-evidence-required")
@@ -597,6 +958,8 @@ def main(argv=None) -> int:
             result["completed"].append(2)
         if args.phase >= 3:
             plan = build_plan(args, evidence, binding)
+            if args.phase >= 6:
+                operation = operation_plan(args, evidence, binding)
             admission = destination_ready(args, evidence, row, plan)
             result["completed"].append(3)
             result["destination_proof"] = "synthetic spare metadata and current observable holders only; not native admission"
@@ -606,11 +969,15 @@ def main(argv=None) -> int:
             result["window"]["estimate"] = {"tokens": window["estimate"]["tokens"], "window": row["window"],
                                             "provenance": "hash-bound supplied estimate, not a native wake measurement"}
             result["completed"].append(4)
-        if args.phase == 5:
-            result["build"] = build_preview(args, evidence, result["mind"], admission, plan, window, result)
-            result["completed"].append(5)
+        if args.phase >= 5:
+            continuation = None
+            if args.phase >= 6:
+                continuation = lambda *parts: late_phases(args, evidence, operation, admission, plan, window, result, *parts)
+            result["build"] = build_preview(args, evidence, result["mind"], admission, plan, window, result, continuation)
+            last = 6 if result.get("rehearsal", {}).get("fallback") else args.phase
+            result["completed"].extend(range(5, last + 1))
         evidence.unchanged()
-        result.update(status="stop", needs=PHASES[args.phase + 1][1], binding=binding,
+        result.update(status="stop", needs=PHASES[result["next_phase"]][1] if result["next_phase"] is not None else [], binding=binding,
                       tier="B", destination_sha256=inputs["destination_sha256"],
                       measurement={key: row[key] for key in ("tokens", "window", "percent", "reading_at",
                                                              "measured_at", "age_seconds", "window_source")},

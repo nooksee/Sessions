@@ -10,8 +10,10 @@ claim.
 
 The guided runner must stop where its implementation stops. A successful
 metadata or mind gate must never become permission to install or launch a
-successor. The W6 slices implement synthetic phases 0 to 5; only phase 5
-constructs temporary fixture artifacts, removed before it returns.
+successor. The accepted first two W6 slices implement synthetic phases 0 to 5.
+The third-slice author candidate adds disposable phases 6 to 9, not a native
+adapter or an accepted real rotation. The status line awaits integration.
+Temporary fixture artifacts are removed before return in every write phase.
 
 ## Mechanics and Sequencing
 
@@ -35,8 +37,9 @@ and actual successor/media construction. Every static predicate has negative
 fixtures; gate results are real execution results, not constant success slots.
 Tree snapshots check bytes, modes, inodes and mtimes rather than atime.
 
-The suite has 115 tests: the existing 92 plus 23 distinct C1 tests from the
-section 276 gap table. Each new test is paired with one single-clause or
+The candidate suite has 222 tests: the first two slices' 115 (92 plus 23
+distinct C1 tests from the section 276 gap table) and 107 third-slice tests.
+The original C1 tests are paired with one single-clause or
 property omission in the author's retained mutation table, not a whole
 require-call skip. The new test names identify those exact cases:
 
@@ -70,7 +73,7 @@ Refusal cases include missing/corrupt/duplicate/oversized JSON, bad or
 archived/compacted counters, numeric booleans, changed evidence, unproved
 closing/mind state, bad private modes, absolute/traversing/body paths,
 symlinked files/parents/leaves, hardlinks and FIFOs. The tool's subprocess
-entrypoint is forbidden during in-process tests; harmless CLI process
+entrypoint is forbidden during first/second-slice in-process tests; harmless CLI process
 smokes invoke only the Python tool itself and its help. No provider,
 notifier, launcher, custody command or real body is available to the tests.
 Process fixtures model observable holders; one bounded smoke inspects only
@@ -92,10 +95,61 @@ and existing builders remain ingredients, not evidence of that workflow.
 Passing synthetic gates proves no real resident closed, no operator typed
 an approval, no card reached native context and no provider loaded a body.
 The fixture marker is a declaration, not hostile same-user confinement.
-Phases 6 to 9, persistent recovery, custody, verified swap, rollback,
-native append, first gauge and operator acceptance remain unimplemented.
+Native phases 6 to 9, persistent recovery, physical custody, production swap
+and rollback, native append, first native gauge and real operator acceptance
+remain unimplemented.
 The gate's 20-percent bound checks a hash-bound supplied wake estimate; it
 does not implement a tokenizer or claim a measured native wake. Media files
-and candidate bytes exist only while the synthetic build is being gated,
-not as a durable custody package. A killed process's residual is never adopted.
+and candidate bytes exist only during the synthetic invocation, including
+later model phases, not as durable custody. A killed process's residual is never adopted.
 The Auditor independently reviews the frozen source; the Apprentice integrates it.
+
+## Third-slice candidate coverage and limits
+
+The 107 third-slice tests comprise 95 install/recovery cases and 12 focused private
+staging/swap cases. Each stop is tested with later evidence absent where it
+must not be read. Inputs are snapshotted before/after; only temporary runtime
+and custody copies may change. No host process table is read in phases 6 to 9;
+their explicit process model is mandatory.
+
+The review follow-up adds nine test methods and strengthens the existing
+swap, seed-owner, wake-claim, receipt-authority and staging checks. It covers
+equivalent relative holder spellings in both model lists; custody root and
+member privacy after creation; custody rereading before rollback; unchanged
+other registry rows; the post-append six-way check; the phase-8 stop with
+close-only fields absent; and input checks before swap and close. Call and
+unlink observations distinguish refusal before an act from refusal after it.
+The equal serve/go timestamp boundary is allowed and tested explicitly.
+
+Coverage includes two directly read custody roots and all manifest members;
+wrong inventory, manifests and bytes; exact preimages and spare work hidden
+behind fresh metadata; post-custody go and each target field; six independent
+join predicates, including body cwd versus binding root; `.NEW` without a
+registry switch or run-ahead; staging/postimages and accepted uid/gid;
+stale/replaced targets, links and hardlinks; failure before/after publication,
+declined go/load/recognition, interruption, hold reassertion/readback,
+absent-donor go and conflicting newer bytes. Named refusals and final safety
+outcomes are checked. Overlapping guards use isolated synthetic metadata or
+dependency faults where needed.
+
+Append cases bind every identity, role, parent and tool pair. Wake tokens,
+model and time come from the existing reader and match a separately validated
+snapshot; estimate, reading and recognition stay separate. The receipt test
+invokes only the fixed existing Bash template command with a minimal
+environment, verifies the actual form and measured fields, and checks that
+only the disposable donor entry is unlinked after custody. No provider,
+notifier, launcher, host store or real custody command is available.
+
+The retained author mutation table replaces single Boolean clauses, expected
+mapping fields and named workflow acts in disposable in-memory source
+modules; it never edits frozen source. Each row names its mutation, original
+clause, selected tests, failures/errors and source digest. Baseline and final
+unmutated tests must pass. Results and survivors are reported, not inferred
+from a whole-require count. A staging mutant is checked before it can create
+any directory outside its synthetic room.
+
+This proves model swaps, model recovery and fixture recognition, not physical
+drive independence, native load/append, semantic identity readback, operator
+authorship, durable recovery or a real rotation. The model's `.NEW` does not
+survive return; no later invocation adopts it. The existing rotate-spare/1
+and rotate-estimate/1 schemas remain unchanged.
