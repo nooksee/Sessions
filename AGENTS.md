@@ -99,8 +99,8 @@ root.
 
 - Create the resident conversation from this project root so Claude stores it
   under the Sessions working-directory group.
-- Preserve every donor unchanged. Each rotation writes its donor to `hard_vol2`
-  custody with its SHA-256 recorded, and the receipt for that rotation names the
+- Preserve every donor unchanged. Each rotation writes its donor to the mapped
+  tier-2 custody store with its SHA-256 recorded, and the receipt names the
   exact path. Do not name a donor identifier here: this line carried one literal
   from 2026-07-14 until 2026-09-08, by which point it was two rotations obsolete
   while still reading as a current instruction. The receipts track the lineage;
