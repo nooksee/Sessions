@@ -14,6 +14,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import stat
 import subprocess
 import tempfile
@@ -230,10 +231,20 @@ class WrapperPopupTests(unittest.TestCase):
                 "print('QUIET_HELPERS=0')\n"
                 "print('HEADLINE=Critical: Desktop Continuity Manager (George Friend)')\n"
                 "print('SHOULD_ALERT=1 ANY_CRITICAL=1')\n")
+            ran = root / "fixture-detector-ran"
             (scripts / "drift.py").write_text(
+                f"open({str(ran)!r}, 'w').close()\n"
                 "print('STATE=aligned SEVERITY=normal SHOULD_ALERT=0')\n")
             rounds = scripts / "rounds.sh"
-            rounds.write_text(self.ROUNDS.read_text())
+            # The wrapper names the live detector by absolute path, and running it writes Control's drift state.
+            # The copy under test must not reach it, or a run on this host consumes a real transition.
+            text = self.ROUNDS.read_text()
+            detector = re.search(r'"(/[^"]+/check_resident_center_drift\.py)"', text)
+            self.assertIsNotNone(detector, "the wrapper no longer names its detector this way")
+            remainder = text.replace(detector.group(1), "")  # checked before the fixture's own path goes in
+            for host_root in ("/media/", "/home/"):
+                self.assertNotIn(host_root, remainder)
+            rounds.write_text(text.replace(detector.group(1), str(scripts / "drift.py")))
             log = rec / "calls.log"
             stub = rec / "notify-send"
             stub.write_text(f'#!/bin/sh\nfor a in "$@"; do echo "ARG:$a"; done >> {log}\n')
@@ -242,6 +253,7 @@ class WrapperPopupTests(unittest.TestCase):
             env.pop("SESSION_ROUNDS_NOTIFY", None)
             subprocess.run(["bash", str(rounds)], capture_output=True, env=env)
             calls = log.read_text()
+            self.assertTrue(ran.exists(), "the wrapper did not run the fixture's detector")
         self.assertIn("ARG:-u", calls)
         self.assertIn("ARG:critical", calls)
         self.assertIn("ARG:🩺 Critical: Desktop Continuity Manager (George Friend)", calls)
