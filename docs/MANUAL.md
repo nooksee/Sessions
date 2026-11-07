@@ -110,7 +110,7 @@ The authority for who each resident is lives only in the registry. A resident ch
 | notice (operator backstop) | `ops/lib/scripts/notice.py` | `docs/ops/specs/scripts/notice.md` | `tools/test/test_notice.py` | source integrated on `main` (PR #10, 2026-11-05) with the Independent Reviewer's source PASS and post-integration audit; unwired, live go pending the registry permission finding (F1) and George's activation; consumes one exact gauge row, submits an operator-only notice, never delivers resident context |
 | mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; `project` writes a leaf copy into a named notebook folder (source only, no default home); actual use, a real notebook and the launch wrapper have separate acceptance |
 | Claude resident wrapper | `ops/bin/claude-resident` | `docs/ops/specs/scripts/claude-resident.md` | `tools/test/test_claude_resident.py` | source implemented and reviewed; real form not yet proved against the provider; `cliPath` untouched |
-| rotate | `ops/lib/scripts/rotate.py` | `docs/ops/specs/scripts/rotate.md` | `tools/test/test_rotate.py` | synthetic phases 0 to 5 implemented and independently source-reviewed, dry-run only; phase 5 removes its temporary fixture build; phases 6 to 9 remain unimplemented; no live rotation or provider-load proof |
+| rotate | `ops/lib/scripts/rotate.py` | `docs/ops/specs/scripts/rotate.md` | `tools/test/test_rotate.py` | synthetic phases 0 to 9 implemented, dry-run only; temporary fixture artifacts are removed at each stop; no live rotation, persistent recovery or provider-load proof |
 
 Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.md`.
 
@@ -161,9 +161,9 @@ Reviewers also run each suite at the host umasks 0002 and 0022 as well as 0077; 
 ### Closeout and rotate
 `closeout.py` is an implemented hook entry point, not an interactive phase
 runner; its specification defines JSON input and the staged validation route.
-`rotate.py` is implemented and independently source-reviewed for synthetic
-dry-run phases 0 to 5. Phase 5 removes its temporary fixture build; phases
-6 to 9 remain unimplemented. There is no live rotation or provider-load proof.
+`rotate.py` implements synthetic dry-run phases 0 to 9. Each stop removes
+its temporary fixture artifacts. There is no live rotation, persistent
+recovery or provider-load proof.
 These facts do not authorize
 hook wiring or a native canary (PoT 6.1.2, 6.1.5).
 
@@ -325,9 +325,9 @@ historical missing-ignore observation is not a current permission gate.
 
 ## 6. Running a Rotation
 
-Spec: `docs/ops/specs/scripts/rotate.md`. Status: synthetic phases 0 to 5
-implemented and independently source-reviewed, dry-run only. Phase 5 removes
-its temporary fixture build; phases 6 to 9 remain unimplemented. Real rotations
+Spec: `docs/ops/specs/scripts/rotate.md`. Status: synthetic phases 0 to 9
+implemented, dry-run only. Each stop removes temporary fixture artifacts.
+There is no production adapter or persistent recovery. Real rotations
 still follow the spec by hand, phase by phase, and stop at each stop point.
 No live rotation or provider-load proof.
 
@@ -363,8 +363,8 @@ change follows from this procedure.
 
 **Codex residents.** `ops/lib/scripts/rotation.py` does not carry the native compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
 
-`rotate.py` has independently source-reviewed synthetic dry-run phases 0 to 5.
-Phase 5 removes its temporary fixture build; phases 6 to 9 remain unimplemented.
+`rotate.py` implements synthetic dry-run phases 0 to 9. Each stop removes
+its temporary fixture artifacts; no production adapter or persistent recovery exists.
 There is no live rotation or provider-load proof.
 
 ---

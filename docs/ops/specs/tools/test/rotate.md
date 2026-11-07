@@ -2,17 +2,16 @@
 
 Tool: `ops/lib/scripts/rotate.py` (`SCRIPT-04`).
 Test: `tools/test/test_rotate.py` (`TEST-48`). Writer: Joe Codex.
-Status: synthetic phases 0 to 5 implemented and independently source-reviewed,
-dry-run only; phases 6 to 9 remain unimplemented. No native rotation or load
-claim.
+Status: synthetic phases 0 to 9 implemented, dry-run only. No native rotation,
+persistent recovery or provider-load claim.
 
 ## First Principles Rationale
 
 The guided runner must stop where its implementation stops. A successful
 metadata or mind gate must never become permission to install or launch a
 successor. The accepted first two W6 slices implement synthetic phases 0 to 5.
-The third-slice author candidate adds disposable phases 6 to 9, not a native
-adapter or an accepted real rotation. The status line awaits integration.
+The third slice adds disposable phases 6 to 9, not a native adapter or an
+accepted real rotation.
 Temporary fixture artifacts are removed before return in every write phase.
 
 ## Mechanics and Sequencing
@@ -23,7 +22,7 @@ room under this clone's `var/tmp/`; cleanup removes only that fixture.
 Registries, gauge rows, closeout state, handoffs, approvals and mind entries
 are invented. Fixture minds use the actual mind serializer and verifier.
 
-The suite checks each implemented stop and each unsupported phase, with
+The suite checks each implemented stop and each later phase's evidence refusal, with
 no implicit advancement. It covers shared gauge/pressure validation,
 unrounded due boundaries, age/provenance, exact session/key/band evidence,
 writer separation, unique registry bindings, hash-bound closing records,
@@ -37,7 +36,7 @@ and actual successor/media construction. Every static predicate has negative
 fixtures; gate results are real execution results, not constant success slots.
 Tree snapshots check bytes, modes, inodes and mtimes rather than atime.
 
-The candidate suite has 222 tests: the first two slices' 115 (92 plus 23
+The suite has 222 tests: the first two slices' 115 (92 plus 23
 distinct C1 tests from the section 276 gap table) and 107 third-slice tests.
 The original C1 tests are paired with one single-clause or
 property omission in the author's retained mutation table, not a whole
@@ -104,7 +103,7 @@ and candidate bytes exist only during the synthetic invocation, including
 later model phases, not as durable custody. A killed process's residual is never adopted.
 The Auditor independently reviews the frozen source; the Apprentice integrates it.
 
-## Third-slice candidate coverage and limits
+## Third-slice coverage and limits
 
 The 107 third-slice tests comprise 95 install/recovery cases and 12 focused private
 staging/swap cases. Each stop is tested with later evidence absent where it

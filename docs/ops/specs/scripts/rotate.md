@@ -6,9 +6,9 @@ Script: `Sessions/ops/lib/scripts/rotate.py` (Claude-first synthetic runner). Sp
 
 Map: `docs/ops/README.md`.
 
-Status: synthetic phases 0 to 5 implemented and independently source-reviewed,
-dry-run only, with Claude-only window/build rehearsal. Phases 6 to 9 remain
-unimplemented and refuse. No live rotation or provider-load proof.
+Status: synthetic phases 0 to 9 implemented, dry-run only, with Claude-only
+window/build rehearsal and disposable custody, install, acceptance and close.
+No live rotation, persistent recovery or provider-load proof.
 
 ## First Principles Rationale
 
@@ -25,9 +25,8 @@ The operator, 2026-10-30: the rotation had never been formalized, and to him it 
 
 The specification below describes the complete intended rotation. The first
 runner checks supplied synthetic evidence, rechecks earlier gates on each
-invocation, and stops after the requested phase. The accepted status line
-above is left for the later integration commit. The W6 third-slice candidate
-adds the disposable phases 6 to 9 described below; it is not a native adapter
+invocation, and stops after the requested phase. The third slice implements
+the disposable phases 6 to 9 described below; it is not a native adapter
 or authority to operate on a real launcher, registry, store or custody root.
 Donor handling still follows CONSTRAINTS C09, not an unconditional restore.
 
@@ -262,7 +261,7 @@ For phases 6 to 9, `--operation-plan` names private relative JSON evidence.
    The load record also requires `mind_confirmed: true`. These are declared
    fixture recognition/readback and confirmation, not semantic or native
    proofs. Correct status or a load flag alone is insufficient.
-   Named detail: the candidate requires that confirmation fixture at phase 8
+   Named detail: the synthetic runner requires that confirmation fixture at phase 8
    as a stricter model prerequisite; the target workflow still places the
    resident's actual confirmation at phase 9. No native step is resequenced.
 9. **Synthetic close.** Invoke existing `ops/bin/template receipt` with its
