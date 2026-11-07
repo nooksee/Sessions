@@ -28,6 +28,9 @@ UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 )
 LABEL_RE = re.compile(r"You are\s+`([^`]+?)\s*\(([^`()]+)\)`", re.IGNORECASE)
+ORIENTATION_TAG = "<session_clinic_orientation>"
+IDE_NOTICE_RE = re.compile(r"\s*<(ide_opened_file|ide_selection)>.*?</\1>", re.DOTALL)
+IDE_NOTICE_CLOSE_RE = re.compile(r"</(?:ide_opened_file|ide_selection)>")
 ORIENTATION_IDENTITY_RE = re.compile(
     r"(?:^|\n)\s*You are\s+(.+?)(?:\.|\n|$)",
     re.IGNORECASE,
@@ -420,10 +423,35 @@ def _display_claim(text: object, line_number: int) -> BodyIdentityClaim | None:
     )
 
 
+def _orientation_text(content: object) -> str | None:
+    """The row's text from the orientation tag on, or None when the tag does not begin it.
+
+    A message typed in the GUI while a file is open begins with an IDE notice,
+    so leading notices, these two by name, are passed over first. Nothing else
+    is: other leading text, another wrapper or a tool result leaves the tag not
+    beginning the row. A notice can hold anything the operator selected, this
+    tag included, so a notice's own text is never returned, and a row whose
+    notices were passed over counts only when no notice's closing tag stands
+    after them, since that means the first closing tag was quoted text.
+    """
+    if not isinstance(content, str):
+        return None
+    rest, passed = content, False
+    notice = IDE_NOTICE_RE.match(rest)
+    while notice:
+        rest, passed = rest[notice.end():], True
+        notice = IDE_NOTICE_RE.match(rest)
+    rest = rest.lstrip()
+    if not rest.startswith(ORIENTATION_TAG):
+        return None
+    if passed and IDE_NOTICE_CLOSE_RE.search(rest):
+        return None
+    return rest
+
+
 def _orientation_claim(text: object, line_number: int) -> BodyIdentityClaim | None:
-    if not isinstance(text, str) or not text.lstrip().startswith(
-        "<session_clinic_orientation>"
-    ):
+    text = _orientation_text(text)
+    if text is None:
         return None
     match = ORIENTATION_IDENTITY_RE.search(text)
     if match is None:
@@ -612,13 +640,12 @@ def analyze_claude_body(path: Path) -> BodyAnalysis:
             if row_type == "user":
                 message = row.get("message")
                 content = message.get("content") if isinstance(message, dict) else None
-                if isinstance(content, str) and content.lstrip().startswith(
-                    "<session_clinic_orientation>"
-                ):
+                orientation = _orientation_text(content)
+                if orientation is not None:
                     analysis.identity_rows_seen += 1
                     analysis.latest_identity_line = line_number
-                    claim = _display_claim(content, line_number) or _orientation_claim(
-                        content,
+                    claim = _display_claim(orientation, line_number) or _orientation_claim(
+                        orientation,
                         line_number,
                     )
                     analysis.latest_identity_claim = claim
