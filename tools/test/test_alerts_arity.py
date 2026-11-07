@@ -99,7 +99,7 @@ class MediaShapeTests(unittest.TestCase):
         acc = [0, 0]
         health.scan_images(
             {"toolUseResult": {"type": "image", "file": {
-                "filePath": "/home/nos4r2/Downloads/Septic Plan.pdf",
+                "filePath": "/home/example/Downloads/Septic Plan.pdf",
                 "base64": "B" * 900, "originalSize": 1574967}}}, acc)
         self.assertEqual(acc, [1, 900])
 

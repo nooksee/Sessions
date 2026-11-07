@@ -62,10 +62,9 @@ TABLE = [
     ('ops/lib/scripts/vitals.py', {'user name': 7, 'working volume': 5}, ""),
     ('ops/lib/scripts/watch.py', {'user name': 2, 'working volume': 1}, ""),
     ('tools/test/test_alerts.py', {"operator's first name": 1}, ""),
-    ('tools/test/test_alerts_arity.py', {'archive volume': 1, 'user name': 1}, ""),
+    ('tools/test/test_alerts_arity.py', {'archive volume': 1}, ""),
     ('tools/test/test_closeout.py', {"operator's first name": 4}, ""),
-    ('tools/test/test_conflicts.py', {'user name': 4}, ""),
-    ('tools/test/test_media.py', {"operator's first name": 1, 'user name': 3}, ""),
+    ('tools/test/test_media.py', {"operator's first name": 1}, ""),
     ('tools/test/test_mind.py', {"operator's first name": 6}, ""),
     ('tools/test/test_redact.py', {"operator's first name": 40, 'working volume': 1}, KEEP_REDACT_FIXTURES),
 ]
