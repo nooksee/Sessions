@@ -51,20 +51,12 @@ KEEP_REDACT_FIXTURES = "the redact rule's key word: its fixtures must keep it"
 # (path, {needle: lines}, the reason a count is meant to stay, or "")
 TABLE = [
     ('ops/lib/scripts/alerts.py', {"operator's first name": 1, 'user name': 1, 'working volume': 1}, ""),
-    ('ops/lib/scripts/capsule.py', {"operator's first name": 1, 'user name': 1, 'working volume': 1}, ""),
     ('ops/lib/scripts/closeout.py', {"operator's first name": 7}, ""),
     ('ops/lib/scripts/conflicts.py', {"operator's first name": 1}, ""),
-    ('ops/lib/scripts/estimate.py', {'user name': 1, 'working volume': 1}, ""),
     ('ops/lib/scripts/gauge.py', {'user name': 1, 'working volume': 1}, ""),
-    ('ops/lib/scripts/identity.py', {"operator's first name": 3}, ""),
-    ('ops/lib/scripts/media.py', {"operator's first name": 1}, ""),
     ('ops/lib/scripts/mind.py', {"operator's first name": 20}, ""),
-    ('ops/lib/scripts/miner.py', {'user name': 1}, ""),
-    ('ops/lib/scripts/myself.py', {"operator's first name": 1}, ""),
-    ('ops/lib/scripts/prime.py', {'user name': 1, 'working volume': 1}, ""),
     ('ops/lib/scripts/redact.py', {"operator's first name": 2}, KEEP_REDACT_RULE),
     ('ops/lib/scripts/retention.py', {'archive volume': 1, "operator's first name": 2, 'user name': 1}, ""),
-    ('ops/lib/scripts/rotation.py', {"operator's first name": 1}, ""),
     ('ops/lib/scripts/rounds.sh', {'user name': 1, 'working volume': 1}, ""),
     ('ops/lib/scripts/telemetry.py', {'user name': 1, 'working volume': 1}, ""),
     ('ops/lib/scripts/vitals.py', {'user name': 7, 'working volume': 5}, ""),
@@ -73,13 +65,9 @@ TABLE = [
     ('tools/test/test_alerts_arity.py', {'archive volume': 1, 'user name': 1}, ""),
     ('tools/test/test_closeout.py', {"operator's first name": 4}, ""),
     ('tools/test/test_conflicts.py', {'user name': 4}, ""),
-    ('tools/test/test_identity.py', {"operator's first name": 3, 'user name': 3, 'working volume': 3}, ""),
-    ('tools/test/test_identity_held.py', {"operator's first name": 5}, ""),
     ('tools/test/test_media.py', {"operator's first name": 1, 'user name': 3}, ""),
     ('tools/test/test_mind.py', {"operator's first name": 6}, ""),
-    ('tools/test/test_myself.py', {"operator's first name": 1}, ""),
     ('tools/test/test_redact.py', {"operator's first name": 40, 'working volume': 1}, KEEP_REDACT_FIXTURES),
-    ('tools/test/test_successor.py', {'user name': 1}, ""),
 ]
 
 

@@ -8,7 +8,7 @@ Ported legacy tool. Its own docstring opens: "Build a six-question Codex success
 
 ## Mechanics and Sequencing
 
-1. Behavior is the legacy script's, unchanged: `Scripts/build_codex_succession_capsule.py` (sha256 `0d8b5304435e47fd84778ebbb24cdbe8fd1f0d689af53b83a367d962eda7a733`) was copied to `ops/lib/scripts/capsule.py` on 2026-11-01 with 1 edit(s): parents[2] -> parents[4] (1).
+1. Behavior is the legacy script's, unchanged: `Scripts/build_codex_succession_capsule.py` (sha256 `0d8b5304435e47fd84778ebbb24cdbe8fd1f0d689af53b83a367d962eda7a733`) was copied to `ops/lib/scripts/capsule.py` on 2026-11-01 with 1 edit(s): parents[2] -> parents[4] (1). One change since, W8's second slice of 2026-11-07: the capsule's first rule names the operator by role, and its working root is the tool's own `ROOT`, not a literal. It reads no private file.
 2. Command line: `python3 -I -B ops/lib/scripts/capsule.py`. Options as the script declares them:
    - `--inventory-dir`: (no help text in the script)
    - `--output`: Optional output path.

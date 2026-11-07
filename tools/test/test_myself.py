@@ -704,7 +704,7 @@ class ResidentSelfCheckTests(unittest.TestCase):
 
 
 def _hold(fixture: Fixture, *, value: object = "held", drop_launcher_rows: bool) -> None:
-    """Mark the fixture resident as held from the launcher (Kevin, 2026-10-23)."""
+    """Mark the fixture resident as held from the launcher (the operator, 2026-10-23)."""
     registry = json.loads(fixture.registry.read_text())
     registry["identities"][0]["launcher"] = value
     fixture.registry.write_text(json.dumps(registry))

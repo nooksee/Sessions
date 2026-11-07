@@ -73,7 +73,7 @@ class Office:
     def jojo(self, **over) -> dict:
         row = {"key": "jojo-git", "role": "Chief Repository Operations Officer", "person": "JoJo Git",
                "provider": "copilot", "session_id": SID, "room": self.room,
-               "verified": "kevin", "note": "test"}
+               "verified": "operator", "note": "test"}
         row.update(over)
         return row
 
@@ -121,7 +121,7 @@ def chat(title, sid=SID, user_set=True, adapter="github-copilot-cli", **extra) -
 def legacy_rows() -> list[dict]:
     return [
         {"key": "claude-one", "role": "Lead", "person": "Claude One", "provider": "claude",
-         "session_id": "0000aaaa-0000-4000-8000-00000000aaaa", "room": "/x", "verified": "kevin"},
+         "session_id": "0000aaaa-0000-4000-8000-00000000aaaa", "room": "/x", "verified": "operator"},
         {"key": "codex-one", "role": "Dev", "person": "Codex One", "provider": "codex",
          "session_id": "0000bbbb-0000-4000-8000-00000000bbbb", "room": "/y",
          "verified": "unverified", "note": "pending"},
@@ -237,7 +237,7 @@ class HealthyRow(OfficeTest):
                 ws = (f"id: {SID}\ncwd: {o.room}\ngit_root: {o.room}\nbranch: main\n"
                       f"client_name: github/acp\nname: {header}\n  <session_clinic_orientation>\n"
                       "  You are `Chief Repository Operations Officer (JoJo Git)`, the lead.\n\n"
-                      "  cwd: /media/nos4r2/user_vol\n    id: 0000d9d9-0000-4000-8000-00000000d9d9\n"
+                      "  cwd: /media/example/working_volume\n    id: 0000d9d9-0000-4000-8000-00000000d9d9\n"
                       "user_named: false\nsummary_count: 0\nfork_count: 0\n"
                       "created_at: 2026-10-22T17:01:16.583Z\nupdated_at: 2026-10-22T17:01:16.919Z\n")
                 o.body(workspace=ws)
@@ -283,7 +283,7 @@ class HealthyRow(OfficeTest):
         o = self.office()
         o.body()
         o.dock([chat("JoJo Git")])
-        o.dock(project="media-nos4r2-user-vol-Sessions", raw=b'[{"title": "\xe9')
+        o.dock(project="media-example-working-volume-Sessions", raw=b'[{"title": "\xe9')
         self.assertEqual(o.run(o.jojo())[0], 0)
 
 
@@ -577,7 +577,7 @@ class FailClosed(OfficeTest):
             ("ambiguous", dict(chats=[chat("JoJo Git"), chat("Other Name")])),
             ("other adapter", dict(chats=[chat("JoJo Git", adapter="codex")])),
             ("archived", dict(chats=[chat("JoJo Git", archived=True)])),
-            ("other window", dict(chats=[chat("JoJo Git")], project="media-nos4r2-user-vol")),
+            ("other window", dict(chats=[chat("JoJo Git")], project="media-example-working-volume")),
             ("bad bytes", dict(raw=b'[{"title": "caf\xe9')),
             ("bad sessions", dict(chats=[chat("JoJo Git"), {
                 "id": "conv-2", "title": "Other Name", "titleUserSet": True, "sessions": 1}])),
@@ -948,7 +948,7 @@ class LabelLegInMain(unittest.TestCase):
 
     def row(self, provider: str = "claude") -> dict:
         return {"key": "claude-one", "role": "Lead", "person": "Claude One", "provider": provider,
-                "session_id": self.SID, "room": "/x", "verified": "kevin"}
+                "session_id": self.SID, "room": "/x", "verified": "operator"}
 
     def title_row(self, title: str) -> None:
         (self.project / f"{self.SID}.jsonl").write_text(

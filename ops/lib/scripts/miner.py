@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Iterable
 
 
-DEFAULT_DB = Path("/home/nos4r2/.codex/logs_2.sqlite")
+DEFAULT_DB = Path.home() / ".codex" / "logs_2.sqlite"
 SESSIONS = Path(__file__).resolve().parents[3]   # the room, resolved as gauge.py does
 DEFAULT_OUT = SESSIONS / "logs" / "codex-log-compaction-events-20260704.md"
 

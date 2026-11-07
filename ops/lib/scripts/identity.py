@@ -12,10 +12,10 @@ checked that they matched:
 
 When these drift, a resident wakes disagreeing with the name its operator uses.
 That happened twice in one week: a swapped Integrator and Contractor pair, and
-a nukeCE resident who told Kevin outright that he was being called by the wrong
+a nukeCE resident who told the operator outright that he was being called by the wrong
 name. Both were found by a human noticing, not by a tool.
 
-PyCharm's label is what Kevin actually sees, so where a PyCharm title map is
+PyCharm's label is what the operator actually sees, so where a PyCharm title map is
 readable it is treated as ground truth and the registry is checked against it.
 Codex ACP tab names are not written to disk while the IDE is running, so those
 cannot be verified here; they are reported as unverifiable rather than assumed
@@ -30,7 +30,7 @@ the name they wake to. Their label is the operator-set Agent Dock chat title
 in the room's own window. A provider this script does not know is reported as
 unsupported and incomplete, never scanned as Codex.
 
-Kevin decided on 2026-10-23 that Gordon Bell and Grace Hopper are to be
+The operator decided on 2026-10-23 that Gordon Bell and Grace Hopper are to be
 admitted registry-only at first, held from the launcher until the launcher
 diagnosis returns. A `claude` or `codex` registry row marks that with
 "launcher": "held", and the resident must then be absent from the launcher

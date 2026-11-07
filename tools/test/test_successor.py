@@ -75,7 +75,7 @@ class TestPreservedEvidence(unittest.TestCase):
 
     def test_recorded_command_is_untouched(self):
         """`input.command` records what was actually run."""
-        cmd = f"B=/home/nos4r2/.claude/projects/-media/{DONOR}.jsonl"
+        cmd = f"B=/home/example/.claude/projects/-media/{DONOR}.jsonl"
         rows = [{"message": {"content": [{"input": {"command": cmd}}]}}]
         self.assertEqual(reid_rows(rows, DONOR, NEW), 0)
         self.assertEqual(

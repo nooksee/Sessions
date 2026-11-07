@@ -42,7 +42,7 @@ EVIDENCE_INPUTS = {
 LIVE_USB_MARKER = (
     "You are running from a rescue or live-USB environment. Assume temporary "
     "local state. Do not trust persistence until verified. Mount and verify "
-    "`/media/nos4r2/user_vol` before acting. Do not perform destructive repair "
+    f"`{ROOT}` before acting. Do not perform destructive repair "
     "unless the operator explicitly authorizes the specific target and action."
 )
 

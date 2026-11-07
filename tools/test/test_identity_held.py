@@ -1,6 +1,6 @@
 """Tests for held, registry-only claude and codex residents in identity.py.
 
-Kevin decided on 2026-10-23 that Gordon Bell (codex) and Grace Hopper (claude)
+The operator decided on 2026-10-23 that Gordon Bell (codex) and Grace Hopper (claude)
 are to be admitted registry-only at first, held from the launcher until the launcher
 diagnosis returns. A registry row marks that with "launcher": "held".
 
@@ -51,7 +51,7 @@ def run(mod, *argv: str) -> tuple[int, str]:
 def grace(**over) -> dict:
     row = {"key": "grace-hopper", "role": "GitHub Reviewer", "person": "Grace Hopper",
            "provider": "claude", "session_id": GRACE_SID, "room": "/office",
-           "verified": "kevin", "launcher": "held"}
+           "verified": "operator", "launcher": "held"}
     row.update(over)
     return row
 
@@ -59,7 +59,7 @@ def grace(**over) -> dict:
 def gordon(**over) -> dict:
     row = {"key": "gordon-bell", "role": "GitHub Assistant", "person": "Gordon Bell",
            "provider": "codex", "session_id": GORDON_SID, "room": "/office",
-           "verified": "kevin", "launcher": "held"}
+           "verified": "operator", "launcher": "held"}
     row.update(over)
     return row
 
@@ -67,7 +67,7 @@ def gordon(**over) -> dict:
 def served() -> dict:
     return {"key": "claude-one", "role": "Lead", "person": "Claude One", "provider": "claude",
             "session_id": "0000aaaa-0000-4000-8000-00000000aaaa", "room": "/x",
-            "verified": "kevin"}
+            "verified": "operator"}
 
 
 class House:
@@ -263,7 +263,7 @@ class HeldMismatches(HeldTest):
         self.assertEqual(code, 1)
 
     def test_held_label_uncompared_is_incomplete_not_mismatch(self):
-        # Kevin's decision 4: Grace's label leg is reported "not compared", a
+        # The operator's decision 4: Grace's label leg is reported "not compared", a
         # disclosed coverage exception, never a pass and never a mismatch.
         h = self.house()
         del h.labels[GRACE_SID]

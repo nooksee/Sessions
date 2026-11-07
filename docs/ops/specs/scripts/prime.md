@@ -8,7 +8,7 @@ Ported legacy tool. Its own docstring opens: "Build a prime session candidate pa
 
 ## Mechanics and Sequencing
 
-1. Behavior is the legacy script's, unchanged: `Scripts/build_prime_session_candidate_packet.py` (sha256 `171fbea738967d266f26e72bc72d4a232c1fd7c05162a8829ec2b04468e70a8f`) was copied to `ops/lib/scripts/prime.py` on 2026-11-01 with 1 edit(s): parents[2] -> parents[4] (1).
+1. Behavior is the legacy script's, unchanged: `Scripts/build_prime_session_candidate_packet.py` (sha256 `171fbea738967d266f26e72bc72d4a232c1fd7c05162a8829ec2b04468e70a8f`) was copied to `ops/lib/scripts/prime.py` on 2026-11-01 with 1 edit(s): parents[2] -> parents[4] (1). One change since, W8's second slice of 2026-11-07: the live-USB marker names the tool's own `ROOT`, not a literal. It reads no private file.
 2. Command line: `python3 -I -B ops/lib/scripts/prime.py`. Options as the script declares them:
    - `--profile`: Candidate packet profile to build.
    - `--stamp`: (no help text in the script)
