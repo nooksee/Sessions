@@ -63,6 +63,8 @@ class Office:
         self.mod.BINDINGS = base / "bindings.json"
         self.mod.CLAUDE_PROJECTS = base / "claude"
         self.mod.CODEX_SESSIONS = base / "codex"
+        self.mod.CODEX_ARCHIVED = base / "codex-archived"
+        self.mod.CODEX_INDEX = base / "codex-index.jsonl"
         self.mod.COPILOT_SESSIONS = base / "copilot"
         self.mod.AGENT_DOCK_PROJECTS = base / "dock"
         self.mod.acp_titles = lambda: {}
@@ -656,6 +658,19 @@ class LiveFolderAndTitleRows(unittest.TestCase):
         (self.home / ".config/JetBrains/PyCharm2028.1").write_text("a file", encoding="utf-8")
         self.assertEqual(self.mod.live_pycharm_config().name, "PyCharm2026.10")
 
+    def test_two_folders_of_one_version_name_no_live_folder(self) -> None:
+        self.folder("PyCharm2026.3", "Fixture Label (Either)")
+        self.folder("PyCharm2026.03")
+        self.folder("PyCharm2026.1")
+        self.assertEqual([p.name for p in self.mod.newest_pycharm_folders()], ["PyCharm2026.03", "PyCharm2026.3"])
+        self.assertIsNone(self.mod.live_pycharm_config())
+        self.assertEqual(self.mod.acp_titles(), {})
+
+    def test_a_link_is_not_a_version_folder(self) -> None:
+        real = self.folder("PyCharm2026.1")
+        (self.home / ".config/JetBrains/PyCharm2027.1").symlink_to(real)
+        self.assertEqual(self.mod.live_pycharm_config().name, "PyCharm2026.1")
+
     def test_no_folder_gives_no_titles(self) -> None:
         self.assertIsNone(self.mod.live_pycharm_config())
         self.assertEqual(self.mod.acp_titles(), {})
@@ -716,6 +731,205 @@ class LiveFolderAndTitleRows(unittest.TestCase):
         path.chmod(0)
         self.addCleanup(path.chmod, 0o600)
         self.assertIsNone(self.mod.body_custom_title("s6"))
+
+
+class OtherThreadsAndThePhone(OfficeTest):
+    """Two reports that change no count and print no identifier and no phone name."""
+
+    THREAD = "0aaaaaaa-0000-7000-8000-000000000000"
+    STUB1 = "0bbbbbbb-0000-7000-8000-000000000000"
+    STUB2 = "0ccccccc-0000-7000-8000-000000000000"
+    LIVE2 = "0ddddddd-0000-7000-8000-000000000000"
+    BLANK = "0eeeeeee-0000-7000-8000-000000000000"
+    LABEL = "Dev (Fixture Codex)"
+
+    def row(self, key="fixture-codex", sid=None, person="Fixture Codex", role="Dev"):
+        return {"key": key, "role": role, "person": person, "provider": "codex", "session_id": sid or self.THREAD,
+                "room": "/x", "verified": "operator", "note": "test"}
+
+    def rollout(self, o, sid, archived=False):
+        folder = o.base / ("codex-archived" if archived else "codex/2026/11/06")
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"rollout-2026-11-06T00-00-00-{sid}.jsonl").write_text(
+            json.dumps({"type": "session_meta", "payload": {"id": sid, "cwd": "/x"}}) + "\n", encoding="utf-8")
+
+    def index(self, o, *rows):
+        (o.base / "codex-index.jsonl").write_text("".join(
+            r if isinstance(r, str) else json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+    def test_the_label_on_other_threads_marks_archived_stubs(self):
+        o = self.office()
+        self.rollout(o, self.THREAD)
+        self.rollout(o, self.STUB1, archived=True)
+        self.rollout(o, self.STUB2, archived=True)
+        self.rollout(o, self.LIVE2)
+        o.mod.acp_titles = lambda: {self.THREAD: self.LABEL, self.STUB1: self.LABEL, self.STUB2: self.LABEL,
+                                    self.LIVE2: self.LABEL, self.BLANK: self.LABEL, "0fffffff": "Another Label"}
+        self.index(o, {"id": self.THREAD, "thread_name": self.LABEL})
+        _, out = o.run(self.row())
+        self.assertIn("registered label also on other threads in the live folder (report only):", out)
+        self.assertIn(f"fixture-codex: {self.LABEL}: 2 archived stub, 1 live, 1 no rollout", out)
+        for thread in (self.THREAD, self.STUB1, self.STUB2, self.LIVE2, self.BLANK):
+            self.assertNotIn(thread, out)
+
+    def test_no_other_thread_says_nothing(self):
+        o = self.office()
+        self.rollout(o, self.THREAD)
+        o.mod.acp_titles = lambda: {self.THREAD: self.LABEL, self.STUB1: "Another Label"}
+        self.index(o, {"id": self.THREAD, "thread_name": self.LABEL})
+        _, out = o.run(self.row())
+        self.assertNotIn("also on other threads", out)
+
+    def test_the_report_changes_no_count_and_no_exit(self):
+        def result(with_other):
+            o = self.office()
+            self.rollout(o, self.THREAD)
+            titles = {self.THREAD: self.LABEL}
+            if with_other:
+                titles[self.STUB1] = self.LABEL
+                self.rollout(o, self.STUB1, archived=True)
+            o.mod.acp_titles = lambda: titles
+            self.index(o, {"id": self.THREAD, "thread_name": "Something Else" if with_other else self.LABEL})
+            code, out = o.run(self.row())
+            return code, [line for line in out.splitlines() if line.startswith("identities:")]
+        self.assertEqual(result(True), result(False))
+
+    def test_the_phone_leg_counts_each_state_by_key_and_prints_no_name(self):
+        o = self.office()
+        rows = [self.row("same-one", "1aaaaaaa-0000-7000-8000-000000000000", "Same One"),
+                self.row("differs-one", "2aaaaaaa-0000-7000-8000-000000000000", "Differs One"),
+                self.row("absent-one", "3aaaaaaa-0000-7000-8000-000000000000", "Absent One"),
+                self.row("blank-one", "4aaaaaaa-0000-7000-8000-000000000000", "Blank One"),
+                self.row("archived-one", "5aaaaaaa-0000-7000-8000-000000000000", "Archived One"),
+                self.row("person-only", "6aaaaaaa-0000-7000-8000-000000000000", "Person Only")]
+        for r in rows[:4] + rows[5:]:
+            self.rollout(o, r["session_id"])
+        self.rollout(o, rows[4]["session_id"], archived=True)
+        self.index(o, {"id": rows[0]["session_id"], "thread_name": "an old name"},
+                   {"id": rows[0]["session_id"], "thread_name": "Dev (Same One)"},
+                   "not json\n", "[1, 2]\n", {"thread_name": "no id"},
+                   {"id": rows[1]["session_id"], "thread_name": "SYNTHETIC-FIRST-TURN-SUMMARY"},
+                   {"id": rows[3]["session_id"], "thread_name": ""},
+                   {"id": rows[4]["session_id"], "thread_name": "SYNTHETIC-ARCHIVED-NAME"},
+                   {"id": rows[5]["session_id"], "thread_name": "Person Only"})
+        _, out = o.run(*rows)
+        self.assertIn("phone names, from Codex's session index (report only): same 1, differs 2, absent 2, archived and not asked 1", out)
+        self.assertIn("  - differs-one: differs", out)
+        self.assertIn("  - absent-one: absent", out)
+        self.assertIn("  - blank-one: absent", out)
+        self.assertIn("  - person-only: differs", out)       # the whole label is the question, not the person's name inside a longer one
+        for key in ("same-one", "archived-one"):
+            for state in ("same", "differs", "absent", "archived"):
+                self.assertNotIn(f"  - {key}: {state}", out)
+        self.assertNotIn("SYNTHETIC", out)
+        for r in rows:
+            self.assertNotIn(r["session_id"], out)
+
+    def test_a_non_string_id_in_the_index_is_passed_over(self):
+        o = self.office()
+        self.rollout(o, self.THREAD)
+        self.index(o, {"id": 7, "thread_name": "x"}, {"id": None, "thread_name": "y"}, {"id": ["z"], "thread_name": "z"},
+                   {"id": self.THREAD, "thread_name": self.LABEL})
+        self.assertEqual(o.mod.phone_names(), {self.THREAD: self.LABEL})
+
+    def test_a_codex_row_of_no_usable_session_is_not_asked(self):
+        o = self.office()
+        self.rollout(o, self.THREAD)
+        self.index(o, {"id": self.THREAD, "thread_name": self.LABEL})
+        rows = [self.row(), dict(self.row("none-key"), session_id=None), dict(self.row("number-key"), session_id=7)]
+        rows[2].pop("note")
+        self.assertEqual(o.mod.phone_leg(rows), {"same": ["fixture-codex"], "differs": [], "absent": [], "archived": []})
+
+    def test_only_codex_rows_are_asked(self):
+        o = self.office()
+        self.rollout(o, self.THREAD)
+        self.index(o, {"id": self.THREAD, "thread_name": self.LABEL})
+        _, out = o.run(self.row(), *legacy_rows()[:1])
+        self.assertIn("same 1, differs 0, absent 0, archived and not asked 0", out)
+
+    def test_a_clean_run_stays_exit_zero_whatever_the_reports_say(self):
+        def clean(with_findings):
+            o = self.office()
+            row = self.row()
+            o.roster["residents"].append({"key": row["key"], "display_name": self.LABEL, "comment": "x", "provider_id": "codex", "enabled": True})
+            o.bindings["residents"].append({"key": row["key"], "provider_id": "codex", "session_id": self.THREAD, "project_root": "/x"})
+            self.rollout(o, self.THREAD)
+            titles = {self.THREAD: self.LABEL}
+            if with_findings:
+                titles[self.STUB1] = self.LABEL
+            o.mod.acp_titles = lambda: titles
+            self.index(o, {"id": self.THREAD, "thread_name": "Something Else" if with_findings else self.LABEL})
+            with mock.patch.object(o.mod, "body_identity", return_value=("Fixture Codex", "test body")):
+                return o.run(row)
+        code, out = clean(False)
+        self.assertEqual(code, 0, out)
+        o = self.office()
+        row = self.row()
+        o.roster["residents"].append({"key": row["key"], "display_name": self.LABEL, "comment": "x", "provider_id": "codex", "enabled": True})
+        o.bindings["residents"].append({"key": row["key"], "provider_id": "codex", "session_id": self.THREAD, "project_root": "/x"})
+        self.rollout(o, self.THREAD)
+        o.mod.acp_titles = lambda: {self.THREAD: self.LABEL}
+        self.index(o, {"id": "0fffffff-0000-7000-8000-000000000000", "thread_name": "another thread"})
+        with mock.patch.object(o.mod, "body_identity", return_value=("Fixture Codex", "test body")):
+            absent_code, absent_out = o.run(row)
+        self.assertEqual(absent_code, 0, absent_out)
+        self.assertIn("  - fixture-codex: absent", absent_out)
+        code, out = clean(True)
+        self.assertEqual(code, 0, out)
+        self.assertIn("also on other threads", out)
+        self.assertIn("differs 1", out)
+
+    def test_the_last_row_of_a_thread_stands(self):
+        o = self.office()
+        self.index(o, {"id": self.THREAD, "thread_name": "first"}, {"id": self.THREAD, "thread_name": "second"})
+        self.assertEqual(o.mod.phone_names(), {self.THREAD: "second"})
+        self.index(o, {"id": self.THREAD, "thread_name": "first"}, {"id": self.THREAD})
+        self.assertEqual(o.mod.phone_names(), {self.THREAD: ""})
+
+    def test_an_unreadable_index_is_said_and_changes_nothing(self):
+        o = self.office()
+        self.rollout(o, self.THREAD)
+        code, out = o.run(self.row())
+        self.assertIn("the session index could not be read, so nothing was compared", out)
+        self.assertIsNone(o.mod.phone_names())
+        self.index(o, {"id": self.THREAD, "thread_name": self.LABEL})
+        code2, out2 = o.run(self.row())
+        self.assertEqual(code, code2)
+        self.assertEqual([l for l in out.splitlines() if l.startswith("identities:")], [l for l in out2.splitlines() if l.startswith("identities:")])
+
+    def test_a_row_of_no_codex_provider_reads_no_store_and_no_index(self):
+        o = self.office()
+        rows = legacy_rows()[:1]
+        with mock.patch.object(o.mod, "phone_names", side_effect=AssertionError):
+            o.run(*rows)
+
+    def test_quiet_prints_neither(self):
+        o = self.office()
+        self.rollout(o, self.THREAD)
+        o.mod.acp_titles = lambda: {self.THREAD: self.LABEL, self.STUB1: self.LABEL}
+        self.index(o, {"id": self.THREAD, "thread_name": "Something Else"})
+        _, out = o.run(self.row(), argv=("--quiet",))
+        self.assertNotIn("report only", out)
+
+    def test_unreadable_stores_read_as_unread(self):
+        o = self.office()
+        with mock.patch.object(type(o.mod.CODEX_SESSIONS), "rglob", side_effect=OSError):
+            self.assertEqual(o.mod.thread_states({self.THREAD}), {self.THREAD: "unread"})
+        with mock.patch.object(type(o.mod.CODEX_SESSIONS), "rglob", side_effect=AssertionError):
+            self.assertEqual(o.mod.thread_states(set()), {})
+
+    def test_a_rollout_in_both_places_reads_live(self):
+        o = self.office()
+        self.rollout(o, self.THREAD)
+        self.rollout(o, self.THREAD, archived=True)
+        self.rollout(o, self.STUB1, archived=True)
+        self.assertEqual(o.mod.thread_states({self.THREAD, self.STUB1, self.BLANK}),
+                         {self.THREAD: "live", self.STUB1: "archived stub", self.BLANK: "no rollout"})
+
+    def test_none_of_it_is_read_from_the_real_home(self):
+        o = self.office()
+        for name in ("CODEX_ARCHIVED", "CODEX_INDEX", "CODEX_SESSIONS"):
+            self.assertEqual(Path(getattr(o.mod, name)).parent, o.base)
 
 
 class LabelLegInMain(unittest.TestCase):

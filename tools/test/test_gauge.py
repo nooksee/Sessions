@@ -151,6 +151,26 @@ class Base(unittest.TestCase):
         self.w.close()
 
 
+class TheReviewedTable(unittest.TestCase):
+    """The real spec's table: every row has a source and a date, and the two rows added from the provider's pages stand."""
+
+    def test_the_rows_of_the_real_spec(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gauge_table", GAUGE)
+        gauge = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gauge)
+        table = gauge.window_table(GAUGE.parents[3] / "docs/ops/specs/scripts/gauge.md")
+        for model, page in (("claude-opus-5", "docs/en/models/opus-5/overview"), ("claude-sonnet-5", "docs/en/models/sonnet-5/overview")):
+            self.assertEqual(table[model]["window"], 1000000)
+            self.assertIn("platform.claude.com", table[model]["source"])
+            self.assertIn(page, table[model]["source"])
+            self.assertEqual(table[model]["observed"], "2026-11-06")
+        for model, row in table.items():
+            self.assertRegex(row["observed"], r"^\d{4}-\d{2}-\d{2}$", model)
+            self.assertTrue(row["source"], model)
+            self.assertGreater(row["window"], 0, model)
+
+
 class ClaudeSide(Base):
     def test_latest_call_sum_and_table_window(self):
         sid = self.w.resident("shannon", "claude", 1)

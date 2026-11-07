@@ -86,6 +86,10 @@ class House:
         self.mod.REGISTRY = base / "registry.json"
         self.mod.ROSTER = base / "roster.json"
         self.mod.BINDINGS = base / "bindings.json"
+        self.mod.CODEX_SESSIONS = base / "codex"
+        self.mod.CODEX_ARCHIVED = base / "codex-archived"
+        self.mod.CODEX_INDEX = base / "codex-index.jsonl"
+        self.mod.acp_titles = lambda: {}
 
     def body(self, ident: dict):
         name = self.bodies.get(ident["session_id"])
@@ -307,6 +311,8 @@ class RealCodexStore(unittest.TestCase):
                     mod.BINDINGS = base / "bindings.json"
                     mod.CLAUDE_PROJECTS = base / "claude"
                     mod.CODEX_SESSIONS = base / "codex"
+                    mod.CODEX_ARCHIVED = base / "codex-archived"
+                    mod.CODEX_INDEX = base / "codex-index.jsonl"
                     mod.COPILOT_SESSIONS = base / "copilot"
                     mod.AGENT_DOCK_PROJECTS = base / "dock"
                     mod.acp_titles = lambda: {}
@@ -332,6 +338,7 @@ class RealCodexStore(unittest.TestCase):
         mod.REGISTRY, mod.ROSTER, mod.BINDINGS = (base / "registry.json", base / "roster.json",
                                                   base / "bindings.json")
         mod.CLAUDE_PROJECTS, mod.CODEX_SESSIONS = base / "claude", base / "codex"
+        mod.CODEX_ARCHIVED, mod.CODEX_INDEX = base / "codex-archived", base / "codex-index.jsonl"
         mod.COPILOT_SESSIONS, mod.AGENT_DOCK_PROJECTS = base / "copilot", base / "dock"
         mod.acp_titles = lambda: {}
         mod.REGISTRY.write_text(json.dumps({"identities": [gordon()]}))

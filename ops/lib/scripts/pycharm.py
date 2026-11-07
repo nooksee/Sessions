@@ -14,11 +14,18 @@ read from the chats file, by default ``ops/etc/pycharm-chats.json`` in the room,
 or from the path given by ``--chats``. The tool reads that file before anything
 else and refuses with one message and a nonzero exit when it is absent or
 malformed.
+
+The IDE's folders default to the live settings folder, the highest PyCharm
+version present, by the rule ``identity.py`` uses. It refuses when there is none,
+or when two folders read as the same version, unless ``--workspace-dir`` and
+``--task-history`` are both given. It is never pinned to a version: on 2026-11-06
+a pin left ``--apply`` aimed at a folder two versions behind the running IDE.
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -127,10 +134,9 @@ def load_chats(path: Path) -> Chats:
 
 
 def parse_args() -> argparse.Namespace:
-    default_root = Path.home() / ".config/JetBrains/PyCharm2026.1"
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace-dir", type=Path, default=default_root / "workspace")
-    parser.add_argument("--task-history", type=Path, default=default_root / "aia-task-history")
+    parser.add_argument("--workspace-dir", type=Path, help="default: workspace in the live settings folder")
+    parser.add_argument("--task-history", type=Path, help="default: aia-task-history in the live settings folder")
     parser.add_argument("--osai-workspace", default="3GTUEvWPa6t9rw2JOmeKUyiqhjR.xml")
     parser.add_argument("--control-workspace", default="3GTVEt3FvS6tW7Eou2gHkcfl6Gk.xml")
     mode = parser.add_mutually_exclusive_group()
@@ -146,17 +152,52 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def pycharm_processes() -> list[int]:
+def live_root() -> Path:
+    """The live settings folder by identity.py's rule, or a refusal. Reads folder names only."""
+    spec = importlib.util.spec_from_file_location("pycharm_identity", Path(__file__).with_name("identity.py"))
+    if spec is None or spec.loader is None:
+        raise SystemExit("pycharm.py refuses: identity.py could not be loaded for the live folder rule. Nothing else was read or written.")
+    identity = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(identity)
+    newest = identity.newest_pycharm_folders()
+    if len(newest) != 1:
+        found = "no PyCharm<year>.<n> folder" if not newest else f"{len(newest)} folders of the same version"
+        raise SystemExit(
+            f"pycharm.py refuses: {found} under ~/.config/JetBrains, so there is no one live folder; "
+            "give --workspace-dir and --task-history. Nothing else was read or written."
+        )
+    return newest[0]
+
+
+def is_pycharm(exe: str, cmdline: bytes) -> bool:
+    """The IDE by its resolved executable, with no version in the rule and no argv substring alone.
+
+    The launcher itself, or the JVM an older launcher starts. An IDE updated in
+    place while it runs has an executable that reads as deleted, and it is still
+    the IDE. A command line that merely mentions the IDE, as this tool's own does,
+    is not.
+    """
+    name = Path(exe.removesuffix(" (deleted)")).name
+    return name in ("pycharm", "pycharm.sh") or (name == "java" and b"com.intellij.idea.main" in cmdline.lower())
+
+
+def pycharm_processes(proc: Path = Path("/proc")) -> list[int]:
     found: list[int] = []
     own_pid = os.getpid()
-    for entry in Path("/proc").iterdir():
+    for entry in proc.iterdir():
         if not entry.name.isdigit() or int(entry.name) == own_pid:
             continue
         try:
-            cmdline = (entry / "cmdline").read_bytes().replace(b"\0", b" ").lower()
-        except (FileNotFoundError, PermissionError, ProcessLookupError):
+            cmdline = (entry / "cmdline").read_bytes()
+        except OSError:
+            continue                                  # the process has gone
+        try:
+            exe = os.readlink(entry / "exe")
+        except OSError:
+            if b"pycharm" in cmdline.lower():         # its executable cannot be read, so it cannot be ruled out
+                found.append(int(entry.name))
             continue
-        if b"/opt/pycharm" in cmdline or b"pycharm-2026.1" in cmdline:
+        if is_pycharm(exe, cmdline):
             found.append(int(entry.name))
     return sorted(found)
 
@@ -307,6 +348,10 @@ def main() -> int:
         ) from None
     if args.apply and args.custody_dir is None:
         raise SystemExit("--apply requires --custody-dir")
+    if args.workspace_dir is None or args.task_history is None:
+        root = live_root()
+        args.workspace_dir = args.workspace_dir or root / "workspace"
+        args.task_history = args.task_history or root / "aia-task-history"
     if args.apply:
         pids = pycharm_processes()
         if pids:

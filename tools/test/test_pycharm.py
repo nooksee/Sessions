@@ -17,7 +17,9 @@ modes, owner: the writer the Session Continuity Manager names for pycharm]. Run:
 """
 import importlib.util
 import json
+import os
 import py_compile
+import re
 import subprocess
 import sys
 import tempfile
@@ -240,6 +242,217 @@ def pending_workspace():
         + "".join(f'    <entry key="{uid}" value="1" />\n' for uid in [*STUBS, TEMP])
         + "</project>\n"
     )
+
+
+class RunningIdeGuardTest(unittest.TestCase):
+    """The guard before an apply knows the IDE by its executable, with no version in the rule. Every process here is synthetic."""
+
+    def proc(self, *rows):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        for pid, exe, cmdline in rows:
+            folder = root / str(pid)
+            folder.mkdir()
+            if exe is not None:
+                os.symlink(exe, folder / "exe")
+            if cmdline is not None:
+                (folder / "cmdline").write_bytes(cmdline)
+        return root
+
+    def test_the_ide_of_any_version_or_folder_is_found(self):
+        for exe in ("/opt/example/apps/pycharm-2027.2.1/bin/pycharm", "/opt/pycharm/bin/pycharm", "/home/example/pycharm-9/bin/pycharm.sh",
+                    "/opt/example/apps/pycharm-2026.1.4/bin/pycharm"):
+            with self.subTest(exe):
+                self.assertEqual(pycharm.pycharm_processes(self.proc((41, exe, b"anything\0"))), [41])
+
+    def test_an_ide_updated_in_place_reads_as_deleted_and_is_still_found(self):
+        self.assertEqual(pycharm.pycharm_processes(self.proc((41, "/opt/example/bin/pycharm (deleted)", b"x\0"))), [41])
+
+    def test_the_jvm_of_an_older_launcher_is_found(self):
+        cmd = b"/opt/example/jbr/bin/java\0-Xmx1g\0com.intellij.idea.Main\0"
+        self.assertEqual(pycharm.pycharm_processes(self.proc((41, "/opt/example/jbr/bin/java", cmd))), [41])
+        self.assertEqual(pycharm.pycharm_processes(self.proc((41, "/opt/example/jbr/bin/java (deleted)", cmd))), [41])
+
+    def test_a_process_that_only_mentions_the_ide_is_not(self):
+        for exe, cmd in (("/usr/bin/python3", b"python3\0ops/lib/scripts/pycharm.py\0--apply\0"),
+                         ("/usr/bin/bash", b"bash\0-c\0cd /opt/example/apps/pycharm-2026.1.4; com.intellij.idea.Main\0"),
+                         ("/opt/example/apps/pycharm-2026.1.4/bin/fsnotifier", b"fsnotifier\0"),
+                         ("/usr/bin/java", b"java\0-jar\0something-else.jar\0pycharm\0"),
+                         ("/usr/bin/notify-send", b"notify-send\0pycharm\0")):
+            with self.subTest(exe):
+                self.assertEqual(pycharm.pycharm_processes(self.proc((41, exe, cmd))), [])
+
+    def test_a_process_that_has_gone_is_passed_over_and_the_list_is_sorted(self):
+        root = self.proc((50, "/opt/example/bin/pycharm", b"x\0"), (41, "/opt/example/bin/pycharm", b"x\0"),
+                         (43, "/opt/example/bin/pycharm", None))
+        (root / "not-a-pid").mkdir()
+        self.assertEqual(pycharm.pycharm_processes(root), [41, 50])
+
+    def test_an_executable_it_cannot_read_fails_closed_when_the_command_names_the_ide(self):
+        self.assertEqual(pycharm.pycharm_processes(self.proc((41, None, b"/opt/example/bin/PyCharm\0"))), [41])
+        self.assertEqual(pycharm.pycharm_processes(self.proc((41, None, b"/usr/bin/other\0"), (42, None, b""))), [])
+
+    def test_its_own_process_is_not_counted(self):
+        root = self.proc((os.getpid(), "/opt/example/bin/pycharm", b"x\0"))
+        self.assertEqual(pycharm.pycharm_processes(root), [])
+
+    def test_the_default_reads_the_real_table_and_finds_no_stand_in(self):
+        self.assertIsInstance(pycharm.pycharm_processes(), list)
+
+    def apply(self, *argv, processes=()):
+        """main() as far as the guard, with every later act a tripwire, and what stopped it."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        chats = root / "chats.json"
+        chats.write_text(json.dumps(good()))
+        (root / "workspace").mkdir()
+        (root / "history").mkdir()
+        class Reached(Exception):
+            pass
+        def tripwire(*a, **k):
+            raise Reached
+        argv = ["pycharm.py", "--chats", str(chats), "--workspace-dir", str(root / "workspace"), "--task-history", str(root / "history"), "--apply", *argv]
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(pycharm, "pycharm_processes", lambda: list(processes)), \
+                mock.patch.object(pycharm, "inspect_task_history", tripwire), mock.patch.object(pycharm, "atomic_write", tripwire), \
+                mock.patch.object(pycharm, "move_task_history", tripwire):
+            try:
+                pycharm.main()
+            except Reached:
+                return "went on"
+            except SystemExit as exc:
+                return exc.code
+        return "returned"
+
+    def test_an_apply_refuses_while_the_ide_runs(self):
+        self.assertEqual(self.apply("--custody-dir", "/nonexistent/custody", processes=[41, 50]), "PyCharm must be closed; matching process IDs: [41, 50]")
+
+    def test_an_apply_goes_on_when_it_does_not(self):
+        self.assertEqual(self.apply("--custody-dir", "/nonexistent/custody"), "went on")
+
+    def test_an_apply_with_no_custody_folder_refuses(self):
+        self.assertEqual(self.apply(processes=[41]), "--apply requires --custody-dir")
+
+
+class LiveFolderTest(unittest.TestCase):
+    """No pin: the folders default to the live settings folder, by identity.py's rule, in a temporary home."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.home = Path(self._tmp.name)
+        self.chats = self.home / "chats.json"
+        self.chats.write_text(json.dumps(good(), indent=2), encoding="utf-8")
+
+    def seed(self, workspace, history, extra=0):
+        """A sound pending state, with a number of extra workspace files that tells which folder was read."""
+        workspace.mkdir(parents=True, exist_ok=True)
+        history.mkdir(parents=True, exist_ok=True)
+        (workspace / OSAI).write_text(pending_workspace(), encoding="utf-8")
+        for i in range(extra):
+            (workspace / f"other{i}.xml").write_text("<project />\n", encoding="utf-8")
+        for uid in STUBS:
+            (history / f"{uid}.agentsession").write_text("", encoding="utf-8")
+        for uid in (TEMP, LEGACY):
+            for suffix in (".agentsession", ".events", ".lastid", ".usage"):
+                (history / f"{uid}{suffix}").write_text("", encoding="utf-8")
+
+    def folder(self, name, extra=0):
+        root = self.home / ".config/JetBrains" / name
+        self.seed(root / "workspace", root / "aia-task-history", extra)
+        return root
+
+    def scanned(self, *extra):
+        run = self.tool(*extra)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        return json.loads(run.stdout)["workspace_files_scanned"]
+
+    def tool(self, *extra):
+        env = {"PATH": "/usr/bin:/bin", "HOME": str(self.home), "LANG": "C.UTF-8"}
+        return subprocess.run([sys.executable, "-I", "-B", str(TOOL), "--chats", str(self.chats), "--osai-workspace", OSAI, *map(str, extra)],
+                              capture_output=True, text=True, timeout=60, env=env)
+
+    def test_no_version_is_pinned_in_the_tool(self):
+        self.assertIsNone(re.search(r"pycharm[-_ ]?20\d\d\.\d", TOOL.read_text(encoding="utf-8"), re.IGNORECASE))
+
+    def test_the_highest_version_is_read_by_number(self):
+        self.folder("PyCharm2026.1", extra=4)
+        self.folder("PyCharm2026.3", extra=2)
+        self.folder("PyCharm2026.10", extra=1)
+        self.assertEqual(self.scanned(), 2)
+
+    def test_no_folder_refuses(self):
+        run = self.tool()
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("pycharm.py refuses: no PyCharm<year>.<n> folder", run.stderr)
+        self.assertIn("Nothing else was read or written.", run.stderr)
+        self.assertEqual(run.stdout, "")
+
+    def test_two_folders_of_one_version_refuse(self):
+        self.folder("PyCharm2026.3")
+        self.folder("PyCharm2026.03")
+        run = self.tool()
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("pycharm.py refuses: 2 folders of the same version", run.stderr)
+
+    def test_a_link_counts_for_nothing(self):
+        self.folder("PyCharm2026.1")
+        elsewhere = self.home / "elsewhere"
+        self.seed(elsewhere / "workspace", elsewhere / "aia-task-history", extra=5)
+        (self.home / ".config/JetBrains/PyCharm2027.1").symlink_to(elsewhere)
+        self.assertEqual(self.scanned(), 1)
+
+    def test_both_folders_given_need_no_live_folder(self):
+        given = self.home / "given"
+        self.seed(given / "workspace", given / "history", extra=3)
+        self.assertEqual(self.scanned("--workspace-dir", given / "workspace", "--task-history", given / "history"), 4)
+
+    def test_both_folders_given_read_no_live_folder_even_when_two_tie(self):
+        self.folder("PyCharm2026.3")
+        self.folder("PyCharm2026.03")
+        given = self.home / "given"
+        self.seed(given / "workspace", given / "history", extra=3)
+        self.assertEqual(self.scanned("--workspace-dir", given / "workspace", "--task-history", given / "history"), 4)
+
+    def test_one_folder_given_takes_the_other_from_the_live_folder_or_refuses(self):
+        given = self.home / "given"
+        self.seed(given / "workspace", given / "history", extra=2)
+        run = self.tool("--workspace-dir", given / "workspace")
+        self.assertIn("pycharm.py refuses: no PyCharm<year>.<n> folder", run.stderr)
+        self.folder("PyCharm2026.3", extra=5)
+        self.assertEqual(self.scanned("--workspace-dir", given / "workspace"), 3)
+        self.assertEqual(self.scanned("--task-history", given / "history"), 6)
+
+    def test_a_given_task_history_is_the_one_read(self):
+        self.folder("PyCharm2026.3")
+        bad = self.home / "bad-history"
+        bad.mkdir()
+        (bad / f"{TEMP}.events").write_text("", encoding="utf-8")
+        run = self.tool("--task-history", bad)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn('"task_history_deviations": 1', run.stderr)
+
+    def test_the_chats_file_is_still_refused_first(self):
+        self.chats.unlink()
+        with mock.patch.object(pycharm, "live_root", side_effect=AssertionError("read a folder before the chats file")), \
+                mock.patch.object(sys, "argv", ["pycharm.py", "--chats", str(self.chats)]), \
+                self.assertRaises(SystemExit) as caught:
+            pycharm.main()
+        self.assertIn("the chats file", str(caught.exception.code))
+
+    def test_apply_does_not_get_past_a_refusal(self):
+        custody = self.home / "custody"
+        run = self.tool("--apply", "--custody-dir", custody)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("refuses", run.stderr)
+        self.assertFalse(custody.exists())
+
+    def test_parsing_reads_no_folder(self):
+        with mock.patch.object(pycharm, "live_root", side_effect=AssertionError), mock.patch.object(sys, "argv", ["pycharm.py"]):
+            args = pycharm.parse_args()
+        self.assertIsNone(args.workspace_dir)
+        self.assertIsNone(args.task_history)
 
 
 class ReadOnlyBehaviorTest(unittest.TestCase):
