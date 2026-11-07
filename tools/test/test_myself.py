@@ -1182,5 +1182,121 @@ class WindowTableTests(unittest.TestCase):
         self.assertIn("window table is unavailable: ImportError", detail)
 
 
+class OrientationAfterIdeNoticesTests(unittest.TestCase):
+    """A row counts only when the tag begins it, after any leading IDE notices. Every row here is synthetic."""
+
+    OPENED = "<ide_opened_file>The user opened the file /home/example/a.py in the IDE.</ide_opened_file>"
+    SELECTED = "<ide_selection>The user selected lines 1 to 2 from /home/example/a.py:\nfirst\nsecond\n</ide_selection>"
+    TAG = "<session_clinic_orientation>"
+    CLOSE = "</session_clinic_orientation>"
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def leg(self, content_of):
+        """The body identity leg, with the fixture's orientation row replaced by what content_of makes of the good row."""
+        fixture = Fixture(Path(tempfile.mkdtemp(dir=self.root)), "claude")
+        rows = fixture.claude_rows()
+        good = f"{self.TAG}\nYou are `{fixture.display}`.\n{self.CLOSE}"
+        rows[0]["message"]["content"] = content_of(good, fixture)
+        fixture.body.write_text("".join(json_line(row) for row in rows), encoding="utf-8")
+        return fixture.run(environ={}, start_pid=fixture.fake_claude_parent()).legs[5]
+
+    def counted(self, content_of) -> None:
+        leg = self.leg(content_of)
+        self.assertEqual("pass", leg.status, leg.detail)
+        self.assertIn("identity_rows_seen=1", leg.detail)
+
+    def not_counted(self, content_of) -> None:
+        leg = self.leg(content_of)
+        self.assertEqual("undetermined", leg.status, leg.detail)
+        self.assertIn("identity_rows_seen=0", leg.detail)
+
+    def test_a_tagged_row_after_each_notice_counts(self) -> None:
+        for label, before in (("opened", self.OPENED), ("selected", self.SELECTED), ("both", self.OPENED + self.SELECTED),
+                              ("selected then opened, with lines", self.SELECTED + "\n\n" + self.OPENED + "\n"),
+                              ("leading white space", "\n  " + self.OPENED + " ")):
+            with self.subTest(label):
+                self.counted(lambda good, f: before + good)
+
+    def test_the_older_plain_form_after_a_notice_counts(self) -> None:
+        self.counted(lambda good, f: self.OPENED + f"{self.TAG}\nYou are {f.person.upper()}, {f.role}, resident.\n{self.CLOSE}")
+
+    def test_a_notice_with_no_tag_does_not_count(self) -> None:
+        for before in (self.OPENED, self.SELECTED, self.OPENED + "fixture question"):
+            with self.subTest(before):
+                self.not_counted(lambda good, f: before)
+
+    def test_a_tag_after_other_leading_text_does_not_count(self) -> None:
+        self.not_counted(lambda good, f: "fixture text " + good)
+        self.not_counted(lambda good, f: self.OPENED + "fixture text " + good)
+
+    def test_a_tag_inside_a_wrapper_does_not_count(self) -> None:
+        wrap = '<cross-session-message from="fixture">%s</cross-session-message>'
+        self.not_counted(lambda good, f: wrap % good)
+        self.not_counted(lambda good, f: self.OPENED + wrap % good)
+        self.not_counted(lambda good, f: wrap % "fixture text" + good)
+
+    def test_a_tag_in_a_tool_result_does_not_count(self) -> None:
+        self.not_counted(lambda good, f: [{"type": "tool_result", "content": good}])
+        self.not_counted(lambda good, f: [{"type": "tool_result", "content": self.OPENED + good}])
+        self.not_counted(lambda good, f: "<tool_result>" + good + "</tool_result>")
+
+    def test_a_tag_quoted_later_does_not_count(self) -> None:
+        self.not_counted(lambda good, f: "the tag reads " + good + " in this message")
+        self.not_counted(lambda good, f: self.SELECTED + "the tag reads " + good)
+
+    def test_a_tag_inside_a_notice_does_not_count(self) -> None:
+        self.not_counted(lambda good, f: f"<ide_selection>{good}</ide_selection>")
+        self.not_counted(lambda good, f: f"<ide_selection>{good}</ide_selection>fixture question")
+        self.not_counted(lambda good, f: f"<ide_opened_file>{good}</ide_opened_file>")
+
+    def test_a_selection_quoting_a_closing_tag_and_the_tag_does_not_count(self) -> None:
+        self.not_counted(lambda good, f: f"<ide_selection>a</ide_selection>{good} b</ide_selection> question")
+        self.not_counted(lambda good, f: f"<ide_selection>a</ide_selection>{good} b</ide_opened_file> question")
+
+    def test_another_notice_name_or_a_broken_notice_does_not_count(self) -> None:
+        for before in ("<ide_diagnostics>x</ide_diagnostics>", "<ide_opened_file>no closing tag ", "<ide_opened_file>x</ide_selection>",
+                       "<ide_selection>a</ide_selection> text </ide_selection>", "<IDE_OPENED_FILE>x</IDE_OPENED_FILE>"):
+            with self.subTest(before):
+                self.not_counted(lambda good, f: before + good)
+
+    def test_a_row_with_no_notice_counts_as_it_always_did(self) -> None:
+        self.counted(lambda good, f: good)
+        self.counted(lambda good, f: "\n  " + good)
+        self.counted(lambda good, f: good + " it quotes </ide_selection> later")
+        self.counted(lambda good, f: good + self.OPENED)
+
+    def test_the_identity_comes_from_the_tag_not_the_notice(self) -> None:
+        wrong = "<ide_selection>You are `Wrong Role (Wrong Person)`.\nYou are Wrong Person, Wrong Role.\n</ide_selection>"
+        self.counted(lambda good, f: wrong + good)
+        leg = self.leg(lambda good, f: f"<ide_selection>{good.replace(self.TAG, '').replace(self.CLOSE, '')}</ide_selection>{self.TAG}\nIdentity statement unavailable.\n{self.CLOSE}")
+        self.assertEqual("undetermined", leg.status, leg.detail)
+        self.assertIn("identity_rows_seen=1", leg.detail)
+        self.assertIn("latest_identity_line=1", leg.detail)
+
+    def test_the_claim_function_applies_the_same_rule(self) -> None:
+        wrong = "<ide_selection>\nYou are Wrong Person, Wrong Role.\n</ide_selection>"
+        claim = check_myself._orientation_claim(f"{wrong}{self.TAG}\nYou are Right Person, Right Role.\n{self.CLOSE}", 7)
+        self.assertEqual(("Right Person", "Right Role", 7), (claim.person, claim.role, claim.line_number))
+        self.assertIsNone(check_myself._orientation_claim(f"fixture text {self.TAG}\nYou are Right Person.\n{self.CLOSE}", 7))
+        self.assertIsNone(check_myself._orientation_claim(["not text"], 7))
+
+    def test_the_latest_row_stands_and_every_counted_row_counts(self) -> None:
+        fixture = Fixture(Path(tempfile.mkdtemp(dir=self.root)), "claude")
+        rows = fixture.claude_rows()
+        good = f"{self.TAG}\nYou are `{fixture.display}`.\n{self.CLOSE}"
+        rows[0]["message"]["content"] = f"{self.TAG}\nYou are `Wrong Role (Wrong Person)`.\n{self.CLOSE}"
+        rows[1]["message"]["content"] = self.OPENED + good
+        fixture.body.write_text("".join(json_line(row) for row in rows), encoding="utf-8")
+        leg = fixture.run(environ={}, start_pid=fixture.fake_claude_parent()).legs[5]
+        self.assertEqual("pass", leg.status, leg.detail)
+        self.assertIn("identity_rows_seen=2", leg.detail)
+
+
 if __name__ == "__main__":
     unittest.main()

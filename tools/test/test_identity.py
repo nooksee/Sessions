@@ -15,6 +15,7 @@ import io
 import json
 import os
 import re
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -1000,6 +1001,127 @@ class LabelLegInMain(unittest.TestCase):
         with mock.patch.object(self.o.mod, "body_custom_title", side_effect=AssertionError):
             _, out = self.o.run(self.row("codex"))
         self.assertIn("PyCharm label not on disk", out)
+
+class OrientationRowsAfterIdeNotices(OfficeTest):
+    """A row counts only when the tag begins it, after any leading IDE notices. Every row here is synthetic."""
+
+    OPENED = "<ide_opened_file>The user opened the file /home/example/a.py in the IDE.</ide_opened_file>"
+    SELECTED = "<ide_selection>The user selected lines 1 to 2 from /home/example/a.py:\nfirst\nsecond\n</ide_selection>"
+    WRONG = "<ide_selection>You are `Wrong Role (Wrong Person)`.\n</ide_selection>"
+    COUNTED = (
+        ORIENT,
+        "\n  " + ORIENT,
+        ORIENT + " it quotes </ide_selection> later",
+        ORIENT + OPENED,
+        OPENED + ORIENT,
+        SELECTED + ORIENT,
+        OPENED + SELECTED + ORIENT,
+        SELECTED + "\n\n" + OPENED + "\n" + ORIENT,
+        "\n  " + OPENED + " " + ORIENT,
+        WRONG + ORIENT,
+    )
+    NOT_COUNTED = (
+        "fixture question",
+        OPENED,
+        SELECTED,
+        OPENED + "fixture question",
+        "fixture text " + ORIENT,
+        OPENED + "fixture text " + ORIENT,
+        '<cross-session-message from="fixture">' + ORIENT + "</cross-session-message>",
+        OPENED + '<cross-session-message from="fixture">' + ORIENT + "</cross-session-message>",
+        '<cross-session-message from="fixture">fixture text</cross-session-message>' + ORIENT,
+        "<tool_result>" + ORIENT + "</tool_result>",
+        "the tag reads " + ORIENT + " in this message",
+        SELECTED + "the tag reads " + ORIENT,
+        "<ide_selection>" + ORIENT + "</ide_selection>",
+        "<ide_selection>" + ORIENT + "</ide_selection>fixture question",
+        "<ide_opened_file>" + ORIENT + "</ide_opened_file>",
+        "<ide_selection>a</ide_selection>" + ORIENT + " b</ide_selection> question",
+        "<ide_selection>a</ide_selection>" + ORIENT + " b</ide_opened_file> question",
+        "<ide_selection>a</ide_selection> text </ide_selection>" + ORIENT,
+        "<ide_diagnostics>x</ide_diagnostics>" + ORIENT,
+        "<ide_opened_file>no closing tag " + ORIENT,
+        "<ide_opened_file>x</ide_selection>" + ORIENT,
+        "<IDE_OPENED_FILE>x</IDE_OPENED_FILE>" + ORIENT,
+    )
+
+    def claude_body(self, o, *contents) -> tuple:
+        folder = o.base / "claude" / "fixture"
+        folder.mkdir(exist_ok=True)
+        rows = [{"type": "user", "message": {"role": "user", "content": content}} for content in contents]
+        (folder / f"{SID}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+        return o.mod.body_identity({"provider": "claude", "session_id": SID})
+
+    def test_both_tools_read_the_table_the_same(self):
+        path = SCRIPT.parent / "myself.py"
+        spec = importlib.util.spec_from_file_location("orient_myself", path)
+        myself = importlib.util.module_from_spec(spec)
+        sys.modules["orient_myself"] = myself
+        self.addCleanup(sys.modules.pop, "orient_myself", None)
+        spec.loader.exec_module(myself)
+        mine = self.office().mod.orientation_text
+        for content in self.COUNTED:
+            with self.subTest(content):
+                want = content[content.index(ORIENT):]
+                self.assertEqual(mine(content), want)
+                self.assertEqual(myself._orientation_text(content), want)
+        for content in self.NOT_COUNTED + (None, 7, ["not text"], [{"type": "tool_result", "content": ORIENT}]):
+            with self.subTest(content):
+                self.assertIsNone(mine(content))
+                self.assertIsNone(myself._orientation_text(content))
+
+    def test_the_claude_reader(self):
+        for content in self.COUNTED:
+            with self.subTest(content):
+                self.assertEqual(self.claude_body(self.office(), content), ("JoJo Git", "orientation row"))
+        for content in self.NOT_COUNTED + ([{"type": "tool_result", "content": ORIENT}],):
+            with self.subTest(content):
+                self.assertEqual(self.claude_body(self.office(), content), (None, "no orientation row"))
+
+    def test_the_claude_reader_takes_the_older_form_from_the_tag_only(self):
+        older = "<session_clinic_orientation>\nYou are RIGHT PERSON, the resident.\n</session_clinic_orientation>"
+        wrong = "<ide_selection>You are WRONG PERSON, the donor.\n</ide_selection>"
+        self.assertEqual(self.claude_body(self.office(), wrong + older), ("Right Person", "orientation row"))
+
+    def test_the_copilot_reader(self):
+        for content in self.COUNTED:
+            with self.subTest(content):
+                o = self.office()
+                o.body(orientation=content)
+                self.assertEqual(o.mod.copilot_body(o.jojo())[:2], ("JoJo Git", "orientation row"))
+        for content in self.NOT_COUNTED:
+            with self.subTest(content):
+                o = self.office()
+                o.body(orientation=content)
+                self.assertEqual(o.mod.copilot_body(o.jojo())[:2], (None, "no orientation row"))
+
+    def test_the_copilot_reader_takes_the_older_form_from_the_tag_only(self):
+        older = "<session_clinic_orientation>\nYou are RIGHT PERSON, the resident.\n</session_clinic_orientation>"
+        wrong = "<ide_selection>You are WRONG PERSON, the donor.\n</ide_selection>"
+        o = self.office()
+        o.body(orientation=wrong + older)
+        self.assertEqual(o.mod.copilot_body(o.jojo())[:2], ("Right Person", "orientation row"))
+
+    OLDER_ROW = "<session_clinic_orientation>\nYou are `Earlier Role (Earlier Person)`.\n</session_clinic_orientation>"
+    LATER_ROW = "<session_clinic_orientation>\nYou are `Later Role (Later Person)`.\n</session_clinic_orientation>"
+
+    def test_the_claude_reader_takes_the_latest_row(self):
+        """A rotated resident reads as its newest capsule, not the one a donor carried."""
+        self.assertEqual(self.claude_body(self.office(), self.OLDER_ROW, self.LATER_ROW), ("Later Person", "orientation row"))
+        self.assertEqual(self.claude_body(self.office(), self.OLDER_ROW, self.OPENED + self.LATER_ROW), ("Later Person", "orientation row"))
+
+    def test_the_copilot_reader_takes_the_latest_row(self):
+        for later in (self.LATER_ROW, self.OPENED + self.LATER_ROW):
+            with self.subTest(later):
+                o = self.office()
+                o.body(orientation=self.OLDER_ROW, extra_rows=[{"type": "user.message", "data": {"content": later}}])
+                self.assertEqual(o.mod.copilot_body(o.jojo())[:2], ("Later Person", "orientation row"))
+
+    def test_a_sub_agent_row_after_a_notice_still_does_not_count(self):
+        o = self.office()
+        o.body(orientation=self.OPENED + ORIENT, agent_row=True)
+        self.assertEqual(o.mod.copilot_body(o.jojo())[:2], (None, "no orientation row"))
+
 
 if __name__ == "__main__":
     unittest.main()

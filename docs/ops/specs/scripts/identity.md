@@ -23,6 +23,10 @@ Ported legacy tool. Its own docstring opens: "Verify that every resident's ident
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/check_identity_lock.py` until Control repoints them; this room's own documents name `ops/lib/scripts/identity.py`.
 - [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
 
+## What counts as an orientation row
+
+A row counts as an orientation row only when `<session_clinic_orientation>` begins the row's own message content. A message typed in the GUI while a file is open begins with an IDE notice, so leading `<ide_opened_file>` and `<ide_selection>` blocks, those two by name, are passed over first, and the text after them is what the identity is read from. Nothing else is passed over: other leading text, a cross-session wrapper or a tool result leaves the row uncounted, as does a tag quoted later in the message or inside a notice. A row whose notices were passed over also goes uncounted when a notice's closing tag stands after them, since that means the first closing tag was quoted text. The tools `identity.py` and `myself.py` each hold this rule, and `test_identity.py` compares the two on one table.
+
 ## Two reports that change no count
 
 Added 2026-11-06, from what the operator saw after the update to PyCharm 2026.3: a resident stood on his phone and not in PyCharm while this tool said `ok`. Neither report changes a count, a row's state or the exit status, and `--quiet` prints neither. Neither prints an identifier.
