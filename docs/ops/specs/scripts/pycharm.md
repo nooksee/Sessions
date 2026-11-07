@@ -1,10 +1,16 @@
 # Technical Specification: pycharm
 
-Script: `Sessions/ops/lib/scripts/pycharm.py` (writer: not recorded in the file; port writer: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident; chats-file edit writer: Claude (Opus 5.5), a worker started by the Session Continuity Manager (`session-doctor`) on 2026-11-02; not a registered resident). Tests: `Sessions/tools/test/test_pycharm.py`. Spec writer: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident. Status: ported on 2026-11-01 from `Scripts/reconcile_pycharm_ai_surfaces.py`, which this tree no longer holds; built as it was, 0 edit(s) at the port and 1 edit since (2026-11-02), listed below; callers outside the room still name the legacy path; reviewer not yet named. Map: `docs/ops/README.md`.
+Script: `Sessions/ops/lib/scripts/pycharm.py` (writer: not recorded in the file; port writer: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident; chats-file edit writer: Claude (Opus 5.5), a worker started by the Session Continuity Manager (`session-doctor`) on 2026-11-02; not a registered resident). Tests: `Sessions/tools/test/test_pycharm.py`. Spec writer: Claude (Fable 5.1, this session), by the operator's direction of 2026-11-01; not a registered resident. Status: **retired from routine use on 2026-11-07,** the source, its tests and the host's chats file kept. Ported on 2026-11-01 from `Scripts/reconcile_pycharm_ai_surfaces.py`, which this tree no longer holds; built as it was, 0 edit(s) at the port and 2 edits since (2026-11-02, and the live folder rule of 2026-11-06), listed below; no reviewer named, since it is not relied on. Map: `docs/ops/README.md`.
 
 ## First Principles Rationale
 
 Ported legacy tool. Its own docstring opens: "Reconcile known PyCharm AI-session surface residue without touching JSONL bodies." (the file names no author; attributed to the file). The earliest receipt that names it is `Receipts/session-control-reconciliation-20260714.md` (2026-07-14); 1 receipt(s) name it in all.
+
+## Retired from routine use
+
+This is a validator of one past migration, not a check of the IDE's health. Its pending and reconciled states each need exactly 1 verification of one historical chat, so with that chat gone both are false and it exits nonzero with `protocol_deviations=1`, even when every retired target is already absent and nothing would change. Its 2026-11-06 reading of 0 verified and 19 retired is that case. **A nonzero exit here says nothing about today's IDE. Do not read it as a finding, and do not weaken the refusal to obtain exit 0.** Use `identity.py` and the rooms' own readers for the IDE.
+
+By the Apprentice's read of 2026-11-07 (`storage/handoff/joe.md`, "Queue job 3 return and claim release"), the inspected user services and timers and Control's tracked routes hold no executable caller of it. Hidden or manual callers were not inventoried. A new reconciliation needs its own operation defined first, its own review, and its own go; this tool is not the way back to one. Inverse of the retirement: revert this text through the owning Git route. Control's frozen copy, if any change is wanted, is Control's.
 
 ## Mechanics and Sequencing
 
@@ -30,7 +36,7 @@ Ported legacy tool. Its own docstring opens: "Reconcile known PyCharm AI-session
 ## Integrity Filter Warnings
 
 - Refusal and read-only statements in the docstring: "Reconcile known PyCharm AI-session surface residue without touching JSONL bodies." "The default mode is read-only." "This tool deliberately does not archive, delete, move, or rewrite Codex or Claude JSONL files."
-- Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/reconcile_pycharm_ai_surfaces.py` until Control repoints them; this room's own documents name `ops/lib/scripts/pycharm.py`.
+- The earlier statement here, that the rounds timer and Control CI call the legacy path, is not supported by the Apprentice's read of the current routes. Control's frozen `Control-Runtime/Scripts/README.md` still mentions that path, as documentation.
 - The loader proves the form of the chats file, not that its identifiers are the right ones. The existing pending and reconciled checks remain the guard on content: a `george_vi_chat` that matches no chat leaves `george_vi_verified` at 0, and the tool stops with `protocol_deviations` 1 before any write.
-- Until the host file is installed, the tool refuses on this host. The Session Continuity Manager installs `ops/etc/pycharm-chats.json`, mode 0600, from the file prepared on 2026-11-02, when this change merges.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- The host's `ops/etc/pycharm-chats.json` is installed, mode 0600, and stays; the tool still refuses without it.
+- Not to be relied on: retired above. Its reader in `identity.py`'s shared folder rule runs the other way, `pycharm.py` importing `identity.py`, so the retirement moves no rule there.
