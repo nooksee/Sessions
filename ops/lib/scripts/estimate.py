@@ -25,8 +25,8 @@ except Exception as exc:  # pragma: no cover - user-facing dependency check
     ) from exc
 
 
-ROOT = Path("/media/nos4r2/user_vol")
-EVIDENCE_DIR = ROOT / "Sessions" / "logs"
+SESSIONS = Path(__file__).resolve().parents[3]   # the room, resolved as gauge.py does
+EVIDENCE_DIR = SESSIONS / "logs"
 
 ACTIVE_CONTEXT_PROXY_KEYS = {
     "proxy_response_message_tokens",

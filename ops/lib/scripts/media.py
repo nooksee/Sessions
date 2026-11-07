@@ -3,7 +3,7 @@
 
 Written 2026-08-28 for Home Advisor (Joy Anne Claude), whose body reached
 `609,608,826` bytes sixteen days after birth, `96.2%` of it inline base64. She
-advises on a house and Kevin sends her photographs of it; the pictures are the
+advises on a house and the operator sends her photographs of it; the pictures are the
 work product, not junk, so eliding them the way a Tier B rotation does would
 throw away the thing she was hired to look at.
 

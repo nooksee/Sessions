@@ -840,7 +840,7 @@ def run_check(
                     _surface(paths.registry),
                 )
 
-    # Registry-only claude or codex resident held from the launcher (Kevin,
+    # Registry-only claude or codex resident held from the launcher (the operator,
     # 2026-10-23): absence from roster and bindings is then the correct state.
     # The launcher serves a resident only when both files carry its key, and
     # presence in one alone makes it reject the whole roster.

@@ -86,7 +86,7 @@ def build_capsule(inventory_dir: Path) -> str:
 Generated: {now}
 
 ## 1. Operator And Interaction Rules
-The operator is Kevin, user `nos4r2`. The working root for this repo is `/media/nos4r2/user_vol`.
+The operator holds final authority. The working root for this repo is `{ROOT}`.
 
 Standing behavior rules:
 

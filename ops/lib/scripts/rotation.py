@@ -245,7 +245,7 @@ def imbalance_refusal(counts: dict[str, int]) -> str | None:
     This is the check that was missing on 2026-08-08. All fourteen builds that
     night passed every structural gate -- row zero, identifier equality, capsule
     count, zero donor leakage, every row parsing -- while carrying hundreds of
-    Kevin's turns against a handful of replies. Structure was never the problem.
+    the operator's turns against a handful of replies. Structure was never the problem.
     Shape was, and nothing measured shape.
 
     A conversation alternates. A window that does not is either a builder fault

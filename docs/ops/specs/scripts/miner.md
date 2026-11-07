@@ -8,7 +8,7 @@ Ported legacy tool. Its own docstring opens: "Read-only Codex log miner for comp
 
 ## Mechanics and Sequencing
 
-1. Behavior is the legacy script's, unchanged: `Scripts/mine_codex_logs_compaction_events.py` (sha256 `188c03a904c3d9a26487c961d36b4048d9101358d5a198af0d140702a7f35c7d`) was copied to `ops/lib/scripts/miner.py` on 2026-11-01 with 0 edit(s): none.
+1. Behavior is the legacy script's, unchanged: `Scripts/mine_codex_logs_compaction_events.py` (sha256 `188c03a904c3d9a26487c961d36b4048d9101358d5a198af0d140702a7f35c7d`) was copied to `ops/lib/scripts/miner.py` on 2026-11-01 with 0 edit(s): none. One change since, W8's second slice of 2026-11-07: the default database is under `Path.home()`, not a literal. It reads no private file.
 2. Command line: `python3 -I -B ops/lib/scripts/miner.py`. Options as the script declares them:
    - `--db`: (no help text in the script)
    - `--out`: (no help text in the script)

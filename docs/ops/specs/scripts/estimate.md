@@ -8,7 +8,7 @@ Ported legacy tool. Its own docstring opens: "Estimate Codex JSONL context press
 
 ## Mechanics and Sequencing
 
-1. Behavior is the legacy script's, unchanged: `Scripts/analyze_codex_token_context_pressure.py` (sha256 `f9a55060baba3b63f13e65528c6cffc4fdfd63de6d56c1869096f2f75f28153e`) was copied to `ops/lib/scripts/estimate.py` on 2026-11-01 with 0 edit(s): none.
+1. Behavior is the legacy script's, unchanged: `Scripts/analyze_codex_token_context_pressure.py` (sha256 `f9a55060baba3b63f13e65528c6cffc4fdfd63de6d56c1869096f2f75f28153e`) was copied to `ops/lib/scripts/estimate.py` on 2026-11-01 with 0 edit(s): none. One change since, W8's second slice of 2026-11-07: the evidence folder is the room's own `logs`, found from the tool's place as `gauge.py` finds it, not a literal. It reads no private file.
 2. Command line: `python3 -I -B ops/lib/scripts/estimate.py` <sessions>. Options as the script declares them:
    - `--encoding`: (no help text in the script)
    - `--warn-total-tokens`: (no help text in the script)
