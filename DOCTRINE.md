@@ -109,8 +109,7 @@ everything else here is governed: **by canon and instruction, verified by
 receipt** — not by a mechanism we do not control.
 
 1. **Workers are disposable. Operator standing order, 2026-08-01.** Kevin:
-   "subagents are disposable. full-stop. codex spawns them they do a job during
-   that session, then thats it." They are **deleted**, not archived, unless
+   "[words sha256=eb38e9a845b970fe83d8acaedaab76a1011c340568a3ac0a4e9d564fca7f08aa]" They are **deleted**, not archived, unless
    currently active in a live session. Do not preserve them, do not name them in
    reports, do not raise them for a decision. This supersedes the archive-first
    default that applies to everything else in this repository, and it does so
@@ -582,8 +581,7 @@ live Codex writer is active.
 ## Addendum 2026-07-16 — Claude-side transplant is real surgery, not a summary
 
 Realizations from the George VIII family rollout, the Claude room reorg, and
-the STELA heir build. Kevin's challenge was fair: "yours is still just a
-glorified summary prompt." The honest answer is that *what I had been
+the STELA heir build. the operator's challenge was fair: "[words sha256=f77e748e61d4dff72db21b1174d1de1a6913d5f7f312a674fd181f8b5d2b8370]" The honest answer is that *what I had been
 offering myself* was — and it did not have to be.
 
 1. **Claude Code sessions are portable, transplantable bodies — the same
