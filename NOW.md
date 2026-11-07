@@ -75,10 +75,10 @@ the same evening and keeps its Control seat. A one-clause staffing amendment
   2026-11-07 on the final wrapper and the real provider, audited; their report
   and the launch-setting proposal are the Assistant's next. Not yet: any seeding,
   any projection or seal run, the launch setting; each a named go.
-- W6: the guided `rotate.py` runner has phases 0 to 5 on `main` (PRs #18
-  and #26, each audited); phases 6 to 9, synthetic, are the Apprentice's
-  third slice, read by the Auditor on 2026-11-07 and not passed, 12 conditions,
-  1 a fault in the code, the rest tests and text, for the Apprentice's return;
+- W6: the guided `rotate.py` runner implements synthetic dry-run phases 0
+  to 9: preparation, fixture custody and hold, guarded model install and
+  rollback, fixture acceptance and receipt. Temporary artifacts are removed
+  at each stop. No production adapter or persistent recovery is implemented;
   the first real rotation remains.
   Provider-specific native acceptance is unproved.
 
