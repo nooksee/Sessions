@@ -99,7 +99,7 @@ Tests:
 * [ops/specs/tools/test/rounds.md](ops/specs/tools/test/rounds.md): syntax and static-integrity checks in `tools/test/test_rounds.py`.
 * [ops/specs/tools/test/myself.md](ops/specs/tools/test/myself.md): the self-check's suite.
 * [ops/specs/tools/test/notice.md](ops/specs/tools/test/notice.md): the notice's suite.
-* [ops/specs/tools/test/rotate.md](ops/specs/tools/test/rotate.md): the rotate runner's suite, synthetic phases 0 to 5.
+* [ops/specs/tools/test/rotate.md](ops/specs/tools/test/rotate.md): the rotate runner's suite, synthetic dry-run phases 0 to 9.
 * [ops/specs/tools/test/claude-resident.md](ops/specs/tools/test/claude-resident.md): the launch wrapper's suite.
 
 ## 4. Contracts and Guides (earlier clinic work)

@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-07 11:21 EST, the Session Continuity Manager: W5's nine native proofs passed and the relay's first send proved, audited; before that, Central's four seats, the IDE's update and every body in place, the night's merges, W4 held and the flood contained; the dated boards and the Updated lines through 2026-11-05 20:08 EST are in `archives/board-history-20261105.md`, later ones in Git history.
+Updated: 2026-11-07 14:23 EST, the Session Continuity Apprentice: W6 synthetic dry-run phases 0 to 9 and their limits; W5's nine native proofs passed and the relay's first send proved, audited; before that, Central's four seats, the IDE's update and every body in place, the night's merges, W4 held and the flood contained; the dated boards and the Updated lines through 2026-11-05 20:08 EST are in `archives/board-history-20261105.md`, later ones in Git history.
 Observations retain their stated measurement times. The dated boards that
 stood below until 2026-11-06 are in `archives/board-history-20261105.md`: historical
 context, not current Git, telemetry or health measurements (PoT 1.2.12, 1.3.3).
@@ -83,8 +83,7 @@ the same evening and keeps its Control seat. A one-clause staffing amendment
   Provider-specific native acceptance is unproved.
 
 The Chief Repository Operations Officer and the Desktop Continuity Manager
-left the Sessions programme on 2026-11-05 at the operator's word; the W6
-integration is the Apprentice's after the Auditor's pass; the cadence's
+left the Sessions programme on 2026-11-05 at the operator's word; the cadence's
 design is the Apprentice's and its trial the Assistant's; the repository
 mechanics may pass to the Integrator on a writer's handoff (CONSTRAINTS C16).
 
