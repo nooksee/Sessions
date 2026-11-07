@@ -69,7 +69,7 @@ class ClaudeRowArityTests(unittest.TestCase):
 
     def test_every_verdict_in_the_vocabulary_parses(self):
         for verdict in diff.SEVERITY:
-            row = f"      8MB   3354    0.0     0     0/1      -  {verdict}    Personal / 545bd6a5"
+            row = f"      8MB   3354    0.0     0     0/1      -  {verdict}    Personal / 0000abc1"
             got = diff.parse_claude(row)
             self.assertEqual(list(got.values()), [verdict], f"failed on {verdict}")
 
@@ -79,9 +79,9 @@ class ClaudeRowArityTests(unittest.TestCase):
         self.assertEqual(diff.parse_claude(row), {})
 
     def test_label_is_captured_whole(self):
-        row = "      0MB    237    0.0     0     0/0      -  healthy   Projects-STELA / 5efc0b08"
+        row = "      0MB    237    0.0     0     0/0      -  healthy   Projects-STELA / 0000abc2"
         got = diff.parse_claude(row)
-        self.assertEqual(list(got), ["claude:Projects-STELA / 5efc0b08"])
+        self.assertEqual(list(got), ["claude:Projects-STELA / 0000abc2"])
 
 
 class MediaShapeTests(unittest.TestCase):
