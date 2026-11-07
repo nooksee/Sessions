@@ -114,7 +114,7 @@ class NamingTests(unittest.TestCase):
                          ("Session Continuity Manager (Claude Shannon)", None))
 
     def test_an_unknown_patient_keeps_its_raw_label(self):
-        pid = "claude:Projects-STELA / 5efc0b08"
+        pid = "claude:Projects-STELA / 0000abc2"
         self.assertEqual(diff.describe(pid, self.names, self.home), (pid, None))
 
     def test_a_missing_registry_names_nobody(self):
