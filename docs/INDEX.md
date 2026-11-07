@@ -78,7 +78,7 @@ Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each sp
 * [ops/specs/scripts/inventory.md](ops/specs/scripts/inventory.md): ported from `Scripts/inventory_codex_sessions.py`; Inventory local Codex session assets without modifying them.
 * [ops/specs/scripts/workers.md](ops/specs/scripts/workers.md): ported from `Scripts/inventory_worker_threads.py`; Classify Codex sessions into residents, worker threads, and unknowns.
 * [ops/specs/scripts/miner.md](ops/specs/scripts/miner.md): ported from `Scripts/mine_codex_logs_compaction_events.py`; Read-only Codex log miner for compact and context failure evidence.
-* [ops/specs/scripts/pycharm.md](ops/specs/scripts/pycharm.md): ported from `Scripts/reconcile_pycharm_ai_surfaces.py`; Reconcile known PyCharm AI-session surface residue without touching JSONL bodies.
+* [ops/specs/scripts/pycharm.md](ops/specs/scripts/pycharm.md): retired from routine use 2026-11-07; ported from `Scripts/reconcile_pycharm_ai_surfaces.py`; Reconcile known PyCharm AI-session surface residue without touching JSONL bodies.
 * [ops/specs/scripts/resources.md](ops/specs/scripts/resources.md): ported from `Scripts/resident_resource_collector.py`; Resident Resource Governor -- collector.
 * [ops/specs/scripts/limits.md](ops/specs/scripts/limits.md): ported from `Scripts/validate_codex_session_loader_limits.py`; Validate copied Codex JSONL candidates against observed loader limits.
 * [ops/specs/scripts/watch.md](ops/specs/scripts/watch.md): ported from `Scripts/watch_codex_session_size.py`; Watch Codex sessions and emit operator-visible warnings.
