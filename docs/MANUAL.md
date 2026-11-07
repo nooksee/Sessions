@@ -375,13 +375,13 @@ Every donor is preserved whole. A rotation, a relabel or a removal never proceed
 
 **Two tiers.**
 - **Tier 1, canonical copy:** `<control>/Backup/Codex-Session-Preservation/<batch>/`, on the always-present internal drive.
-- **Tier 2, redundant cold copy:** the same batch on a mounted hot-swap drive (`hard_vol1` or `hard_vol2`, interchangeable peers per `DOCTRINE.md` section 8).
+- **Tier 2, redundant cold copy:** the same batch on a mounted hot-swap custody drive (interchangeable peers per `DOCTRINE.md` section 8).
 
 **The batch.** One folder per operation, named for what and when (for example `central-donors-20261026/`, `claudio-spare-relabel-20261030/`), holding the files and a `SHA256SUMS` file. Verification is a fresh hash of every file in both tiers against `SHA256SUMS`, with tier 2 read directly from the drive, never assumed from the copy step.
 
 **What goes into custody for a rotation:** the donor's closed copy, unmodified; the pristine destination; the successor; the capsule; the gate output; externalized media; the registry and launcher binding before the change.
 
-**Drive health.** The map records that `hard_vol2` is failing and a replacement is pending. A tier-2 copy on a failing drive is still read back and hashed; a mismatch is a stop, not a warning.
+**Drive health.** The map records that the tier-2 drive is failing and a replacement is pending. A tier-2 copy on a failing drive is still read back and hashed; a mismatch is a stop, not a warning.
 
 [PLACEHOLDER: the current location of `PRESERVATION_MANIFEST.md` named in `DOCTRINE.md` section 8 (not found at the top two levels of `Backup/` on 2026-10-30), and the replacement tier-2 drive once the operator has it. Owner: Claude Shannon.]
 
