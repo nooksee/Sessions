@@ -1191,6 +1191,16 @@ class SealTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(into.stat().st_mode), 0o700)
         self.assertEqual(sorted(p.name for p in into.parent.iterdir()), ["session-doctor"])   # no staging left
 
+    def test_w5_a_note_the_provider_wrote_at_0664_seals_and_comes_back_at_0600(self):
+        note = self.nb / "room-facts.md"
+        note.chmod(0o664)
+        name = self.sealed()
+        into = self.base / "successor" / "session-doctor"
+        into.parent.mkdir()
+        self.ok(self.unseal(name, into))
+        got = self.tree(into)
+        self.assertEqual(got["room-facts.md"], (self.files["room-facts.md"], 0o600))
+
     def test_w5_unseal_fills_an_empty_folder_and_replaces_only_with_replace(self):
         name = self.sealed()
         into = self.base / "successor"

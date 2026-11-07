@@ -42,7 +42,7 @@ Scripts (STELA's sections: rationale, mechanics, anchor, warnings):
 * [ops/specs/scripts/constitution.md](ops/specs/scripts/constitution.md): the PoT authorization gate; a changed law needs its coupled ledger entry, snapshot and authority leaf.
 * [ops/specs/scripts/redact.md](ops/specs/scripts/redact.md): the public-copy renderer; digests the operator's words, placeholders host paths and session identifiers, fails closed on the unclassified.
 * [ops/specs/scripts/notice.md](ops/specs/scripts/notice.md): the operator-only closeout notice from one gauge row; dry run writes no state.
-* [ops/specs/scripts/claude-resident.md](ops/specs/scripts/claude-resident.md): the launch wrapper; the working directory, then the registry, then the notebook; memory off when the registry cannot answer.
+* [ops/specs/scripts/claude-resident.md](ops/specs/scripts/claude-resident.md): the launch wrapper; the working directory, then the registry, then the wired list, then the notebook; memory off when the registry cannot answer.
 
 Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each spec opening with the script's own first line:
 * [ops/specs/scripts/pressure.md](ops/specs/scripts/pressure.md): ported from `Scripts/analyze_codex_compact_context_pressure.py`; Gate copied Codex JSONL candidates for compact/context pressure.

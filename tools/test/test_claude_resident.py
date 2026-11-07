@@ -62,7 +62,8 @@ S_UNKNOWN = "0000eeee-0000-4000-8000-00000000eeee"
 
 
 class Room:
-    """A synthetic room: a registry at 0600 and one notebook folder at 0700 for the key alpha-one."""
+    """A synthetic room: a registry at 0600, a wired list at 0600 holding both Claude rows of this room, and one notebook
+    folder at 0700 for the key alpha-one."""
 
     def __init__(self, base: Path):
         self.base = base
@@ -79,6 +80,8 @@ class Room:
         ]
         self.registry = self.room / "ops" / "etc" / "resident-identities.json"
         self.save()
+        self.wired = self.room / "ops" / "etc" / "notebook-wired.json"
+        self.wire("alpha-one", "beta-two")
         self.notebook = self.room / "ops" / "etc" / "notebooks" / "alpha-one"
         self.notebook.mkdir(parents=True)
         self.notebook.parent.chmod(0o700)
@@ -98,6 +101,16 @@ class Room:
             self.registry.unlink()
         self.registry.write_bytes(data)
         self.registry.chmod(0o600)
+
+    def wire(self, *keys, raw: bytes = None, mode=0o600):
+        """Write the wired list, as given, or remove it when no key and no bytes are given."""
+        if self.wired.is_dir() and not self.wired.is_symlink():
+            self.wired.rmdir()
+        elif self.wired.is_symlink() or self.wired.exists():
+            self.wired.unlink()
+        if keys or raw is not None:
+            self.wired.write_bytes(raw if raw is not None else json.dumps(list(keys)).encode())
+            self.wired.chmod(mode)
 
     def run(self, *provider_args, wrapper_args=(), env=None, direct=False):
         head = [str(WRAPPER)] if direct else [sys.executable, "-I", "-B", str(WRAPPER)]
@@ -274,7 +287,7 @@ class WrapperTests(unittest.TestCase):
         self.assertFalse((self.r.room / "logs" / "claude-resident").exists())
 
     def test_a_malformed_wrapper_form_is_refused_and_echoes_nothing(self):
-        for argv in ([], ["--dry-run"], ["--dry-run", "--resume", S_ALPHA], ["--dry-run", "--room"],
+        for argv in (["--dry-run"], ["--dry-run", "--resume", S_ALPHA], ["--dry-run", "--room"],
                      ["--dry-run", "--bogus", "--"], ["--room"], ["--registry"], ["--provider"], ["--dry-run", "--"][:1],
                      ["--room", "--"], ["--room", str(self.r.room)], ["--registry", S_ALPHA, "-p"],
                      ["--provider", S_ALPHA, "--resume", S_ALPHA], ["--room", str(self.r.room), "--dry-run", "--"]):
@@ -294,6 +307,7 @@ class WrapperTests(unittest.TestCase):
         self.assertEqual(json.loads(done.stdout)["notebook"], "attached")
 
     def test_an_explicit_registry_path_is_read(self):
+        self.r.wire("alpha-one")
         other = self.r.base / "registry.json"
         other.write_text(json.dumps({"identities": [Room.row("alpha-one", "claude", S_UNKNOWN, self.r.room, "P", "R")]}))
         other.chmod(0o600)
@@ -691,6 +705,359 @@ class ExecTests(unittest.TestCase):
         self.assertEqual(self.argv(), ["--", "x"])
         self.assert_ran(self.launch("-p", head=[sys.executable, "-I", "-B", str(self.installed()), "--"]))
         self.assertEqual(self.argv(), ["-p"])
+
+    # -- no arguments: how the plugin's terminal action starts a provider ---------------------
+    def test_no_arguments_is_the_bare_form_inside_the_room(self):
+        done = self.launch(head=[sys.executable, "-I", "-B", str(self.installed())])
+        self.assert_ran(done)
+        self.assert_off([])
+        self.assertEqual((self.rows()[-1]["branch"], self.rows()[-1]["notebook"]), ("new", "none"))
+
+    def test_no_arguments_passes_through_outside_the_room(self):
+        head = [sys.executable, "-I", "-B", str(self.installed())]
+        for inherited in (None, "0", "1"):
+            with self.subTest(inherited=inherited):
+                env = {} if inherited is None else {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": inherited}
+                self.assert_ran(self.launch(head=head, cwd=self.r.other, env=env))
+                self.assertEqual(self.argv(), [])
+                self.assertEqual(self.disable(), inherited if inherited is not None else "<unset>")
+                self.assertEqual(self.rows()[-1]["branch"], "outside-the-room")
+
+    def test_no_arguments_reaches_the_provider_by_the_plugins_terminal_form(self):
+        """The plugin runs: cd '<folder>' && exec '<path>', with PWD set by the shell."""
+        path = self.installed()
+        for folder, off in ((self.r.room, "1"), (self.r.other, "<unset>")):
+            with self.subTest(folder=folder):
+                done = subprocess.run(["/bin/bash", "-c", f"cd '{folder}' && exec '{path}'"], input=b"",
+                                      capture_output=True, timeout=60, cwd=self.r.base, env=self.env)
+                self.assert_ran(done)
+                self.assertEqual((self.argv(), self.disable()), ([], off))
+
+    # -- the wired list -----------------------------------------------------------------------
+    def recorded(self, *args, through=True, env=None):
+        """The environment and arguments the kernel gave a provider, byte for byte. The recorder reads its own /proc
+        entries, so its interpreter's own changes do not show."""
+        record = self.bin / "recorder"
+        record.write_text(f"#!{sys.executable} -IB\nimport os\nc = os.environ['FAKE_CAPTURE']\n"
+                          "open(c + '.environ', 'wb').write(open('/proc/self/environ', 'rb').read())\n"
+                          "open(c + '.cmdline', 'wb').write(open('/proc/self/cmdline', 'rb').read())\n")
+        record.chmod(0o755)
+        for name in ("environ", "cmdline"):
+            self.capture.with_suffix(f".{name}").unlink(missing_ok=True)
+        head = [sys.executable, "-I", "-B", str(WRAPPER), "--room", str(self.r.room), "--provider", str(record), "--"] \
+            if through else [str(record)]
+        done = self.launch(*args, head=head, env=env)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return (self.capture.with_suffix(".environ").read_bytes(),
+                self.capture.with_suffix(".cmdline").read_bytes().split(b"\0")[3:])
+
+    def test_an_unwired_row_passes_through_byte_identical(self):
+        self.r.wire("beta-two")
+        args = ["-p", "--resume", S_ALPHA, "with space", "", "--", "--settings", "x\ny"]
+        for env in ({}, {"LANG": "C.UTF-8"}, {"LANG": "C"}, {"LC_ALL": "C"}, {"LC_CTYPE": "C"}, {"LC_CTYPE": "POSIX", "LANG": "C"},
+                    {"LC_CTYPE": "en_US.UTF-8"}, {"LC_CTYPE": os.fsdecode(b"\xff")}, {"LC_CTYPEX": "1"},
+                    {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "0"}, {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}):
+            with self.subTest(env=env):
+                self.assertEqual(self.recorded(*args, env=env), self.recorded(*args, through=False, env=env))
+        self.assertFalse(self.settings.exists())
+
+    def test_an_environment_entry_with_an_empty_name_is_dropped_and_the_launch_runs(self):
+        self.r.wire("beta-two")
+        environ, cmdline = self.recorded("-p", "--resume", S_ALPHA, env={"": "odd", "KEPT": "yes"})
+        items = environ.split(b"\0")
+        self.assertNotIn(b"=odd", items)
+        self.assertIn(b"KEPT=yes", items)
+        self.assertEqual([a.decode() for a in cmdline[:-1]], ["-p", "--resume", S_ALPHA])
+
+    def test_a_value_error_at_the_exec_is_stated_not_a_traceback(self):
+        self.enter_room()
+        result = {"branch": "new", "notebook": "none", "env": {}, "reason": "x"}
+        with mock.patch.object(wrapper.os, "execve", side_effect=ValueError("synthetic")):
+            self.assertEqual(wrapper.launch(dict(result), self.r.room, self.fake, ["-p"]), 126)
+
+    def test_the_other_pass_throughs_are_byte_identical_too(self):
+        for args, cwd in ((["--resume", S_ELSEWHERE], None), (["--resume", S_ALPHA], self.r.other)):
+            with self.subTest(args=args):
+                def recorded(through):
+                    return self.recorded(*args, through=through) if cwd is None else self.outside(args, through)
+                self.assertEqual(recorded(True), recorded(False))
+
+    def outside(self, args, through):
+        real = self.launch
+        self.launch = lambda *a, **kw: real(*a, cwd=self.r.other, **kw)
+        try:
+            return self.recorded(*args, through=through)
+        finally:
+            self.launch = real
+
+    def test_the_locale_is_given_back_as_it_came_on_a_launch_that_changes_it(self):
+        """A launch with the switch or the route still leaves the locale as it came."""
+        for env in ({}, {"LC_CTYPE": "C"}):
+            with self.subTest(env=env):
+                environ, _ = self.recorded("-p", env=env)
+                items = environ.split(b"\0")
+                self.assertEqual([i for i in items if i.startswith(b"LC_CTYPE=")],
+                                 [f"LC_CTYPE={v}".encode() for k, v in env.items() if k == "LC_CTYPE"])
+                self.assertIn(b"CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", items)
+
+    def test_the_locale_is_left_alone_if_the_kernels_copy_cannot_be_read(self):
+        env = {"LC_CTYPE": "from-python", "OTHER": "x"}
+        with mock.patch.object(wrapper.Path, "read_bytes", side_effect=OSError):
+            wrapper.undo_locale_coercion(env)
+        self.assertEqual(env, {"LC_CTYPE": "from-python", "OTHER": "x"})
+
+    def test_an_unwired_row_reads_as_its_own_branch_in_the_preview_and_the_log(self):
+        self.r.wire("beta-two")
+        out = self.dry("--resume", S_ALPHA)
+        self.assertEqual((out["branch"], out["notebook"], out["env"], out["notebook_route"]),
+                         ("registered-unwired", "none", {}, None))
+        self.assertTrue(out["auto_memory"].startswith("unchanged"))
+        self.assertEqual(out["argv"], ["<provider>", "--resume", S_ALPHA])
+        self.assertNotIn("alpha-one", json.dumps(out))
+        self.assert_ran(self.launch("--resume", S_ALPHA))
+        row = self.rows()[-1]
+        self.assertEqual((row["branch"], row["notebook"], row["memory_off"], row["key"]),
+                         ("registered-unwired", "none", False, "alpha-one"))
+
+    def test_no_list_means_nobody_is_wired(self):
+        self.r.wire()
+        self.assertEqual(self.dry("--resume", S_ALPHA)["branch"], "registered-unwired")
+        self.assertEqual(self.dry("--resume", S_BETA)["branch"], "registered-unwired")
+        self.assertEqual(self.dry("--resume", S_UNKNOWN)["branch"], "unregistered")
+        self.assertEqual(self.dry("-p")["branch"], "new")
+
+    def test_an_empty_list_wires_nobody_and_is_not_broken(self):
+        self.r.wire(raw=b"[]")
+        self.assertEqual(self.dry("--resume", S_ALPHA)["branch"], "registered-unwired")
+
+    def test_a_row_on_the_list_goes_on_as_before(self):
+        self.r.wire("alpha-one")
+        self.assertEqual(self.dry("--resume", S_ALPHA)["notebook"], "attached")
+        self.assertEqual(self.dry("--resume", S_BETA)["branch"], "registered-unwired")
+        self.r.wire("beta-two", "alpha-one")
+        out = self.dry("--resume", S_BETA)                                # on the list, with no folder: off, not the slot
+        self.assertEqual((out["branch"], out["env"]), ("registered", {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}))
+
+    def broken_lists(self):
+        """Each broken state of the list, by a function that makes it."""
+        wired = self.r.wired
+        target = self.r.base / "list-target"
+        twin = self.r.base / "list-twin"
+
+        def link():
+            self.r.wire()
+            target.write_text('["alpha-one"]')
+            target.chmod(0o600)
+            wired.symlink_to(target)
+
+        def dangling():
+            self.r.wire()
+            wired.symlink_to(self.r.base / "nothing-here")
+
+        def folder():
+            self.r.wire()
+            wired.mkdir()
+
+        def hard_link():
+            self.r.wire("alpha-one")
+            twin.unlink(missing_ok=True)
+            os.link(wired, twin)
+
+        def big():
+            self.r.wire(raw=b" " * (65_537 - 2) + b"[]")                 # one byte over, as a literal, so the constant cannot drift
+
+        names_a_key = "not one Claude row of this room"
+        shape = "not a list of registry keys"
+        yield "a link", link, "not a regular file"
+        yield "a dangling link", dangling, "not a regular file"
+        yield "a folder", folder, "not a regular file"
+        yield "a second hard link", hard_link, "more than one hard link"
+        yield "mode 0644", lambda: self.r.wire("alpha-one", mode=0o644), "not mode 0600"
+        yield "mode 0400", lambda: self.r.wire("alpha-one", mode=0o400), "not mode 0600"
+        yield "over the limit", big, "larger"
+        yield "not JSON", lambda: self.r.wire(raw=b"{not json"), "unreadable"
+        yield "not UTF-8", lambda: self.r.wire(raw=b"\xff\xfe"), "unreadable"
+        yield "an object", lambda: self.r.wire(raw=b'{"wired": ["alpha-one"]}'), shape
+        yield "a string", lambda: self.r.wire(raw=b'"alpha-one"'), shape
+        yield "a number in it", lambda: self.r.wire(raw=b'["alpha-one", 7]'), shape
+        yield "a list in it", lambda: self.r.wire(raw=b'["alpha-one", ["beta-two"]]'), shape
+        yield "a duplicate", lambda: self.r.wire(raw=b'["alpha-one", "alpha-one"]'), "twice"
+        yield "a key not in the registry", lambda: self.r.wire("alpha-one", "no-such-key"), names_a_key
+        yield "a key of another room", lambda: self.r.wire("alpha-one", "delta-elsewhere"), names_a_key
+        yield "a key of another provider", lambda: self.r.wire("alpha-one", "gamma-codex"), names_a_key
+
+    def test_a_broken_list_turns_memory_off_for_rows_of_this_room(self):
+        for name, make, word in self.broken_lists():
+            with self.subTest(state=name):
+                make()
+                out = self.dry("--resume", S_ALPHA)
+                self.assertIn(word, out["reason"])
+                self.assertEqual((out["branch"], out["notebook"], out["env"]),
+                                 ("broken-wired-list", "none", {"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}))
+                for word in ("alpha-one", "delta-elsewhere", "gamma-codex", "no-such-key", str(self.r.base)):
+                    self.assertNotIn(word, out["reason"])
+                self.assert_ran(self.launch("--resume", S_ALPHA, env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "0"}))
+                self.assert_off(["--resume", S_ALPHA])
+                row = self.rows()[-1]
+                self.assertEqual((row["branch"], row["key"], row["memory_off"]), ("broken-wired-list", "alpha-one", True))
+                self.assertFalse(self.settings.exists())
+
+    def test_a_broken_list_reaches_nothing_else(self):
+        self.r.wire(raw=b"{not json")
+        self.assertEqual(self.dry("--resume", S_UNKNOWN)["branch"], "unregistered")
+        self.assertEqual(self.dry("-p")["branch"], "new")
+        out = self.dry("--resume", S_ELSEWHERE)
+        self.assertEqual((out["branch"], out["env"]), ("registered-elsewhere", {}))
+        out = self.dry("--resume", S_ALPHA, cwd=self.r.other)
+        self.assertEqual((out["branch"], out["env"]), ("outside-the-room", {}))
+
+    def test_a_list_at_its_exact_limit_is_read(self):
+        body = b'["alpha-one"]'
+        self.r.wire(raw=b" " * (65_536 - len(body)) + body)
+        self.assertEqual(self.dry("--resume", S_ALPHA)["notebook"], "attached")
+
+    def test_a_list_that_cannot_be_inspected_is_broken_not_absent(self):
+        real = os.lstat
+        def lstat(path, *a, **kw):
+            if str(path).endswith("notebook-wired.json"):
+                raise PermissionError(13, "synthetic")
+            return real(path, *a, **kw)
+        with mock.patch.object(wrapper.os, "lstat", side_effect=lstat), self.assertRaises(wrapper.Broken) as caught:
+            wrapper.read_wired(self.r.room, self.r.rows)
+        self.assertIn("cannot be inspected", str(caught.exception))
+
+    def test_a_list_of_another_user_is_refused(self):
+        self.enter_room()
+        real = os.lstat
+        def lstat(path, *a, **kw):
+            st = real(path, *a, **kw)
+            if str(path).endswith("notebook-wired.json"):
+                return os.stat_result((st.st_mode, st.st_ino, st.st_dev, st.st_nlink, os.geteuid() + 1, *st[5:]))
+            return st
+        with mock.patch.object(wrapper.os, "lstat", side_effect=lstat), self.assertRaises(wrapper.Broken) as caught:
+            wrapper.read_wired(self.r.room, self.r.rows)
+        self.assertIn("owned", str(caught.exception))
+
+    def test_a_list_swapped_after_its_check_is_refused(self):
+        real = os.open
+        beside = self.r.base / "list-beside"
+        beside.write_text('["alpha-one"]')
+        beside.chmod(0o600)
+        def swap(path, *a, **kw):
+            if str(path).endswith("notebook-wired.json"):
+                os.replace(beside, self.r.wired)
+            return real(path, *a, **kw)
+        with mock.patch.object(wrapper.os, "open", side_effect=swap), self.assertRaises(wrapper.Broken) as caught:
+            wrapper.read_wired(self.r.room, self.r.rows)
+        self.assertIn("changed", str(caught.exception))
+        def to_a_link(path, *a, **kw):
+            if str(path).endswith("notebook-wired.json"):
+                self.r.wired.unlink()
+                self.r.wired.symlink_to(self.r.registry)
+            return real(path, *a, **kw)
+        with mock.patch.object(wrapper.os, "open", side_effect=to_a_link), self.assertRaises(wrapper.Broken) as caught:
+            wrapper.read_wired(self.r.room, self.r.rows)
+        self.assertIn("unreadable", str(caught.exception))                 # refused by the open itself, not by the later check
+        self.r.wire("alpha-one")
+        def to_a_pipe(path, *a, **kw):
+            if str(path).endswith("notebook-wired.json"):
+                self.r.wired.unlink()
+                os.mkfifo(self.r.wired)
+            return real(path, *a, **kw)
+        signal.signal(signal.SIGALRM, lambda *a: self.fail("the open waited on a pipe"))
+        signal.alarm(10)
+        try:
+            with mock.patch.object(wrapper.os, "open", side_effect=to_a_pipe), self.assertRaises(wrapper.Broken) as caught:
+                wrapper.read_wired(self.r.room, self.r.rows)
+        finally:
+            signal.alarm(0)
+        self.assertRegex(str(caught.exception), "changed|unreadable")      # the open does not wait on a pipe; a reused inode number reads as unreadable
+
+    def test_a_list_whose_row_writes_the_room_another_way_is_still_this_room(self):
+        link = self.r.base / "link-to-room"
+        link.symlink_to(self.r.room)
+        self.r.rows[0]["room"] = str(link)
+        self.r.save()
+        self.assertEqual(self.dry("--resume", S_ALPHA)["notebook"], "attached")
+        self.r.rows[0]["room"] = str(self.r.room)
+        self.r.save()
+        self.assertEqual(self.dry("--resume", S_ALPHA, room=link)["branch"], "registered")        # the list reads; the folder's rules refuse a link
+
+    def test_a_fault_in_the_mind_tool_cannot_reach_an_unwired_launch(self):
+        path = self.installed()
+        self.r.wire("beta-two")
+        mind = self.r.room / "ops" / "lib" / "scripts" / "mind.py"
+        head = [sys.executable, "-I", "-B", str(path)]
+        args = ["-p", "--resume", S_ALPHA]
+        for name, make in (("removed", mind.unlink), ("broken", lambda: mind.write_text("this is not python\n")),
+                           ("exits", lambda: mind.write_text("raise SystemExit(7)\n"))):
+            with self.subTest(fault=name):
+                mind.unlink(missing_ok=True)
+                make() if name != "removed" else None
+                self.assert_ran(self.launch(*args, head=head, env={"CLAUDE_CODE_DISABLE_AUTO_MEMORY": "0"}))
+                self.assertEqual((self.argv(), self.disable()), (args, "0"))
+                self.assertFalse(self.log.exists())               # the log's rules are the mind tool's: no row, the launch runs
+
+    def test_a_fault_in_the_mind_tool_stops_no_wired_launch(self):
+        path = self.installed()
+        mind = self.r.room / "ops" / "lib" / "scripts" / "mind.py"
+        head = [sys.executable, "-I", "-B", str(path)]
+        args = ["-p", "--resume", S_ALPHA]
+        for name, body in (("broken", "this is not python\n"), ("exits", "raise SystemExit(7)\n")):
+            with self.subTest(fault=name):
+                mind.write_text(body)
+                self.assert_ran(self.launch(*args, head=head))
+                self.assert_off(args)
+
+    def test_a_route_that_exits_as_it_is_written_stops_no_launch(self):
+        self.enter_room()
+        result = {"branch": "registered", "notebook": "attached", "env": {}, "reason": "x", "_key": "alpha-one"}
+        with mock.patch.object(wrapper, "write_settings", side_effect=SystemExit(7)), \
+                mock.patch.object(wrapper.os, "execve", side_effect=OSError(2, "synthetic")) as execve:
+            self.assertEqual(wrapper.launch(dict(result), self.r.room, self.fake, ["-p"]), 126)
+        self.assertEqual(execve.call_args.args[2]["CLAUDE_CODE_DISABLE_AUTO_MEMORY"], "1")
+        self.assertEqual(execve.call_args.args[1], [str(self.fake), "-p"])
+
+    def test_the_outside_path_and_a_new_launch_survive_a_mind_tool_that_exits(self):
+        path = self.installed()
+        (self.r.room / "ops" / "lib" / "scripts" / "mind.py").write_text("raise SystemExit(7)\n")
+        head = [sys.executable, "-I", "-B", str(path)]
+        self.assert_ran(self.launch("-p", head=head))
+        self.assert_off(["-p"])
+        self.assert_ran(self.launch("-p", head=head, cwd=self.r.other))
+        self.assertEqual((self.argv(), self.disable()), (["-p"], "<unset>"))
+
+    # -- a failed exec under a write limit ----------------------------------------------------
+    def test_a_failed_exec_under_a_write_limit_still_exits_126(self):
+        self.assert_ran(self.launch("-p"))
+        self.log.write_bytes(b"x" * 8192)                              # over the limit below, so the row's write hits it
+        self.log.chmod(0o600)
+        bad = self.bin / "bad"
+        bad.write_text("#!/nonexistent/interpreter\n")
+        bad.chmod(0o755)
+        head = f"ulimit -f 1 && exec {sys.executable} -I -B {WRAPPER} --room {self.r.room} --provider {bad} -- -p"
+        done = subprocess.run(["/bin/sh", "-c", head], capture_output=True, timeout=60, cwd=self.r.room, env=self.env)
+        self.assertEqual(done.returncode, 126, done.stderr)
+        self.assertIn(b"could not be executed", done.stderr)
+        self.assertNotIn(b"Traceback", done.stderr)
+
+    def test_the_exit_status_comes_through_with_standard_error_closed(self):
+        bad = self.bin / "bad"
+        bad.write_text("#!/nonexistent/interpreter\n")
+        bad.chmod(0o755)
+        plain = self.bin / "plain"
+        plain.write_text("not executable")
+        for named, status in ((bad, 126), (plain, 127)):
+            with self.subTest(status=status):
+                read, write = os.pipe()
+                os.close(read)                                         # nobody will read this standard error
+                try:
+                    done = subprocess.run([sys.executable, "-I", "-B", str(WRAPPER), "--room", str(self.r.room), "--provider",
+                                           str(named), "--", "-p"], stdout=subprocess.DEVNULL, stderr=write, stdin=subprocess.DEVNULL,
+                                          timeout=60, cwd=self.r.room, env=self.env)
+                finally:
+                    os.close(write)
+                self.assertEqual(done.returncode, status)
 
     # -- the working directory --------------------------------------------------------------
     def start_after(self, folder, act, *provider_args, dry=False):
