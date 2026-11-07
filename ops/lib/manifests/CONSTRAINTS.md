@@ -95,6 +95,17 @@ requires load and a first clean native append; successor acceptance also
 requires first-person identity readback and the operator's recognition.
 Do not read real body, mind or record content in synthetic tests. A reported
 counter or gate must come from its actual execution, not a prepared slot.
+A mutation run can switch off any guard, so no test stands one guard from a
+real target: in a test a real target reaches only a pure refusal function, a
+second check by a different mechanism stands at the act, and mutants run behind
+a barrier they cannot reach. The barrier is a private namespace in which the
+real programs are replaced by a tripwire and the real stores, logs and sockets
+are masked, with the network closed and no capability left to lift a mask, each
+proved before use. A root derived from the tool's own path in a clone serves
+only where a trace shows the tool and its tests name no home, absolute path,
+socket or program outside that root. The report states the barrier and the
+tripwire count, or the trace. A packet that asks for a mutation run names its
+barrier.
 
 ## C08
 
