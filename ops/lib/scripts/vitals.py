@@ -42,7 +42,7 @@ import json
 import os
 from pathlib import Path
 
-PROJECTS_ROOT = Path("/home/nos4r2/.claude/projects")
+PROJECTS_ROOT = Path.home() / ".claude" / "projects"
 
 WARN_BYTES = 30_000_000
 CRIT_BYTES = 60_000_000
