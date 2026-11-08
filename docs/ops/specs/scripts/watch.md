@@ -10,7 +10,7 @@ Ported legacy tool. Its own docstring opens: "Watch Codex sessions and emit oper
 
 1. Behavior is the legacy script's, unchanged: `Scripts/watch_codex_session_size.py` (sha256 `f7c6d0e1614069303a7375fee7af0906e4da59a5bef94fe7e15d5d409697f30f`) was copied to `ops/lib/scripts/watch.py` on 2026-11-01 with 0 edit(s): none.
 2. Command line: `python3 -I -B ops/lib/scripts/watch.py`. Options as the script declares them:
-   - `--sessions-root`: Session root to scan; repeatable. Default: host + Workbench VM share.
+   - `--sessions-root`: Session root to scan; repeatable. Default: host + Workbench VM share, the share's root from the host fingerprint's working volume.
    - `--evidence-dir`: (no help text in the script)
    - `--warn-bytes`: (no help text in the script)
    - `--critical-bytes`: (no help text in the script)

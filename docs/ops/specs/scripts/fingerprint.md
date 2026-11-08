@@ -1,6 +1,6 @@
 # Technical Specification: fingerprint
 
-Script: `ops/lib/scripts/fingerprint.py`. Tests: `tools/test/test_fingerprint.py` for the reader, and `tools/test/test_name_counts.py` for the count of names it exists to end. Status: built, first slice of programme W8; no tool reads it yet, and no live file exists.
+Script: `ops/lib/scripts/fingerprint.py`. Tests: `tools/test/test_fingerprint.py` for the reader, and `tools/test/test_name_counts.py` for the count of names it exists to end. Status: built in programme W8's first slice; since P5.5's last step, `alerts.py`, `telemetry.py`, `watch.py` and `retention.py` read it through `volume_root`, and its live file is written on the operator's go before that change merges. `rounds.sh` does not read it: its drift step is byte-bound to Control's decision and keeps its path until Control says otherwise.
 
 ## First Principles Rationale
 
@@ -8,10 +8,11 @@ The repository is public, and tracked code and tests still name the host: its us
 
 ## Mechanics and Sequencing
 
-1. **The home is a sibling, `ops/etc/host-fingerprint.json`, not new keys in `ops/etc/host-bindings.json`.** The ignore rule `/ops/etc/*` covers it. The launcher holds an exact-key check on the bindings' `runtime` object, so a key added there would make the launcher refuse; a sibling leaves every present reader unchanged. **This slice writes no live file:** nothing reads the binding yet, and creating it is an act for the slice that names a reader.
+1. **The home is a sibling, `ops/etc/host-fingerprint.json`, not new keys in `ops/etc/host-bindings.json`.** The ignore rule `/ops/etc/*` covers it. The launcher holds an exact-key check on the bindings' `runtime` object, so a key added there would make the launcher refuse; a sibling leaves every present reader unchanged. **The first slice wrote no live file,** since nothing read the binding; P5.5's last step names the readers, and the live file is written, read back and recorded on the operator's go before that step merges.
 2. **The keys, exactly, each required:** `schema_version`, the string `host-fingerprint/1`; and `volume_roots`, an object with exactly `working` and `archive`, each an absolute path of plain characters in its plain form. There is no home key, since home paths become `Path.home()`. There is no user name key, since nothing would read one; it comes back in the slice that shows a reader. There is no operator's name key: a line where the name is a default, a comment or a message becomes the role, and a line where it is a formula key stays and is marked.
 3. **`read_fingerprint(path)`** returns a frozen record or raises `FingerprintError` naming one fault: the file absent; a link, opened without following; not a regular file, without hanging on a FIFO; not owned by this user; a mode other than 0600; unreadable; not UTF-8; not JSON; a repeated key at either level; not an object; another key set; another schema; a root of another shape or not in its plain form. A fault never names a value.
-4. **`refuse(tool, path, error)`** gives the one message for a tool to raise, in the manner of `pycharm.py`: `<tool> refuses: the host fingerprint file <path> <fault>. Nothing else was read or written.` It exits 1. The command line takes no argument and prints no value.
+4. **`volume_root(tool, name)`** returns one root as a path for a tool that needs it where a path is built. It reads the file at each call, so nothing is read at import and an empty `ops/etc`, as in the tests and behind the mask, refuses only where a root is used. A fault raises `refuse()` for that tool; an unknown root name is a programming error, `ValueError`, not a refusal. A tool loads this module by its own path and registers it in `sys.modules` first, since `-I` leaves the script's folder off the path and the record's dataclass looks its module up there.
+5. **`refuse(tool, path, error)`** gives the one message for a tool to raise, in the manner of `pycharm.py`: `<tool> refuses: the host fingerprint file <path> <fault>. Nothing else was read or written.` It exits 1. The command line takes no argument and prints no value.
 
 ## The count of names
 

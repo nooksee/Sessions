@@ -17,18 +17,15 @@ Read-only. Outputs are local evidence only (not tracked by git).
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import shutil
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 
-DEFAULT_SESSIONS_ROOTS = [
-    Path.home() / ".codex" / "sessions",
-    # George's home: the Workbench VM mounts this share as its sessions dir.
-    Path("/media/nos4r2/user_vol/VMs/Shared/Workbench/sessions"),
-]
 SESSIONS = Path(__file__).resolve().parents[3]   # the room, resolved as gauge.py does
 DEFAULT_EVIDENCE_DIR = SESSIONS / "logs"
 DEFAULT_WARN_BYTES = 500_000_000
@@ -260,10 +257,29 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _volume_root(name: str) -> Path:
+    """One volume root from the room's private host fingerprint, read only where a path needs it. A missing or
+    malformed file refuses this tool by name with exit 1 and names no value (fingerprint.py)."""
+    path = Path(__file__).resolve().with_name("fingerprint.py")
+    key = f"fingerprint@{path}"
+    module = sys.modules.get(key)
+    if module is None:
+        spec = importlib.util.spec_from_file_location(key, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[key] = module   # the dataclass in it looks its module up here
+        spec.loader.exec_module(module)
+    return module.volume_root(Path(__file__).name, name)
+
+
+def default_sessions_roots() -> list[Path]:
+    """The host's Codex sessions, and George's: the Workbench VM mounts this share as its sessions dir."""
+    return [Path.home() / ".codex" / "sessions", _volume_root("working") / "VMs" / "Shared" / "Workbench" / "sessions"]
+
+
 def main() -> int:
     args = parse_args()
     if not args.sessions_root:
-        args.sessions_root = DEFAULT_SESSIONS_ROOTS
+        args.sessions_root = default_sessions_roots()
     records = scan_sessions(args.sessions_root, args)
     result = build_result(records, args)
     _json_path, summary_path = write_outputs(result, Path(args.evidence_dir))

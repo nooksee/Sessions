@@ -39,6 +39,8 @@ def load(name):
 
 
 diff = load("alerts.py")
+# Hermetic: no test reads the host's Workbench share, and none needs the room's host fingerprint file.
+diff.EXTRA_CODEX_ROOTS = []
 
 
 def rollout(home: Path, tid: str, parent: str | None, nickname: str | None) -> str:

@@ -50,17 +50,15 @@ KEEP_REDACT_FIXTURES = "the redact rule's key word: its fixtures must keep it"
 
 # (path, {needle: lines}, the reason a count is meant to stay, or "")
 TABLE = [
-    ('ops/lib/scripts/alerts.py', {"operator's first name": 1, 'user name': 1, 'working volume': 1}, ""),
+    ('ops/lib/scripts/alerts.py', {"operator's first name": 1}, ""),
     ('ops/lib/scripts/closeout.py', {"operator's first name": 7}, ""),
     ('ops/lib/scripts/conflicts.py', {"operator's first name": 1}, ""),
     ('ops/lib/scripts/gauge.py', {'user name': 1, 'working volume': 1}, ""),
     ('ops/lib/scripts/mind.py', {"operator's first name": 20}, ""),
     ('ops/lib/scripts/redact.py', {"operator's first name": 2}, KEEP_REDACT_RULE),
-    ('ops/lib/scripts/retention.py', {'archive volume': 1, "operator's first name": 2, 'user name': 1}, ""),
+    ('ops/lib/scripts/retention.py', {"operator's first name": 2}, ""),
     ('ops/lib/scripts/rounds.sh', {'user name': 1, 'working volume': 1}, ""),
-    ('ops/lib/scripts/telemetry.py', {'user name': 1, 'working volume': 1}, ""),
     ('ops/lib/scripts/vitals.py', {'user name': 6, 'working volume': 5}, ""),
-    ('ops/lib/scripts/watch.py', {'user name': 1, 'working volume': 1}, ""),
     ('tools/test/test_alerts.py', {"operator's first name": 1}, ""),
     ('tools/test/test_alerts_arity.py', {'archive volume': 1}, ""),
     ('tools/test/test_closeout.py', {"operator's first name": 4}, ""),
