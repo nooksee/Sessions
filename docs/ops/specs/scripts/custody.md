@@ -15,7 +15,11 @@ Custody kept every private source safe, one act at a time: by 2026-11-07 tier 1 
 5. **`close`** first checks every root whole against its manifest, then writes `README.txt` (the writer's ASCII text, required), `SHA256SUMS` sorted by name, and `CLOSED` holding the hash of `SHA256SUMS`, each 0600 by exclusive create. After that, `add` and `close` refuse.
 6. **`verify BATCH`** checks every root against its own record, `SHA256SUMS` once closed and `MANIFEST` while open, and reports each missing, mismatched or unlisted item. Exit 1 on any fault.
 7. **`--direct ROOT`** reads that root's copies back with `O_DIRECT`, for a failing medium, as the earlier batches did.
-8. **Exit codes:** 0 done, 1 a fault found by `verify`, 2 refused. A refusal prints `custody refuses: <reason>` on standard error.
+8. **Exit codes:** 0 done, 1 a fault found by `verify`, 2 refused. A refusal prints `custody refuses: <reason>` on standard error. An operating-system error, such as a full disk, is a refusal, 2, never a traceback.
+9. **A refused `add` leaves no stray copy:** the item's copies already placed on earlier roots are removed, before any manifest row is written for it.
+10. **Recovery from a `close` cut off between roots:** the roots then disagree, some closed and some open, and every later act refuses. Recover by hand: confirm with `sha256sum -c SHA256SUMS` that each closed root is whole, then copy the three closing files, byte-equal, onto each open root. Nothing else is touched.
+11. **`--direct` must name one of the `--root`s,** compared by resolved path, so a different spelling cannot drop the direct read silently. `verify` takes only a name of the form `sessions-<writer>-<date>`.
+12. **Items are single regular files.** A tree, such as the rollbacks batch, is not a day item: it stays a batch of its own, made and audited as before.
 
 What it does not do: it opens no session content, reads no live root in its tests, and never deletes or rewrites an item. A batch made by an earlier script stays as it is; this tool does not adopt it.
 

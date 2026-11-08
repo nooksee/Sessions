@@ -171,6 +171,50 @@ class TestCustody(Base):
             self.assertFalse((b / "a.txt").exists())
             self.assertFalse((b / "MANIFEST").exists())
 
+    def test_a_failure_on_a_later_root_removes_earlier_copies(self) -> None:
+        real = custody.shutil.copyfile
+        calls = []
+
+        def second_bad(src, dst):
+            real(src, dst)
+            calls.append(dst)
+            if len(calls) == 2:
+                with open(dst, "ab") as f:
+                    f.write(b"corrupt")
+        from unittest import mock
+        with mock.patch.object(custody.shutil, "copyfile", second_bad):
+            rc, out, err = self.add(self.item("a.txt", b"a"))
+        self.assertEqual(rc, 2)
+        for r in self.roots:
+            b = self.batch(r)
+            self.assertFalse((b / "a.txt").exists())
+            self.assertFalse(any(p.name.endswith(".part") for p in b.iterdir()))
+
+    def test_an_os_error_is_a_refusal_not_a_traceback(self) -> None:
+        def full(src, dst):
+            raise OSError(28, "No space left on device", str(dst))
+        from unittest import mock
+        with mock.patch.object(custody.shutil, "copyfile", full):
+            rc, out, err = self.add(self.item("a.txt", b"a"))
+        self.assertEqual(rc, 2)
+        self.assertIn("No space left", err)
+
+    def test_direct_must_name_a_root(self) -> None:
+        f = self.item("a.txt", b"a")
+        rc, out, err = self.run_tool("add", *self.roots_args(), "--direct", str(self.base / "elsewhere"),
+                                     "--writer", "session-doctor", "--date", "20261108", str(f))
+        self.assertEqual(rc, 2)
+        self.assertIn("names no --root", err)
+        rc, out, err = self.run_tool("add", *self.roots_args(), "--direct", str(self.roots[1]) + "/",
+                                     "--writer", "session-doctor", "--date", "20261108", str(f))
+        self.assertEqual(rc, 0, err)
+
+    def test_verify_refuses_a_name_outside_the_form(self) -> None:
+        for bad in ("../x", "sessions-x", "other-20261108"):
+            rc, out, err = self.run_tool("verify", *self.roots_args(), bad)
+            self.assertEqual(rc, 2)
+            self.assertIn("is not sessions-", err)
+
     def test_as_names_one_file(self) -> None:
         f = self.item("a.txt", b"a")
         rc, out, err = self.run_tool("add", *self.roots_args(), "--writer", "session-doctor", "--date", "20261108", "--as", "renamed.txt", str(f))

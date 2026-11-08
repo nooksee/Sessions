@@ -15,6 +15,7 @@ Exit codes: 0 done, 1 a mismatch found by verify, 2 refused.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import os
 import re
@@ -26,6 +27,7 @@ from pathlib import Path
 
 WRITER = re.compile(r"[a-z0-9][a-z0-9-]{0,47}\Z")
 DATE = re.compile(r"20[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])\Z")
+BATCH = re.compile(r"sessions-[a-z0-9][a-z0-9-]{0,47}-20[0-9]{6}\Z")
 ITEM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 RESERVED = {"MANIFEST", "SHA256SUMS", "README.txt", "CLOSED"}
 
@@ -79,6 +81,17 @@ def check_roots(roots: list[str], same_device_ok: bool) -> list[Path]:
     return paths
 
 
+def direct_set(direct: list[str] | None, roots: list[Path]) -> set[str]:
+    resolved = {str(r.resolve()) for r in roots}
+    out = set()
+    for raw in direct or []:
+        r = str(Path(raw).resolve())
+        if r not in resolved:
+            raise Refused(f"--direct names no --root: {raw}")
+        out.add(r)
+    return out
+
+
 def state(batch: Path) -> str:
     if not os.path.lexists(batch):
         return "absent"
@@ -115,6 +128,7 @@ def write_private(path: Path, text: str) -> None:
 def cmd_add(a: argparse.Namespace) -> int:
     name = batch_name(a.writer, a.date)
     roots = check_roots(a.root, a.same_device_ok)
+    direct = direct_set(a.direct, roots)
     batches = [r / name for r in roots]
     s = agree(batches)
     if s == "closed":
@@ -138,17 +152,28 @@ def cmd_add(a: argparse.Namespace) -> int:
             os.chmod(b, 0o700)
     stamp = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     for src, item, digest in items:
-        for b in batches:
-            tmp = b / f".{item}.part"
-            shutil.copyfile(src, tmp)
-            os.chmod(tmp, 0o600)
-            got = direct_sha(tmp) if str(b.parent) in (a.direct or []) else sha(tmp)
-            if got != digest:
-                os.unlink(tmp)
-                raise Refused(f"copy of {item} on {b.parent} does not match its source")
-            os.replace(tmp, b / item)
-        if sha(src) != digest:
-            raise Refused(f"source {src} changed while it was copied")
+        placed: list[Path] = []
+        try:
+            for b in batches:
+                tmp = b / f".{item}.part"
+                shutil.copyfile(src, tmp)
+                os.chmod(tmp, 0o600)
+                got = direct_sha(tmp) if str(b.parent.resolve()) in direct else sha(tmp)
+                if got != digest:
+                    os.unlink(tmp)
+                    raise Refused(f"copy of {item} on {b.parent} does not match its source")
+                os.replace(tmp, b / item)
+                placed.append(b / item)
+            if sha(src) != digest:
+                raise Refused(f"source {src} changed while it was copied")
+        except BaseException:
+            for p in placed:
+                with contextlib.suppress(OSError):
+                    p.unlink()
+            for b in batches:
+                with contextlib.suppress(OSError):
+                    (b / f".{item}.part").unlink()
+            raise
         for b in batches:
             m = b / "MANIFEST"
             if not m.exists():
@@ -190,11 +215,12 @@ def check_batch(batch: Path, direct: bool) -> list[str]:
 def cmd_close(a: argparse.Namespace) -> int:
     name = batch_name(a.writer, a.date)
     roots = check_roots(a.root, a.same_device_ok)
+    direct = direct_set(a.direct, roots)
     batches = [r / name for r in roots]
     if agree(batches) != "open":
         raise Refused(f"{name} is not open on every root")
     for b in batches:
-        faults = check_batch(b, str(b.parent) in (a.direct or []))
+        faults = check_batch(b, str(b.parent.resolve()) in direct)
         if faults:
             raise Refused(f"{name} on {b.parent} is not whole: {faults[:3]}")
     rows = manifest_rows(batches[0])
@@ -211,14 +237,17 @@ def cmd_close(a: argparse.Namespace) -> int:
 
 
 def cmd_verify(a: argparse.Namespace) -> int:
+    if not BATCH.fullmatch(a.batch):
+        raise Refused(f"batch name is not sessions-<writer>-<date>: {a.batch!r}")
     roots = check_roots(a.root, a.same_device_ok)
+    direct = direct_set(a.direct, roots)
     batches = [r / a.batch for r in roots]
     s = agree(batches)
     if s == "absent":
         raise Refused(f"{a.batch} is on no root")
     bad = 0
     for b in batches:
-        faults = check_batch(b, str(b.parent) in (a.direct or []))
+        faults = check_batch(b, str(b.parent.resolve()) in direct)
         print(f"{b.parent}: {s}, {len(recorded(b))} items, {'0 faults' if not faults else faults}")
         bad += len(faults)
     return 1 if bad else 0
@@ -251,6 +280,9 @@ def main(argv: list[str] | None = None) -> int:
         return {"add": cmd_add, "close": cmd_close, "verify": cmd_verify}[a.cmd](a)
     except Refused as exc:
         print(f"custody refuses: {exc}", file=sys.stderr)
+        return 2
+    except OSError as exc:
+        print(f"custody refuses: {exc.strerror or exc} ({exc.filename})", file=sys.stderr)
         return 2
 
 
