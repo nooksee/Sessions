@@ -390,6 +390,8 @@ expect() {
 }
 
 contains() { printf '%s\n' "$1" | grep -qF -- "$2"; }
+# The board fits one screen: at most 40 lines of at most 200 characters (P5.2).
+board_fits() { [[ -f "$1" ]] && awk 'length($0) > 200 { bad = 1 } END { exit (bad || NR > 40) }' "$1"; }
 count_lines_matching() { printf '%s\n' "$1" | grep -cE -- "$2" || true; }
 line_of() { printf '%s\n' "$1" | grep -nF -- "$2" | head -n 1 | cut -d: -f1; }
 
@@ -420,7 +422,7 @@ write_fixture_room() {
 run_self_test() {
   local out="" fx="" bare=""
   local passed=0
-  local total=14
+  local total=15
   local w
 
   bold=""; dim=""; green=""; cyan=""; reset=""
@@ -527,6 +529,15 @@ run_self_test() {
   expect "menu shows the loop" contains "$out" "$LOOP_LINE"
   expect "menu lists template" contains "$out" "template"
   expect "menu distinguishes tracked storage skeleton from private payload" contains "$out" "only the declared skeleton is versioned"
+  passed=$((passed + 1))
+
+  # 15. The board fits one screen; a fixture of 41 lines and one with a 201-character line fail.
+  expect "live NOW.md fits one screen" board_fits "${ROOM_ROOT}/NOW.md"
+  printf 'x\n%.0s' $(seq 1 41) > "${SELFTEST_FIXTURE}/board-long.md"
+  if board_fits "${SELFTEST_FIXTURE}/board-long.md"; then die "Help self-test failed: a 41-line board was accepted"; fi
+  printf '%201s\n' x > "${SELFTEST_FIXTURE}/board-wide.md"
+  if board_fits "${SELFTEST_FIXTURE}/board-wide.md"; then die "Help self-test failed: a 201-character line was accepted"; fi
+  if board_fits "${SELFTEST_FIXTURE}/board-absent.md"; then die "Help self-test failed: an absent board was accepted"; fi
   passed=$((passed + 1))
 
   if [[ "$passed" != "$total" ]]; then

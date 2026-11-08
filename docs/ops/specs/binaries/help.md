@@ -38,12 +38,13 @@ STELA's help solved the same problem for STELA: deterministic wayfinding, specs 
    - the rest of `docs/`.
    Files are searched in sorted order. Zero matches prints an explicit no-reference line and exits 0. The bare form is kept from STELA; `term` exists so that a mode word such as `specs` can itself be searched for.
 8. **`curriculum`.** Not built. It prints a placeholder for the wake/closeout commands and accepted provider routes; closeout source exists but is not installed, and `rotate.py` is not written. It then points to the hand procedures (`CLAUDE.md` "ON WAKE", `HANDOFF.md`, `closeout.md`, `rotate.md`).
-9. **`--test`.** Fourteen cases.
+9. **`--test`.** Fifteen cases.
    - Three read-only passes over the live room: ten read-in entries; one row each for gauge, closeout, mind and rotate; a non-empty historical doctrine index.
    - Nine on a fixture room built under explicit `TMPDIR` or project-local `var/tmp/`: a missing read-in file fails; the placeholder manual is flagged; `Status:` is taken from the header only; a spec without one and a script without a spec are each reported; search is case-insensitive and keeps tier order; zero matches is reported; an empty term fails; doctrine without sections fails.
    - One through the binary itself, on the argument contract.
    - The menu.
-   The fixture is removed when the test exits. Output is `OK: help self-test passed (14/14).`
+   - The board's size: the live `NOW.md` holds at most 40 lines of at most 200 characters, and a fixture of 41 lines, one with a 201-character line, and an absent board each fail.
+   The fixture is removed when the test exits. Output is `OK: help self-test passed (15/15).`
 10. **Colour.** Used only when standard output is a terminal, so captured output is plain text.
 
 Dropped from STELA, each because its subject does not exist here:
