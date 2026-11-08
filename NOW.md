@@ -10,7 +10,7 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 - **Team:** the Manager, the Assistant, the Apprentice and the Auditor (PoT 4.1.9). The operator decides.
 - **Routes:** Claude residents by session message; the Apprentice by the accepted relay; others by the operator's paste.
 - **Custody:** three roots; tier 2 is the failing medium; its replacement is George's, on the operator's go.
-- **Host:** the indexer repaired on 2026-11-07 by an official package rollback; the log flood stopped; syslog kept.
+- **Host:** SQLite rolled back to the official 3.45.1-1ubuntu2.8 on 2026-11-07, its .9 pinned out, by the maintenance resident's receipt; the indexer quiet since; its audit is Control's.
 
 ## Tracks: the first-wins plan, point B
 
