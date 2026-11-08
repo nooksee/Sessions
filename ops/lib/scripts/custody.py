@@ -30,6 +30,7 @@ DATE = re.compile(r"20[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])\Z")
 BATCH = re.compile(r"sessions-[a-z0-9][a-z0-9-]{0,47}-20[0-9]{6}\Z")
 ITEM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 RESERVED = {"MANIFEST", "SHA256SUMS", "README.txt", "CLOSED"}
+SYS = Path("/sys")
 
 
 class Refused(Exception):
@@ -62,6 +63,41 @@ def batch_name(writer: str, date: str) -> str:
     return f"sessions-{writer}-{date}"
 
 
+def root_device(p: Path) -> int:
+    return p.stat().st_dev
+
+
+def disks(dev: int, sys_root: Path | None = None) -> frozenset[str]:
+    """The physical disks under a device number, read from sysfs.
+
+    A partition resolves to its parent disk; a stacked device (dm, LVM, md)
+    to the disks under its slaves. A device with no block entry, such as
+    tmpfs, overlay, FUSE or a btrfs subvolume, cannot be placed on a disk,
+    so it is refused.
+    """
+    root = SYS if sys_root is None else sys_root
+    major, minor = os.major(dev), os.minor(dev)
+    entry = root / "dev" / "block" / f"{major}:{minor}"
+    if major == 0 or not entry.exists():
+        raise Refused(f"device {major}:{minor} has no disk this tool can name")
+    return _disks_of(entry.resolve(), root, 0)
+
+
+def _disks_of(node: Path, root: Path, depth: int) -> frozenset[str]:
+    if depth > 8:
+        raise Refused(f"device stack too deep at {node.name}")
+    if (node / "partition").exists():
+        node = node.parent
+    slaves = node / "slaves"
+    names = sorted(os.listdir(slaves)) if slaves.is_dir() else []
+    if not names:
+        return frozenset({node.name})
+    out: set[str] = set()
+    for name in names:
+        out |= _disks_of((slaves / name).resolve(), root, depth + 1)
+    return frozenset(out)
+
+
 def check_roots(roots: list[str], same_device_ok: bool) -> list[Path]:
     if len(roots) < 2:
         raise Refused("at least two roots are required")
@@ -75,9 +111,17 @@ def check_roots(roots: list[str], same_device_ok: bool) -> list[Path]:
         paths.append(p)
     if len({str(p) for p in paths}) != len(paths):
         raise Refused("a root is named twice")
-    devices = [p.stat().st_dev for p in paths]
-    if not same_device_ok and len(set(devices)) != len(devices):
+    if same_device_ok:
+        return paths
+    devices = [root_device(p) for p in paths]
+    if len(set(devices)) != len(devices):
         raise Refused("two roots share a device, so they are one copy, not two")
+    seen: dict[str, Path] = {}
+    for p, dev in zip(paths, devices):
+        for disk in sorted(disks(dev)):
+            if disk in seen:
+                raise Refused(f"roots {seen[disk]} and {p} share the disk {disk}, so they are one copy, not two")
+            seen[disk] = p
     return paths
 
 
