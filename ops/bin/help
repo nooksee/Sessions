@@ -538,6 +538,10 @@ run_self_test() {
   printf '%201s\n' x > "${SELFTEST_FIXTURE}/board-wide.md"
   if board_fits "${SELFTEST_FIXTURE}/board-wide.md"; then die "Help self-test failed: a 201-character line was accepted"; fi
   if board_fits "${SELFTEST_FIXTURE}/board-absent.md"; then die "Help self-test failed: an absent board was accepted"; fi
+  printf 'x\n%.0s' $(seq 1 40) > "${SELFTEST_FIXTURE}/board-forty.md"
+  expect "a 40-line board fits" board_fits "${SELFTEST_FIXTURE}/board-forty.md"
+  printf '%200s\n' x > "${SELFTEST_FIXTURE}/board-twohundred.md"
+  expect "a 200-character line fits" board_fits "${SELFTEST_FIXTURE}/board-twohundred.md"
   passed=$((passed + 1))
 
   if [[ "$passed" != "$total" ]]; then

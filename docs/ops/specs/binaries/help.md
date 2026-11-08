@@ -43,7 +43,7 @@ STELA's help solved the same problem for STELA: deterministic wayfinding, specs 
    - Nine on a fixture room built under explicit `TMPDIR` or project-local `var/tmp/`: a missing read-in file fails; the placeholder manual is flagged; `Status:` is taken from the header only; a spec without one and a script without a spec are each reported; search is case-insensitive and keeps tier order; zero matches is reported; an empty term fails; doctrine without sections fails.
    - One through the binary itself, on the argument contract.
    - The menu.
-   - The board's size: the live `NOW.md` holds at most 40 lines of at most 200 characters, and a fixture of 41 lines, one with a 201-character line, and an absent board each fail.
+   - The board's size: the live `NOW.md` holds at most 40 lines of at most 200 characters, a fixture of 41 lines, one with a 201-character line, and an absent board each fail, and fixtures of exactly 40 lines and of a 200-character line each pass.
    The fixture is removed when the test exits. Output is `OK: help self-test passed (15/15).`
 10. **Colour.** Used only when standard output is a terminal, so captured output is plain text.
 
