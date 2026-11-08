@@ -215,6 +215,56 @@ class TestCustody(Base):
             self.assertEqual(rc, 2)
             self.assertIn("is not sessions-", err)
 
+    def test_roots_with_different_manifests_are_refused(self) -> None:
+        self.add(self.item("a.txt", b"a"))
+        m = self.batch(self.roots[1]) / "MANIFEST"
+        m.write_text(m.read_text() + "0" * 64 + "  ghost.txt  2026-11-08T00:00:00+0000\n")
+        rc, out, err = self.add(self.item("b.txt", b"b"))
+        self.assertEqual(rc, 2)
+        self.assertIn("different manifests", err)
+        self.assertEqual(self.close()[0], 2)
+        self.assertEqual(self.run_tool("verify", *self.roots_args(), "sessions-session-doctor-20261108")[0], 2)
+
+    def test_close_refuses_an_altered_or_missing_item_and_seals_nothing(self) -> None:
+        self.add(self.item("a.txt", b"a"), self.item("b.txt", b"b"))
+        (self.batch(self.roots[2]) / "a.txt").write_bytes(b"altered")
+        rc, out, err = self.close()
+        self.assertEqual(rc, 2)
+        self.assertIn("is not whole", err)
+        (self.batch(self.roots[2]) / "a.txt").write_bytes(b"a")
+        (self.batch(self.roots[0]) / "b.txt").unlink()
+        self.assertEqual(self.close()[0], 2)
+        for r in self.roots:
+            for n in ("CLOSED", "SHA256SUMS", "README.txt"):
+                self.assertFalse((self.batch(r) / n).exists())
+
+    def test_a_source_changed_during_the_copy_is_refused(self) -> None:
+        real = custody.shutil.copyfile
+        src = self.item("a.txt", b"a")
+
+        calls = []
+
+        def change_source(s, d):
+            real(s, d)
+            calls.append(d)
+            if len(calls) == len(self.roots):
+                Path(s).write_bytes(b"changed")
+        from unittest import mock
+        with mock.patch.object(custody.shutil, "copyfile", change_source):
+            rc, out, err = self.add(src)
+        self.assertEqual(rc, 2)
+        self.assertIn("changed while it was copied", err)
+        for r in self.roots:
+            self.assertFalse((self.batch(r) / "a.txt").exists())
+
+    def test_a_linked_root_is_refused(self) -> None:
+        link = self.base / "linked"
+        link.symlink_to(self.roots[0])
+        rc, out, err = self.run_tool("add", "--root", str(link), "--root", str(self.roots[1]), "--same-device-ok",
+                                     "--writer", "session-doctor", "--date", "20261108", str(self.item("a.txt", b"a")))
+        self.assertEqual(rc, 2)
+        self.assertIn("not a directory", err)
+
     def test_as_names_one_file(self) -> None:
         f = self.item("a.txt", b"a")
         rc, out, err = self.run_tool("add", *self.roots_args(), "--writer", "session-doctor", "--date", "20261108", "--as", "renamed.txt", str(f))
