@@ -272,5 +272,98 @@ class TestCustody(Base):
         self.assertTrue((self.batch(self.roots[2]) / "renamed.txt").is_file())
 
 
+
+class TestPhysicalDisks(Base):
+    """A fake sysfs tree stands in for the host's; no host disk is read."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        sysfs = self.base / "sys"
+        dev = sysfs / "devices"
+        for part in ("pci/sda/sda1", "pci/sda/sda2", "pci/sdb/sdb1"):
+            (dev / part).mkdir(parents=True)
+            (dev / part / "partition").write_text("1\n")
+        (dev / "pci/sdc").mkdir(parents=True)
+        (dev / "virtual/block/anon").mkdir(parents=True)
+        for name, targets in (("dm-0", ["pci/sda/sda2"]), ("md0", ["pci/sdb/sdb1", "pci/sdc"]), ("dm-1", ["virtual/block/dm-0"])):
+            (dev / "virtual/block" / name / "slaves").mkdir(parents=True)
+            for target in targets:
+                (dev / "virtual/block" / name / "slaves" / Path(target).name).symlink_to(dev / target)
+        block = sysfs / "dev" / "block"
+        block.mkdir(parents=True)
+        for majmin, target in (("8:1", "pci/sda/sda1"), ("8:2", "pci/sda/sda2"), ("8:17", "pci/sdb/sdb1"),
+                               ("8:32", "pci/sdc"), ("253:0", "virtual/block/dm-0"), ("253:1", "virtual/block/dm-1"),
+                               ("9:0", "virtual/block/md0"), ("0:45", "virtual/block/anon")):
+            (block / majmin).symlink_to(dev / target)
+        self.sysfs = sysfs
+        old_sys, old_dev = custody.SYS, custody.root_device
+        custody.SYS = sysfs
+        self.addCleanup(setattr, custody, "SYS", old_sys)
+        self.addCleanup(setattr, custody, "root_device", old_dev)
+
+    def place(self, *devs: tuple[int, int]) -> None:
+        table = {str(r): os.makedev(*d) for r, d in zip(self.roots, devs)}
+        custody.root_device = lambda p: table[str(p)]
+
+    def add_two(self) -> tuple[int, str, str]:
+        f = self.item("a.txt", b"a")
+        return self.run_tool("add", "--root", str(self.roots[0]), "--root", str(self.roots[1]), "--writer", "w", "--date", "20261108", str(f))
+
+    def test_disks_follow_partitions_and_stacks(self) -> None:
+        d = lambda a, b: custody.disks(os.makedev(a, b), self.sysfs)
+        self.assertEqual(d(8, 1), {"sda"})
+        self.assertEqual(d(8, 2), {"sda"})
+        self.assertEqual(d(8, 17), {"sdb"})
+        self.assertEqual(d(8, 32), {"sdc"})
+        self.assertEqual(d(253, 0), {"sda"})
+        self.assertEqual(d(253, 1), {"sda"})
+        self.assertEqual(d(9, 0), {"sdb", "sdc"})
+
+    def test_a_looping_stack_is_refused(self) -> None:
+        dev = self.sysfs / "devices" / "virtual" / "block"
+        for a, b in (("dm-2", "dm-3"), ("dm-3", "dm-2")):
+            (dev / a / "slaves").mkdir(parents=True, exist_ok=True)
+        (dev / "dm-2" / "slaves" / "dm-3").symlink_to(dev / "dm-3")
+        (dev / "dm-3" / "slaves" / "dm-2").symlink_to(dev / "dm-2")
+        (self.sysfs / "dev" / "block" / "253:2").symlink_to(dev / "dm-2")
+        with self.assertRaises(custody.Refused):
+            custody.disks(os.makedev(253, 2), self.sysfs)
+
+    def test_anonymous_and_unplaced_devices_are_refused(self) -> None:
+        for a, b in ((0, 45), (8, 99)):
+            with self.assertRaises(custody.Refused):
+                custody.disks(os.makedev(a, b), self.sysfs)
+        self.place((0, 45), (8, 17))
+        rc, out, err = self.add_two()
+        self.assertEqual(rc, 2)
+        self.assertIn("no disk this tool can name", err)
+        self.assertFalse(os.path.lexists(self.roots[0] / "sessions-w-20261108"))
+
+    def test_two_partitions_of_one_disk_are_refused(self) -> None:
+        self.place((8, 1), (8, 2))
+        rc, out, err = self.add_two()
+        self.assertEqual(rc, 2)
+        self.assertIn("share the disk sda", err)
+        for r in self.roots[:2]:
+            self.assertFalse(os.path.lexists(r / "sessions-w-20261108"))
+
+    def test_a_stack_over_another_root_disk_is_refused(self) -> None:
+        self.place((8, 17), (9, 0))
+        rc, out, err = self.add_two()
+        self.assertEqual(rc, 2)
+        self.assertIn("share the disk sdb", err)
+        self.place((8, 1), (253, 1))
+        self.assertIn("share the disk sda", self.add_two()[2])
+
+    def test_separate_disks_pass_and_same_device_ok_skips_the_check(self) -> None:
+        self.place((8, 1), (8, 17))
+        rc, out, err = self.add_two()
+        self.assertEqual(rc, 0, err)
+        self.place((8, 1), (8, 2))
+        f = self.item("b.txt", b"b")
+        rc, out, err = self.run_tool("add", "--root", str(self.roots[0]), "--root", str(self.roots[1]), "--same-device-ok", "--writer", "w", "--date", "20261108", str(f))
+        self.assertEqual(rc, 0, err)
+
+
 if __name__ == "__main__":
     unittest.main()
