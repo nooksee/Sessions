@@ -25,7 +25,7 @@ from pathlib import Path
 
 
 DEFAULT_SESSIONS_ROOTS = [
-    Path("/home/nos4r2/.codex/sessions"),
+    Path.home() / ".codex" / "sessions",
     # George's home: the Workbench VM mounts this share as its sessions dir.
     Path("/media/nos4r2/user_vol/VMs/Shared/Workbench/sessions"),
 ]
