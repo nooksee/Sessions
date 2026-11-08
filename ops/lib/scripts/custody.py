@@ -73,7 +73,8 @@ def disks(dev: int, sys_root: Path | None = None) -> frozenset[str]:
     A partition resolves to its parent disk; a stacked device (dm, LVM, md)
     to the disks under its slaves. A device with no block entry, such as
     tmpfs, overlay, FUSE or a btrfs subvolume, cannot be placed on a disk,
-    so it is refused.
+    so it is refused. So is a leaf with no device link, such as a loop
+    device over an image file, whose real disk sysfs does not name.
     """
     root = SYS if sys_root is None else sys_root
     major, minor = os.major(dev), os.minor(dev)
@@ -91,6 +92,8 @@ def _disks_of(node: Path, root: Path, depth: int) -> frozenset[str]:
     slaves = node / "slaves"
     names = sorted(os.listdir(slaves)) if slaves.is_dir() else []
     if not names:
+        if not (node / "device").exists():
+            raise Refused(f"device {node.name} is not a physical disk: no device link (loop, zram, nbd or ram)")
         return frozenset({node.name})
     out: set[str] = set()
     for name in names:

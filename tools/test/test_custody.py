@@ -284,6 +284,9 @@ class TestPhysicalDisks(Base):
             (dev / part).mkdir(parents=True)
             (dev / part / "partition").write_text("1\n")
         (dev / "pci/sdc").mkdir(parents=True)
+        for disk in ("sda", "sdb", "sdc"):
+            (dev / "pci" / disk / "device").mkdir()
+        (dev / "virtual/block/loop0").mkdir(parents=True)
         (dev / "virtual/block/anon").mkdir(parents=True)
         for name, targets in (("dm-0", ["pci/sda/sda2"]), ("md0", ["pci/sdb/sdb1", "pci/sdc"]), ("dm-1", ["virtual/block/dm-0"])):
             (dev / "virtual/block" / name / "slaves").mkdir(parents=True)
@@ -293,7 +296,7 @@ class TestPhysicalDisks(Base):
         block.mkdir(parents=True)
         for majmin, target in (("8:1", "pci/sda/sda1"), ("8:2", "pci/sda/sda2"), ("8:17", "pci/sdb/sdb1"),
                                ("8:32", "pci/sdc"), ("253:0", "virtual/block/dm-0"), ("253:1", "virtual/block/dm-1"),
-                               ("9:0", "virtual/block/md0"), ("0:45", "virtual/block/anon")):
+                               ("9:0", "virtual/block/md0"), ("0:45", "virtual/block/anon"), ("7:0", "virtual/block/loop0")):
             (block / majmin).symlink_to(dev / target)
         self.sysfs = sysfs
         old_sys, old_dev = custody.SYS, custody.root_device
@@ -318,6 +321,15 @@ class TestPhysicalDisks(Base):
         self.assertEqual(d(253, 0), {"sda"})
         self.assertEqual(d(253, 1), {"sda"})
         self.assertEqual(d(9, 0), {"sdb", "sdc"})
+
+    def test_a_loop_device_is_refused(self) -> None:
+        with self.assertRaises(custody.Refused) as caught:
+            custody.disks(os.makedev(7, 0), self.sysfs)
+        self.assertIn("no device link", str(caught.exception))
+        self.place((7, 0), (8, 17))
+        rc, out, err = self.add_two()
+        self.assertEqual(rc, 2)
+        self.assertIn("not a physical disk", err)
 
     def test_a_looping_stack_is_refused(self) -> None:
         dev = self.sysfs / "devices" / "virtual" / "block"
