@@ -40,6 +40,7 @@ import argparse
 import collections
 import datetime
 import hashlib
+import importlib.util
 import json
 import os
 import shutil
@@ -230,13 +231,28 @@ def human(n: int) -> str:
     return f"{n / 1e6:,.1f} MB"
 
 
+def _volume_root(name: str) -> Path:
+    """One volume root from the room's private host fingerprint, read only where a path needs it. A missing or
+    malformed file refuses this tool by name with exit 1 and names no value (fingerprint.py)."""
+    path = Path(__file__).resolve().with_name("fingerprint.py")
+    key = f"fingerprint@{path}"
+    module = sys.modules.get(key)
+    if module is None:
+        spec = importlib.util.spec_from_file_location(key, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[key] = module   # the dataclass in it looks its module up here
+        spec.loader.exec_module(module)
+    return module.volume_root(Path(__file__).name, name)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sweep", action="store_true",
                     help="relocate non-active bodies to quarantine; never deletes")
-    ap.add_argument("--quarantine", type=Path,
-                    default=Path("/media/nos4r2/hard_vol2/Project-Archives/Session-Quarantine"))
+    ap.add_argument("--quarantine", type=Path, default=None,
+                    help="where --sweep moves bodies; default: Project-Archives/Session-Quarantine on the archive "
+                         "volume named by the host fingerprint")
     ap.add_argument("--include-archived", action="store_true",
                     help="also sweep the provider's own archived_sessions folder")
     args = ap.parse_args()
@@ -296,7 +312,9 @@ def main() -> None:
                          f"live one is not.\n{lines}")
 
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    dest = args.quarantine / stamp
+    quarantine = args.quarantine if args.quarantine is not None else (
+        _volume_root("archive") / "Project-Archives" / "Session-Quarantine")
+    dest = quarantine / stamp
     dest.mkdir(parents=True, exist_ok=True)
     manifest, moved, failed = [], 0, 0
     for row in movable:

@@ -96,6 +96,17 @@ def read_fingerprint(path: Path = FILE) -> Fingerprint:
     return Fingerprint(working=_root(roots, "working"), archive=_root(roots, "archive"))
 
 
+def volume_root(tool: str, name: str) -> Path:
+    """One volume root, for a tool that needs it where a path is built; a fault raises refuse() for that tool.
+    The file is read at each call, so nothing is read at import and an empty ops/etc only refuses when used."""
+    if name not in ROOTS:
+        raise ValueError(f"no volume root is named {name}")
+    try:
+        return Path(getattr(read_fingerprint(FILE), name))
+    except FingerprintError as exc:
+        raise refuse(tool, FILE, exc) from None
+
+
 def refuse(tool: str, path: Path, error: FingerprintError) -> SystemExit:
     """The one refusal, for a tool to raise. It exits 1, in the manner of pycharm.py."""
     return SystemExit(f"{tool} refuses: the host fingerprint file {path} {error}. Nothing else was read or written.")

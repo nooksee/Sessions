@@ -25,16 +25,33 @@ import argparse
 import datetime as dt
 import json
 import os
+import importlib.util
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
-DEFAULT_ROOTS = [
-    Path.home() / ".codex" / "sessions",
-    # George's home: the Workbench VM mounts this share as its sessions dir.
-    Path("/media/nos4r2/user_vol/VMs/Shared/Workbench/sessions"),
-]
 TAIL_BYTES = 8_000_000
+
+
+def _volume_root(name: str) -> Path:
+    """One volume root from the room's private host fingerprint, read only where a path needs it. A missing or
+    malformed file refuses this tool by name with exit 1 and names no value (fingerprint.py)."""
+    path = Path(__file__).resolve().with_name("fingerprint.py")
+    key = f"fingerprint@{path}"
+    module = sys.modules.get(key)
+    if module is None:
+        spec = importlib.util.spec_from_file_location(key, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[key] = module   # the dataclass in it looks its module up here
+        spec.loader.exec_module(module)
+    return module.volume_root(Path(__file__).name, name)
+
+
+def default_roots() -> list[Path]:
+    """The host's Codex sessions, and George's: the Workbench VM mounts this share as its sessions dir."""
+    return [Path.home() / ".codex" / "sessions", _volume_root("working") / "VMs" / "Shared" / "Workbench" / "sessions"]
+
 ROTATE_PCT = 70.0
 
 # A session that keeps compacting is shedding working memory to stay under the
@@ -213,7 +230,7 @@ def find_sessions(roots: list[Path]) -> list[Path]:
 
 def main() -> int:
     args = parse_args()
-    roots = [Path(args.root).expanduser()] if args.root else DEFAULT_ROOTS
+    roots = [Path(args.root).expanduser()] if args.root else default_roots()
     paths = [Path(p).expanduser() for p in args.paths] or find_sessions(roots)
     reports = [health(p) for p in paths if p.is_file()]
     if args.json:

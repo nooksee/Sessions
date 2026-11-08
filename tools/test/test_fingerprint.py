@@ -226,5 +226,79 @@ class TheRefusal(Base):
         self.assertEqual(done.stdout, "")
 
 
+
+SCRIPTS = TOOL.parent
+
+
+def shared_fingerprint():
+    """The module each consumer loads for itself, by the key its loader uses, so that a test can point it at a file."""
+    key = f"fingerprint@{TOOL.resolve()}"
+    if key not in sys.modules:
+        spec = importlib.util.spec_from_file_location(key, TOOL.resolve())
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[key] = module
+        spec.loader.exec_module(module)
+    return sys.modules[key]
+
+
+def consumer(name: str):
+    spec = importlib.util.spec_from_file_location(f"{name}_under_fingerprint_test", SCRIPTS / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)   # importing reads no fingerprint: the suites run with ops/etc empty
+    return module
+
+
+class TheVolumeRoot(Base):
+    def test_each_root_by_name(self) -> None:
+        self.write()
+        with mock.patch.object(fingerprint, "FILE", self.path):
+            self.assertEqual(fingerprint.volume_root("t.py", "working"), Path(WORKING))
+            self.assertEqual(fingerprint.volume_root("t.py", "archive"), Path(ARCHIVE))
+
+    def test_a_fault_refuses_for_the_tool_and_names_no_value(self) -> None:
+        self.write(mode=0o644)
+        with mock.patch.object(fingerprint, "FILE", self.path), self.assertRaises(SystemExit) as caught:
+            fingerprint.volume_root("t.py", "working")
+        text = str(caught.exception.code)
+        self.assertTrue(text.startswith(f"t.py refuses: the host fingerprint file {self.path} is not private"), text)
+        self.assertNotIn(WORKING, text)
+
+    def test_an_unknown_root_is_a_programming_error_not_a_refusal(self) -> None:
+        self.write()
+        with mock.patch.object(fingerprint, "FILE", self.path), self.assertRaises(ValueError):
+            fingerprint.volume_root("t.py", "home")
+
+
+class TheConsumers(Base):
+    """The 4 volume-rooted lines in this room's own code read the file where the path is used, through volume_root, under their own names."""
+    CASES = (
+        ("alerts", lambda m: m.extra_codex_roots(), [Path(WORKING) / "VMs/Shared/Workbench/sessions"]),
+        ("telemetry", lambda m: m.default_roots()[1:], [Path(WORKING) / "VMs/Shared/Workbench/sessions"]),
+        ("watch", lambda m: m.default_sessions_roots()[1:], [Path(WORKING) / "VMs/Shared/Workbench/sessions"]),
+        ("retention", lambda m: [m._volume_root("archive")], [Path(ARCHIVE)]),
+    )
+
+    def test_each_derives_its_path_from_the_file(self) -> None:
+        self.write()
+        with mock.patch.object(shared_fingerprint(), "FILE", self.path):
+            for name, call, expected in self.CASES:
+                with self.subTest(name):
+                    self.assertEqual(call(consumer(name)), expected)
+
+    def test_each_refuses_under_its_own_name_without_the_file(self) -> None:
+        with mock.patch.object(shared_fingerprint(), "FILE", self.path):
+            for name, call, _ in self.CASES:
+                with self.subTest(name), self.assertRaises(SystemExit) as caught:
+                    call(consumer(name))
+                self.assertTrue(str(caught.exception.code).startswith(f"{name}.py refuses: the host fingerprint file"))
+
+    def test_alerts_keeps_a_callers_roots(self) -> None:
+        alerts = consumer("alerts")
+        with mock.patch.object(shared_fingerprint(), "FILE", self.path), \
+                mock.patch.object(alerts, "EXTRA_CODEX_ROOTS", [Path("/media/example/vm")]):
+            self.assertEqual(alerts.extra_codex_roots(), [Path("/media/example/vm")])
+
+
 if __name__ == "__main__":
     unittest.main()
