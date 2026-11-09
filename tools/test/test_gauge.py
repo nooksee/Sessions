@@ -165,6 +165,11 @@ class TheReviewedTable(unittest.TestCase):
             self.assertIn("platform.claude.com", table[model]["source"])
             self.assertIn(page, table[model]["source"])
             self.assertEqual(table[model]["observed"], "2026-11-06")
+        fable = table["claude-fable-5-2"]
+        self.assertEqual(fable["window"], 1000000)
+        self.assertIn("platform.claude.com", fable["source"])
+        self.assertIn("docs/en/models/fable-5-2/overview", fable["source"])
+        self.assertEqual(fable["observed"], "2026-11-09")
         for model, row in table.items():
             self.assertRegex(row["observed"], r"^\d{4}-\d{2}-\d{2}$", model)
             self.assertTrue(row["source"], model)
