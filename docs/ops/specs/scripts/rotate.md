@@ -10,6 +10,9 @@ Status: synthetic phases 0 to 9 implemented, dry-run only, with Claude-only
 window/build rehearsal and disposable custody, install, acceptance and close.
 No live rotation, persistent recovery or provider-load proof.
 
+Slice 5 adds explicit Claude adapter preparation on synthetic fixtures only,
+through phase 5; native phases 6 to 9 refuse before reading evidence.
+
 ## First Principles Rationale
 
 The operator, 2026-10-30: the rotation had never been formalized, and to him it always felt haphazard and awkward and was never carried out the same way twice. The craft existed in the Sessions doctrine: a native destination, a lineage capsule and the resident's own active window. But every rotation was assembled by hand from loose pieces, and the slips happened at the joins. In Joy's rotation 6, three of them came from hand-glued steps:
@@ -20,6 +23,56 @@ The operator, 2026-10-30: the rotation had never been formalized, and to him it 
 `rotate` performs the same phases in the same order every time. It stops at fixed points, refuses on any failed gate, and drafts its own receipt. The art stays where it belongs, in where the window is cut and what the transition note says.
 
 ## Mechanics and Sequencing
+
+### Claude adapter preparation (slice 5)
+
+Select `--adapter claude --adapter-plan fixtures/adapter.json`, in addition
+to the existing explicit synthetic-room and phase inputs. The default
+`--adapter fixture` retains the earlier rehearsal unchanged, including its
+temporary model phases 6 to 9. Neither selection admits native JSONL.
+
+The adapter plan is a private, bounded `rotate-claude-adapter/1` object.
+Its `kind` must be `registered-fixture`; `key`, `writer`, hashed `binding`,
+`gauge_sha256`, `closeout_sha256` and `destination_sha256` must match phase 0.
+`provider_version` is a nonblank string of at most 64 characters, a supplied
+fixture label, not an installed-version observation. Each reference below
+uses the existing exact `{path, sha256}` contract and confinement.
+
+| Phase | Implementation and stop | Design realization or remaining limit |
+| --- | --- | --- |
+| 0 | Existing trigger plus plan binding and `process_model`; all holders absent and the model observable | Separate Claude preparation path, with no host process or native admission claim |
+| 1 | Existing hash-bound closing record and mind-entry disposition | No handoff or approval is authored by the adapter |
+| 2 | Existing mind verifier, plus `notebook` reference | `rotate-notebook-fixture/1` binds `key`, `mind_sha256`, literal `writer_stopped: true`, and `memory`/`seal` references. Reuse `mind.projection_block` for the exact current prefix and `mind.read_seal` for canonical archive name, key, fixity and members; recheck its bytes against the bound reference and its `MEMORY.md` type/bytes against the notebook. Fixtures use the actual `mind-notebook-seal/1` format, not a second seal format. Real folder ownership and stopped writers remain unproved |
+| 3 | Existing spare metadata plus `destination_metadata` equality and `pristine` reference | Exactly one custom-title row and an inert user/assistant exchange; exact room, spare label, synthetic IDs, distinct linked message IDs and times from creation through build. User text is the source's `FIRST_PROMPT`, assistant text is `READY`. No container is created |
+| 4 | `compaction` reference, then existing window selection against its post-compaction reading | `rotate-compaction-fixture/1` requires `actor: operator`, `method: supported-interface`, `before_gauge_sha256`, zoned `at`, and `after_gauge` reference. Compaction follows the initial due reading and precedes closeout; post-reading is at or after compaction and no later than closeout, with unchanged measured window. Actual fixture boundary time matches `at`; summary precedes the selected prompt. This fixes the earlier rehearsal's same-reading assumption without fabricating a new trigger |
+| 5 | Existing in-process builder, externalizer and static gates; temporary artifacts removed at return | No whole native donor is imported, no capsule enters an external command line, no candidate is installed |
+| 6 | Refuse with `named-native-custody-go-required-native-unimplemented` | Physical copies, real holds, daily-batch joins and final durable media fixity are not implemented here |
+| 7 | Refuse with `post-custody-replacement-go-required-native-unimplemented` | No native swap, registry/binding write, `.NEW` publication or native inverse |
+| 8 | Refuse with `named-native-load-go-required-native-unimplemented` | No provider launch, append, native reading or operator acceptance |
+| 9 | Refuse with `named-donor-disposition-go-required-native-unimplemented` | No native receipt or donor disposition |
+
+The fixture prompt is invented input, not operator words. Compaction records
+are declarations only; the adapter never compacts or authenticates a person.
+The pre-compaction due snapshot remains the reported trigger; the separately
+validated post-compaction snapshot selects the carried window. Native card
+delivery and installed-version evidence still need their accepted instruments.
+
+`--native-action` explicitly requests a refused act: `disposable-exercise`,
+`compact`, `rotation`, `hold`, `custody`, `install`, `load`, `rollback` or
+`donor-disposition`. Every refusal names the corresponding go, except
+compaction, which names its operator-only boundary. No supplied go enables
+these paths. `--adapter codex` refuses with
+`codex-summary-active-window-and-loader-proof-required`, even at phase 0;
+the default fixture mode's earlier Codex metadata checks remain unchanged.
+
+Design limits retained, not silently claimed built: unregistered disposable
+admission, real closed-writer/ownership proof, persistent checkpoints and
+restart, native W5 joins, physical custody, durable media paths, native
+promotion/load/rollback and both named live exercises. The Manager owns the
+separate custody-tool disk check. Safe roots, F1 registry privacy and C09
+remain required. This slice creates no runtime map entry or live capability.
+Fixture seals retain Evidence's 1-MiB bound; the native seal tool's separate
+16-MiB notebook limit does not enlarge fixture admission.
 
 ### Implemented synthetic slices: one dry-run stop at a time
 
