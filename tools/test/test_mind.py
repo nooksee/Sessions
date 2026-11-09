@@ -9,7 +9,6 @@ items that the port fixes has a test named for it. Run:
 """
 import importlib.util
 import fcntl
-import io
 import json
 import os
 import re
@@ -19,7 +18,6 @@ import shutil
 import stat
 import subprocess
 import sys
-import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -868,518 +866,15 @@ class MindLockLocation(unittest.TestCase):
         self.assertEqual(old.read_bytes(), b"preserved")
 
 
-class ProjectTests(unittest.TestCase):
-    """W5 first slice: mind project --key K --notebook DIR, in synthetic rooms and notebooks only."""
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="mind-project-")
-        self.r = Room(Path(self.tmp.name))
-        self.nb = Path(self.tmp.name) / "notebooks" / "session-doctor"
-        self.nb.mkdir(parents=True)
-        self.nb.chmod(0o700)
-        self.index = self.nb / "MEMORY.md"
-        self.tail = "- [Room facts](room-facts.md) - a note the resident keeps\n"
-        self.index.write_text(self.tail)
-        self.index.chmod(0o600)
-
-    def tearDown(self):
-        self.tmp.cleanup()
-
-    def project(self, key="session-doctor", notebook=None, env=None):
-        return self.r.run("project", "--key", key, "--notebook", str(notebook or self.nb), env=env)
-
-    def ok(self, result):
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        return result
-
-    def refused(self, result, *words):
-        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        for word in words:
-            self.assertIn(word, result.stderr)
-        return result
-
-    def genesis(self):
-        self.assertEqual(self.r.write({"add": [CORE, LESSON, COMMIT]}).returncode, 0)
-
-    def block(self, key="session-doctor"):
-        rel, digest = self.r.pointer()[key]
-        data = (self.r.room / rel).read_bytes()
-        return (f"<!-- mind-projection begin key={key} leaf={rel} sha256={digest}: a copy written by mind.py project; "
-                f"the leaf is the authority -->\n" + data.decode("utf-8") + f"<!-- mind-projection end key={key} -->\n")
-
-    def room_bytes(self):
-        return {p: (self.r.room / p).read_bytes() for p in self.r.files()}
-
-    def test_w5_project_puts_one_block_at_the_top_and_keeps_every_other_byte(self):
-        self.genesis()
-        before = self.room_bytes()
-        out = self.ok(self.project()).stdout
-        self.assertEqual(self.index.read_text(), self.block() + self.tail)
-        self.assertEqual(stat.S_IMODE(self.index.stat().st_mode), 0o600)
-        self.assertIn("projection written", out)
-        self.assertIn("not evidence that any provider loaded it", out)
-        self.assertEqual(self.room_bytes(), before)                 # leaf and pointer untouched
-        self.assertNotIn("never-printed", out)
-
-    def test_w5_project_creates_the_index_in_a_named_empty_notebook(self):
-        self.genesis()
-        self.index.unlink()
-        self.ok(self.project())
-        self.assertEqual(self.index.read_text(), self.block())
-        self.assertEqual(stat.S_IMODE(self.index.stat().st_mode), 0o600)
-
-    def test_w5_project_is_idempotent_and_follows_a_new_leaf(self):
-        self.genesis()
-        self.ok(self.project())
-        first = self.index.read_bytes()
-        self.assertIn("projection unchanged", self.ok(self.project()).stdout)
-        self.assertEqual(self.index.read_bytes(), first)
-        self.assertEqual(self.r.write({"add": [dict(LESSON, text="Another lesson.")]}, yes="yes, add it").returncode, 0)
-        out = self.ok(self.project()).stdout
-        self.assertIn("matched the leaf it named", out)
-        self.assertEqual(self.index.read_text(), self.block() + self.tail)
-        self.assertNotEqual(self.index.read_bytes(), first)
-
-    def test_w5_project_has_no_default_notebook(self):
-        self.genesis()
-        result = self.r.run("project", "--key", "session-doctor")
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("--notebook", result.stderr)
-        missing = Path(self.tmp.name) / "notebooks" / "absent"
-        self.refused(self.project(notebook=missing), "creates none")
-        self.assertFalse(missing.exists())
-        self.refused(self.project(notebook=" "), "--notebook")
-        self.assertEqual(self.index.read_text(), self.tail)
-
-    def test_w5_project_refuses_unsafe_notebook_paths(self):
-        self.genesis()
-        real = Path(self.tmp.name) / "real"
-        real.mkdir(mode=0o700)
-        real.chmod(0o700)
-        (real / "nb").mkdir()
-        (real / "nb").chmod(0o700)
-        link_parent = Path(self.tmp.name) / "linked-parent"
-        link_parent.symlink_to(real)
-        self.refused(self.project(notebook=link_parent / "nb"), "symbolic link")
-        link_dir = Path(self.tmp.name) / "linked-nb"
-        link_dir.symlink_to(self.nb)
-        self.refused(self.project(notebook=link_dir), "symbolic link")
-        self.nb.chmod(0o755)
-        self.refused(self.project(), "not 0700")
-        self.nb.chmod(0o700)
-        self.index.chmod(0o644)
-        self.refused(self.project(), "not 0600")
-        self.index.chmod(0o600)
-        twin = Path(self.tmp.name) / "twin"
-        os.link(self.index, twin)
-        self.refused(self.project(), "hard links")
-        twin.unlink()
-        self.index.unlink()
-        other = Path(self.tmp.name) / "elsewhere.md"
-        other.write_text(self.tail)
-        self.index.symlink_to(other)
-        self.refused(self.project(), "not a regular file")
-        self.assertEqual(other.read_text(), self.tail)
-        self.index.unlink()
-        plain = Path(self.tmp.name) / "plain-file"
-        plain.write_text("x")
-        self.refused(self.project(notebook=plain), "not a directory")
-        self.assertEqual(plain.read_text(), "x")
-
-    def test_w5_project_refuses_wrong_duplicate_malformed_and_misplaced_markers(self):
-        self.genesis()
-        self.assertEqual(self.r.write({"add": [CORE]}, key="claudine-colbert").returncode, 0)
-        cases = {
-            "another key": (self.block("claudine-colbert") + self.tail, "not session-doctor"),
-            "duplicate": (self.block() + self.block() + self.tail, "4 projection markers"),
-            "malformed": ("<!-- mind-projection begin key=session-doctor -->\n" + self.tail, "malformed"),
-            "end only": (self.tail + "<!-- mind-projection end key=session-doctor -->\n", "1 projection markers"),
-            "not at the top": (self.tail + self.block(), "not at the top"),
-            "crlf marker": (self.block().replace("-->\n", "-->\r\n", 1) + self.tail, "malformed"),
-        }
-        for name, (text, word) in cases.items():
-            with self.subTest(case=name):
-                self.index.write_text(text)
-                before = self.index.read_bytes()
-                self.refused(self.project(), word)
-                self.assertEqual(self.index.read_bytes(), before)
-
-    def test_w5_an_edited_block_is_reported_and_replaced(self):
-        self.genesis()
-        self.ok(self.project())
-        self.index.write_text(self.index.read_text().replace("Measure before explaining.", "Explain first."))
-        out = self.ok(self.project()).stdout
-        self.assertIn("edited by hand", out)
-        self.assertEqual(self.index.read_text(), self.block() + self.tail)
-
-    def test_w5_an_unverified_mind_is_never_projected_and_nothing_is_locked(self):
-        self.refused(self.project(), "not projected until its check passes")
-        self.assertFalse((self.r.room / "logs").exists())
-        self.assertEqual(self.index.read_text(), self.tail)
-        self.genesis()
-        leaf = self.r.leaf()
-        leaf.write_text(leaf.read_text().replace("Measure before explaining.", "Explain first."))
-        self.refused(self.project(), "not projected until its check passes")
-        self.assertEqual(self.index.read_text(), self.tail)
-        self.refused(self.project(key="nobody-here"), "not projected until its check passes")
-
-    def test_w5_oversize_is_refused_never_truncated(self):
-        many = [dict(LESSON, text=f"Lesson number {n} in words.") for n in range(1, 31)]
-        self.assertEqual(self.r.write({"add": many}).returncode, 0)
-        self.assertGreater(len(self.r.leaf().read_text().splitlines()), mind.LOAD_LINES)
-        self.refused(self.project(), "never truncated")
-        self.assertEqual(self.index.read_text(), self.tail)
-
-    def test_w5_project_needs_positive_git_exclusion(self):
-        if subprocess.run(["git", "--version"], capture_output=True).returncode != 0:
-            self.skipTest("git is not installed")
-        self.genesis()
-        subprocess.run(["git", "init", "-q", str(self.nb)], check=True)
-        self.refused(self.project(), "not ignored by Git")
-        self.assertEqual(self.index.read_text(), self.tail)
-        (self.nb / ".gitignore").write_text("/MEMORY.md\n")
-        self.ok(self.project())
-        self.assertEqual(self.index.read_text(), self.block() + self.tail)
-
-
-class SealTests(unittest.TestCase):
-    """W5 second slice: seal, unseal and the two check gates, in synthetic rooms and notebooks only."""
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="mind-seal-")
-        self.base = Path(self.tmp.name)
-        self.r = Room(self.base)
-        self.nb = self.base / "notebooks" / "session-doctor"
-        self.nb.mkdir(parents=True)
-        self.nb.chmod(0o700)
-        self.files = {"MEMORY.md": b"- [Room facts](room-facts.md) - a note\n", "room-facts.md": b"The room has one door.\n",
-                      "topics/deep.md": b"A note in a subfolder.\n"}
-        (self.nb / "topics").mkdir()
-        (self.nb / "topics").chmod(0o700)
-        for rel, data in self.files.items():
-            (self.nb / rel).write_bytes(data)
-            (self.nb / rel).chmod(0o600)
-
-    def tearDown(self):
-        self.tmp.cleanup()
-
-    def ok(self, result):
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        return result
-
-    def refused(self, result, *words):
-        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        for word in words:
-            self.assertIn(word, result.stderr)
-        return result
-
-    def seal(self, key="session-doctor", notebook=None, env=None):
-        return self.r.run("seal", "--key", key, "--notebook", str(notebook or self.nb), env=env)
-
-    def unseal(self, name, into, key="session-doctor", replace=False):
-        return self.r.run("unseal", "--key", key, "--seal", name, "--into", str(into), *(["--replace"] if replace else []))
-
-    def seals(self):
-        return sorted(p.name for p in (self.r.room / "archives").glob("NOTEBOOK-*")) if (self.r.room / "archives").exists() else []
-
-    def sealed(self, **kw) -> str:
-        out = self.ok(self.seal(**kw)).stdout
-        return re.search(r"archives/(NOTEBOOK-\S+\.tar)", out).group(1)
-
-    def tree(self, folder: Path) -> dict:
-        return {p.relative_to(folder).as_posix(): (p.read_bytes() if p.is_file() else None, stat.S_IMODE(p.lstat().st_mode))
-                for p in folder.rglob("*")}
-
-    def plant(self, members, key="session-doctor", manifest=None, date="2026-10-30") -> str:
-        """A hand-made seal with a correct name hash, as a forger would write one."""
-        buf = io.BytesIO()
-        with tarfile.open(fileobj=buf, mode="w", format=tarfile.PAX_FORMAT) as tar:
-            listed = []
-            for info, data in members:
-                if info.name.startswith("notebook/") and (info.isreg() or info.isdir()):
-                    listed.append({"path": info.name[len("notebook/"):], "type": "file" if info.isreg() else "dir"}
-                                  | ({"sha256": mind.sha256(data), "size": len(data)} if info.isreg() else {}))
-            body = json.dumps(manifest if manifest is not None else
-                              {"format": mind.SEAL_FORMAT, "key": key, "members": listed}).encode("utf-8")
-            for info, data in [(self.info("SEAL.json", size=len(body)), body), (self.info("notebook", kind=tarfile.DIRTYPE), b"")] + members:
-                tar.addfile(info, io.BytesIO(data) if info.isreg() else None)
-        data = buf.getvalue()
-        name = f"NOTEBOOK-{key}-{date}-{mind.sha256(data)[:8]}.tar"
-        (self.r.room / "archives").mkdir(exist_ok=True)
-        (self.r.room / "archives" / name).write_bytes(data)
-        return name
-
-    @staticmethod
-    def info(name, kind=tarfile.REGTYPE, size=0, uid=None, linkname=""):
-        info = tarfile.TarInfo(name)
-        info.type, info.size, info.linkname = kind, size, linkname
-        info.uid, info.gid, info.uname, info.gname = os.geteuid() if uid is None else uid, os.getegid(), "", ""
-        info.mode = 0o700 if kind == tarfile.DIRTYPE else 0o600
-        return info
-
-    # -- seal ------------------------------------------------------------------
-    def test_w5_seal_writes_once_binding_key_and_hash(self):
-        name = self.sealed()
-        path = self.r.room / "archives" / name
-        self.assertRegex(name, r"^NOTEBOOK-session-doctor-2026-10-30-[0-9a-f]{8}\.tar$")
-        self.assertTrue(mind.sha256(path.read_bytes()).startswith(name[-12:-4]))
-        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
-        with tarfile.open(path) as tar:
-            names = tar.getnames()
-            manifest = json.loads(tar.extractfile("SEAL.json").read())
-        self.assertEqual(names[:2], ["SEAL.json", "notebook"])
-        self.assertEqual(manifest["key"], "session-doctor")
-        self.assertEqual(sorted(m["path"] for m in manifest["members"]), ["MEMORY.md", "room-facts.md", "topics", "topics/deep.md"])
-        first = path.read_bytes()
-        self.assertIn("already sealed, unchanged", self.ok(self.seal()).stdout)
-        self.assertEqual(self.seals(), [name])
-        (self.nb / "room-facts.md").write_bytes(b"The room has two doors.\n")
-        second = self.sealed()
-        self.assertNotEqual(second, name)
-        self.assertEqual(path.read_bytes(), first)                     # the earlier seal is untouched
-
-    def test_w5_seal_never_overwrites_other_bytes(self):
-        name = self.sealed()
-        path = self.r.room / "archives" / name
-        path.write_bytes(path.read_bytes() + b"x")
-        tampered = path.read_bytes()
-        self.refused(self.seal(), "never overwritten")
-        self.assertEqual(path.read_bytes(), tampered)
-
-    def test_w5_seal_refuses_links_specials_hard_links_and_an_unregistered_key(self):
-        cases = []
-        link = self.nb / "linked.md"
-        link.symlink_to(self.nb / "room-facts.md")
-        cases.append(("symbolic link", link.unlink))
-        for word, cleanup in cases:
-            self.refused(self.seal(), word)
-            cleanup()
-        os.mkfifo(self.nb / "pipe")
-        self.refused(self.seal(), "device, pipe or socket")
-        (self.nb / "pipe").unlink()
-        os.link(self.nb / "room-facts.md", self.base / "twin")
-        self.refused(self.seal(), "hard links")
-        (self.base / "twin").unlink()
-        self.refused(self.seal(key="nobody-here"), "registered 0 times")
-        self.nb.chmod(0o755)
-        self.refused(self.seal(), "not 0700")
-        self.nb.chmod(0o700)
-        self.refused(self.r.run("seal", "--key", "session-doctor", "--notebook", " "), "--notebook is required")
-        self.assertEqual(self.r.run("seal", "--key", "session-doctor").returncode, 2)
-        self.assertEqual(self.seals(), [])
-        self.assertFalse((self.r.room / "logs").exists())             # refused before the lock
-
-    def test_w5_seal_needs_positive_git_exclusion(self):
-        if subprocess.run(["git", "--version"], capture_output=True).returncode != 0:
-            self.skipTest("git is not installed")
-        subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
-        self.refused(self.seal(), "not ignored by Git")
-        self.assertEqual(self.seals(), [])
-        (self.r.room / ".gitignore").write_text("/archives/NOTEBOOK-*\n/logs/\n")
-        self.ok(self.seal())
-
-    # -- unseal ----------------------------------------------------------------
-    def test_w5_unseal_restores_byte_for_byte_into_an_absent_folder(self):
-        name = self.sealed()
-        into = self.base / "successor" / "session-doctor"
-        into.parent.mkdir()
-        self.ok(self.unseal(name, into))
-        got = self.tree(into)
-        self.assertEqual({k: v[0] for k, v in got.items()}, {**self.files, "topics": None})
-        self.assertEqual({k: v[1] for k, v in got.items()}, {"MEMORY.md": 0o600, "room-facts.md": 0o600, "topics": 0o700,
-                                                             "topics/deep.md": 0o600})
-        self.assertEqual(stat.S_IMODE(into.stat().st_mode), 0o700)
-        self.assertEqual(sorted(p.name for p in into.parent.iterdir()), ["session-doctor"])   # no staging left
-
-    def test_w5_a_note_the_provider_wrote_at_0664_seals_and_comes_back_at_0600(self):
-        note = self.nb / "room-facts.md"
-        note.chmod(0o664)
-        name = self.sealed()
-        into = self.base / "successor" / "session-doctor"
-        into.parent.mkdir()
-        self.ok(self.unseal(name, into))
-        got = self.tree(into)
-        self.assertEqual(got["room-facts.md"], (self.files["room-facts.md"], 0o600))
-
-    def test_w5_unseal_fills_an_empty_folder_and_replaces_only_with_replace(self):
-        name = self.sealed()
-        into = self.base / "successor"
-        into.mkdir(mode=0o700)
-        into.chmod(0o700)
-        self.ok(self.unseal(name, into))
-        (into / "MEMORY.md").write_bytes(b"newer work\n")
-        self.refused(self.unseal(name, into), "not empty", "--replace")
-        self.assertEqual((into / "MEMORY.md").read_bytes(), b"newer work\n")
-        out = self.ok(self.unseal(name, into, replace=True)).stdout
-        self.assertEqual((into / "MEMORY.md").read_bytes(), self.files["MEMORY.md"])
-        kept = [p for p in self.base.iterdir() if p.name.startswith(".successor.replaced-")]
-        self.assertEqual(len(kept), 1)
-        self.assertEqual((kept[0] / "MEMORY.md").read_bytes(), b"newer work\n")       # the earlier notebook is kept
-        self.assertIn("kept, unread", out)
-
-    def test_w5_unseal_checks_fixity_before_extracting(self):
-        name = self.sealed()
-        path = self.r.room / "archives" / name
-        data = bytearray(path.read_bytes())
-        data[600] ^= 1
-        path.write_bytes(bytes(data))
-        into = self.base / "successor"
-        self.refused(self.unseal(name, into), "no longer match the hash in its name")
-        self.assertFalse(into.exists())
-        self.assertEqual([p.name for p in self.base.iterdir() if ".unseal-" in p.name], [])
-
-    def test_w5_unseal_refuses_hostile_members_without_extracting(self):
-        payload = b"x\n"
-        good = (self.info("notebook/MEMORY.md", size=len(payload)), payload)
-        cases = {
-            "absolute": [(self.info("/etc/evil", size=2), payload)],
-            "escape": [(self.info("notebook/../evil", size=2), payload)],
-            "symlink": [(self.info("notebook/l", kind=tarfile.SYMTYPE, linkname="/etc/passwd"), b"")],
-            "hard link": [good, (self.info("notebook/h", kind=tarfile.LNKTYPE, linkname="notebook/MEMORY.md"), b"")],
-            "device": [(self.info("notebook/d", kind=tarfile.CHRTYPE), b"")],
-            "pipe": [(self.info("notebook/p", kind=tarfile.FIFOTYPE), b"")],
-            "foreign owner": [(self.info("notebook/MEMORY.md", size=2, uid=os.geteuid() + 1), payload)],
-            "outside the root": [(self.info("elsewhere.md", size=2), payload)],
-            "before its folder": [(self.info("notebook/sub/a.md", size=2), payload)],
-        }
-        words = {"absolute": "escapes", "escape": "escapes", "symlink": "special", "hard link": "special",
-                 "device": "special", "pipe": "special", "foreign owner": "foreign ownership",
-                 "outside the root": "manifest lists", "before its folder": "comes before its folder"}
-        into = self.base / "successor"
-        for case, members in cases.items():
-            with self.subTest(case=case):
-                name = self.plant(members)
-                self.refused(self.unseal(name, into), words[case])
-                self.assertFalse(into.exists())
-        name = self.plant([good], manifest={"format": mind.SEAL_FORMAT, "key": "claudine-colbert", "members": [
-            {"path": "MEMORY.md", "type": "file", "sha256": mind.sha256(payload), "size": 2}]})
-        self.refused(self.unseal(name, into), "belongs to 'claudine-colbert'")
-        name = self.plant([good], manifest={"format": mind.SEAL_FORMAT, "key": "session-doctor", "members": [
-            {"path": "MEMORY.md", "type": "file", "sha256": "0" * 64, "size": 2}]})
-        self.refused(self.unseal(name, into), "does not hash as its manifest records")
-        name = self.plant([good], manifest={"format": mind.SEAL_FORMAT, "key": "session-doctor", "members": []})
-        self.refused(self.unseal(name, into), "not the ones its manifest lists")
-        self.assertFalse(into.exists())
-        self.assertEqual([p.name for p in self.base.iterdir() if ".unseal-" in p.name], [])
-
-    def test_w5_unseal_binds_the_key(self):
-        name = self.sealed()
-        into = self.base / "successor"
-        self.refused(self.unseal(name, into, key="claudine-colbert"), f"{name} belongs to 'session-doctor'")
-        moved = name.replace("session-doctor", "claudine-colbert")
-        (self.r.room / "archives" / name).rename(self.r.room / "archives" / moved)
-        self.refused(self.unseal(moved, into, key="claudine-colbert"), "manifest belongs to 'session-doctor'")
-        self.refused(self.unseal("NOTEBOOK-oops.tar", into), "not a seal name")
-        self.assertFalse(into.exists())
-
-    def test_w5_unseal_refuses_unsafe_targets(self):
-        name = self.sealed()
-        real = self.base / "real"
-        real.mkdir(mode=0o700)
-        real.chmod(0o700)
-        linked = self.base / "linked"
-        linked.symlink_to(real)
-        self.refused(self.unseal(name, linked / "nb"), "symbolic link")
-        self.refused(self.unseal(name, linked), "symbolic link")
-        loose = self.base / "loose"
-        loose.mkdir()
-        loose.chmod(0o755)
-        self.refused(self.unseal(name, loose), "not 0700")
-        self.refused(self.unseal(name, self.base / "absent-parent" / "nb"), "does not exist")
-        self.assertEqual(list(real.iterdir()), [])
-
-    def test_w5_unseal_needs_positive_git_exclusion(self):
-        if subprocess.run(["git", "--version"], capture_output=True).returncode != 0:
-            self.skipTest("git is not installed")
-        name = self.sealed()
-        home = self.base / "home"
-        home.mkdir()
-        subprocess.run(["git", "init", "-q", str(home)], check=True)
-        self.refused(self.unseal(name, home / "nb"), "not ignored by Git")
-        self.assertFalse((home / "nb").exists())
-        (home / ".gitignore").write_text("/nb/\n/.nb.*\n")
-        self.ok(self.unseal(name, home / "nb"))
-
-    def test_w5_a_staged_tree_must_equal_the_seal(self):
-        members = [("MEMORY.md", "file", b"x\n", 0), ("topics", "dir", b"", 0)]
-        stage = self.base / "stage"
-        stage.mkdir(mode=0o700)
-        (stage / "topics").mkdir(mode=0o700)
-        (stage / "topics").chmod(0o700)
-        (stage / "MEMORY.md").write_bytes(b"x\n")
-        (stage / "MEMORY.md").chmod(0o600)
-        self.assertTrue(mind.staged_matches(stage, members))
-        (stage / "MEMORY.md").write_bytes(b"y\n")
-        self.assertFalse(mind.staged_matches(stage, members))
-        (stage / "MEMORY.md").write_bytes(b"x\n")
-        (stage / "MEMORY.md").chmod(0o644)
-        self.assertFalse(mind.staged_matches(stage, members))
-        (stage / "MEMORY.md").chmod(0o600)
-        (stage / "extra.md").write_bytes(b"")
-        self.assertFalse(mind.staged_matches(stage, members))
-
-    def test_w5_a_bad_staged_write_never_takes_the_name(self):
-        name = self.sealed()
-        into = self.base / "successor"
-        argv = ["--room", str(self.r.room), "--registry", str(self.r.registry), "--now", "2026-10-30T18:00:00Z",
-                "unseal", "--key", "session-doctor", "--seal", name, "--into", str(into)]
-        short = lambda fd, data: os.write(fd, data[:-1]) if data else None
-        with mock.patch.object(mind, "write_all", side_effect=short), mock.patch("sys.stderr", new=io.StringIO()) as err:
-            self.assertEqual(mind.main(argv), 2)
-        self.assertIn("does not match the seal", err.getvalue())
-        self.assertFalse(into.exists())
-        self.assertEqual([p.name for p in self.base.iterdir() if ".unseal-" in p.name], [])
-
-    # -- the two check gates ---------------------------------------------------------
-    def test_w5_check_seal_gate(self):
-        self.assertEqual(self.r.write({"add": [CORE]}).returncode, 0)
-        self.assertIn("PASS session-doctor seal : no seals", self.ok(self.r.run("check")).stdout)
-        name = self.sealed()
-        self.assertIn("1 seals, each hashing as named", self.ok(self.r.run("check", "--key", "session-doctor")).stdout)
-        path = self.r.room / "archives" / name
-        path.write_bytes(path.read_bytes()[:-1] + b"\x01")
-        result = self.r.run("check", "--key", "session-doctor")
-        self.assertEqual(result.returncode, 1, result.stdout)
-        self.assertIn("FAIL session-doctor seal", result.stdout)
-        self.ok(self.r.run("show", "session-doctor"))                  # show is unchanged: the gate lives in check
-        path.unlink()
-        (self.r.room / "archives" / "NOTEBOOK-garbled.tar").write_bytes(b"")
-        self.assertIn("1 NOTEBOOK- files", self.ok(self.r.run("check")).stdout)
-
-    def test_w5_check_projection_gate(self):
-        self.assertEqual(self.r.write({"add": [CORE]}).returncode, 0)
-        check = ("check", "--key", "session-doctor", "--notebook", str(self.nb))
-        self.assertIn("holds no projection", self.r.run(*check).stdout)
-        self.ok(self.r.run("project", "--key", "session-doctor", "--notebook", str(self.nb)))
-        self.assertIn("PASS session-doctor projection : matches", self.ok(self.r.run(*check)).stdout)
-        index = self.nb / "MEMORY.md"
-        projected = index.read_text()
-        index.write_text(projected.replace("I chose the name Shannon", "I chose a name"))
-        result = self.r.run(*check)
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("byte for byte", result.stdout)
-        index.write_text(projected)
-        self.assertEqual(self.r.write({"add": [LESSON]}, yes="yes, add it").returncode, 0)
-        result = self.r.run(*check)
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("project again", result.stdout)
-        self.refused(self.r.run("check", "--notebook", str(self.nb)), "needs --key")
-
-
-class SealFieldTests(unittest.TestCase):
-    """W5 third slice: leaf format 2, a notebook line naming a seal, in synthetic rooms only."""
+class RetiredNotebookTests(unittest.TestCase):
+    """The notebook (W5) is retired. The tool writes version 1 leaves only, still reads and verifies a version 2 leaf
+    as it was written, keeps its notebook line as history, and checks no seal."""
 
     OLD_POLICY = "a92a7c3f6a3b6112"          # the policy digest at main b710b60c, before leaf format 2
 
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="mind-sealfield-")
-        self.base = Path(self.tmp.name)
-        self.r = Room(self.base)
-        self.nb = self.base / "notebooks" / "session-doctor"
-        self.nb.mkdir(parents=True)
-        self.nb.chmod(0o700)
-        (self.nb / "MEMORY.md").write_bytes(b"- [Room facts](room-facts.md) - a note\n")
-        (self.nb / "MEMORY.md").chmod(0o600)
+        self.tmp = tempfile.TemporaryDirectory(prefix="mind-retired-notebook-")
+        self.r = Room(Path(self.tmp.name))
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -1388,36 +883,26 @@ class SealFieldTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         return result
 
-    def refused(self, result, *words):
-        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        for word in words:
-            self.assertIn(word, result.stderr)
-        return result
+    def check(self):
+        return self.r.run("check", "--key", "session-doctor")
 
-    def seal(self, key="session-doctor", notebook=None) -> str:
-        out = self.ok(self.r.run("seal", "--key", key, "--notebook", str(notebook or self.nb))).stdout
-        return re.search(r"archives/(NOTEBOOK-\S+\.tar)", out).group(1)
+    REF = "archives/NOTEBOOK-session-doctor-2026-10-30-0123abcd.tar sha256=0123abcd" + "e" * 56
 
-    def preview(self, path, seal=None, key="session-doctor"):
-        result = self.r.run("preview", key, "--changes", path, *(["--seal", seal] if seal else []))
-        m = re.search(r"^binding: ([0-9a-f]{64})$", result.stdout, re.M)
-        return (m.group(1) if m else ""), result
+    def plant_version_2(self) -> str:
+        """A version 2 leaf after the current version 1 leaf, as the third slice wrote them; its seal is not on disk."""
+        rel = self.r.pointer()["session-doctor"][0]
+        head, entries, data = mind.load_leaf(self.r.room, "session-doctor", rel)
+        yes = '2026-10-30, "yes, with the seal"'
+        new, issued, added, amended, retired, _ = mind.apply_changes(
+            entries, mind.parse_issued(head["issued"]), [LESSON], [], [], yes)
+        head2 = dict(head, written="2026-10-30T17:30:00Z", by="claudine-colbert",
+                     predecessor=f"{rel} sha256={mind.sha256(data)}", change=mind.change_text(added, amended, retired),
+                     yes=yes, issued=mind.issued_text(issued), notebook=self.REF)
+        name = self.r.plant(head2, new)
+        self.r.minute = 40
+        return name
 
-    def write(self, obj, seal=None, preview_seal="same", binding=None, key="session-doctor"):
-        """As a writer does it: preview with the seal, then write with the binding preview printed."""
-        path = self.r.changes(obj)
-        shown, _ = self.preview(path, seal if preview_seal == "same" else preview_seal, key)
-        return self.r.run("write", key, "--changes", path, "--preview", binding or shown or "0" * 64,
-                          "--yes", "yes, record it", "--by", "claudine-colbert", *(["--seal", seal] if seal else []))
-
-    def reference(self, name: str) -> str:
-        return f"archives/{name} sha256={mind.sha256((self.r.room / 'archives' / name).read_bytes())}"
-
-    def check(self, *extra):
-        return self.r.run("check", "--key", "session-doctor", *extra)
-
-    # -- version 1 stays as it was ------------------------------------------------------
-    def test_w5_a_version_1_leaf_of_the_real_shape_still_passes(self):
+    def test_a_version_1_leaf_of_the_real_shape_still_passes(self):
         """A first leaf of three lessons, two of them closed incidents, written under the old policy."""
         lesson = {"layer": "lesson", "event": "a value written before it was measured", "date": "2026-10-29",
                   "source": "Receipts/x.md", "applies_when": "a record carries a value", "not_when": "nothing is recorded"}
@@ -1441,145 +926,81 @@ class SealFieldTests(unittest.TestCase):
         self.assertEqual(mind.leaf_format(mind.parse_leaf(text)[0]), 1)
         out = self.ok(self.check()).stdout
         self.assertIn(f"REPORT session-doctor policy : written under policy {self.OLD_POLICY}", out)
-        self.assertIn("PASS session-doctor leaf-seal : no leaf names a seal", out)
+        self.assertNotIn("seal", out)
         self.assertEqual(self.ok(self.r.run("show", "session-doctor")).stdout, text)
         self.assertNotIn("notebook", self.ok(self.r.run("history", "session-doctor")).stdout)
-        name = self.seal()                                      # a version 2 leaf builds on it
-        self.ok(self.write({"add": [CORE]}, seal=name))
+        self.ok(self.r.write({"add": [CORE]}))
+        self.assertNotIn("\nnotebook: ", self.r.leaf().read_text())
         self.ok(self.check())
 
-    def test_w5_the_binding_without_a_seal_is_unchanged(self):
+    def test_the_binding_is_the_plain_body(self):
         changes = ([{"layer": "core", "text": "x"}], [], [])
         old = mind.sha256(json.dumps({"key": "k", "predecessor": "none", "changes": {"add": changes[0], "amend": [],
                                      "retire": []}}, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode())
         self.assertEqual(mind.binding_of("k", "none", *changes), old)
-        self.assertNotEqual(mind.binding_of("k", "none", *changes, "archives/NOTEBOOK-k-2026-10-30-00000000.tar"), old)
+        with self.assertRaises(TypeError):
+            mind.binding_of("k", "none", *changes, "archives/NOTEBOOK-k-2026-10-30-00000000.tar")
 
-    # -- version 2 -------------------------------------------------------------------------
-    def test_w5_write_with_a_seal_records_a_version_2_leaf(self):
+    def test_a_version_2_leaf_is_read_and_served_and_its_seal_is_not_checked(self):
         self.ok(self.r.write({"add": [CORE]}))
-        name = self.seal()
-        self.ok(self.write({"add": [LESSON]}, seal=name))
+        self.plant_version_2()
         text = self.r.leaf().read_text()
-        lines = text.split("\n")
-        policy_at = next(i for i, line in enumerate(lines) if line.startswith("policy: "))
-        self.assertEqual(lines[policy_at + 1], f"notebook: {self.reference(name)}")
-        head, _ = mind.parse_leaf(text)
-        self.assertEqual((mind.leaf_format(head), mind.render_leaf(*mind.parse_leaf(text))), (2, text))
-        self.assertEqual(stat.S_IMODE(self.r.leaf().stat().st_mode), 0o600)
-        self.assertIn("PASS session-doctor leaf-seal : 1 leaves of the chain name a seal", self.ok(self.check()).stdout)
-        self.assertIn(f"notebook: {self.reference(name)}", self.ok(self.r.run("show", "session-doctor")).stdout)
-        self.ok(self.r.write({"add": [COMMIT]}, yes="yes, a plain one"))   # a version 1 leaf after it
+        self.assertIn(f"\nnotebook: {self.REF}\n", text)
+        self.assertEqual(mind.leaf_format(mind.parse_leaf(text)[0]), 2)
+        self.assertFalse((self.r.room / "archives" / self.REF.split()[0][len("archives/"):]).exists())
+        out = self.ok(self.check()).stdout
+        self.assertNotIn("seal", out)
+        self.assertEqual(self.ok(self.r.run("show", "session-doctor")).stdout, text)
+        self.ok(self.r.write({"add": [COMMIT]}, yes="yes, a plain one"))     # a version 1 leaf after it
         self.assertNotIn("\nnotebook: ", self.r.leaf().read_text())
+        self.ok(self.check())
         history = self.ok(self.r.run("history", "session-doctor")).stdout.splitlines()
-        self.assertEqual([("; notebook " + self.reference(name)) in line for line in history], [False, True, False])
-        self.assertIn("1 leaves of the chain name a seal", self.ok(self.check()).stdout)
+        self.assertEqual([("; notebook " + self.REF) in line for line in history], [False, True, False])
 
-    def test_w5_preview_shows_the_seal_and_the_binding_covers_it(self):
+    def test_a_version_2_header_is_canonical_and_checked(self):
         self.ok(self.r.write({"add": [CORE]}))
-        first = self.seal()
-        (self.nb / "MEMORY.md").write_bytes(b"- [Room facts](room-facts.md) - a newer note\n")
-        second = self.seal()
-        path = self.r.changes({"add": [LESSON]})
-        plain, _ = self.preview(path)
-        shown, result = self.preview(path, first)
-        self.assertIn(f"notebook: {self.reference(first)}", result.stdout)
-        self.assertIn(f"--seal {first}", result.stdout)
-        self.assertNotEqual(plain, shown)
-        before = self.r.pointer()
-        for seal in (second, None):
-            with self.subTest(seal=seal):
-                self.refused(self.r.run("write", "session-doctor", "--changes", path, "--preview", shown, "--yes",
-                                        "yes, record it", "--by", "claudine-colbert", *(["--seal", seal] if seal else [])),
-                             "the binding differs")
-        self.refused(self.write({"add": [LESSON]}, seal=first, preview_seal=None), "the binding differs")
-        self.assertEqual(self.r.pointer(), before)
-
-    def test_w5_write_refuses_a_seal_it_cannot_trust(self):
-        self.ok(self.r.write({"add": [CORE]}))
-        name = self.seal()
-        other_nb = self.base / "notebooks" / "claudine-colbert"
-        other_nb.mkdir()
-        other_nb.chmod(0o700)
-        foreign = self.seal(key="claudine-colbert", notebook=other_nb)
-        path = self.r.room / "archives" / name
-        before = self.r.pointer()
-        self.refused(self.write({"add": [LESSON]}, seal=name.replace(name[-12:-4], "00000000")), "not on disk")
-        self.refused(self.write({"add": [LESSON]}, seal=foreign), "belongs to 'claudine-colbert'")
-        self.refused(self.write({"add": [LESSON]}, seal="NOTEBOOK-oops.tar"), "not a seal name")
-        path.chmod(0o644)
-        self.refused(self.write({"add": [LESSON]}, seal=name), "not 0600")
-        path.chmod(0o600)
-        moved = self.base / "seal-elsewhere.tar"
-        path.rename(moved)
-        path.symlink_to(moved)
-        self.refused(self.write({"add": [LESSON]}, seal=name), "symbolic link")
-        path.unlink()
-        moved.rename(path)
-        data = path.read_bytes()
-        path.write_bytes(data[:-1] + bytes([data[-1] ^ 1]))
-        self.refused(self.write({"add": [LESSON]}, seal=name), "no longer match the hash in its name")
-        path.write_bytes(data)
-        renamed = name.replace("session-doctor", "claudine-colbert")
-        self.refused(self.write({"add": [LESSON]}, seal=renamed), "belongs to 'claudine-colbert'")
-        self.assertEqual(self.r.pointer(), before)
-
-    def test_w5_check_gate_for_the_leaf_seal(self):
-        self.ok(self.r.write({"add": [CORE]}))
-        name = self.seal()
-        self.ok(self.write({"add": [LESSON]}, seal=name))
-        path = self.r.room / "archives" / name
-        kept = self.base / "custody.tar"
-        path.rename(kept)
-        out = self.ok(self.check()).stdout                           # in custody: reported, not failed
-        self.assertIn("REPORT session-doctor seal-history", out)
-        self.assertIn("not on disk", out)
-        kept.rename(path)
-        data = path.read_bytes()
-        path.write_bytes(data[:-1] + bytes([data[-1] ^ 1]))
-        result = self.check()
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("FAIL session-doctor leaf-seal", result.stdout)
-        path.write_bytes(data)
-        head, entries = mind.parse_leaf(self.r.leaf().read_text())
-        m = mind.NOTEBOOK_REF_RE.match(head["notebook"])
-        head = dict(head, notebook=head["notebook"][:-56] + ("0" * 56 if m.group("sha")[8:] != "0" * 56 else "1" * 56))
-        self.r.plant(head, entries)
-        result = self.check()
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("does not hash to the digest the leaf records", result.stdout)
-
-    def test_w5_a_version_2_header_is_canonical_and_checked(self):
-        self.ok(self.r.write({"add": [CORE]}))
-        name = self.seal()
-        self.ok(self.write({"add": [LESSON]}, seal=name))
+        self.plant_version_2()
         text = self.r.leaf().read_text()
-        ref = self.reference(name)
         lines = text.split("\n")
-        i = lines.index(f"notebook: {ref}")
+        i = lines.index(f"notebook: {self.REF}")
         swapped = lines[:i - 1] + [lines[i], lines[i - 1]] + lines[i + 1:]
-        for bad in ("\n".join(swapped), text.replace(f"notebook: {ref}\n", f"notebook: {ref}\nformat: 3\n"),
-                    text.replace(f"notebook: {ref}\n", f"format: 3\nnotebook: {ref}\n"),
-                    text.replace(f"notebook: {ref}\n", "notebook: \n")):
+        for bad in ("\n".join(swapped), text.replace(f"notebook: {self.REF}\n", f"notebook: {self.REF}\nformat: 3\n"),
+                    text.replace(f"notebook: {self.REF}\n", f"format: 3\nnotebook: {self.REF}\n"),
+                    text.replace(f"notebook: {self.REF}\n", "notebook: \n")):
             with self.subTest(bad=bad[:0]):
                 with self.assertRaises(mind.Refused):
                     mind.parse_leaf(bad)
         head, _ = mind.parse_leaf(text)
-        sha = ref.split("sha256=")[1]
+        sha = self.REF.split("sha256=")[1]
         cases = {"archives/elsewhere.tar sha256=" + sha: "not a seal reference",
-                 ref.replace("NOTEBOOK-session-doctor-", "NOTEBOOK-claudine-colbert-"): "another resident",
-                 ref.replace(sha, ("f" if sha[0] != "f" else "e") + sha[1:]): "disagree",
-                 ref.replace("-2026-10-30-", "-2026-13-40-"): "not a date"}
+                 self.REF.replace("NOTEBOOK-session-doctor-", "NOTEBOOK-claudine-colbert-"): "another resident",
+                 self.REF.replace(sha, ("f" if sha[0] != "f" else "e") + sha[1:]): "disagree",
+                 self.REF.replace("-2026-10-30-", "-2026-13-40-"): "not a date"}
         for value, word in cases.items():
             with self.subTest(word=word):
                 self.assertTrue(any(word in p for p in mind.head_problems(dict(head, notebook=value))), word)
         self.assertEqual([p for p in mind.head_problems(head) if "notebook" in p], [])
 
-    def test_w5_the_policy_digest_covers_the_leaf_formats(self):
+    def test_the_policy_digest_still_covers_the_leaf_formats(self):
         self.assertNotEqual(mind.policy_digest(), self.OLD_POLICY)
         now = mind.policy_digest()
         with mock.patch.object(mind, "LEAF_FORMATS", {1: mind.HEAD_KEYS}):
             self.assertNotEqual(mind.policy_digest(), now)
+
+    def test_the_notebook_commands_and_options_are_gone(self):
+        self.ok(self.r.write({"add": [CORE]}))
+        path = self.r.changes({"add": [LESSON]})
+        for args in (("project", "--key", "session-doctor", "--notebook", str(self.r.base)),
+                     ("seal", "--key", "session-doctor", "--notebook", str(self.r.base)),
+                     ("unseal", "--key", "session-doctor", "--seal", "x", "--into", str(self.r.base)),
+                     ("check", "--key", "session-doctor", "--notebook", str(self.r.base)),
+                     ("preview", "session-doctor", "--changes", path, "--seal", "x")):
+            with self.subTest(command=args[0]):
+                result = self.r.run(*args)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn("usage:", result.stderr)
+        for name in ("cmd_project", "cmd_seal", "cmd_unseal", "read_seal", "projection_block", "seal_gate"):
+            self.assertFalse(hasattr(mind, name), name)
 
 
 if __name__ == "__main__":

@@ -42,7 +42,7 @@ uses the existing exact `{path, sha256}` contract and confinement.
 | --- | --- | --- |
 | 0 | Existing trigger plus plan binding and `process_model`; all holders absent and the model observable | Separate Claude preparation path, with no host process or native admission claim |
 | 1 | Existing hash-bound closing record and mind-entry disposition | No handoff or approval is authored by the adapter |
-| 2 | Existing mind verifier, plus `notebook` reference | `rotate-notebook-fixture/1` binds `key`, `mind_sha256`, literal `writer_stopped: true`, and `memory`/`seal` references. Reuse `mind.projection_block` for the exact current prefix and `mind.read_seal` for canonical archive name, key, fixity and members; recheck its bytes against the bound reference and its `MEMORY.md` type/bytes against the notebook. Fixtures use the actual `mind-notebook-seal/1` format, not a second seal format. Real folder ownership and stopped writers remain unproved |
+| 2 | Existing mind verifier | The checked mind is the resident's whole carried self: the room keeps the provider's auto memory off, so there is no notebook to bind. The `rotate-notebook-fixture/1` reference, its projection and seal checks, were removed with the notebook on 2026-11-09; an adapter plan that still names `notebook` is not read for it |
 | 3 | Existing spare metadata plus `destination_metadata` equality and `pristine` reference | Exactly one custom-title row and an inert user/assistant exchange; exact room, spare label, synthetic IDs, distinct linked message IDs and times from creation through build. User text is the source's `FIRST_PROMPT`, assistant text is `READY`. No container is created |
 | 4 | `compaction` reference, then existing window selection against its post-compaction reading | `rotate-compaction-fixture/1` requires `actor: operator`, `method: supported-interface`, `before_gauge_sha256`, zoned `at`, and `after_gauge` reference. Compaction follows the initial due reading and precedes closeout; post-reading is at or after compaction and no later than closeout, with unchanged measured window. Actual fixture boundary time matches `at`; summary precedes the selected prompt. This fixes the earlier rehearsal's same-reading assumption without fabricating a new trigger |
 | 5 | Existing in-process builder, externalizer and static gates; temporary artifacts removed at return | No whole native donor is imported, no capsule enters an external command line, no candidate is installed |
@@ -71,8 +71,6 @@ restart, native W5 joins, physical custody, durable media paths, native
 promotion/load/rollback and both named live exercises. The Manager owns the
 separate custody-tool disk check. Safe roots, F1 registry privacy and C09
 remain required. This slice creates no runtime map entry or live capability.
-Fixture seals retain Evidence's 1-MiB bound; the native seal tool's separate
-16-MiB notebook limit does not enlarge fixture admission.
 
 ### Implemented synthetic slices: one dry-run stop at a time
 

@@ -12,8 +12,6 @@ import io
 import json
 import os
 import shutil
-import signal
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -74,10 +72,16 @@ class Fixture:
             proc_root=self.proc_root,
             window_spec=self.window_spec,
             room=self.project,
-            wrapper=MODULE_PATH.parents[2] / "bin" / "claude-resident",
         )
+        self.write_room_setting()
         self.write_layers()
         self.write_body()
+
+    def write_room_setting(self, payload: object = None) -> None:
+        """The room's own project setting, as this room requires it: auto memory off."""
+        folder = self.project / ".claude"
+        folder.mkdir(exist_ok=True)
+        (folder / "settings.json").write_text(json.dumps({"autoMemoryEnabled": False} if payload is None else payload))
 
     @property
     def body(self) -> Path:
@@ -1188,44 +1192,30 @@ class WindowTableTests(unittest.TestCase):
         self.assertIn("window table is unavailable: ImportError", detail)
 
 
-class NotebookRouteTests(unittest.TestCase):
-    """The notebook route leg: what a launch carried, read from its own process, against the wired list."""
+class AutoMemoryTests(unittest.TestCase):
+    """The auto memory leg: this room's Claude residents wake from their own mind and handoff, so a launch here must
+    run with the provider's auto memory off. Read from the launch's own process, then the room's settings."""
 
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.fx = Fixture(self.root, "claude")
         self.pid = self.fx.fake_claude_parent()
-        self.etc = self.fx.project / "ops" / "etc"
-        self.etc.mkdir(parents=True)
-        self.list = self.etc / "notebook-wired.json"
-        self.own = str(self.fx.project / "logs" / "claude-resident" / f"{self.fx.key}.settings.json")
-        self.other = str(self.fx.project / "logs" / "claude-resident" / "another-key.settings.json")
+        self.project_file = self.fx.project / ".claude" / "settings.json"
+        self.local_file = self.fx.project / ".claude" / "settings.local.json"
 
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def wire(self, state: str) -> None:
-        """on, off (a list without this key), absent, or broken."""
-        self.list.unlink(missing_ok=True)
-        if state == "on":
-            self.list.write_text(json.dumps([self.fx.key]))
-        elif state == "off":
-            self.list.write_text("[]")
-        elif state == "broken":
-            self.list.write_text("{not json")
-        if state != "absent":
-            self.list.chmod(0o600)
-
-    def launch(self, *arguments: str, environ: bytes = b"", first: bytes = b"") -> None:
+    def launch(self, *arguments: str, environ: bytes = b"") -> None:
         folder = self.fx.proc_root / str(self.pid)
         words = [b"/home/fixture/.local/bin/claude", *(a.encode() for a in arguments), b"--resume", self.fx.session_id.encode()]
-        folder.joinpath("cmdline").write_bytes(first + b"\0".join(words) + b"\0")
+        folder.joinpath("cmdline").write_bytes(b"\0".join(words) + b"\0")
         folder.joinpath("environ").write_bytes(environ)
 
     def leg(self):
         report = self.fx.run(environ={}, start_pid=self.pid)
-        legs = [leg for leg in report.legs if leg.name == "notebook route"]
+        legs = [leg for leg in report.legs if leg.name == "auto memory"]
         self.assertEqual(1, len(legs))
         self.assertEqual(check_myself.EXPECTED_LEGS, len(report.legs))
         return legs[0]
@@ -1236,165 +1226,106 @@ class NotebookRouteTests(unittest.TestCase):
         for word in words:
             self.assertIn(word, leg.detail)
 
-    SWITCH = b"CLAUDE_CODE_DISABLE_AUTO_MEMORY=1"
-
-    def test_every_combination_of_the_list_and_the_launch(self) -> None:
-        launches = {
-            "own": lambda: self.launch("--settings", self.own),
-            "switch": lambda: self.launch(environ=self.SWITCH),
-            "neither": lambda: self.launch(),
-            "another": lambda: self.launch("--settings", self.other),
-        }
-        table = {
-            ("on", "own"): ("pass", "wired, and this launch carries its own"),
-            ("on", "switch"): ("finding", "wired, and this launch runs with auto memory off: no notebook"),
-            ("on", "neither"): ("finding", "wired, and this launch carries no notebook route"),
-            ("on", "another"): ("finding", "not this key's own"),
-            ("off", "own"): ("finding", "not on the wired list, yet"),
-            ("off", "switch"): ("finding", "not wired, and this launch runs with auto memory off"),
-            ("off", "neither"): ("pass", "not wired"),
-            ("off", "another"): ("finding", "not this key's own"),
-            ("broken", "own"): ("finding", "the wired list is broken"),
-            ("broken", "switch"): ("finding", "the wired list is broken"),
-            ("broken", "neither"): ("finding", "the wired list is broken"),
-            ("broken", "another"): ("finding", "the wired list is broken"),
-        }
-        self.assertEqual(12, len(table))
-        for (state, launch), (status, words) in table.items():
-            with self.subTest(state=state, launch=launch):
-                self.wire(state)
-                launches[launch]()
-                self.assert_leg(status, words)
-
-    def test_not_on_the_list_with_the_switch_is_never_a_pass(self) -> None:
-        for state in ("off", "absent"):
-            with self.subTest(state=state):
-                self.wire(state)
-                self.launch(environ=self.SWITCH)
-                self.assert_leg("finding", "lost its notes")
-                report = self.fx.run(environ={}, start_pid=self.pid)
-                self.assertEqual(1, report.exit_code)
-
-    def test_no_list_reads_as_not_wired(self) -> None:
-        self.wire("absent")
+    def test_the_room_setting_off_is_a_pass_and_the_whole_check_passes(self) -> None:
         self.launch()
-        self.assert_leg("pass", "not wired")
+        self.assert_leg("pass", "off by .claude/settings.json")
         report = self.fx.run(environ={}, start_pid=self.pid)
         self.assertEqual(0, report.exit_code, check_myself.render(report))
-        self.launch("--settings", self.own)
-        self.assert_leg("finding", "not on the wired list, yet")
 
-    def test_the_route_and_the_switch_together_read_as_off(self) -> None:
-        self.wire("on")
-        self.launch("--settings", self.own, environ=self.SWITCH)
-        self.assert_leg("finding", "auto memory off")
+    def test_no_setting_is_a_finding_and_fails_the_check(self) -> None:
+        self.project_file.unlink()
+        self.launch()
+        self.assert_leg("finding", "nothing turns auto memory off")
+        self.assertEqual(1, self.fx.run(environ={}, start_pid=self.pid).exit_code)
+        self.fx.write_room_setting({"permissions": {}})
+        self.assert_leg("finding", "nothing turns auto memory off")
 
-    def test_the_switch_is_read_by_its_value_and_loosely(self) -> None:
-        self.wire("off")
-        for value, status in ((b"", "pass"), (b"0", "pass"), (b"false", "pass"), (b"FALSE", "pass"),
-                              (b"1", "finding"), (b"true", "finding"), (b"yes", "finding"), (b"\xff", "finding")):
+    def test_the_setting_on_or_not_a_boolean_is_a_finding(self) -> None:
+        self.launch()
+        for value, words in ((True, "is on by .claude/settings.json"), ("false", "not true or false"),
+                             (0, "not true or false"), (None, "not true or false")):
+            with self.subTest(value=value):
+                self.fx.write_room_setting({"autoMemoryEnabled": value})
+                self.assert_leg("finding", words)
+
+    def test_local_settings_win_over_the_project_file(self) -> None:
+        self.launch()
+        self.local_file.write_text(json.dumps({"autoMemoryEnabled": True}))
+        self.assert_leg("finding", "on by .claude/settings.local.json")
+        self.local_file.write_text(json.dumps({"other": 1}))
+        self.assert_leg("pass", "off by .claude/settings.json")
+        self.project_file.unlink()
+        self.local_file.write_text(json.dumps({"autoMemoryEnabled": False}))
+        self.assert_leg("pass", "off by .claude/settings.local.json")
+
+    def test_the_launch_switch_turns_it_off_and_is_read_by_its_value(self) -> None:
+        self.project_file.unlink()
+        for value, status in ((b"", "finding"), (b"0", "finding"), (b"false", "finding"), (b"FALSE", "finding"),
+                              (b"1", "pass"), (b"true", "pass"), (b"yes", "pass"), (b"\xff", "pass")):
             with self.subTest(value=value):
                 self.launch(environ=b"A=b\0CLAUDE_CODE_DISABLE_AUTO_MEMORY=" + value + b"\0C=d\0")
                 self.assertEqual(status, self.leg().status)
         self.launch(environ=b"XCLAUDE_CODE_DISABLE_AUTO_MEMORY=1\0")
-        self.assertEqual("pass", self.leg().status)
+        self.assertEqual("finding", self.leg().status)
 
-    def test_the_settings_forms(self) -> None:
-        self.wire("on")
-        self.launch(f"--settings={self.own}")
-        self.assert_leg("pass", "its own")
-        self.launch(f"--settings={self.other}")
-        self.assert_leg("finding", "not this key's own")
-        self.launch("--settings", self.own, "--settings", self.other)
-        self.assert_leg("finding", "not this key's own")
-        self.launch("--settings", self.own, "--settings", self.own)
-        self.assert_leg("finding", "not this key's own")
-        self.launch('--settings={"disableAllHooks":true}')
-        self.assert_leg("finding", "not this key's own")
+    def test_a_settings_argument_wins_over_the_room_files(self) -> None:
+        on = self.root / "on.json"
+        on.write_text(json.dumps({"autoMemoryEnabled": True}))
+        for form in (("--settings", str(on)), (f"--settings={on}",), ("--settings", '{"autoMemoryEnabled": true}')):
+            with self.subTest(form=form[0][:12]):
+                self.launch(*form)
+                self.assert_leg("finding", "on by a --settings argument of the launch")
+        off = self.root / "off.json"
+        off.write_text(json.dumps({"autoMemoryEnabled": False}))
+        self.project_file.unlink()
+        self.launch("--settings", str(off))
+        self.assert_leg("pass", "off by a --settings argument")
+        self.launch("--settings", str(self.root / "absent.json"))
+        self.assert_leg("finding", "nothing turns auto memory off")
 
-    def test_settings_after_the_launchs_own_separator_are_not_read(self) -> None:
-        self.wire("on")
-        folder = self.fx.proc_root / str(self.pid)
-        folder.joinpath("cmdline").write_bytes(
-            b"\0".join([b"/home/fixture/.local/bin/claude", b"--resume", self.fx.session_id.encode(), b"--", b"--settings",
-                        self.own.encode()]) + b"\0")
-        self.assert_leg("finding", "carries no notebook route")
+    def test_what_cannot_be_read_is_undetermined_and_never_a_pass(self) -> None:
+        self.launch()
+        self.project_file.write_text("{not json")
+        self.assert_leg("undetermined", ".claude/settings.json cannot be read")
+        self.project_file.write_text("[]")
+        self.assert_leg("undetermined", "cannot be read")
+        self.project_file.write_text(json.dumps({"autoMemoryEnabled": False, "pad": "x" * 70000}))
+        self.assert_leg("undetermined", "cannot be read")
+        self.fx.write_room_setting()
+        moved = self.root / "elsewhere.json"
+        self.project_file.rename(moved)
+        self.project_file.symlink_to(moved)
+        self.assert_leg("undetermined", "cannot be read")
+        self.project_file.unlink()
+        self.fx.write_room_setting()
+        (self.fx.proc_root / str(self.pid) / "environ").unlink()
+        self.assert_leg("undetermined", "environment cannot be read")
 
-    def test_the_first_token_is_not_read_as_an_argument(self) -> None:
-        self.assertEqual([], check_myself._settings_values(["--settings=x", "-p"]))
-        self.assertEqual([], check_myself._settings_values(["claude", "--settings"]))
-        self.assertEqual(["x"], check_myself._settings_values(["claude", "--settings", "x"]))
-
-    def test_the_own_route_is_compared_resolved(self) -> None:
-        self.wire("on")
-        link = self.root / "link-to-room"
-        link.symlink_to(self.fx.project)
-        self.launch("--settings", str(link / "logs" / "claude-resident" / f"{self.fx.key}.settings.json"))
-        self.assert_leg("pass", "its own")
-
-    def test_the_bg_form_whose_arguments_name_no_body_is_undetermined(self) -> None:
-        folder = self.fx.proc_root / str(self.pid)
-        for state in ("on", "off", "broken"):
-            with self.subTest(state=state):
-                self.wire(state)
-                folder.joinpath("cmdline").write_bytes(b"/home/fixture/.local/bin/claude\0--bg\0")
-                for environ in ({}, {"CLAUDE_CODE_SESSION_ID": self.fx.session_id}):
-                    report = self.fx.run(environ=environ, start_pid=self.pid)
-                    leg = next(leg for leg in report.legs if leg.name == "notebook route")
-                    self.assertEqual("undetermined", leg.status, leg.detail)
-                    self.assertEqual(1, report.exit_code)
-
-    def test_the_bg_form_that_names_its_session_is_read_like_any_launch(self) -> None:
-        self.wire("on")
-        self.launch("--bg")
-        self.assert_leg("finding", "carries no notebook route")
-        self.wire("off")
-        self.assert_leg("pass", "not wired")
-
-    def test_the_process_that_names_the_session_is_the_launch(self) -> None:
-        """A worker's own provider process names no session; its parent's does."""
-        self.wire("on")
-        self.launch("--settings", self.own)
-        child = self.fx.proc_root / "700"
-        child.mkdir()
-        child.joinpath("cmdline").write_bytes(b"/home/fixture/.local/bin/claude\0-p\0")
-        child.joinpath("environ").write_bytes(self.SWITCH)
-        child.joinpath("status").write_text(f"Name:\tclaude\nPPid:\t{self.pid}\n", encoding="utf-8")
-        report = self.fx.run(environ={}, start_pid=700)
-        leg = next(leg for leg in report.legs if leg.name == "notebook route")
-        self.assertEqual(("pass", str(self.fx.proc_root / str(self.pid) / "cmdline")), (leg.status, leg.surfaces[0]))
-        self.assertIn(str(self.fx.proc_root / str(self.pid) / "environ"), leg.surfaces)
-
-    def test_a_codex_caller_and_a_row_of_another_room_have_no_route_to_judge(self) -> None:
-        self.wire("broken")
-        self.launch(environ=self.SWITCH)
+    def test_a_codex_caller_and_a_row_of_another_room_are_not_judged(self) -> None:
+        self.project_file.unlink()
+        self.launch()
         rows = json.loads(self.fx.registry.read_text())
         rows["identities"][0]["room"] = str(self.root / "another-room")
         self.fx.registry.write_text(json.dumps(rows))
         self.assert_leg("pass", "another room")
-        codex_root = self.root / "codex-case"
-        codex = Fixture(codex_root, "codex")
+        codex = Fixture(self.root / "codex-case", "codex")
         report = codex.run()
-        leg = next(leg for leg in report.legs if leg.name == "notebook route")
+        leg = next(leg for leg in report.legs if leg.name == "auto memory")
         self.assertEqual("pass", leg.status)
         self.assertIn("not a Claude row", leg.detail)
         self.assertEqual(0, report.exit_code, check_myself.render(report))
 
     def test_a_row_of_this_room_written_through_a_link_is_this_room(self) -> None:
-        self.wire("on")
+        self.project_file.unlink()
         self.launch()
         link = self.root / "link-to-room"
         link.symlink_to(self.fx.project)
         rows = json.loads(self.fx.registry.read_text())
         rows["identities"][0]["room"] = str(link)
         self.fx.registry.write_text(json.dumps(rows))
-        self.assert_leg("finding", "carries no notebook route")
+        self.assert_leg("finding", "nothing turns auto memory off")
 
-    def test_what_cannot_be_read_is_undetermined_and_never_a_pass(self) -> None:
-        self.wire("off")
-        self.launch()
-        (self.fx.proc_root / str(self.pid) / "environ").unlink()
-        self.assert_leg("undetermined", "environment cannot be read")
+    def test_no_identity_no_room_or_no_launch_is_undetermined(self) -> None:
         self.launch()
         rows = json.loads(self.fx.registry.read_text())
         rows["identities"][0]["room"] = ""
@@ -1402,163 +1333,29 @@ class NotebookRouteTests(unittest.TestCase):
         self.assert_leg("undetermined", "names no room")
         rows["identities"][0]["room"] = str(self.fx.project)
         self.fx.registry.write_text(json.dumps(rows))
-        self.assert_leg("pass", "not wired")
-
-    def test_no_identity_is_undetermined(self) -> None:
-        self.wire("on")
-        self.fx.registry.write_text(json.dumps({"identities": []}))
-        self.assert_leg("undetermined", "unavailable")
-        report = self.fx.run(environ={}, start_pid=None)
-        leg = next(leg for leg in report.legs if leg.name == "notebook route")
-        self.assertEqual("undetermined", leg.status)
-
-    def test_no_room_or_wrapper_configured_is_undetermined(self) -> None:
-        self.wire("off")
-        self.launch()
-        for change in ({"room": None}, {"wrapper": None}):
-            with self.subTest(change=change):
-                paths = dataclasses.replace(self.fx.paths, **change)
-                report = check_myself.run_check(paths, environ={}, start_pid=self.pid, now=NOW)
-                leg = next(leg for leg in report.legs if leg.name == "notebook route")
-                self.assertEqual("undetermined", leg.status)
-
-    def test_a_wrapper_that_cannot_load_is_undetermined(self) -> None:
-        self.wire("off")
-        self.launch()
-        fake = self.root / "fake-wrapper"
-        for name, body in (("absent", None), ("not python", "this is not python\n"), ("exits", "raise SystemExit(7)\n"),
-                           ("no reader", "x = 1\n")):
-            with self.subTest(fault=name):
-                fake.unlink(missing_ok=True)
-                if body is not None:
-                    fake.write_text(body)
-                paths = dataclasses.replace(self.fx.paths, wrapper=fake)
-                report = check_myself.run_check(paths, environ={}, start_pid=self.pid, now=NOW)
-                leg = next(leg for leg in report.legs if leg.name == "notebook route")
-                self.assertEqual("undetermined", leg.status, leg.detail)
-                self.assertIn("cannot load", leg.detail)
-
-    def test_a_launch_gone_between_two_reads_is_undetermined(self) -> None:
-        self.wire("off")
-        self.launch()
+        paths = dataclasses.replace(self.fx.paths, room=None)
+        report = check_myself.run_check(paths, environ={}, start_pid=self.pid, now=NOW)
+        self.assertEqual("undetermined", next(leg for leg in report.legs if leg.name == "auto memory").status)
         with mock.patch.object(check_myself, "_launch_process", return_value=None):
             self.assert_leg("undetermined", "names this session")
+        self.fx.registry.write_text(json.dumps({"identities": []}))
+        self.assert_leg("undetermined", "unavailable")
 
-    def test_a_row_the_wrappers_reader_cannot_judge_is_undetermined(self) -> None:
-        self.wire("on")
-        self.launch("--settings", self.own)
-        rows = json.loads(self.fx.registry.read_text())
-        rows["identities"].append({"key": "half-a-row"})
-        self.fx.registry.write_text(json.dumps(rows))
-        self.assert_leg("undetermined", "could not be judged")
-
-    def test_a_finding_gives_the_newest_log_row_for_this_key(self) -> None:
-        self.wire("on")
-        self.launch()
-        self.assert_leg("finding", "cannot be read")
-        log = self.fx.project / "logs" / "claude-resident" / "decisions.log"
-        log.parent.mkdir(parents=True)
-        log.write_text("")
-        self.assert_leg("finding", "holds no row for this key")
-        rows = [
-            {"time": "older", "key": self.fx.key, "branch": "registered", "reason": "the older reason"},
-            {"time": "newest", "key": self.fx.key, "branch": "registered", "reason": "the newest reason"},
-            {"time": "later", "key": "another-key", "branch": "registered", "reason": "another key's reason"},
-            {"time": "later", "key": None, "branch": "new", "reason": "a null key's reason"},
-        ]
-        log.write_text("".join(json.dumps(r) + "\n" for r in rows) + "not json\n[1]\n")
-        leg = self.leg()
-        self.assertIn("time=newest", leg.detail)
-        self.assertIn("reason=the newest reason", leg.detail)
-        self.assertNotIn("older", leg.detail)
-        self.assertNotIn("another key's", leg.detail)
-        self.assertNotIn("null key's", leg.detail)
-
-    def test_a_pass_does_not_read_the_log(self) -> None:
-        self.wire("off")
-        self.launch()
-        with mock.patch.object(check_myself, "_newest_log_row", side_effect=AssertionError("read")):
-            self.assert_leg("pass", "not wired")
-
-    def test_a_log_that_is_a_link_is_not_followed(self) -> None:
-        self.wire("on")
-        self.launch()
-        target = self.root / "elsewhere.log"
-        target.write_text(json.dumps({"time": "t", "key": self.fx.key, "branch": "b", "reason": "from a link"}) + "\n")
-        log = self.fx.project / "logs" / "claude-resident" / "decisions.log"
-        log.parent.mkdir(parents=True)
-        log.symlink_to(target)
-        self.assert_leg("finding", "cannot be read")
-
-    def test_a_log_that_is_a_pipe_does_not_wait(self) -> None:
-        self.wire("on")
-        self.launch()
-        log = self.fx.project / "logs" / "claude-resident" / "decisions.log"
-        log.parent.mkdir(parents=True)
-        os.mkfifo(log)
-        signal.signal(signal.SIGALRM, lambda *a: self.fail("the leg waited on a pipe"))
-        signal.alarm(10)
-        try:
-            self.assert_leg("finding", "holds no row for this key")
-        finally:
-            signal.alarm(0)
-
-    def test_the_leg_prints_no_session_and_no_argument(self) -> None:
-        self.wire("on")
+    def test_the_leg_prints_no_session_and_no_argument_and_writes_nothing(self) -> None:
         self.launch("--settings", "/secret/settings/path")
+        before = digest_tree(self.root)
         leg = self.leg()
         rendered = leg.detail + " ".join(leg.surfaces)
         self.assertNotIn("/secret/settings/path", rendered)
         self.assertNotIn(self.fx.session_id, leg.detail)
-
-    def test_the_leg_writes_nothing(self) -> None:
-        self.wire("on")
-        self.launch()
-        before = digest_tree(self.root)
-        self.leg()
         self.assertEqual(before, digest_tree(self.root))
 
-    def test_importing_this_script_loads_no_wrapper_and_resolve_caller_never_does(self) -> None:
-        code = ("import importlib.util, sys\n"
-                f"spec = importlib.util.spec_from_file_location('m', {str(MODULE_PATH)!r})\n"
-                "m = importlib.util.module_from_spec(spec)\nsys.modules['m'] = m\nspec.loader.exec_module(m)\n"
-                "print(any('claude_resident' in name or 'gauge' in name for name in sys.modules))\n")
-        done = subprocess.run([sys.executable, "-I", "-B", "-c", code], capture_output=True, text=True, timeout=60)
-        self.assertEqual("False", done.stdout.strip(), done.stderr)
-        with mock.patch.object(check_myself, "_load_wrapper", side_effect=AssertionError("loaded")):
-            caller, _, errors = check_myself.resolve_caller({}, self.fx.proc_root, self.pid, self.fx.codex_lock_root)
-        self.assertEqual((self.fx.session_id, []), (caller.session_id, errors))
-
-    def test_loading_the_wrapper_keeps_the_bytecode_setting(self) -> None:
-        for value in (True, False):
-            with self.subTest(value=value):
-                with mock.patch.object(sys, "dont_write_bytecode", value):
-                    check_myself._load_wrapper(self.fx.paths.wrapper)
-                    self.assertEqual(value, sys.dont_write_bytecode)
-
-    def test_loading_the_wrapper_writes_no_bytecode(self) -> None:
-        folder = self.root / "bin"
-        folder.mkdir()
-        fake = folder / "fake-wrapper"
-        fake.write_text("x = 1\n")
-        with mock.patch.object(sys, "dont_write_bytecode", False):
-            check_myself._load_wrapper(fake)
-        self.assertEqual(["fake-wrapper"], sorted(p.name for p in folder.iterdir()))
-
-    def test_the_live_paths_name_this_room_and_its_wrapper(self) -> None:
+    def test_the_live_paths_name_this_room_and_no_wrapper(self) -> None:
         live = check_myself.CheckPaths.live()
         self.assertEqual(SESSIONS_ROOT, live.room)
-        self.assertEqual(SESSIONS_ROOT / "ops" / "bin" / "claude-resident", live.wrapper)
-
-    def test_the_real_wrappers_reader_is_the_one_used(self) -> None:
-        wrapper = check_myself._load_wrapper(self.fx.paths.wrapper)
-        self.assertTrue(callable(wrapper.read_wired))
-        self.wire("on")
-        rows = json.loads(self.fx.registry.read_text())["identities"]
-        self.assertEqual(frozenset([self.fx.key]), wrapper.read_wired(self.fx.project, rows))
-        self.list.chmod(0o644)
-        self.launch()
-        self.assert_leg("finding", "not mode 0600")
+        self.assertFalse(hasattr(live, "wrapper"))
+        for name in ("_load_wrapper", "_notebook_route", "_newest_log_row"):
+            self.assertFalse(hasattr(check_myself, name), name)
 
 
 class OrientationAfterIdeNoticesTests(unittest.TestCase):
