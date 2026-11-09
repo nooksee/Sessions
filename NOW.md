@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-09, the Session Continuity Manager: real rotations first; W5 step 2 passed; the Claude adapter merged.
+Updated: 2026-11-09, the Session Continuity Manager: the mind is pointer first (RoR-22); the notebook and its wrapper are retired.
 Status: active current-state board. At most 40 lines of at most 200 characters, checked by `ops/bin/help --test`.
 Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/`. This board grants no live act.
 
@@ -14,12 +14,13 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 
 ## Tracks: the first-wins plan, point B
 
-- **Priority,** by the operator 2026-11-09: real rotations; W5 and W6 to a native wake and the operator's acceptance.
+- **Priority,** by the operator 2026-11-09: real rotations; W6 to a native wake and the operator's acceptance.
 
 - **W3** health desk: measured and corrected; one unregistered family and six Control drift paths open.
 - **W4** cadence: the finite retry passed on 2026-11-07, 4 of 4 dry-run cycles, withdrawn whole, audited.
 - **W4** next: the first real notification, its own named go.
-- **W5** launch wiring: step 1 merged (#52, #53); 13 native proofs passed; steps 3 to 5 done 2026-11-09: the room setting live, nobody wired.
+- **W5** retired 2026-11-09 (#71): no launch wrapper, no notebook, auto memory off in the room; residents wake from their mind and handoff.
+- **Mind:** pointer first (#72, RoR-22): a root index, concept leaves under `archives/mind/`, a write ledger, no per-entry approval.
 - **W6** rotation runner: the Claude adapter's preparation merged (#68); slice 6, the disposable exercise's native path, next.
 - **W7** retention: closes each operation after its result; W4's inventory in preparation.
 - **W8** host independence: rests; test paths synthetic; host paths in configuration (#61, #62).
