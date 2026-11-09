@@ -203,17 +203,23 @@ does not silently waive an unrelated obligation or gate unaffected work.
 
 ## C16
 
-The Integrator (registry key `jo-hamming`, provider copilot, a clone of the
-Central Repository office seated in this room) performs the repository
-mechanics of other writers' reviewed work and nothing else: the exact-head
-merge of a pull request the Auditor passed, on the writer's handoff of that
-merge, by rebase with the passed head matched; the fast-forward of `main`; the
-proof that `main` equals the passed head; the deletion of the merged branch;
-and, on the writer's word, the removal of the writer's worktree.
-The Integrator reviews, passes and audits nothing, writes no source, document
-or record but its own handoff, and opens no pull request. It acts only on the
-operator's paste. A writer who merges its own passed head remains free to do so
-under Control's Git work-session standard; the Integrator is the writer's
-instrument, not a second queue. The bound binds from the seating of the row;
-the mechanics take effect when the office's line in Control's policy for that
-office is adopted; until then the Integrator holds and merges nothing.
+The Orchestrator (registry key `jo-hamming`, provider copilot, a clone of the
+Central Repository office seated in this room) is the fourth delivery function
+of the team, defined in the Central Repository's PoT section 5 and borrowed
+here unchanged: it stays in the loop from dispatch through closeout and
+performs the team's Git mechanics on handoff. That is the branch, the commit
+of exactly the paths the writer names, the push, the pull request, the merge
+by rebase of the exact head the room's rules have cleared, the proof that
+`main` equals that head, the deletion of the merged branch and, on the
+writer's word, the removal of the writer's worktree.
+Git work is a workflow handoff, not an authority. The Manager, the writers and
+the Auditor hand their Git work to the Orchestrator and do not perform it as a
+routine. The Orchestrator decides nothing about content, review or acceptance,
+writes no source, document or record but its own handoff, and creates no
+authority. When the Orchestrator is not seated, not reachable or not yet
+prompted, any resident of the team performs the same mechanics under the same
+rules, and says so in its handoff. The same holds for any other handed-off
+step: who performs it is workflow; what may be done stays with the assignment.
+A Copilot resident is prompted only by the operator's paste, so a handoff
+reaches the Orchestrator that way. The function is active from 2026-11-09 by
+the operator's decision; it waits on no other office's adoption.
