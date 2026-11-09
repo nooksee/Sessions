@@ -2,17 +2,15 @@
 """Synthetic rotation phase gates. No native body, provider or live record.
 
 Generated with ops/bin/template; implemented by Joe Codex. Run with -I -B
-under umask 0002, 0022 and 0077. Fixture minds contain invented entries only.
+under umask 0002, 0022 and 0077. Fixture minds contain invented leaves only.
 """
 import contextlib
 import copy
-import datetime as dt
 import hashlib
 import importlib.util
 import io
 import json
 import os
-import re
 import stat
 import subprocess
 import sys
@@ -69,7 +67,7 @@ class RotateTests(unittest.TestCase):
                        "gauge_sha256": self.sha(self.gauge), "closeout_sha256": self.sha(self.state),
                        "destination_sha256": hashlib.sha256(DESTINATION.encode()).hexdigest(),
                        "closed_at": "2026-11-05T12:02:00Z", "handoff": self.ref("storage/handoff/fixture.md"),
-                       "mind": {"proposed": 0, "decision": "none-proposed", "leaf_sha256": self.leaf_sha}}
+                       "mind": {"index_sha256": self.index_sha}}
         self.save(self.closed, self.record)
 
     def save(self, rel, value, text=False):
@@ -88,21 +86,21 @@ class RotateTests(unittest.TestCase):
     def ref(self, rel):
         return {"path": rel, "sha256": self.sha(rel)}
 
-    def make_mind(self, now=None):
-        mind = ROTATE.sibling("mind")
-        changes = self.save("changes.json", {"add": [
-            {"layer": "lesson", "text": "Check the exact target before choosing a recovery action.",
-             "event": "A synthetic rehearsal", "date": "2026-11-05", "source": "docs/fixture.md",
-             "applies_when": "A target has changed", "not_when": "There is no pending operation"}]})
-        args = types.SimpleNamespace(room=self.room, key=KEY, registry=self.room / self.registry,
-                                     changes=str(changes), by=WRITER)
-        prepared = mind.prepare(args, now or dt.datetime(2026, 11, 5, 11, 0, tzinfo=dt.timezone.utc),
-                                "yes, write this invented fixture entry")
-        raw = prepared[0].encode()
-        self.leaf_sha = hashlib.sha256(raw).hexdigest()
-        self.leaf = "archives/MIND-" + KEY + "-2026-11-05-" + self.leaf_sha[:8] + ".md"
-        self.save(self.leaf, prepared[0], text=True)
-        self.save("MIND.md", mind.pointer_text({KEY: (self.leaf, self.leaf_sha)}), text=True)
+    def add_leaf(self, title, now="2026-11-05T11:00:00Z", agent=KEY):
+        """One invented leaf, written by the mind tool itself, so its index and ledger are real."""
+        body = self.base / "leaf-body.md"
+        body.write_text("Check the exact target before choosing a recovery action.\n", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            rc = ROTATE.sibling("mind").main(["--room", str(self.room), "--registry", str(self.room / self.registry),
+                                              "--now", now, "add", "--agent", agent, "--title", title,
+                                              "--body", str(body)])
+        self.assertEqual(rc, 0)
+        self.index_sha = self.sha("MIND.md")
+
+    def make_mind(self):
+        self.add_leaf("Check the target before recovery")
+        self.leaf = "archives/mind/MIND-2026-11-05-001.md"
+        self.leaf_sha = self.sha(self.leaf)
 
     def args(self, phase=0):
         return ["--room", str(self.room), "--key", KEY, "--writer", WRITER, "--phase", str(phase),
@@ -161,13 +159,13 @@ class RotateTests(unittest.TestCase):
         self.assertEqual(result["completed"], [0, 1])
         self.assertEqual(result["next_phase"], 2)
 
-    def test_phase_two_calls_actual_mind_show_ref_and_stops(self):
+    def test_phase_two_calls_actual_mind_check_and_stops(self):
         before = self.snapshot()
         rc, result = self.invoke(2)
         self.assertEqual(rc, 0, result)
         self.assertEqual(result["completed"], [0, 1, 2])
         self.assertEqual(result["next_phase"], 3)
-        self.assertEqual(result["mind"], {"leaf": self.leaf, "sha256": self.leaf_sha})
+        self.assertEqual(result["mind"], {"index_sha256": self.index_sha, "own_leaves": 1})
         self.assertEqual(before, self.snapshot())
 
     def test_repeated_checks_do_not_persist_or_advance(self):
@@ -277,29 +275,32 @@ class RotateTests(unittest.TestCase):
         self.save(self.closed, self.record)
         self.refused(1, reason="closing-record-predates-reading")
 
-    def test_unresolved_mind_proposals_refuse(self):
-        for count, decision in ((4, "approved-and-written"), (True, "none-proposed"),
-                                (1, "pending"), (1, "none-proposed"), (0, "approved-and-written")):
-            with self.subTest(count=count, decision=decision):
-                self.record["mind"].update(proposed=count, decision=decision)
+    def test_closing_record_must_name_the_index_it_closed_with(self):
+        for mind in (None, {}, {"index_sha256": "abc"}, {"index_sha256": 7},
+                     {"index_sha256": self.index_sha, "proposed": 0},
+                     {"proposed": 0, "decision": "none-proposed", "leaf_sha256": self.index_sha}):
+            with self.subTest(mind=mind):
+                self.record["mind"] = mind
                 self.save(self.closed, self.record)
-                self.refused(1, reason="mind-disposition-unproved")
+                self.refused(1, reason="mind-index-unproved")
 
-    def test_approved_entries_require_retained_approval_evidence(self):
-        self.record["mind"].update(proposed=1, decision="approved-and-written")
+    def test_a_room_with_no_mind_closes_with_null(self):
+        for rel in ("MIND.md", "logs/mind/ledger.jsonl", self.leaf):
+            (self.room / rel).unlink()
+        self.record["mind"] = {"index_sha256": None}
         self.save(self.closed, self.record)
-        self.refused(1)
-        self.save("storage/active/approval.md", "Synthetic approval for this invented entry.\n", text=True)
-        self.record["mind"]["approval"] = self.ref("storage/active/approval.md")
+        rc, result = self.invoke(2)
+        self.assertEqual(rc, 0, result)
+        self.assertEqual(result["mind"], {"index_sha256": None, "own_leaves": 0})
+
+    def test_a_leaf_written_after_closing_is_caught(self):
+        self.add_leaf("A second invented idea", now="2026-11-05T12:03:00Z")
+        self.refused(2, reason="closing-mind-mismatch")
+        self.record["mind"]["index_sha256"] = self.index_sha
         self.save(self.closed, self.record)
-        self.refused(2, reason="new-mind-write-unproved")
-        self.make_mind(dt.datetime(2026, 11, 5, 12, 1, 30, tzinfo=dt.timezone.utc))
-        self.record["mind"]["leaf_sha256"] = self.leaf_sha
-        self.save(self.closed, self.record)
-        self.assertEqual(self.invoke(2)[0], 0)
-        self.record["mind"]["proposed"] = 3
-        self.save(self.closed, self.record)
-        self.refused(2, reason="new-mind-entry-count-mismatch")
+        rc, result = self.invoke(2)
+        self.assertEqual(rc, 0, result)
+        self.assertEqual(result["mind"]["own_leaves"], 2)
 
     def test_missing_mind_is_not_waived(self):
         (self.room / "MIND.md").unlink()
@@ -307,19 +308,26 @@ class RotateTests(unittest.TestCase):
 
     def test_mind_check_failure_is_not_waived(self):
         self.save(self.leaf, "not a mind\n", text=True)
-        self.refused(2, reason="mind-show-ref-refused")
+        self.refused(2, reason="mind-check-refused")
+
+    def test_a_retired_format_index_is_not_waived(self):
+        self.save("MIND.md", "resident=" + KEY + "|leaf=archives/MIND-x.md|sha256=" + "0" * 64 + "\n", text=True)
+        self.refused(2, reason="mind-check-refused")
 
     def test_closing_mind_must_be_the_checked_mind(self):
-        self.record["mind"]["leaf_sha256"] = "0" * 64
+        self.record["mind"]["index_sha256"] = "0" * 64
         self.save(self.closed, self.record)
         result = self.refused(2, reason="closing-mind-mismatch")
         self.assertNotIn("mind", result)
 
-    def test_unparseable_mind_ref_does_not_pass(self):
+    def test_mind_check_failures_are_honored_and_not_echoed(self):
         real = ROTATE.sibling
-        fake = types.SimpleNamespace(main=lambda args: (print(SECRET), 0)[1])
+        mind = real("mind")
+        fake = types.SimpleNamespace(parse_index=mind.parse_index, read_registry=mind.read_registry,
+                                     verify=lambda room, reg: ([("FAIL", "leaf", SECRET)], ["leaf: " + SECRET]))
         with mock.patch.object(ROTATE, "sibling", side_effect=lambda name: fake if name == "mind" else real(name)):
-            self.refused(2, reason="invalid-mind-reference")
+            result = self.refused(2, reason="mind-check-refused")
+        self.assertNotIn(SECRET, json.dumps(result))
 
     def test_late_input_change_is_caught(self):
         original = ROTATE.mind_ready
@@ -445,6 +453,7 @@ class BuildPhases(unittest.TestCase):
     sha = RotateTests.sha
     ref = RotateTests.ref
     make_mind = RotateTests.make_mind
+    add_leaf = RotateTests.add_leaf
     invoke = RotateTests.invoke
     snapshot = RotateTests.snapshot
 
@@ -751,7 +760,7 @@ class BuildPhases(unittest.TestCase):
         self.refused(4, "window-parent-evidence-required")
 
     def test_transition_is_text_not_a_file_path(self):
-        self.save("fixtures/transition.md", "archives/MIND-fixture.md", text=True)
+        self.save("fixtures/transition.md", "archives/mind/fixture.md", text=True)
         self.plan["transition"] = self.ref("fixtures/transition.md")
         self.bind_plan()
         self.refused(5, "transition-text-required")
@@ -909,17 +918,20 @@ class BuildPhases(unittest.TestCase):
         with mock.patch.object(ROTATE, "no_fixture_holders", side_effect=(None, ROTATE.Refused("synthetic-destination-held"))):
             self.refused(5, "synthetic-destination-held")
 
-    def test_c1_capsule_mind_is_verbatim_actual_show_ref_leaf(self):
+    def test_c1_capsule_mind_is_the_residents_own_index_lines(self):
+        self.add_leaf("An idea of the writer's", agent=WRITER, now="2026-11-05T11:30:00Z")
+        self.record["mind"]["index_sha256"] = self.index_sha
+        self.save(self.closed, self.record)
+        self.bind_plan()
         mind = ROTATE.sibling("mind")
         out = io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
             rc = mind.main(["--room", str(self.room), "--registry", str(self.room / self.registry),
-                            "show", KEY, "--ref"])
+                            "show", "--agent", KEY])
         self.assertEqual(rc, 0)
-        ref = re.fullmatch(r"leaf=(archives/MIND-[a-z0-9-]+\.md)\|sha256=([0-9a-f]{64})\n", out.getvalue())
-        self.assertIsNotNone(ref)
-        leaf = (self.room / ref.group(1)).read_bytes()
-        self.assertEqual(hashlib.sha256(leaf).hexdigest(), ref.group(2))
+        own = out.getvalue()
+        self.assertEqual(own.count("\n"), 1)
+        leaf_body = (self.room / self.leaf).read_text(encoding="utf-8").split("---\n\n", 1)[1]
         actual = ROTATE.static_gates
         observed = []
         def inspect(raw, rows, args, evidence, capsule, *rest):
@@ -927,13 +939,15 @@ class BuildPhases(unittest.TestCase):
             mind_text, transition, tail = after.partition("\nTransition\n")
             self.assertTrue(before.startswith("Registry\n"))
             self.assertTrue(marker and transition)
-            self.assertEqual(mind_text.encode("utf-8"), leaf)
+            self.assertEqual(mind_text, own + ROTATE.MIND_HINT)
+            self.assertNotIn(leaf_body.strip(), capsule)
+            self.assertNotIn(WRITER + " \u2014", capsule)
             self.assertTrue(tail)
-            observed.append(ref.group(2))
+            observed.append(own)
             return actual(raw, rows, args, evidence, capsule, *rest)
         with mock.patch.object(ROTATE, "static_gates", side_effect=inspect):
             self.assertEqual(self.invoke(5)[0], 0)
-        self.assertEqual(observed, [ref.group(2)])
+        self.assertEqual(observed, [own])
 
     def test_c1_capsule_first_turn_and_four_part_order(self):
         actual = ROTATE.static_gates
@@ -1128,6 +1142,7 @@ class InstallPhases(unittest.TestCase):
     sha = RotateTests.sha
     ref = RotateTests.ref
     make_mind = RotateTests.make_mind
+    add_leaf = RotateTests.add_leaf
     snapshot = RotateTests.snapshot
     write_body = BuildPhases.write_body
     bind_plan = BuildPhases.bind_plan
@@ -1275,9 +1290,9 @@ class InstallPhases(unittest.TestCase):
         text = receipts[0].decode()
         self.assertIn("not production authority", text)
         for title in ("Tier", "Donor", "Destination", "Window cut and reason", "Static gates", "Custody",
-                      "Mind leaf", "Install", "Wake estimate against the measured wake", "Deviations", "Acceptance", "Rollback"):
+                      "Mind index", "Install", "Wake estimate against the measured wake", "Deviations", "Acceptance", "Rollback"):
             self.assertIn("## " + title, text)
-        for item in ("18000/1000000", "20000 estimated", self.leaf_sha, "2026-11-05T12:08:00Z", "Synthetic"):
+        for item in ("18000/1000000", "20000 estimated", self.index_sha, "2026-11-05T12:08:00Z", "Synthetic"):
             self.assertIn(item, text)
         self.assertNotIn("{{", text)
         self.assertEqual(before, self.snapshot())
@@ -2186,6 +2201,7 @@ class ClaudeAdapterTests(unittest.TestCase):
     sha = RotateTests.sha
     ref = RotateTests.ref
     make_mind = RotateTests.make_mind
+    add_leaf = RotateTests.add_leaf
     snapshot = RotateTests.snapshot
     invoke = RotateTests.invoke
     refused = BuildPhases.refused

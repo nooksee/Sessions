@@ -21,7 +21,7 @@ Every document in `Sessions/docs/`, one line each, and the root files that point
 * [../INDEX.md](../INDEX.md): the room's catalog of lanes and current surfaces.
 * [../NOW.md](../NOW.md): current room state and open items; no rules.
 * [../HANDOFF.md](../HANDOFF.md): the resident's durable handoff and wake note (private: ignored by the repository, present on the host only).
-* `../MIND.md`: the room's mind pointer, one line per resident; written only by `mind.py`, out of Git. Not yet created on 2026-10-30.
+* `../MIND.md`: the room's mind index, pointers only, one line per live leaf under `archives/mind/`; written only by `mind.py`, out of Git.
 
 The former broad method document is preserved in place as historical source;
 current craft and mechanics are in the manual and specifications.
@@ -36,7 +36,7 @@ current craft and mechanics are in the manual and specifications.
 Scripts (STELA's sections: rationale, mechanics, anchor, warnings):
 * [ops/specs/scripts/gauge.md](ops/specs/scripts/gauge.md): how full each resident is, from the provider's own token figures; states, window authority, the reviewed window table, the ledger.
 * [ops/specs/scripts/closeout.md](ops/specs/scripts/closeout.md): implemented closeout hook behavior, reserve, privacy limits and separate installation gates.
-* [ops/specs/scripts/mind.md](ops/specs/scripts/mind.md): the mind as a chain of immutable leaves, written only with the operator's words; commands, gates, screens, and Claudio's section 130 dispositions.
+* [ops/specs/scripts/mind.md](ops/specs/scripts/mind.md): the mind, pointer first: the index, concept-only leaves, the screen, the limits, the ledger and the commands.
 * [ops/specs/scripts/rounds.md](ops/specs/scripts/rounds.md): clinic report and separate Control source-drift wrapper behavior; no deployment authority.
 * [ops/specs/scripts/rotate.md](ops/specs/scripts/rotate.md): the rotation, phase by phase with stop points; tiers, capsule, custody, install, acceptance, close.
 * [ops/specs/scripts/constitution.md](ops/specs/scripts/constitution.md): the PoT authorization gate; a changed law needs its coupled ledger entry, snapshot and authority leaf.
@@ -93,7 +93,7 @@ Runbook:
 
 Tests:
 * [ops/specs/tools/test/gauge.md](ops/specs/tools/test/gauge.md): what `tools/test/test_gauge.py` proves, test by test (21).
-* [ops/specs/tools/test/mind.md](ops/specs/tools/test/mind.md): what `tools/test/test_mind.py` proves, test by test (43).
+* [ops/specs/tools/test/mind.md](ops/specs/tools/test/mind.md): what `tools/test/test_mind.py` proves, by group (47).
 * [ops/specs/tools/test/closeout.md](ops/specs/tools/test/closeout.md): synthetic behavior and non-deployment limits of `tools/test/test_closeout.py`.
 * [ops/specs/tools/test/rounds.md](ops/specs/tools/test/rounds.md): syntax and static-integrity checks in `tools/test/test_rounds.py`.
 * [ops/specs/tools/test/myself.md](ops/specs/tools/test/myself.md): the self-check's suite.

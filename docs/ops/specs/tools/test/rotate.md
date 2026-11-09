@@ -21,15 +21,17 @@ Temporary fixture artifacts are removed before return in every write phase.
 Run the tests with the configured interpreter and `-I -B tools/test/test_rotate.py` under
 umask 0002, 0022 and 0077. Every fixture lives in its own private temporary
 room under this clone's `var/tmp/`; cleanup removes only that fixture.
-Registries, gauge rows, closeout state, handoffs, approvals and mind entries
-are invented. Fixture minds use the actual mind serializer and verifier.
+Registries, gauge rows, closeout state, handoffs, approvals and mind leaves
+are invented. Fixture minds are written by the actual mind tool and checked
+by its actual verifier.
 
 The suite checks each implemented stop and each later phase's evidence refusal, with
 no implicit advancement. It covers shared gauge/pressure validation,
 unrounded due boundaries, age/provenance, exact session/key/band evidence,
 writer separation, unique registry bindings, hash-bound closing records,
-mind proposal disposition and retained approval, actual show --ref,
-current leaf binding, interrupted retry, idempotence and late input change.
+the mind index the donor closed with (its shape, a null index for a room
+with no mind, a leaf written after the close, a retired-format index),
+the actual mind verifier, interrupted retry, idempotence and late input change.
 The second slice adds a bound spare/build plan, explicit unowned/fresh
 metadata, process-observability refusal, a held-open private fixture file,
 actual gauge extraction from invented Claude rows, an exact summary and
@@ -38,17 +40,16 @@ and actual successor/media construction. Every static predicate has negative
 fixtures; gate results are real execution results, not constant success slots.
 Tree snapshots check bytes, modes, inodes and mtimes rather than atime.
 
-The suite has 270 tests: the first two slices' 115 (92 plus 23
+The suite has 272 tests: the first two slices' 117 (94 plus 23
 distinct C1 tests from the section 276 gap table), 107 third-slice tests,
-and 48 Claude adapter preparation tests (10 notebook cases removed with the
-notebook on 2026-11-09).
+and 48 Claude adapter preparation tests.
 The original C1 tests are paired with one single-clause or
 property omission in the author's retained mutation table, not a whole
 require-call skip. The new test names identify those exact cases:
 
 | Gap | Test method, with the common test_c1_ prefix |
 | --- | --- |
-| Capsule mind from actual show --ref leaf | capsule_mind_is_verbatim_actual_show_ref_leaf |
+| Capsule mind is the resident's own index lines | capsule_mind_is_the_residents_own_index_lines |
 | First turn and four-part order | capsule_first_turn_and_four_part_order |
 | Staging inside the synthetic room before creation | staging_is_created_inside_the_synthetic_room |
 | Required, hash-bound and recorded cut reason | cut_reason_is_required_hash_bound_and_recorded |

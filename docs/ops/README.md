@@ -37,16 +37,13 @@ remains; the adoption itself moved no state.
             v
  [closeout]  hook puts the card in the resident's own context (Codex: the operator is notified)
             |   the resident parks work, writes its closing handoff,
-            |   and proposes up to 3 mind entries in chat
+            |   and writes any idea that stays true as a leaf
             v
- the operator says yes in conversation
+ [mind]  a leaf  archives/mind/MIND-<date>-<NNN>.md   (out of Git; custody-backed),
+         a pointer line in the room's root  MIND.md,  a ledger line in logs/mind/
             |
             v
- [mind]  writes a new leaf  archives/MIND-<key>-<date>-<hash8>.md   (out of Git; custody-backed)
-         and moves the pointer line in the room's root  MIND.md
-            |
-            v
- [rotate]  capsule = registry header + mind leaf + transition note + first-turn line,
+ [rotate]  capsule = registry header + own mind pointers + transition note + first-turn line,
            plus the donor's own summary and recent window, word for word
            -> static gates -> custody (two drives) -> the operator's go -> verified swap -> registry and binding
            -> labels (spares say "spare body, do not open") -> receipt in archives/receipts/
@@ -66,12 +63,12 @@ remains; the adoption itself moved no state.
 | closeout state | `logs/closeout/` by default | private runtime state and diagnostics; unwired | legacy `storage/closeout` blocks default card delivery until reviewed migration; explicit state selection retains its interface |
 | operator notice | `ops/lib/scripts/notice.py`, `docs/ops/specs/scripts/notice.md`, `tools/test/test_notice.py` | tool; source implemented, review and integration pending; unwired | consumes one exact gauge row using the shared closeout decision, submits only an operator notice; neither native context delivery nor display is proved |
 | notice state | `logs/notices/<key>.json` and sibling `<key>.lock` | private runtime state, created only on an explicit accepted run | 0700/0600, hashed native binding, nonblocking flock and atomic state; separate from hook state, no existing state moved |
-| mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | ported from the Candidates package, simplified to solicited input |
-| mind pointer | `<room>/MIND.md`, one line per resident in the room | durable, out of Git | first one: `Sessions/MIND.md` |
-| mind leaves | `<room>/archives/MIND-<key>-<date>-<hash8>.md` | durable, out of Git, two-drive custody | archives-root layout implemented; an actual write follows PoT 5.1 and the mind specification |
+| mind | `ops/lib/scripts/mind.py`, `docs/ops/specs/scripts/mind.md` | tool | pointer-first index, concept leaves, ledger; no per-entry approval (the operator's design of 2026-11-09) |
+| mind index | `<room>/MIND.md`, one pointer line per live leaf, at most 200 | durable, out of Git | written only by the tool |
+| mind leaves | `<room>/archives/mind/MIND-<date>-<NNN>.md` | durable, immutable, out of Git, two-drive custody | concepts only; the tool screens out dates, counts, paths, commands and the rest of the present |
+| mind ledger | `<room>/logs/mind/ledger.jsonl` | private telemetry | one line per add or retire: id, agent, time, hash, size |
 | rotate | `ops/lib/scripts/rotate.py`, `docs/ops/specs/scripts/rotate.md`, `tools/test/test_rotate.py` | tool | synthetic phases 0 to 9 implemented, dry-run only; temporary fixture artifacts removed at each stop; no live rotation, persistent recovery or provider-load proof |
-| room Claude settings | `.claude/settings.json` at the room's root | private, host-local, out of Git by the `.claude/` line (a tracked copy would overwrite the host's own file on a pull) | must hold `"autoMemoryEnabled": false`: a Claude resident of this room wakes from its own mind and handoff (CONTEXT X01), never from a notebook the provider shares across the room; `myself.py` reports it as its `auto memory` leg |
-| retired notebook | `ops/etc/notebooks/`, `ops/etc/notebook-wired.json`, `logs/claude-resident/`, `archives/NOTEBOOK-*.tar`, `.claude-code-gui/settings.json` | private, out of Git; retired 2026-11-09 with the launch wrapper `ops/bin/claude-resident` | inert once the setting above is in place; kept or moved to custody by the custody owner, never committed |
+| room Claude settings | `.claude/settings.json` at the room's root | private, host-local, out of Git by the `.claude/` line (a tracked copy would overwrite the host's own file on a pull) | must hold `"autoMemoryEnabled": false`: a Claude resident of this room wakes from its own mind and handoff (CONTEXT X01), never from a memory the provider shares across the room; `myself.py` reports it as its `auto memory` leg |
 | team room | `storage/handoff/{shannon,claudine,joe}.md`, and `storage/handoff/port.md` (the port writer's handoff, 2026-11-01) | private, ignored working notes | results are promoted to `archives/receipts/` or the office handoff |
 | task scratch | `var/tmp/<owner>-<operation>.<unique>/`, skeleton described in `var/README.md` | ephemeral, ignored | owner-scoped; PoT 1.1.13; no persistent state or automatic purge |
 | incoming payload | `storage/intake/` | working data; only `.gitkeep` admitted | payload ignored; awaiting classification, not executable installation or authority |

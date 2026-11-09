@@ -109,15 +109,17 @@ barrier.
 
 ## C08
 
-Mind references. A leaf permits registry keys, tool-issued entry identifiers,
-citations to sources and their sections/commits, and binding digests. A source
-citation is never a native session/container path. No native identifiers,
-live state or secrets enter the mind. Entry screening, preview binding,
-immutable leaf/pointer mechanics and chain checks use the existing mind
-specification. Operator yes is per entry; the resident proposes, not ratifies.
-Incident material is a reusable safeguard with its applicable boundary, not
-standing blame, distrust, orientation or resident identity. Apply Control's
-incident-closure rule before showing each proposed entry to the operator.
+Mind content. A leaf holds one idea that stays true: a concept, an
+abstraction, a method. It never holds a date, a time, a count, a path, an
+address, an identifier, a command, live state or a secret; the mind tool
+refuses each at the door. The present lives in the board, the ledger and the
+handoffs, never in a mind. The root MIND.md is pointers only, the leaves are
+immutable under archives/mind/, and every write is one ledger line. A
+registered resident writes, supersedes and retires its own leaves with no
+per-entry approval; the limits and the screen keep the mind bounded, and the
+mind specification holds the mechanics. Incident material is a reusable
+safeguard with its applicable boundary, not standing blame, distrust,
+orientation or resident identity.
 
 ## C09
 

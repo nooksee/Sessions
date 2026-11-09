@@ -16,7 +16,7 @@ Read only the material authorized for the task. Absence is reported, never
 replaced by guessing a role, resident, window or remembered approval.
 
 Registered residents use their own verified native signal and matching registry
-row, then their own mapped handoff and mind where present and authorized.
+row, then the mind index and their own mapped handoff where present and authorized.
 An absent or disagreeing identity signal, ambiguous opening provenance or an
 uncorroborated claim of residency remains unverified: report it and wait for
 The operator, even when the opening message assigns work. Existing entry-point
@@ -52,7 +52,7 @@ requirement. No reader acquires a resident identity merely by entering the room.
 | Work in flight | Mapped resident handoffs | Own writer; other readers receive information, not authority |
 | Body fullness | Body metadata under gauge specification | Gauge and authorized metadata-only checks |
 | Kept proof | archives/receipts/ and mapped custody | Authorized verification; a path alone proves no execution |
-| Mind pointer / leaves | MIND.md; archives/MIND-* | Mind tool and authorized continuity operations; private |
+| Mind index / leaves | MIND.md (pointers only); archives/mind/ | Mind tool and authorized continuity operations; private |
 | Tool behavior / parameters | docs/ops/specs/ | Its writer, reviewer and implementation; do not duplicate formulas here |
 | Inventory | docs/ops/registry/ | Help/manual discovery, not state or permissions |
 | Procedures / glossary | docs/MANUAL.md | Operator and assigned actors |

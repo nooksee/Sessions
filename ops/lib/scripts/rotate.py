@@ -31,8 +31,8 @@ SMALL = 65_536
 DIGEST = re.compile(r"[0-9a-f]{64}")
 PHASES = (
     ("trigger", ["a current-body gauge snapshot at the rotation line", "matching recorded closeout state"]),
-    ("donor-closeout", ["hash-bound closing handoff", "explicit mind-entry disposition"]),
-    ("mind-ready", ["mind show --ref passes", "the checked leaf matches the closing record"]),
+    ("donor-closeout", ["hash-bound closing handoff", "the mind index it closed with"]),
+    ("mind-ready", ["mind check passes", "the checked index matches the closing record"]),
     ("destination", ["operator-created native container", "exact room, identity, spare label and closed writers"]),
     ("window", ["provider-specific summary and active-window design", "justified operator-prompt cut and wake estimate"]),
     ("build-and-static-gates", ["reviewed builder and media adapters", "capsule assembly and every static gate"]),
@@ -53,6 +53,7 @@ NATIVE_GO = {
     "donor-disposition": "named-donor-disposition-go-required-native-unimplemented",
 }
 NATIVE_PHASE = {6: "custody", 7: "install", 8: "load", 9: "donor-disposition"}
+MIND_HINT = "Open a leaf with mind.py read <id>; the whole index with mind.py show.\n"
 FIRST_PROMPT = "Disposable rotation exercise: reply READY only; no tools, files or network."
 
 
@@ -199,59 +200,46 @@ def closing(args, evidence, notice, row, binding, inputs):
     if notice.stamp(record.get("closed_at")) < notice.stamp(row["reading_at"]):
         raise Refused("closing-record-predates-reading")
     evidence.reference(record.get("handoff"))
+    # The donor closes with the mind index it holds: its SHA-256, or null when the room has no index.
     mind = record.get("mind")
-    if (not isinstance(mind, dict) or type(mind.get("proposed")) is not int
-            or not 0 <= mind["proposed"] <= 3 or not isinstance(mind.get("leaf_sha256"), str)
-            or not DIGEST.fullmatch(mind["leaf_sha256"])):
-        raise Refused("mind-disposition-unproved")
-    if mind["proposed"] == 0:
-        if mind.get("decision") != "none-proposed" or mind.get("approval") is not None:
-            raise Refused("mind-disposition-unproved")
-    else:
-        if mind.get("decision") != "approved-and-written":
-            raise Refused("mind-disposition-unproved")
-        evidence.reference(mind.get("approval"))
-    return {"sha256": mind["leaf_sha256"], "proposed": mind["proposed"],
-            "not_before": row["reading_at"], "not_after": record["closed_at"]}
+    if (not isinstance(mind, dict) or set(mind) != {"index_sha256"}
+            or not (mind["index_sha256"] is None
+                    or (isinstance(mind["index_sha256"], str) and DIGEST.fullmatch(mind["index_sha256"])))):
+        raise Refused("mind-index-unproved")
+    return {"sha256": mind["index_sha256"]}
+
+
+def mind_index(evidence):
+    """The index bytes and its (id, agent, title) lines, read as evidence; (None, []) when there is none."""
+    index = evidence.path("MIND.md")
+    if not index.exists() and not index.is_symlink():
+        return None, []
+    raw = evidence.read("MIND.md", SMALL)
+    try:
+        lines = sibling("mind").parse_index(raw.decode("utf-8"))
+    except Exception:
+        raise Refused("mind-check-refused") from None
+    return raw, lines
 
 
 def mind_ready(args, evidence, expected):
-    evidence.read("MIND.md", SMALL)
-    archives = evidence.path("archives")
-    evidence.notice.private_node(archives, True)
-    for leaf in archives.iterdir():
-        if leaf.name.startswith("MIND-"):
-            evidence.read("archives/" + leaf.name)
+    raw, lines = mind_index(evidence)
+    if lines:
+        evidence.notice.private_node(evidence.path("archives/mind"), True)
+        for leaf_id, _, _ in lines:
+            evidence.read("archives/mind/" + leaf_id + ".md")
     mind = sibling("mind")
-    output, errors = io.StringIO(), io.StringIO()
-    # This is the existing read-only show --ref path, not a copied verifier.
-    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
-        rc = mind.main(["--room", str(evidence.room), "--registry",
-                        str(evidence.path("ops/etc/resident-identities.json")), "show", args.key, "--ref"])
-    if rc != 0:
-        raise Refused("mind-show-ref-refused")
-    match = re.fullmatch(r"leaf=(archives/MIND-[a-z0-9-]+\.md)\|sha256=([0-9a-f]{64})\n", output.getvalue())
-    if match is None:
-        raise Refused("invalid-mind-reference")
-    leaf, sha = match.groups()
-    raw = evidence.read(leaf)
-    if sha != expected["sha256"] or digest(raw) != sha:
+    # This is the mind tool's own verifier, read-only and without Git; never a copy of it.
+    try:
+        _, failures = mind.verify(evidence.room, mind.read_registry(evidence.path("ops/etc/resident-identities.json")))
+    except Exception:
+        raise Refused("mind-check-refused") from None
+    if failures:
+        raise Refused("mind-check-refused")
+    sha = digest(raw) if raw is not None else None
+    if sha != expected["sha256"]:
         raise Refused("closing-mind-mismatch")
-    if expected["proposed"]:
-        head, entries = mind.parse_leaf(raw.decode("utf-8"))
-        stamp = evidence.notice.stamp
-        if not stamp(expected["not_before"]) <= stamp(head["written"]) <= stamp(expected["not_after"]):
-            raise Refused("new-mind-write-unproved")
-        previous = []
-        if head["predecessor"] != "none":
-            predecessor = mind.PRED_RE.fullmatch(head["predecessor"])
-            if predecessor is None:
-                raise Refused("new-mind-write-unproved")
-            _, previous = mind.parse_leaf(evidence.read(predecessor.group(1)).decode("utf-8"))
-        added, amended, _ = mind.difference(previous, entries)
-        if len(added) + len(amended) != expected["proposed"]:
-            raise Refused("new-mind-entry-count-mismatch")
-    return {"leaf": leaf, "sha256": sha}
+    return {"index_sha256": sha, "own_leaves": sum(1 for _, agent, _ in lines if agent == args.key)}
 
 
 def require(condition, reason):
@@ -493,13 +481,16 @@ def window_ready(args, evidence, row, plan):
 
 
 def capsule_text(args, evidence, mind_ref, admission, plan):
-    leaf = evidence.read(mind_ref["leaf"]).decode("utf-8")
+    # Pointer first: the capsule carries the resident's own index lines, never a leaf's body.
+    _, lines = mind_index(evidence)
+    own = [f"- [{i}](archives/mind/{i}.md) {agent} \u2014 {title}\n" for i, agent, title in lines if agent == args.key]
+    pointers = "".join(own) or "No leaves of yours yet.\n"
     transition = evidence.reference(plan.get("transition")).decode("utf-8")
     require(not transition.lstrip().startswith(("/", "archives/", "storage/")), "transition-text-required")
     identity = admission["identity"]
     return ("Registry\nYou are `" + admission["plain"] + "`.\nResident: " + args.key
             + "\nRoom: " + str(evidence.room) + "\nDestination container: " + args.destination
-            + "\n\nMind\n" + leaf + "\nTransition\n" + transition
+            + "\n\nMind\n" + pointers + MIND_HINT + "\nTransition\n" + transition
             + "\nFirst turn\nThe room's status in a few lines, then speak as yourself.\n")
 
 
@@ -650,7 +641,7 @@ def build_preview(args, evidence, mind_ref, admission, plan, window, result, con
                 evidence.unchanged()
                 fixture_holders(evidence, admission["spare_path"])
                 preview = {"sha256": digest(raw), "bytes": len(raw), "rows": len(rows), "gates": gates,
-                           "capsule_sha256": digest(capsule.encode()), "mind_sha256": mind_ref["sha256"],
+                           "capsule_sha256": digest(capsule.encode()), "mind_sha256": mind_ref["index_sha256"],
                            "media_files": externalizer.written, "media_blocks": externalizer.blocks,
                            "artifacts_retained": False, "native_load_proved": False}
                 if continuation is not None:
@@ -852,7 +843,7 @@ def fixture_receipt(args, evidence, stage, operation, admission, window, preview
         "GATES": json.dumps(preview["gates"], sort_keys=True),
         "CUSTODY": "Two synthetic roots, direct reads; manifest sha256=" + outcome["custody_sha256"]
                    + "; not independent physical-drive custody",
-        "MIND_LEAF": preview["mind_sha256"], "INSTALL": "Synthetic verified swap; six agreements="
+        "MIND_INDEX": preview["mind_sha256"] or "none: the room held no mind index", "INSTALL": "Synthetic verified swap; six agreements="
                    + json.dumps(outcome["agreements"], sort_keys=True),
         "ESTIMATE_VS_MEASURED": str(window["estimate"]["tokens"]) + " estimated; " + str(wake["tokens"])
                    + "/" + str(wake["window"]) + " measured from fixture append at " + wake["reading_at"],

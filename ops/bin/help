@@ -367,7 +367,7 @@ show_menu() {
   printf '    .gitignore  deny-by-default payload boundary; inspect staged paths\n'
   printf '  var/tmp/      owner-scoped task scratch (PoT 1.1.13; CONSTRAINTS C01)\n'
   printf '  archives/, archives/receipts/, custody   durable records\n'
-  printf '  MIND.md + archives/MIND-*    minds, out of Git\n'
+  printf '  MIND.md + archives/mind/     the mind: pointer index and leaves, out of Git\n'
   printf '  Who you are: ops/etc/resident-identities.json, never prose\n'
 }
 

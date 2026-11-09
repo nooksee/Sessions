@@ -26,7 +26,7 @@ Sessions is the session-health office of the Control house. The operator runs ab
 This room owns:
 - **measurement:** how full each resident is, from the provider's own figures;
 - **closeout:** telling a resident, from inside, that its time is near;
-- **minds:** the small curated record of who a resident is, written only with the operator's yes;
+- **the mind:** the room's concepts, pointer first: ideas that stay true, written by the residents themselves;
 - **rotation:** moving a resident into a fresh body the same way every time;
 - **custody and receipts:** every donor preserved whole, every action receipted.
 
@@ -48,12 +48,11 @@ Each resident maintains its own mapped handoff during assigned work. Use the
 existing packet and receipt forms, record actual start/deadline and source
 pins, and report actual state at the deadline. Promote durable results before
 scratch closeout. Continuity operations follow their existing specifications:
-measured closeout, separately approved mind entries, verified custody,
+measured closeout, verified custody,
 destination-native successor, required go, closed-writer join, native
 readback and operator acceptance. This sequence does not imply that an
 unwritten runner or unwired hook exists. A Claude resident of this room runs
-with auto memory off and wakes from its own mind and handoff (CONTEXT X01);
-the notebook and its launch wrapper were retired on 2026-11-09.
+with auto memory off and wakes from the mind and its own handoff (CONTEXT X01).
 
 ---
 
@@ -91,13 +90,10 @@ The authority for who each resident is lives only in the registry. A resident ch
       |      when 50,000 tokens remain before the 70 percent line
       v
  [closeout]  the card appears in the resident's own context; the resident parks work,
-      |      writes its closing handoff, and proposes up to 3 mind entries in chat
+      |      writes its closing handoff, and writes any idea that stays true as a leaf
       v
- the operator says yes, in conversation
-      |
-      v
- [mind]      writes a new leaf archives/MIND-<key>-<date>-<hash8>.md
-      |      and moves the resident's line in the room's MIND.md
+ [mind]      a new leaf archives/mind/MIND-<date>-<NNN>.md, a pointer line in MIND.md,
+      |      and a ledger line in logs/mind/ledger.jsonl; no approval
       v
  [rotate]    capsule + donor's own summary and window -> static gates -> custody (two tiers)
       |      -> the operator's go -> verified swap -> registry and binding -> labels -> receipt
@@ -110,7 +106,7 @@ The authority for who each resident is lives only in the registry. A resident ch
 | gauge | `ops/lib/scripts/gauge.py` | `docs/ops/specs/scripts/gauge.md` | `tools/test/test_gauge.py` | built; see its specification for measurement behavior and installed scope |
 | closeout | `ops/lib/scripts/closeout.py` | `docs/ops/specs/scripts/closeout.md` | `tools/test/test_closeout.py` | implemented and synthetically tested; current-hash review and native delivery proof precede installation (PoT 6.1.2) |
 | notice (operator backstop) | `ops/lib/scripts/notice.py` | `docs/ops/specs/scripts/notice.md` | `tools/test/test_notice.py` | source integrated on `main` (PR #10, 2026-11-05) with the Independent Reviewer's source PASS and post-integration audit; unwired, live go pending the registry permission finding (F1) and George's activation; consumes one exact gauge row, submits an operator-only notice, never delivers resident context |
-| mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; writes version 1 leaves only; the notebook commands were retired on 2026-11-09; actual use has separate acceptance |
+| mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; pointer-first index, concept leaves, ledger; residents write their own leaves |
 | rotate | `ops/lib/scripts/rotate.py` | `docs/ops/specs/scripts/rotate.md` | `tools/test/test_rotate.py` | synthetic phases 0 to 9 implemented, dry-run only; temporary fixture artifacts are removed at each stop; no live rotation, persistent recovery or provider-load proof |
 
 Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.md`.
@@ -143,13 +139,14 @@ python3 -I -B ops/lib/scripts/gauge.py --no-ledger
 python3 -I -B ops/lib/scripts/gauge.py --key session-doctor --json --no-ledger
 ~~~
 
-### Mind (read and check; writing needs the operator's yes first, see section 5)
+### Mind (see section 5)
 ~~~bash
+python3 -I -B ops/lib/scripts/mind.py show [--agent <key>]
+python3 -I -B ops/lib/scripts/mind.py read <id>
+python3 -I -B ops/lib/scripts/mind.py add --agent <key> --title "<title>" --body <file or ->
+python3 -I -B ops/lib/scripts/mind.py add --agent <key> --title "<title>" --body <file> --supersedes <id>
+python3 -I -B ops/lib/scripts/mind.py retire --agent <key> <id>
 python3 -I -B ops/lib/scripts/mind.py check
-python3 -I -B ops/lib/scripts/mind.py show <key>
-python3 -I -B ops/lib/scripts/mind.py show <key> --ref
-python3 -I -B ops/lib/scripts/mind.py history <key>
-python3 -I -B ops/lib/scripts/mind.py preview <key> --changes <file.json>
 ~~~
 
 ### Tests (synthetic data only; no real body, room or mind is touched)
@@ -271,7 +268,7 @@ specification records the implementation boundary; PoT 6.1.2 governs wiring.
 1. Tell the operator plainly that the closeout has begun, with the figure.
 2. Finish the current step if it is short; otherwise stop at a clean point. Start nothing new and material.
 3. Write the closing handoff: work in flight, open promises, owners, first steps for the successor.
-4. Propose up to three mind entries, in chat, for the operator's yes. Write nothing to the mind until he says yes.
+4. Write any idea learned that stays true as a leaf (`mind.py add`), and supersede or retire your own leaves that no longer hold. No approval is asked.
 5. Tell the operator the resident is ready for rotation. Shannon's desk runs it; for Shannon himself, Claudine runs it.
 
 **Codex and Copilot residents.** Codex CLI 0.166 documents the same hook (Joe Codex, `joe.md`); the PyCharm path is untested, so it is tried on one Codex resident before anyone relies on it. Until then, and for Copilot, the operator pastes the card.
@@ -283,46 +280,52 @@ does not reopen its expired live window.
 
 ---
 
-## 5. Writing a Mind
+## 5. The Mind
 
-Spec: `docs/ops/specs/scripts/mind.md`. Source and synthetic tests exist;
-current test results belong to their validation receipt, not a frozen count
-here. A resident reads its own mind at wake with
-`python3 -I -B ops/lib/scripts/mind.py show <its key>`, after its identity
-passes and before its handoff; `show` serves a mind only when its check
-passes. The room keeps the provider's auto memory off (`.claude/settings.json`,
-`"autoMemoryEnabled": false`), so the mind and the handoff are the whole of a
-resident's carried continuity. The notebook (W5: `project`, `seal`, `unseal`,
-the launch wrapper) was retired on 2026-11-09.
+Spec: `docs/ops/specs/scripts/mind.md`. The design is the operator's, given on
+2026-11-09.
 
-**What a mind is.** The small curated record of who a resident is, what it has learned and what it owes. It travels into every successor beside the donor's own summary and window, and never replaces them.
+**What a mind is.** The room's concepts: ideas that stay true, each one a
+leaf. A concept, an abstraction, a method, a bond. Never the present: the
+board, the ledger and the handoffs hold what is true now, dated and
+replaced. A stale fact read as memory misleads with the authority of
+something remembered, so the mind refuses it at the door.
 
-**How input arrives: solicited, in conversation.**
-1. The closeout card (step 4), or the operator directly, asks the resident for up to three entries.
-2. The resident proposes them in chat: layer, the text in its own voice, the event, the fix where one applies, where it does not apply, and a source that resolves.
-3. The writer runs `preview` so that the operator reads exactly what would change: each addition in full, each amendment before and after, each retirement with the text it removes. Nothing is written.
-4. **The operator says yes in the conversation.** Without his yes nothing is written.
-5. The writer runs `write <key> --changes <file> --yes "<the operator's words>" --by <writer key>`, passing his words exactly as he said them. The tool refuses without them.
-6. The tool writes a new immutable leaf and moves the resident's line in the room's `MIND.md`. It prints the change and the leaf's full SHA-256.
+**Pointers first.** The root `MIND.md` is an index and nothing else: one line
+per live leaf, `- [<id>](archives/mind/<id>.md) <agent> — <title>`. A resident
+reads it at wake with `mind.py show`, after its identity passes and before its
+handoff, and opens a leaf with `mind.py read <id>` when the leaf bears on the
+work. The tool serves only when its check passes; a refusal is reported, never
+worked around. The room keeps the provider's auto memory off
+(`.claude/settings.json`, `"autoMemoryEnabled": false`).
 
-**What never happens.**
-- No stored proposals, no queue, no secret key, nothing waiting for approval.
-- No hand edits: a leaf is valid only in canonical form; a change is always a new leaf.
-- No identifiers, live state, medical content or secrets in a mind; the screens refuse them.
-- No blame in the core layer; an incident enters only as a closed lesson with its fix.
-- Nothing is silently dropped to fit a budget; the resident proposes a retirement and the operator says yes to it.
+**Writing.** A registered resident writes its own leaves, at any time, with no
+approval:
+1. `mind.py add --agent <its key> --title "<one line>" --body <file or ->`.
+   The tool gives the leaf its id, `MIND-<date>-<NNN>`, and records the write
+   in the ledger.
+2. When an idea changes, write the new form with `--supersedes <old id>`: the
+   new line takes the old line's place, and the old leaf stays on disk,
+   unserved.
+3. When an idea no longer holds, `mind.py retire --agent <its key> <id>`.
 
-**Where minds live.**
-- Pointer: `<room>/MIND.md`, one line per resident in that room.
-- Leaves: `<room>/archives/MIND-<key>-<date>-<hash8>.md`, mode 0600.
-- Both are out of Git and backed by two-tier custody.
+A resident changes only its own leaves.
 
-**Before a mind write.** Verify the target room ignores `MIND.md` and
-`archives/MIND-*`; the tool checks that boundary and refuses exposure
-(PoT 5.1.3). The archives-root leaf location is already implemented. A
-historical missing-ignore observation is not a current permission gate.
+**What the screen refuses.** A date, a time, a word that dates the text
+(today, currently, this week), a count or size, a path or file name, an
+address, a pull request or version number, code or a command line, an
+identifier, medical content and secrets. Say the idea instead of the fact.
 
-**Checking.** `mind check` runs every gate (registered, pointer, leaf, entries, chain, newest) and exits 1 on any blocking failure. `mind show <key> --ref` binds the rotation capsule to the leaf hash.
+**Limits.** A title of at most 100 characters, a body of at most 2,000, and at
+most 200 live leaves. A full index refuses a new leaf; supersede or retire one.
+
+**Where it lives.** `MIND.md` at the room's root, the leaves under
+`archives/mind/`, the ledger at `logs/mind/ledger.jsonl`: all mode 0600, all
+out of Git (PoT 5.1.3), all backed by custody.
+
+**Checking.** `mind.py check` runs every gate (legacy, index, out-of-git,
+ledger, leaf, strays) and exits 1 on any blocking failure. A leaf whose bytes
+no longer match its ledger line blocks the mind until its owner retires it.
 
 ---
 
@@ -341,15 +344,15 @@ No live rotation or provider-load proof.
 - **Capsule-only:** only when a window build fails to load, on the operator's go.
 - **A, reseed:** a fresh session reads the handoff; only on the operator's explicit choice, recorded as Tier A and never called a rotation.
 
-**The capsule, appended as text (never a path), in four parts:** registry header; the mind leaf, verbatim and hash-verified; the transition note; the first-turn line ("the room's status in a few lines, then speak as yourself").
+**The capsule, appended as text (never a path), in four parts:** registry header; the resident's own mind index lines, pointers only; the transition note; the first-turn line ("the room's status in a few lines, then speak as yourself").
 
 **Phases (each ends at a stop point; the writer reports and does not run ahead):**
 
 | Phase | What happens | Stop point |
 | --- | --- | --- |
 | 0 Trigger | gauge crosses the line; the closeout card has run; tier, donor, writer, destination and reading recorded | recorded in the handoff |
-| 1 The donor closes well | closing handoff; up to three mind entries proposed; the operator's yes; `mind write` | leaf written |
-| 2 The mind is ready | `mind check` passes; leaf hash matches the pointer | gate passes |
+| 1 The donor closes well | closing handoff; any idea that stays true written as a leaf; the closing record names the mind index | record written |
+| 2 The mind is ready | `mind check` passes; the index hash matches the closing record | gate passes |
 | 3 The destination | the operator opens a fresh chat in the room; the writer labels it a spare at once and verifies room, working directory, no other owner, no process holding it | verified |
 | 4 The window | measure the donor by the gauge method; cut at a genuine operator prompt; carry at least one exchange beyond procedure; record the reason | cut recorded |
 | 5 Build and static gates | splice, re-identify by identity field, externalize media, append the capsule and a fresh plain label; run every static gate | all gates pass |
@@ -357,7 +360,7 @@ No live rotation or provider-load proof.
 | 6 to 7 the operator's go | the writer names container, room, size, custody hash and rollback, then waits; a go given at phase 0 does not count | the operator's go |
 | 7 Install | verified swap (default) or the operator's `.NEW` swap (fallback); registry and binding switched; six identity checks agree; rollback on any failure | six checks agree |
 | 8 Acceptance | `launcher serve <key>` (load test and hold release); first reply gives room status and speaks as itself; first gauge reading recorded; clean native append; then the operator's own acceptance | the operator states that he recognizes him, or her |
-| 9 Close | receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`; donor store entry removed or relabeled only after custody is verified in both tiers; the new resident confirms its mind | receipt written |
+| 9 Close | receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`; donor store entry removed or relabeled only after custody is verified in both tiers; the new resident reads its own leaves and confirms they still hold | receipt written |
 
 Registry updates and rollback follow the canonical identity-registry privacy
 contract in [the rotation specification](ops/specs/scripts/rotate.md). The
@@ -421,7 +424,7 @@ The operator's whole part in a rotation, in four words. Everything else is the w
 ```
 
 Notes:
-- **Decide** comes after the closeout card has run and the resident has said it is ready. The operator also says yes or no to any mind entries proposed at the closeout.
+- **Decide** comes after the closeout card has run and the resident has said it is ready.
 - **Container** is opened from the room's own root so the provider files it under that room. The writer labels it a spare at once.
 - **Go** counts only when it is given for this replacement, after custody. A go given at the start does not count.
 - **Hello** is two things: the load test (a correct first reply) and the operator's acceptance. A correct status alone is not acceptance.
@@ -463,7 +466,7 @@ Also:
 | `storage/handoff/` | team room (private working notes; ignored) |
 | `storage/intake/`, `storage/active/` | incoming and named case payloads; only lane `.gitkeep` files admitted; no operational code trees |
 | `var/tmp/<owner>-<operation>.<unique>/` | task scratch; allocate with `mktemp -d`, contents ignored |
-| `MIND.md`, `archives/MIND-*` | minds (out of Git) |
+| `MIND.md`, `archives/mind/`, `logs/mind/ledger.jsonl` | the mind: index, leaves and ledger (out of Git) |
 | `archives/receipts/` | durable receipts; only explicitly admitted redacted copies are tracked |
 | `Backup/Codex-Session-Preservation/<batch>/` (under `<control>`) | tier-1 custody |
 | `storage/lab/` | the other residents' lab folders, in custody, kept until their owners say; `storage/candidates/` is in custody and gone; new ephemeral work uses `var/tmp/` |
@@ -476,16 +479,16 @@ Also:
 - **Worker:** an actor spawned by a resident through provider delegation, in-session or as a separate unregistered session. An unregistered session alone proves neither worker provenance nor disposal eligibility.
 - **Body:** the session file the provider writes (Claude JSONL, Codex rollout, Copilot events).
 - **Container:** the provider-native session a body belongs to; replaced at rotation.
-- **Room:** the project root a resident works from; minds live per room.
+- **Room:** the project root a resident works from; each room has one mind.
 - **Registry:** `ops/etc/resident-identities.json`; the only authority for identity.
 - **Window:** the model's context size in tokens.
 - **Reading:** the provider's own token figure for one call, as `gauge` finds it.
 - **Reserve:** the 50,000 tokens before the 70 percent line, where the closeout begins.
 - **Closeout card:** the five steps a resident follows at its reserve.
-- **Mind:** the curated record of a resident, as a chain of leaves.
-- **Leaf:** one immutable version of a mind, named with its own hash.
-- **Pointer:** the resident's line in the room's `MIND.md`.
-- **Yes:** the operator's words, given in conversation, recorded on the leaf.
+- **Mind:** the room's concepts: a pointer index, `MIND.md`, and its leaves.
+- **Leaf:** one immutable idea that stays true, with an id, an agent and a title.
+- **Pointer:** one line of `MIND.md`, naming one live leaf.
+- **Ledger:** `logs/mind/ledger.jsonl`, one line per write: id, agent, action, time, hash and size.
 - **Donor:** the body being rotated out; never modified.
 - **Destination:** the fresh native container selected for a successor.
 - **Successor:** the new body built for the same resident.

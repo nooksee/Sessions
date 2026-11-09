@@ -825,7 +825,7 @@ def _auto_memory(
     start_pid: int | None,
 ) -> tuple[str, str, tuple[str, ...]]:
     """Whether this launch runs with the provider's auto memory off, as this room requires: a Claude resident of
-    this room wakes from its own mind and handoff, never from a notebook the provider shares across the room. Read
+    this room wakes from its own mind and handoff, never from a memory the provider shares across the room. Read
     from the launch's own environment and settings arguments, then the room's local and project settings, in the
     provider's order of precedence. It sees what the launch carried, not what the provider then loaded."""
     registry = (_surface(paths.registry),)
@@ -864,10 +864,10 @@ def _auto_memory(
             return "pass", f"auto memory is off by {label}", surfaces
         if value is True:
             return "finding", (f"auto memory is on by {label}: every resident of this room would share one "
-                               "provider notebook"), surfaces
+                               "provider memory"), surfaces
         return "finding", f"{label} sets {AUTO_MEMORY_KEY} to a value that is not true or false", surfaces
     return "finding", (f"nothing turns auto memory off: {ROOM_SETTINGS[1]} needs \"{AUTO_MEMORY_KEY}\": false, "
-                       "or the launch has the provider's shared notebook"), surfaces
+                       "or the launch loads the provider's shared memory"), surfaces
 
 
 def run_check(
