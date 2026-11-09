@@ -5,6 +5,8 @@ Test: `tools/test/test_rotate.py` (`TEST-48`). Writer: Joe Codex.
 Status: synthetic phases 0 to 9 implemented, dry-run only. No native rotation,
 persistent recovery or provider-load claim.
 
+Slice 5 adds 58 Claude adapter preparation tests, still fixture-only.
+
 ## First Principles Rationale
 
 The guided runner must stop where its implementation stops. A successful
@@ -36,8 +38,9 @@ and actual successor/media construction. Every static predicate has negative
 fixtures; gate results are real execution results, not constant success slots.
 Tree snapshots check bytes, modes, inodes and mtimes rather than atime.
 
-The suite has 222 tests: the first two slices' 115 (92 plus 23
-distinct C1 tests from the section 276 gap table) and 107 third-slice tests.
+The suite has 280 tests: the first two slices' 115 (92 plus 23
+distinct C1 tests from the section 276 gap table), 107 third-slice tests,
+and 58 Claude adapter preparation tests.
 The original C1 tests are paired with one single-clause or
 property omission in the author's retained mutation table, not a whole
 require-call skip. The new test names identify those exact cases:
@@ -152,3 +155,27 @@ drive independence, native load/append, semantic identity readback, operator
 authorship, durable recovery or a real rotation. The model's `.NEW` does not
 survive return; no later invocation adopts it. The existing rotate-spare/1
 and rotate-estimate/1 schemas remain unchanged.
+
+## Claude adapter preparation coverage and limits
+
+All six preparation stops preserve input snapshots, with later evidence
+absent where it must not be read. Cases independently bind the adapter
+header, provider/version, closed-writer process model, actual checked mind,
+notebook memory and canonical projection/seal readers, pristine first exchange, metadata reference,
+message identity/chain/time, operator-only compaction declaration, before
+and after readings, actual boundary and summary times, and late changes.
+The post-compaction reading may be below the original trigger: its real
+fixture usage selects the window while phase 0 retains the original due
+snapshot. No counter or threshold is lowered to claim a crossing.
+
+Native actions, native phases 6 to 9 and the explicit Codex adapter are
+tested as pure refusals before the Evidence constructor, staging or native
+target access. Every new guard has a named refusal and a negative case;
+the author's retained single-clause mutation table identifies its selected
+tests, caught/surviving result and exact source hash. Mutants and the full
+three-umask matrix run behind accepted masked2, with its barrier proof and
+tripwire count reported. The earlier fixture install/rollback tests remain.
+
+This checks preparation and refusal on invented notebook archives, not an
+accepted native adapter, real notebook preservation, installed version, physical-disk copies, persistent recovery, real
+provider, disposable exercise or resident rotation. No live go is requested.

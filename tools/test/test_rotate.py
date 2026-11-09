@@ -2181,5 +2181,404 @@ for name, attribute, field, value, phase, reason in (
     setattr(InstallPhases, "test_s3_" + name, bad_fixture_case(attribute, field, value, phase, reason))
 
 
+class ClaudeAdapterTests(unittest.TestCase):
+    save = RotateTests.save
+    sha = RotateTests.sha
+    ref = RotateTests.ref
+    make_mind = RotateTests.make_mind
+    snapshot = RotateTests.snapshot
+    invoke = RotateTests.invoke
+    refused = BuildPhases.refused
+    write_body = BuildPhases.write_body
+    bind_plan = BuildPhases.bind_plan
+
+    def setUp(self):
+        BuildPhases.setUp(self)
+        self.adapter_path = "fixtures/adapter.json"
+        self.process_path = "fixtures/adapter-process.json"
+        self.pristine = "fixtures/adapter-pristine.fixture"
+        self.notebook_path = "fixtures/notebook.json"
+        self.memory_path = "fixtures/notebook/MEMORY.md"
+        self.compaction_path = "fixtures/compaction.json"
+        self.after_path = "fixtures/after-gauge.json"
+        self.save(self.process_path, {"schema": "rotate-process/1", "observable": True,
+                                      "holders": [], "session_records": []})
+        mind = ROTATE.sibling("mind")
+        block = mind.projection_block(KEY, self.leaf, (self.room / self.leaf).read_bytes())
+        self.save(self.memory_path, block + "Invented notebook only.\n", text=True)
+        self.make_seal()
+        self.notebook = {"schema": "rotate-notebook-fixture/1", "key": KEY,
+                         "mind_sha256": self.leaf_sha, "writer_stopped": True,
+                         "memory": self.ref(self.memory_path), "seal": self.ref(self.seal_path)}
+        self.save(self.notebook_path, self.notebook)
+        uid = "0000f101-0000-4000-8000-00000000f101"
+        self.pristine_rows = [
+            {"type": "custom-title", "customTitle": self.spare_row["label"]},
+            {"type": "user", "uuid": uid, "parentUuid": None,
+             "timestamp": "2026-11-05T12:03:01Z",
+             "message": {"role": "user", "content": ROTATE.FIRST_PROMPT}},
+            {"type": "assistant", "uuid": "0000f102-0000-4000-8000-00000000f102",
+             "parentUuid": uid, "timestamp": "2026-11-05T12:03:02Z",
+             "message": {"role": "assistant", "content": "READY"}},
+        ]
+        for r in self.pristine_rows:
+            r.update(sessionId=DESTINATION, cwd=str(self.room))
+        self.save_pristine()
+        self.after = {**self.row, "tokens": 18000, "percent": 1.8,
+                      "reading_at": "2026-11-05T12:01:00Z", "measured_at": "2026-11-05T12:01:01Z",
+                      "age_seconds": 1}
+        self.save(self.after_path, self.after)
+        self.compaction = {"schema": "rotate-compaction-fixture/1", "actor": "operator",
+                           "method": "supported-interface", "at": "2026-11-05T12:00:10Z",
+                           "before_gauge_sha256": self.sha(self.gauge), "after_gauge": self.ref(self.after_path)}
+        self.rows[1]["timestamp"] = self.compaction["at"]
+        self.rows[2]["timestamp"] = "2026-11-05T12:00:11Z"
+        self.rows[5]["timestamp"] = "2026-11-05T12:00:30Z"
+        self.rows[6]["timestamp"] = self.after["reading_at"]
+        self.rows[6]["message"]["usage"]["input_tokens"] = self.after["tokens"]
+        self.write_body()
+        self.bind_plan()
+        self.save(self.compaction_path, self.compaction)
+        self.adapter = {"schema": "rotate-claude-adapter/1", "kind": "registered-fixture",
+                        "key": KEY, "writer": WRITER, "binding": self.record["binding"],
+                        "gauge_sha256": self.sha(self.gauge), "closeout_sha256": self.sha(self.state),
+                        "destination_sha256": hashlib.sha256(DESTINATION.encode()).hexdigest(),
+                        "provider_version": "invented-cli-version", "process_model": self.ref(self.process_path),
+                        "notebook": self.ref(self.notebook_path), "pristine": self.ref(self.pristine),
+                        "destination_metadata": self.ref(self.spare), "compaction": self.ref(self.compaction_path)}
+        self.save_adapter()
+
+    def args(self, phase=0):
+        return BuildPhases.args(self, phase) + ["--adapter", "claude", "--adapter-plan", self.adapter_path]
+
+    def save_adapter(self):
+        self.save(self.adapter_path, self.adapter)
+
+    def save_pristine(self):
+        self.save(self.pristine, "".join(json.dumps(r) + "\n" for r in self.pristine_rows), text=True)
+
+    def bind_notebook(self):
+        self.notebook["seal"] = self.ref(self.seal_path)
+        self.save(self.notebook_path, self.notebook)
+        self.adapter["notebook"] = self.ref(self.notebook_path)
+        self.save_adapter()
+
+    def make_seal(self, key=KEY, raw=None):
+        if raw is None:
+            raw, _, _ = ROTATE.sibling("mind").seal_bytes(key, (self.room / self.memory_path).parent)
+        self.seal_path = "archives/NOTEBOOK-" + key + "-2026-11-05-" + hashlib.sha256(raw).hexdigest()[:8] + ".tar"
+        path = self.room / self.seal_path
+        path.write_bytes(raw)
+        path.chmod(0o600)
+
+    def bind_compaction(self):
+        self.save(self.after_path, self.after)
+        self.compaction["after_gauge"] = self.ref(self.after_path)
+        self.save(self.compaction_path, self.compaction)
+        self.adapter["compaction"] = self.ref(self.compaction_path)
+        self.save_adapter()
+
+    def bad_pristine(self, change, reason):
+        change(self.pristine_rows)
+        self.save_pristine()
+        self.adapter["pristine"] = self.ref(self.pristine)
+        self.save_adapter()
+        self.refused(3, reason)
+
+    def test_each_preparation_phase_stops_and_preserves_inputs(self):
+        for phase in range(6):
+            with self.subTest(phase=phase):
+                before = self.snapshot()
+                rc, result = self.invoke(phase)
+                self.assertEqual(rc, 0, result)
+                self.assertEqual(result["completed"], list(range(phase + 1)))
+                self.assertFalse(result["adapter"]["native_actions_implemented"])
+                self.assertFalse(result["native_load_proved"])
+                self.assertEqual(self.snapshot(), before)
+        self.assertEqual(result["build"]["media_files"], 0)
+        self.assertTrue(all(result["build"]["gates"].values()))
+
+    def test_later_inputs_absent_are_not_read_at_earlier_stops(self):
+        for name, phase in ((self.notebook_path, 1), (self.pristine, 2), (self.compaction_path, 3)):
+            with self.subTest(name=name):
+                path = self.room / name
+                raw = path.read_bytes()
+                path.unlink()
+                rc, result = self.invoke(phase)
+                self.assertEqual(rc, 0, result)
+                path.write_bytes(raw)
+                path.chmod(0o600)
+
+    def test_missing_adapter_plan_refuses(self):
+        (self.room / self.adapter_path).unlink()
+        self.refused(0)
+
+    def test_version_requires_a_bounded_nonblank_string(self):
+        for value in (None, 123, "", "  ", "x" * 65):
+            with self.subTest(value=value):
+                self.adapter["provider_version"] = value
+                self.save_adapter()
+                self.refused(0, "claude-provider-version-required")
+
+    def test_codex_row_never_uses_the_claude_contract(self):
+        with self.assertRaisesRegex(ROTATE.Refused, "claude-adapter-provider-required"):
+            ROTATE.claude_contract(types.SimpleNamespace(), None, {"provider": "codex"}, None, None)
+
+    def test_any_holder_blocks_preparation_without_proc_read(self):
+        self.save(self.process_path, {"schema": "rotate-process/1", "observable": True,
+                                      "holders": [self.memory_path], "session_records": []})
+        self.adapter["process_model"] = self.ref(self.process_path)
+        self.save_adapter()
+        with mock.patch.object(ROTATE, "no_fixture_holders", side_effect=AssertionError("no host proc")):
+            self.refused(0, "claude-writers-not-closed")
+
+    def test_nonobservable_process_model_refuses(self):
+        self.save(self.process_path, {"schema": "rotate-process/1", "observable": False,
+                                      "holders": [], "session_records": []})
+        self.adapter["process_model"] = self.ref(self.process_path)
+        self.save_adapter()
+        self.refused(0, "process-model-unobservable")
+
+    def test_seal_binds_actual_memory_bytes(self):
+        path = self.room / self.memory_path
+        self.save(self.memory_path, path.read_text() + "New invented trailing notes.\n", text=True)
+        self.notebook["memory"] = self.ref(self.memory_path)
+        self.bind_notebook()
+        self.refused(2, "claude-seal-memory-mismatch")
+
+    def test_memory_needs_the_current_canonical_projection(self):
+        self.save(self.memory_path, "Invented stale projection.\n", text=True)
+        self.notebook["memory"] = self.ref(self.memory_path)
+        self.make_seal()
+        self.bind_notebook()
+        self.refused(2, "claude-notebook-projection-mismatch")
+
+    def test_canonical_seal_reader_refuses_another_key(self):
+        self.make_seal(WRITER)
+        self.bind_notebook()
+        self.refused(2, "claude-seal-verification-refused")
+
+    def test_canonical_seal_reader_refuses_malformed_bytes(self):
+        self.make_seal(raw=b"Not a tar archive")
+        self.bind_notebook()
+        self.refused(2, "claude-seal-verification-refused")
+
+    def test_canonical_seal_reader_is_reused_and_rechecked(self):
+        mind = ROTATE.sibling("mind")
+        real_sibling = ROTATE.sibling
+        real_reader = mind.read_seal
+        with mock.patch.object(ROTATE, "sibling", side_effect=lambda name: mind if name == "mind" else real_sibling(name)):
+            with mock.patch.object(mind, "read_seal", wraps=real_reader) as reader:
+                rc, result = self.invoke(2)
+                self.assertEqual(rc, 0, result)
+                reader.assert_called_once_with(self.room, KEY, self.seal_path)
+            raw, members = real_reader(self.room, KEY, self.seal_path)
+            with mock.patch.object(mind, "read_seal", return_value=(raw + b"changed", members)):
+                self.refused(2, "claude-seal-preimage-changed")
+
+    def test_seal_must_hold_exactly_the_named_memory_member(self):
+        mind = ROTATE.sibling("mind")
+        raw, _ = mind.read_seal(self.room, KEY, self.seal_path)
+        real_sibling = ROTATE.sibling
+        memory = (self.room / self.memory_path).read_bytes()
+        with mock.patch.object(ROTATE, "sibling", side_effect=lambda name: mind if name == "mind" else real_sibling(name)):
+            for members in ([], [("OTHER.md", "file", memory, 0)], [("MEMORY.md", "dir", memory, 0)]):
+                with self.subTest(members=len(members)), mock.patch.object(mind, "read_seal", return_value=(raw, members)):
+                    self.refused(2, "claude-seal-memory-mismatch")
+
+    def test_running_notebook_writer_refuses(self):
+        for value in (False, 1, None):
+            with self.subTest(value=value):
+                self.notebook["writer_stopped"] = value
+                self.bind_notebook()
+                self.refused(2, "claude-notebook-writer-not-stopped")
+
+    def test_pristine_hash_is_checked(self):
+        self.save(self.pristine, "changed\n", text=True)
+        self.refused(3, "evidence-hash-mismatch")
+
+    def test_destination_metadata_is_the_same_bound_preimage(self):
+        self.adapter["destination_metadata"] = self.ref(self.memory_path)
+        self.save_adapter()
+        self.refused(3, "claude-destination-metadata-mismatch")
+
+    def test_first_exchange_has_exactly_three_rows(self):
+        self.bad_pristine(lambda rows: rows.append(copy.deepcopy(rows[-1])), "claude-first-exchange-required")
+
+    def test_first_exchange_has_the_exact_room(self):
+        self.bad_pristine(lambda rows: rows[1].update(cwd="invented-other-room"), "claude-first-exchange-room")
+
+    def test_first_exchange_has_the_spare_label(self):
+        self.bad_pristine(lambda rows: rows[0].update(customTitle="Other fixture"), "claude-first-exchange-label")
+
+    def test_first_prompt_is_inert_and_plain(self):
+        self.bad_pristine(lambda rows: rows[1]["message"].update(content="Run a tool"), "claude-first-prompt-not-inert")
+
+    def test_first_reply_is_inert_and_plain(self):
+        self.bad_pristine(lambda rows: rows[2]["message"].update(content="Not ready"), "claude-first-reply-not-inert")
+
+    def test_first_prompt_requires_an_identifier(self):
+        self.bad_pristine(lambda rows: rows[1].pop("uuid"), "claude-first-prompt-chain")
+
+    def test_first_prompt_has_no_parent(self):
+        self.bad_pristine(lambda rows: rows[1].update(parentUuid=SID), "claude-first-prompt-chain")
+
+    def test_first_reply_requires_an_identifier(self):
+        self.bad_pristine(lambda rows: rows[2].pop("uuid"), "claude-first-reply-chain")
+
+    def test_first_reply_has_a_distinct_identifier(self):
+        self.bad_pristine(lambda rows: rows[2].update(uuid=rows[1]["uuid"]), "claude-first-reply-chain")
+
+    def test_first_reply_points_to_the_first_prompt(self):
+        self.bad_pristine(lambda rows: rows[2].update(parentUuid=None), "claude-first-reply-chain")
+
+    def test_first_exchange_cannot_predate_creation(self):
+        self.bad_pristine(lambda rows: rows[1].update(timestamp="2026-11-05T12:02:59Z"), "claude-first-exchange-time")
+
+    def test_first_reply_cannot_predate_its_prompt(self):
+        self.bad_pristine(lambda rows: rows[2].update(timestamp="2026-11-05T12:03:00Z"), "claude-first-exchange-time")
+
+    def test_first_reply_cannot_follow_the_build_clock(self):
+        self.bad_pristine(lambda rows: rows[2].update(timestamp="2026-11-05T12:04:01Z"), "claude-first-exchange-time")
+
+    def test_compaction_after_the_initial_due_reading_is_allowed(self):
+        rc, result = self.invoke(4)
+        self.assertEqual(rc, 0, result)
+        self.assertEqual(result["measurement"]["tokens"], 700000)
+        self.assertEqual(result["window"]["summary"], 2)
+        self.assertNotEqual(self.after["tokens"], self.row["tokens"])
+
+    def test_compaction_must_follow_the_phase_zero_reading(self):
+        self.compaction["at"] = self.row["reading_at"]
+        self.bind_compaction()
+        self.refused(4, "claude-compaction-outside-closing-seam")
+
+    def test_compaction_must_precede_quiescence(self):
+        self.compaction["at"] = self.record["closed_at"]
+        self.bind_compaction()
+        self.refused(4, "claude-compaction-outside-closing-seam")
+
+    def test_post_compaction_window_is_the_same_measured_model_window(self):
+        self.after["window"] *= 2
+        self.after["percent"] /= 2
+        self.bind_compaction()
+        self.refused(4, "claude-post-compaction-window")
+
+    def test_post_compaction_provider_is_checked_independently(self):
+        real_window = ROTATE.claude_window
+        def changed_provider(args, evidence, *rest):
+            real_measurement = evidence.notice.measurement
+            def changed(*values):
+                row, band, binding = real_measurement(*values)
+                return {**row, "provider": "codex"}, band, binding
+            with mock.patch.object(evidence.notice, "measurement", side_effect=changed):
+                return real_window(args, evidence, *rest)
+        with mock.patch.object(ROTATE, "claude_window", side_effect=changed_provider):
+            self.refused(4, "claude-post-compaction-provider")
+
+    def test_post_compaction_reading_cannot_precede_compaction(self):
+        self.after["reading_at"] = self.row["reading_at"]
+        self.after["measured_at"] = self.after["reading_at"]
+        self.after["age_seconds"] = 0
+        self.bind_compaction()
+        self.refused(4, "claude-post-compaction-reading-time")
+
+    def test_post_compaction_reading_cannot_follow_quiescence(self):
+        self.after["reading_at"] = "2026-11-05T12:02:01Z"
+        self.after["measured_at"] = self.after["reading_at"]
+        self.after["age_seconds"] = 0
+        self.bind_compaction()
+        self.refused(4, "claude-post-compaction-reading-time")
+
+    def test_actual_boundary_binds_the_compaction_time(self):
+        self.rows[1]["timestamp"] = "2026-11-05T12:00:09Z"
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "claude-compaction-boundary-time")
+
+    def test_summary_cannot_predate_compaction(self):
+        self.rows[2]["timestamp"] = "2026-11-05T12:00:09Z"
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "claude-summary-time")
+
+    def test_summary_cannot_follow_the_selected_prompt(self):
+        self.rows[2]["timestamp"] = "2026-11-05T12:00:31Z"
+        self.write_body()
+        self.bind_plan()
+        self.refused(4, "claude-summary-time")
+
+    def test_late_adapter_input_change_prevents_build(self):
+        real = ROTATE.claude_window
+        def change(*args):
+            result = real(*args)
+            self.adapter["provider_version"] = "changed"
+            self.save_adapter()
+            return result
+        before = self.snapshot()
+        with mock.patch.object(ROTATE, "claude_window", side_effect=change):
+            rc, result = self.invoke(5)
+        self.assertEqual(rc, 2, result)
+        self.assertEqual(result["reason"], "evidence-changed")
+        self.assertNotIn("build", result)
+        after = self.snapshot()
+        # The deliberately concurrent input edit survives; nothing else changes.
+        before.pop(self.adapter_path)
+        after.pop(self.adapter_path)
+        self.assertEqual(before, after)
+        self.assertEqual(json.loads((self.room / self.adapter_path).read_text())["provider_version"], "changed")
+
+    def test_every_native_action_refuses_before_any_evidence_read(self):
+        actions = {"disposable-exercise": "named-disposable-exercise-go-required",
+                   "compact": "operator-compaction-only", "rotation": "named-resident-rotation-go-required",
+                   "hold": "named-native-hold-go-required", "custody": "named-native-custody-go-required",
+                   "install": "post-custody-replacement-go-required", "load": "named-native-load-go-required",
+                   "rollback": "named-native-rollback-go-required", "donor-disposition": "named-donor-disposition-go-required"}
+        for action, reason in actions.items():
+            with self.subTest(action=action), mock.patch.object(ROTATE, "Evidence", side_effect=AssertionError("no read")):
+                rc, result = self.invoke(0, ("--native-action", action))
+                self.assertEqual(rc, 2)
+                self.assertEqual(result["reason"], reason + "-native-unimplemented")
+                self.assertEqual(result["writes"], 0)
+
+    def test_codex_adapter_refuses_before_any_evidence_read(self):
+        with mock.patch.object(ROTATE, "Evidence", side_effect=AssertionError("no read")):
+            rc, result = self.invoke(0, ("--adapter", "codex"))
+        self.assertEqual(rc, 2)
+        self.assertEqual(result["reason"], "codex-summary-active-window-and-loader-proof-required")
+
+    def test_native_phases_refuse_before_staging_or_evidence_read(self):
+        reasons = {6: "named-native-custody-go-required", 7: "post-custody-replacement-go-required",
+                   8: "named-native-load-go-required", 9: "named-donor-disposition-go-required"}
+        for phase, reason in reasons.items():
+            with self.subTest(phase=phase), mock.patch.object(ROTATE, "Evidence", side_effect=AssertionError("no read")):
+                self.refused(phase, reason + "-native-unimplemented")
+
+
+def bad_adapter_field(attribute, field, phase, reason):
+    def test(self):
+        getattr(self, attribute)[field] = "wrong-fixture-value"
+        if attribute == "adapter":
+            self.save_adapter()
+        elif attribute == "notebook":
+            self.bind_notebook()
+        else:
+            self.bind_compaction()
+        self.refused(phase, reason)
+    return test
+
+
+for field in ("schema", "kind", "key", "writer", "binding", "gauge_sha256", "closeout_sha256", "destination_sha256"):
+    setattr(ClaudeAdapterTests, "test_header_" + field,
+            bad_adapter_field("adapter", field, 0, "claude-adapter-" + field.replace("_", "-") + "-mismatch"))
+for attribute, fields, phase, prefix in (
+    ("notebook", ("schema", "key", "mind_sha256"), 2, "claude-notebook-"),
+    ("compaction", ("schema", "actor", "method", "before_gauge_sha256"), 4, "claude-compaction-"),
+):
+    for field in fields:
+        setattr(ClaudeAdapterTests, "test_" + attribute + "_" + field,
+                bad_adapter_field(attribute, field, phase, prefix + field + "-mismatch"))
+
+
 if __name__ == "__main__":
     unittest.main()
