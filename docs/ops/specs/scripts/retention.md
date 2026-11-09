@@ -11,7 +11,7 @@ Ported legacy tool. Its own docstring opens: "Report, and on explicit request en
 1. Behavior is the legacy script's, unchanged: `Scripts/check_session_retention.py` (sha256 `58601cb2ad89daf5936969e7e9268f352a31fa732427fb7c4b08124105d195ef`) was copied to `ops/lib/scripts/retention.py` on 2026-11-01 with 1 edit(s): SESSIONS / "Scripts/check_writer_gate.py" -> SESSIONS / "ops/lib/scripts/gate.py" (1).
 2. Command line: `python3 -I -B ops/lib/scripts/retention.py`. Options as the script declares them:
    - `--sweep`: relocate non-active bodies to quarantine; never deletes
-   - `--quarantine`: where `--sweep` moves bodies. Default: `Project-Archives/Session-Quarantine` on the archive volume the host fingerprint names, read only when a sweep needs it; on the operator's direction of 2026-11-08 the archive volume is the interim backup drive, while the tier-2 drive is replaced.
+   - `--quarantine`: where `--sweep` moves bodies. Default: `Project-Archives/Session-Quarantine` on the archive volume the host fingerprint names, read only when a sweep needs it; on the operator's direction of 2026-11-08 the archive volume is the drive that now holds custody tier 2. Quarantines swept before that change stay where they were put, under the same folder name on the drive the old default named; this tool neither reads nor moves them. A test pins the default: a sweep given no `--quarantine` lands on the archive root and asks for no other root.
    - `--include-archived`: also sweep the provider's own archived_sessions folder
 3. Reads and writes: as the docstring states (1751 characters; the first paragraph is quoted above and the rest remains in the script). The port added no read and no write.
 
