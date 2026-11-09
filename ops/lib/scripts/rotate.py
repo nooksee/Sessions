@@ -41,6 +41,19 @@ PHASES = (
     ("acceptance", ["native load and clean append", "first gauge reading and operator recognition"]),
     ("close", ["evidence-backed receipt", "separately authorized unchanged-donor disposition"]),
 )
+NATIVE_GO = {
+    "disposable-exercise": "named-disposable-exercise-go-required-native-unimplemented",
+    "compact": "operator-compaction-only-native-unimplemented",
+    "rotation": "named-resident-rotation-go-required-native-unimplemented",
+    "hold": "named-native-hold-go-required-native-unimplemented",
+    "custody": "named-native-custody-go-required-native-unimplemented",
+    "install": "post-custody-replacement-go-required-native-unimplemented",
+    "load": "named-native-load-go-required-native-unimplemented",
+    "rollback": "named-native-rollback-go-required-native-unimplemented",
+    "donor-disposition": "named-donor-disposition-go-required-native-unimplemented",
+}
+NATIVE_PHASE = {6: "custody", 7: "install", 8: "load", 9: "donor-disposition"}
+FIRST_PROMPT = "Disposable rotation exercise: reply READY only; no tools, files or network."
 
 
 class Refused(Exception):
@@ -244,6 +257,101 @@ def mind_ready(args, evidence, expected):
 def require(condition, reason):
     if not condition:
         raise Refused(reason)
+
+
+def adapter_boundary(args):
+    """Pure refusal only: never inspect a native path or interpret a go."""
+    if args.native_action is not None:
+        raise Refused(NATIVE_GO[args.native_action])
+    if args.adapter == "codex":
+        raise Refused("codex-summary-active-window-and-loader-proof-required")
+    if args.adapter == "claude" and args.phase in NATIVE_PHASE:
+        raise Refused(NATIVE_GO[NATIVE_PHASE[args.phase]])
+
+
+def claude_contract(args, evidence, row, binding, inputs):
+    """Rehearse admission on invented resident fixtures, never native bodies."""
+    require(row["provider"] == "claude", "claude-adapter-provider-required")
+    plan = evidence.object(args.adapter_plan, SMALL)
+    expected = {"schema": "rotate-claude-adapter/1", "kind": "registered-fixture",
+                "key": args.key, "writer": args.writer, "binding": binding, **inputs}
+    for field, value in expected.items():
+        require(plan.get(field) == value, "claude-adapter-" + field.replace("_", "-") + "-mismatch")
+    version = plan.get("provider_version")
+    require(isinstance(version, str) and 0 < len(version.strip()) <= 64,
+            "claude-provider-version-required")
+    evidence.process_model = plan.get("process_model")
+    fixture_holders(evidence, evidence.path(".rotate-synthetic.json"))
+    require(not evidence.notice.decode(evidence.reference(evidence.process_model))["holders"],
+            "claude-writers-not-closed")
+    return plan
+
+
+def claude_mind_binding(args, evidence, plan, mind_ref):
+    """Reuse canonical mind projection/seal readers on invented fixtures."""
+    notebook = evidence.notice.decode(evidence.reference(plan.get("notebook")))
+    for field, value in {"schema": "rotate-notebook-fixture/1", "key": args.key,
+                         "mind_sha256": mind_ref["sha256"]}.items():
+        require(notebook.get(field) == value, "claude-notebook-" + field + "-mismatch")
+    require(notebook.get("writer_stopped") is True, "claude-notebook-writer-not-stopped")
+    memory = evidence.reference(notebook.get("memory"), LIMIT)
+    mind = sibling("mind")
+    block = mind.projection_block(args.key, mind_ref["leaf"], evidence.read(mind_ref["leaf"]))
+    require(memory.startswith(block.encode("utf-8")), "claude-notebook-projection-mismatch")
+    seal_raw = evidence.reference(notebook.get("seal"), LIMIT)
+    try:
+        verified, members = mind.read_seal(evidence.room, args.key, notebook["seal"]["path"])
+    except Exception:
+        raise Refused("claude-seal-verification-refused") from None
+    require(verified == seal_raw, "claude-seal-preimage-changed")
+    members_by_name = {name: (kind, data) for name, kind, data, _ in members}
+    require(members_by_name.get("MEMORY.md") == ("file", memory), "claude-seal-memory-mismatch")
+
+
+def claude_destination(args, evidence, plan, admission):
+    rows, raw = synthetic_rows(evidence, plan.get("pristine"), args.destination)
+    require([r.get("type") for r in rows] == ["custom-title", "user", "assistant"],
+            "claude-first-exchange-required")
+    require(all(r.get("cwd") == str(evidence.room) for r in rows), "claude-first-exchange-room")
+    require(rows[0].get("customTitle") == admission["plain"] + " - spare body, do not open",
+            "claude-first-exchange-label")
+    require(rows[1].get("message") == {"role": "user", "content": FIRST_PROMPT},
+            "claude-first-prompt-not-inert")
+    require(rows[2].get("message") == {"role": "assistant", "content": "READY"},
+            "claude-first-reply-not-inert")
+    require(isinstance(rows[1].get("uuid"), str) and rows[1].get("parentUuid") is None,
+            "claude-first-prompt-chain")
+    require(isinstance(rows[2].get("uuid"), str) and rows[2]["uuid"] != rows[1]["uuid"]
+            and rows[2].get("parentUuid") == rows[1]["uuid"], "claude-first-reply-chain")
+    stamp = evidence.notice.stamp
+    spare = evidence.notice.decode(evidence.reference(plan["destination_metadata"]))
+    require(stamp(spare["created_at"]) <= stamp(rows[1].get("timestamp"))
+            <= stamp(rows[2].get("timestamp")) <= stamp(plan["built_at"]),
+            "claude-first-exchange-time")
+    return {"sha256": digest(raw), "bytes": len(raw), "native_admission_proved": False}
+
+
+def claude_window(args, evidence, row, plan, build, inputs):
+    record = evidence.notice.decode(evidence.reference(plan.get("compaction")))
+    for field, value in {"schema": "rotate-compaction-fixture/1", "actor": "operator",
+                         "method": "supported-interface", "before_gauge_sha256": inputs["gauge_sha256"]}.items():
+        require(record.get(field) == value, "claude-compaction-" + field + "-mismatch")
+    stamp = evidence.notice.stamp
+    at = stamp(record.get("at"))
+    closed = evidence.object(args.closing_record, SMALL)
+    require(stamp(row["reading_at"]) < at < stamp(closed["closed_at"]),
+            "claude-compaction-outside-closing-seam")
+    raw = evidence.reference(record.get("after_gauge"), SMALL)
+    after, _, _ = evidence.notice.measurement(raw, evidence.path("ops/etc/resident-identities.json"), args.key)
+    require(after["provider"] == "claude", "claude-post-compaction-provider")
+    require(after["window"] == row["window"], "claude-post-compaction-window")
+    require(at <= stamp(after["reading_at"]) <= stamp(closed["closed_at"]),
+            "claude-post-compaction-reading-time")
+    window = window_ready(args, evidence, after, build)
+    require(stamp(window["rows"][0].get("timestamp")) == at, "claude-compaction-boundary-time")
+    require(at <= stamp(window["rows"][1].get("timestamp"))
+            <= stamp(window["rows"][2].get("timestamp")), "claude-summary-time")
+    return window
 
 
 def build_plan(args, evidence, binding):
@@ -935,6 +1043,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--closing-record", help="hash-bound closing evidence, needed for phases 1 to 9")
     ap.add_argument("--build-plan", help="hash-bound synthetic spare/window/build plan for phases 3 to 9")
     ap.add_argument("--operation-plan", help="hash-bound synthetic process, custody, go and acceptance fixtures for phases 6 to 9")
+    ap.add_argument("--adapter", choices=("fixture", "claude", "codex"), default="fixture",
+                    help="fixture rehearsal or explicit Claude adapter preparation; never a live mode")
+    ap.add_argument("--adapter-plan", help="rotate-claude-adapter/1 fixture plan, relative to the synthetic room")
+    ap.add_argument("--native-action", choices=tuple(NATIVE_GO), help="explicitly refused; no native act is implemented")
     return ap
 
 
@@ -944,27 +1056,42 @@ def main(argv=None) -> int:
               "dry_run": True, "writes": 0, "native_load_proved": False, "operator_accepted": False,
               "completed": [], "next_phase": args.phase + 1 if args.phase < 9 else None}
     try:
+        adapter_boundary(args)
         if args.room is None or not args.gauge_row or not args.closeout_state:
             raise Refused("explicit-synthetic-evidence-required")
         notice = sibling("notice")
         evidence = Evidence(args.room, notice)
         row, binding, inputs = trigger(args, evidence, notice)
+        adapter = None
+        if args.adapter == "claude":
+            adapter = claude_contract(args, evidence, row, binding, inputs)
+            result["adapter"] = {"provider": "claude", "provider_version": adapter["provider_version"],
+                                 "scope": "synthetic preparation only", "native_actions_implemented": False}
         result["completed"].append(0)
         if args.phase >= 1:
             expected = closing(args, evidence, notice, row, binding, inputs)
             result["completed"].append(1)
         if args.phase >= 2:
             result["mind"] = mind_ready(args, evidence, expected)
+            if adapter is not None:
+                claude_mind_binding(args, evidence, adapter, result["mind"])
             result["completed"].append(2)
         if args.phase >= 3:
             plan = build_plan(args, evidence, binding)
             if args.phase >= 6:
                 operation = operation_plan(args, evidence, binding)
             admission = destination_ready(args, evidence, row, plan)
+            if adapter is not None:
+                require(adapter.get("destination_metadata") == plan["destination"],
+                        "claude-destination-metadata-mismatch")
+                # The build clock is already bound to the spare by destination_ready.
+                adapter = {**adapter, "built_at": plan["built_at"]}
+                result["pristine"] = claude_destination(args, evidence, adapter, admission)
             result["completed"].append(3)
             result["destination_proof"] = "synthetic spare metadata and current observable holders only; not native admission"
         if args.phase >= 4:
-            window = window_ready(args, evidence, row, plan)
+            window = (claude_window(args, evidence, row, adapter, plan, inputs) if adapter is not None
+                      else window_ready(args, evidence, row, plan))
             result["window"] = {k: window[k] for k in ("start", "boundary", "summary", "donor_sha256", "reason_sha256")}
             result["window"]["estimate"] = {"tokens": window["estimate"]["tokens"], "window": row["window"],
                                             "provenance": "hash-bound supplied estimate, not a native wake measurement"}
