@@ -54,7 +54,6 @@ TABLE = [
     ('ops/lib/scripts/closeout.py', {"operator's first name": 7}, ""),
     ('ops/lib/scripts/conflicts.py', {"operator's first name": 1}, ""),
     ('ops/lib/scripts/gauge.py', {'user name': 1, 'working volume': 1}, ""),
-    ('ops/lib/scripts/mind.py', {"operator's first name": 20}, ""),
     ('ops/lib/scripts/redact.py', {"operator's first name": 2}, KEEP_REDACT_RULE),
     ('ops/lib/scripts/retention.py', {"operator's first name": 2}, ""),
     ('ops/lib/scripts/rounds.sh', {'user name': 1, 'working volume': 1}, ""),
@@ -63,7 +62,6 @@ TABLE = [
     ('tools/test/test_alerts_arity.py', {'archive volume': 1}, ""),
     ('tools/test/test_closeout.py', {"operator's first name": 4}, ""),
     ('tools/test/test_media.py', {"operator's first name": 1}, ""),
-    ('tools/test/test_mind.py', {"operator's first name": 6}, ""),
     ('tools/test/test_redact.py', {"operator's first name": 40, 'working volume': 1}, KEEP_REDACT_FIXTURES),
 ]
 

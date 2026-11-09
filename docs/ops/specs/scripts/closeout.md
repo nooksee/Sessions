@@ -8,7 +8,7 @@ The operator, 2026-10-30: an organism that is to die carries its death process e
 
 Until now, a resident's end was noticed by someone else: a percentage read by hand, a packet carried in late, or never. Joy's closing packet of 2026-10-29 never reached her. The closeout must be built into the resident and triggered by its own measured state, not by anyone's memory.
 
-Input to a resident's mind is solicited by a prompt in conversation and written only after the operator's yes there, with his words stored beside it (the operator, 2026-10-30). The closeout is the moment that solicitation happens, every time, in the same way.
+The closeout is also the moment a resident writes to the mind any idea it learned that stays true, every time, in the same way, with no approval asked (the operator's design of 2026-11-09; `docs/ops/specs/scripts/mind.md`).
 
 ## Mechanics and Sequencing
 
@@ -49,7 +49,7 @@ On 2026-10-29 Joy reached 77.8 percent. A closing packet for her was written and
 - **Own file only.** The hook reads only its own `transcript_path`, never another body, and never prints message content. A shared room cannot route one resident's signal to another.
 - **Silent when unsure.** An unknown reading or window produces no signal and no guess.
 - **Advice, not control.** The card tells the resident what to do; it never blocks a prompt, a tool or a compaction.
-- **No self-written mind.** The resident proposes and the operator decides, in conversation.
+- **Concepts only.** The resident writes its own leaves through the mind tool, whose screen refuses the fact of the moment.
 - **Authority.** Wiring the hook into any resident's settings, and any notification, needs the Auditor's review and the operator's named go, one resident first (Shannon), then the rest.
 
 ## State destination and legacy boundary

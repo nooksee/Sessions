@@ -15,7 +15,7 @@ requires_slots:
   - CUT_AND_REASON
   - GATES
   - CUSTODY
-  - MIND_LEAF
+  - MIND_INDEX
   - INSTALL
   - ESTIMATE_VS_MEASURED
   - DEVIATIONS
@@ -33,7 +33,7 @@ slot_notes:
   CUT_AND_REASON: where the window was cut, at which operator prompt, and why
   GATES: each static gate from phase 5 with its result; 0 failures required
   CUSTODY: what went to each tier, with SHA-256 values, and how tier 2 was verified
-  MIND_LEAF: the leaf path from the room's MIND.md and its SHA-256
+  MIND_INDEX: the SHA-256 of the room's MIND.md index at the rotation, or none
   INSTALL: the verified swap or the .NEW swap, and the six agreements checked
   ESTIMATE_VS_MEASURED: the wake estimate beside the first gauge reading
   DEVIATIONS: each deviation, counted; write 0 when there were none
@@ -65,8 +65,8 @@ Method: `docs/ops/specs/scripts/rotate.md`, phases 0 to 9. Form: `ops/src/report
 ## Custody
 {{CUSTODY}}
 
-## Mind leaf
-{{MIND_LEAF}}
+## Mind index
+{{MIND_INDEX}}
 
 ## Install
 {{INSTALL}}

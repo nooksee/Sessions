@@ -42,7 +42,7 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
    | tool | `ops/src/scripts/script.py.tpl` | WORD, DATE, PURPOSE, READS_AND_WRITES |
    | tool | `ops/src/docs/spec.md.tpl` | WORD, DATE, SCRIPT_WRITER, SPEC_WRITER, FIRST_PRINCIPLES_RATIONALE, MECHANICS_AND_SEQUENCING, ANECDOTAL_ANCHOR, INTEGRITY_FILTER_WARNINGS |
    | tool | `ops/src/tests/test.py.tpl` | WORD, DATE, BEHAVIOR_TESTS |
-   | report | `ops/src/reports/receipt.md.tpl` | RESIDENT, ROTATION, DATE, WRITER, AUTHORITY, TIER, DONOR, DESTINATION, CUT_AND_REASON, GATES, CUSTODY, MIND_LEAF, INSTALL, ESTIMATE_VS_MEASURED, DEVIATIONS, ACCEPTANCE, ROLLBACK (17, from `rotate.md` phase 9) |
+   | report | `ops/src/reports/receipt.md.tpl` | RESIDENT, ROTATION, DATE, WRITER, AUTHORITY, TIER, DONOR, DESTINATION, CUT_AND_REASON, GATES, CUSTODY, MIND_INDEX, INSTALL, ESTIMATE_VS_MEASURED, DEVIATIONS, ACCEPTANCE, ROLLBACK (17, from `rotate.md` phase 9) |
    | report | `ops/src/reports/packet.md.tpl` | TO, FROM, RELAYED_BY, OWNER, SCOPE, AUTHORITY, SOURCES, RULES, STOP_CONDITION, POST_TO (10, from `agent-input.md`) |
    | report | `ops/src/reports/closeout.md.tpl` | PERCENT, WINDOW, READING_TIME, ROTATION_WRITER (4) |
    | report | `ops/src/reports/ror.md.tpl` | ENTRY, KIND, GIVEN, WORDS, ACT, RECORD, ENTERED_BY (7, one entry of the decision ledger `RoR.md`, PoT 1.2.10) |

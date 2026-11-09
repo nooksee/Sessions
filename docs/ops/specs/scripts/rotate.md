@@ -41,8 +41,8 @@ uses the existing exact `{path, sha256}` contract and confinement.
 | Phase | Implementation and stop | Design realization or remaining limit |
 | --- | --- | --- |
 | 0 | Existing trigger plus plan binding and `process_model`; all holders absent and the model observable | Separate Claude preparation path, with no host process or native admission claim |
-| 1 | Existing hash-bound closing record and mind-entry disposition | No handoff or approval is authored by the adapter |
-| 2 | Existing mind verifier | The checked mind is the resident's whole carried self: the room keeps the provider's auto memory off, so there is no notebook to bind. The `rotate-notebook-fixture/1` reference, its projection and seal checks, were removed with the notebook on 2026-11-09; an adapter plan that still names `notebook` is not read for it |
+| 1 | Existing hash-bound closing record and the mind index it closed with | No handoff or approval is authored by the adapter |
+| 2 | Existing mind verifier | The checked index is the room's mind; the room keeps the provider's auto memory off, so the provider carries nothing beside it |
 | 3 | Existing spare metadata plus `destination_metadata` equality and `pristine` reference | Exactly one custom-title row and an inert user/assistant exchange; exact room, spare label, synthetic IDs, distinct linked message IDs and times from creation through build. User text is the source's `FIRST_PROMPT`, assistant text is `READY`. No container is created |
 | 4 | `compaction` reference, then existing window selection against its post-compaction reading | `rotate-compaction-fixture/1` requires `actor: operator`, `method: supported-interface`, `before_gauge_sha256`, zoned `at`, and `after_gauge` reference. Compaction follows the initial due reading and precedes closeout; post-reading is at or after compaction and no later than closeout, with unchanged measured window. Actual fixture boundary time matches `at`; summary precedes the selected prompt. This fixes the earlier rehearsal's same-reading assumption without fabricating a new trigger |
 | 5 | Existing in-process builder, externalizer and static gates; temporary artifacts removed at return | No whole native donor is imported, no capsule enters an external command line, no candidate is installed |
@@ -136,23 +136,19 @@ this is not hostile same-user descriptor confinement.
    It binds `key`, `writer`, tier `B`, the same hashed `binding` returned
    by notice, `destination_sha256`, and `gauge_sha256` / `closeout_sha256`
    to phase 0's exact bytes. `closed_at` is zoned and no earlier than the usage reading.
-   `handoff` is a nonempty retained `{path, sha256}` reference. `mind`
-   declares integer `proposed` from 0 to 3, `leaf_sha256`, and either
-   `decision: none-proposed` with no approval (zero proposals), or
-   `decision: approved-and-written` with a nonempty retained
-   `approval: {path, sha256}` reference. Pending, missing and other
-   dispositions refuse; neither a proposal nor this runner writes a mind.
+   `handoff` is a nonempty retained `{path, sha256}` reference. `mind` is
+   exactly `{"index_sha256": <digest or null>}`: the SHA-256 of the room's
+   `MIND.md` as the donor closed, or null when the room has no index. Any
+   other shape refuses (`mind-index-unproved`); this runner writes no mind.
    These are hash-bound declarations, not authenticated operator authorship.
-2. **Mind readiness.** Invoke the existing `mind.py show KEY --ref`
-   command path with the explicit synthetic room and registry; its existing
-   verifier must pass. Read its exact leaf reference and verify its bytes
-   against both the returned digest and the closing record. A newly proposed
-   entry additionally needs a checked leaf written between the usage
-   reading and `closed_at`; an older leaf cannot prove a new write. Reuse
-   the mind tool's actual predecessor difference to check that the added
-   and amended entry count equals the declared proposal count.
-   Preflight pointer and archive leaf privacy before invoking show. No mind
-   content, approval words, handoff text or native identifier is printed.
+2. **Mind readiness.** Read `MIND.md` and each live leaf it points at as
+   private evidence, then run the mind tool's own verifier (`mind.verify`,
+   read-only, no Git) with the explicit synthetic room and registry; any
+   blocking failure refuses (`mind-check-refused`). The index's SHA-256
+   must equal the closing record's (`closing-mind-mismatch`), so a leaf
+   written after the close is caught. The result names the index digest
+   and the count of the resident's own leaves. No mind content, handoff
+   text or native identifier is printed.
 3. **Synthetic destination.** Require `--build-plan`, a bounded
    `rotate-build/1` JSON object binding `key`, `writer`, the phase-0 hashed
    `binding`, and `closing_sha256` to the exact closing record. Its
@@ -199,8 +195,9 @@ this is not hostile same-user descriptor confinement.
    native compaction summary. It needs its own reviewed design and load test.
 5. **Temporary synthetic build and gates.** `transition` is a nonempty
    retained text reference in the build plan, not a path substituted for
-   text. Assemble the four capsule parts here: registry header, the exact
-   leaf returned through `mind show --ref`, transition, first-turn line.
+   text. Assemble the four capsule parts here: registry header, the
+   resident's own index lines and the hint to open a leaf with `mind.py read`,
+   transition, first-turn line.
    The legacy six-question Codex capsule generator is not this composer.
 
    Recheck all evidence and fixture holders, then create one 0700
@@ -361,7 +358,7 @@ supplied the initial script/test skeleton while preserving this spec.
 
 **The capsule.** It is appended as the orientation row, as text, never as a path, in four parts:
 1. **Header,** from the registry: person, role, room, destination container.
-2. **The mind:** the leaf named on this resident's line in the room's `MIND.md`, verbatim, its hash verified, its SHA-256 recorded in the receipt.
+2. **The mind:** this resident's own pointer lines from the room's `MIND.md`, pointers only, never a leaf's body, and the hint to open a leaf with `mind.py read <id>`; the index's SHA-256 is recorded in the receipt.
 3. **Transition note,** written by the writer:
    - the window range not carried, and the handoff sections that cover it;
    - work in flight, the hold, the owners;
@@ -375,9 +372,9 @@ The mind supplies part 2 only. Identifiers and live state belong in parts 1 and 
 0. **Trigger.** The gauge reading crosses the resident's line, and the closeout card has run (`closeout.md`). The writer records the tier, donor, writer, destination and the gauge reading in the handoff.
 1. **The donor closes well,** by the card:
    - a closing handoff;
-   - up to three mind entries proposed in chat;
-   - The operator's yes, after which `mind` writes the new leaf and moves the pointer.
-2. **The mind is ready.** `mind check` passes, and the leaf hash matches the pointer.
+   - any idea it learned that stays true, written as a leaf with `mind.py add`, no approval asked;
+   - the closing record names the index it closed with.
+2. **The mind is ready.** `mind check` passes, and the index hash matches the closing record.
 3. **The destination.** the operator opens a fresh chat in the resident's room. The writer labels it `<Role (Person)> - spare body, do not open` at once. The writer then verifies:
    - the room and working directory are right;
    - the container is not registered to anyone else and carries no "old", "spare of another" or "do not resume" label;
@@ -426,9 +423,9 @@ and grants no enrollment, body-replacement or activation authority.
    - **Mechanical.** `launcher serve <key>`, which also releases the hold and is the load test. The first reply gives the room's status and then speaks as itself. Its first gauge reading is recorded beside the wake estimate. (C13) A clean native append: after that turn the body still parses, Claude Code's own new rows carry the new session id, and tool pairs match.
    - **The operator's.** the operator states that he recognizes her, or him, as the resident. A correct status alone is not acceptance.
 9. **Close.**
-   - Write the receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`: tier, cut and reason, gates, custody, mind leaf hash, estimate against the measured wake, deviations counted, acceptance and its time.
+   - Write the receipt `archives/receipts/<resident>-rotation-<n>-<date>.md`: tier, cut and reason, gates, custody, mind index hash, estimate against the measured wake, deviations counted, acceptance and its time.
    - Handle the donor's store entry. After its custody is verified by hash in both tiers, the entry is either relabeled "<Role (Person)> - donor, rotated <date>, do not resume" or removed from the list, as the operator prefers. His standing preference since 2026-10-29: removed. The custody copy is the donor of record.
-   - The new resident confirms its mind entries.
+   - The new resident reads its own leaves and confirms they still hold.
 
 **Codex residents** (Joe Codex, 2026-10-30): `ops/lib/scripts/rotation.py` carries messages after the last native compaction but not the compaction summary. A Codex rotation under this spec waits for a Codex-specific design and a loader test.
 

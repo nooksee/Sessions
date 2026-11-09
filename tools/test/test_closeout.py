@@ -280,7 +280,7 @@ class Closeout(unittest.TestCase):
         lines = self.card(self.w.hook(sid, self.at(sid, 650_000))).split("\n")
         self.assertEqual(len(lines), 6)
         self.assertTrue(lines[0].startswith("CLOSEOUT. Your context is 65.0 percent of 1,000,000 tokens, measured from your own body at "))
-        self.assertTrue(lines[4].endswith("then it is written with his words and the date."))
+        self.assertTrue(lines[4].endswith("No approval is asked."))
         self.assertEqual(lines[5], "5. Tell the operator you are ready for rotation. Claude Shannon's desk runs it.")
 
     def test_a_template_it_cannot_read_or_fill_is_unknown_never_a_fallback(self):

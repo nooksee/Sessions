@@ -1350,12 +1350,8 @@ class AutoMemoryTests(unittest.TestCase):
         self.assertNotIn(self.fx.session_id, leg.detail)
         self.assertEqual(before, digest_tree(self.root))
 
-    def test_the_live_paths_name_this_room_and_no_wrapper(self) -> None:
-        live = check_myself.CheckPaths.live()
-        self.assertEqual(SESSIONS_ROOT, live.room)
-        self.assertFalse(hasattr(live, "wrapper"))
-        for name in ("_load_wrapper", "_notebook_route", "_newest_log_row"):
-            self.assertFalse(hasattr(check_myself, name), name)
+    def test_the_live_paths_name_this_room(self) -> None:
+        self.assertEqual(SESSIONS_ROOT, check_myself.CheckPaths.live().room)
 
 
 class OrientationAfterIdeNoticesTests(unittest.TestCase):

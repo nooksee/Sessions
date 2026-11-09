@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Tests for ops/lib/scripts/mind.py, in synthetic rooms only. Standard library only.
 
-Every case builds its own room, registry and change files in a temporary
-directory; no real room, mind or body is touched. Each of Claudio's section 130
-items that the port fixes has a test named for it. Run:
+Every case builds its own room, registry and leaf bodies in a temporary
+directory; no real room, mind or body is touched. Run:
 
     python3 -I -B tools/test/test_mind.py
 """
+import contextlib
 import importlib.util
 import fcntl
+import io
 import json
 import os
-import re
 import selectors
 import shlex
 import shutil
@@ -28,13 +28,9 @@ _spec = importlib.util.spec_from_file_location("mind", MIND)
 mind = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mind)
 
-CORE = {"layer": "core", "kind": "identity", "text": "I chose the name Shannon: what survives a lossy channel.",
-        "event": "naming", "date": "2026-08-09", "source": "Receipts/naming.md"}
-LESSON = {"layer": "lesson", "text": "Measure before explaining.", "event": "a claim falsified by looking",
-          "date": "2026-08-09", "source": "Receipts/x.md", "applies_when": "about to explain",
-          "not_when": "the measurement is in hand"}
-COMMIT = {"layer": "commitment", "text": "Run Joy's cutover.", "event": "Kevin asked", "date": "2026-10-30",
-          "source": "Receipts/joy.md", "owner": "Shannon"}
+IDEA = "Evidence outranks recollection. What a resident remembers is a lead to check, never a finding."
+SECOND = "A rotation keeps the person and slims the body; the receipts remember what the body forgets."
+SESSION = "0000f00d-0000-4000-8000-000000000000"
 
 
 class Room:
@@ -44,52 +40,47 @@ class Room:
         self.room.mkdir()
         self.registry = base / "registry.json"
         identities = [{"key": k, "person": f"Person {k}", "role": "Role", "room": str(self.room),
-                       "session_id": "never-printed"} for k in keys] + list(extra)
+                       "session_id": SESSION} for k in keys] + list(extra)
         self.registry.write_text(json.dumps({"identities": identities}))
         self.minute = 0
 
-    def run(self, *args, stdin=None, env=None):
+    def run(self, *args, stdin=None, env=None, day="2026-10-30"):
         self.minute += 1
         cmd = [sys.executable, "-I", "-B", str(MIND), "--room", str(self.room), "--registry", str(self.registry),
-               "--now", f"2026-10-30T17:{self.minute:02d}:00Z", *args]
+               "--now", f"{day}T17:{self.minute:02d}:00Z", *args]
         return subprocess.run(cmd, capture_output=True, text=True, input=stdin, timeout=60, env=env)
 
-    def preview(self, key, changes, stdin=None, env=None) -> str:
-        """The binding preview prints, or '' when preview refuses."""
-        result = self.run("preview", key, "--changes", changes, stdin=stdin, env=env)
-        m = re.search(r"^binding: ([0-9a-f]{64})$", result.stdout, re.M)
-        return m.group(1) if m else ""
+    def add(self, body=IDEA, title="Evidence outranks recollection", agent="session-doctor", supersedes=None,
+            env=None, day="2026-10-30"):
+        path = self.base / f"body-{self.minute}.md"
+        path.write_text(body, encoding="utf-8")
+        extra = ("--supersedes", supersedes) if supersedes else ()
+        return self.run("add", "--agent", agent, "--title", title, "--body", str(path), *extra, env=env, day=day)
 
-    def changes(self, obj, raw: bytes = None) -> str:
-        path = self.base / f"changes-{self.minute}-{len(list(self.base.glob('changes-*')))}.json"
-        path.write_bytes(raw if raw is not None else json.dumps(obj).encode("utf-8"))
-        return str(path)
+    def index(self) -> list:
+        return mind.read_index(self.room) or []
 
-    def write(self, obj, key="session-doctor", yes="yes, write it", by="claudine-colbert", env=None):
-        """As a writer does it: preview, then write with the binding the preview printed."""
-        path = self.changes(obj)
-        binding = self.preview(key, path, env=env) or "0" * 64
-        return self.run("write", key, "--changes", path, "--preview", binding, "--yes", yes, "--by", by, env=env)
+    def ids(self) -> list:
+        return [i for i, _, _ in self.index()]
 
-    def pointer(self) -> dict:
-        return mind.read_pointer(self.room)
+    def leaf(self, leaf_id: str) -> Path:
+        return self.room / "archives" / "mind" / f"{leaf_id}.md"
 
-    def leaf(self, key="session-doctor") -> Path:
-        return self.room / self.pointer()[key][0]
+    def ledger(self) -> list:
+        path = self.room / "logs" / "mind" / "ledger.jsonl"
+        return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
 
     def files(self) -> list:
         return sorted(p.relative_to(self.room).as_posix() for p in self.room.rglob("*") if p.is_file()
                       and p.name != "mind.lock")
 
-    def plant(self, head: dict, entries: list, key="session-doctor") -> str:
-        """Write a hand-made leaf and point MIND.md at it, as a forger would."""
-        data = mind.render_leaf(head, entries).encode("utf-8")
-        name = f"MIND-{key}-{head['written'][:10]}-{mind.sha256(data)[:8]}.md"
-        (self.room / mind.SURFACES / name).write_bytes(data)
-        lines = self.pointer()
-        lines[key] = (f"{mind.SURFACES}/{name}", mind.sha256(data))
-        (self.room / mind.POINTER).write_text(mind.pointer_text(lines))
-        return name
+
+def in_process(room: Room, *args) -> tuple[int, str, str]:
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        rc = mind.main(["--room", str(room.room), "--registry", str(room.registry),
+                        "--now", "2026-10-30T18:00:00Z", *args])
+    return rc, out.getvalue(), err.getvalue()
 
 
 class MindTests(unittest.TestCase):
@@ -117,311 +108,264 @@ class MindTests(unittest.TestCase):
             self.assertIn(word, result.stdout)
         return result
 
-    def genesis(self):
-        self.ok(self.r.write({"add": [CORE, LESSON, COMMIT]}))
-        return self.r.leaf()
-
-    # -- the basic loop ----------------------------------------------------
-    def test_write_check_show_round_trip(self):
-        leaf = self.genesis()
-        self.ok(self.r.run("check"))
-        shown = self.ok(self.r.run("show", "session-doctor"))
-        self.assertEqual(shown.stdout.encode("utf-8"), leaf.read_bytes())
-        text = leaf.read_text()
-        self.assertIn('yes: 2026-10-30, "yes, write it"', text)
-        self.assertIn("by: claudine-colbert", text)
-        self.assertIn("predecessor: none", text)
-        self.assertIn("change: add core-001, lesson-001, commitment-001", text)
-
-    def test_c11_show_ref_binds_the_capsule_to_the_leaf_hash(self):
-        leaf = self.genesis()
-        ref = self.ok(self.r.run("show", "session-doctor", "--ref")).stdout.strip()
-        self.assertEqual(ref, f"leaf={leaf.relative_to(self.r.room).as_posix()}|sha256={mind.sha256(leaf.read_bytes())}")
-
-    def test_write_needs_kevins_words_and_a_registered_writer(self):
-        self.refused(self.r.write({"add": [CORE]}, yes=""), "Kevin's own words")
-        self.refused(self.r.write({"add": [CORE]}, yes="ok"), "Kevin's own words")
-        self.refused(self.r.write({"add": [CORE]}, by="nobody-here"), "--by")
+    # -- the loop: add, show, read, check -------------------------------------
+    def test_an_empty_room_checks_clean_and_shows_nothing(self):
+        result = self.ok(self.r.run("check"))
+        self.assertIn("no MIND.md yet", result.stdout)
+        self.assertIn("the mind holds no leaves", self.ok(self.r.run("show")).stdout)
         self.assertEqual(self.r.files(), [])
 
-    # -- Claudio's blockers ------------------------------------------------
-    def test_b1_an_amendment_keeps_the_core_entry_and_carries_the_new_yes(self):
-        self.genesis()
-        self.ok(self.r.write({"amend": [{"id": "core-001", "text": "I chose the name Shannon, for the channel."}]},
-                             yes="yes, fix the wording"))
-        text = self.r.leaf().read_text()
-        self.assertIn("- [core-001] I chose the name Shannon, for the channel.", text)
-        self.assertIn('yes: 2026-10-30, "yes, fix the wording"', text)
-        self.assertIn("change: amend core-001", text)
-        self.ok(self.r.run("check"))
-        history = self.ok(self.r.run("history", "session-doctor")).stdout
-        self.assertIn("amend core-001", history)
-        self.assertIn("add core-001", history)
+    def test_add_show_read_check_round_trip(self):
+        self.assertIn("MIND-2026-10-30-001 written by session-doctor", self.ok(self.r.add()).stdout)
+        shown = self.ok(self.r.run("show")).stdout
+        self.assertEqual(shown, "- [MIND-2026-10-30-001](archives/mind/MIND-2026-10-30-001.md) session-doctor"
+                                " — Evidence outranks recollection\n")
+        leaf = self.ok(self.r.run("read", "MIND-2026-10-30-001")).stdout
+        self.assertEqual(leaf.encode(), self.r.leaf("MIND-2026-10-30-001").read_bytes())
+        check = self.ok(self.r.run("check"))
+        self.assertIn("PASS leaf : MIND-2026-10-30-001 session-doctor", check.stdout)
+        self.assertIn("blocking failures: 0", check.stdout)
 
-    def test_b1_a_leaf_that_silently_drops_a_core_entry_fails_check(self):
-        self.genesis()
-        head, entries, data = mind.load_leaf(self.r.room, "session-doctor", self.r.pointer()["session-doctor"][0])
-        forged = dict(head, written="2026-10-30T18:00:00Z", change="amend lesson-001",
-                      predecessor=f"{self.r.pointer()['session-doctor'][0]} sha256={mind.sha256(data)}")
-        self.r.plant(forged, [e for e in entries if e["id"] != "core-001"])
-        self.failed_check("declares 'amend lesson-001', but the difference from its predecessor is 'retire core-001'")
-        self.refused(self.r.run("show", "session-doctor"), "not served")
+    def test_the_index_is_pointers_only_and_the_leaf_carries_id_agent_time_and_title(self):
+        self.ok(self.r.add())
+        index = (self.r.room / "MIND.md").read_text()
+        self.assertTrue(index.startswith(mind.INDEX_HEAD))
+        self.assertNotIn(IDEA, index)
+        self.assertEqual(self.r.leaf("MIND-2026-10-30-001").read_text(),
+                         "---\nid: MIND-2026-10-30-001\nagent: session-doctor\nwritten: 2026-10-30T17:01:00Z\n"
+                         "title: Evidence outranks recollection\nsupersedes: none\n---\n\n" + IDEA + "\n")
 
-    def test_b2_a_retired_entry_never_revives(self):
-        self.genesis()
-        self.ok(self.r.write({"retire": ["commitment-001"]}, yes="yes, that is closed"))
-        self.refused(self.r.write({"amend": [{"id": "commitment-001", "text": "back again"}]}), "no such entry")
-        self.ok(self.r.write({"add": [COMMIT]}, yes="yes, it is open again"))
-        text = self.r.leaf().read_text()
-        self.assertIn("[commitment-002]", text)
-        self.assertNotIn("[commitment-001]", text)
-        self.ok(self.r.run("check"))
+    def test_ids_count_up_within_a_day_and_never_repeat(self):
+        self.ok(self.r.add())
+        self.ok(self.r.add(SECOND, "Rotation is continuity"))
+        self.ok(self.r.run("retire", "--agent", "session-doctor", "MIND-2026-10-30-002"))
+        self.ok(self.r.add(SECOND, "Rotation is continuity, slimmed"))
+        self.ok(self.r.add(SECOND, "A new day starts at one", day="2026-10-31"))
+        self.assertEqual(self.r.ids(), ["MIND-2026-10-30-001", "MIND-2026-10-30-003", "MIND-2026-10-31-001"])
 
-    def test_b2_a_forged_leaf_reusing_a_retired_number_fails_check(self):
-        self.genesis()
-        self.ok(self.r.write({"retire": ["commitment-001"]}, yes="yes, that is closed"))
-        rel = self.r.pointer()["session-doctor"][0]
-        head, entries, data = mind.load_leaf(self.r.room, "session-doctor", rel)
-        back = dict(COMMIT, id="commitment-001", yes=head["yes"])
-        back.pop("layer")
-        back["layer"] = "commitment"
-        forged = dict(head, written="2026-10-30T18:30:00Z", change="add commitment-001",
-                      predecessor=f"{rel} sha256={mind.sha256(data)}")
-        self.r.plant(forged, entries + [back])
-        self.failed_check("reuses a number already issued")
+    def test_the_ledger_records_every_write_with_its_hash_and_size(self):
+        self.ok(self.r.add())
+        self.ok(self.r.run("retire", "--agent", "session-doctor", "MIND-2026-10-30-001"))
+        add, retire = self.r.ledger()
+        data = self.r.leaf("MIND-2026-10-30-001").read_bytes()
+        self.assertEqual(add, {"action": "add", "id": "MIND-2026-10-30-001", "agent": "session-doctor",
+                               "time": "2026-10-30T17:01:00Z", "sha256": mind.sha256(data), "bytes": len(data),
+                               "supersedes": "none"})
+        self.assertEqual(retire, {"action": "retire", "id": "MIND-2026-10-30-001", "agent": "session-doctor",
+                                  "time": "2026-10-30T17:02:00Z", "sha256": mind.sha256(data), "bytes": len(data)})
 
-    # -- Claudio's conditions ----------------------------------------------
-    def test_c1_preview_shows_before_and_after_and_writes_nothing(self):
-        self.genesis()
-        before = self.r.files()
-        result = self.ok(self.r.run("preview", "session-doctor", "--changes",
-                                    self.r.changes({"amend": [{"id": "lesson-001", "text": "Measure first."}]})))
-        self.assertIn("Nothing is written", result.stdout)
-        self.assertIn("before:\n    - [lesson-001] Measure before explaining.", result.stdout)
-        self.assertIn("after:\n    - [lesson-001] Measure first.", result.stdout)
-        self.assertEqual(self.r.files(), before)
+    def test_body_from_standard_input(self):
+        self.ok(self.r.run("add", "--agent", "session-doctor", "--title", "From input", "--body", "-", stdin=IDEA))
+        self.assertIn(IDEA, self.r.leaf("MIND-2026-10-30-001").read_text())
 
-    def test_c2_an_ancestor_changed_after_it_was_written_is_detected(self):
-        first = self.genesis()
-        self.ok(self.r.write({"add": [dict(LESSON, text="Second lesson.")]}, yes="yes, add it"))
-        os.chmod(first, 0o600)
-        first.write_bytes(first.read_bytes().replace(b"Measure before", b"Measure after"))
-        self.failed_check("no longer match the hash in its name")
-
-    def test_c3_a_forged_current_leaf_fails(self):
-        leaf = self.genesis()
-        data = leaf.read_bytes().replace(b"Measure before", b"Measure after")
-        leaf.write_bytes(data)
-        lines = self.r.pointer()
-        lines["session-doctor"] = (lines["session-doctor"][0], mind.sha256(data))
-        (self.r.room / mind.POINTER).write_text(mind.pointer_text(lines))
-        self.failed_check("no longer match the hash in its name")
-
-    def test_c3_c4_a_leaf_from_another_mind_is_never_served(self):
-        self.genesis()
-        self.ok(self.r.write({"add": [CORE]}, key="claudine-colbert", yes="yes, hers too"))
-        lines = self.r.pointer()
-        lines["session-doctor"] = lines["claudine-colbert"]
-        (self.r.room / mind.POINTER).write_text(mind.pointer_text(lines))
-        self.failed_check("belongs to 'claudine-colbert', not 'session-doctor'")
-        shown = self.refused(self.r.run("show", "session-doctor"), "not served")
-        self.assertEqual(shown.stdout, "")
-
-    def test_c3_a_pointer_moved_back_to_an_older_genuine_leaf_fails(self):
-        first = self.genesis()
-        first_sha = mind.sha256(first.read_bytes())
-        self.ok(self.r.write({"retire": ["commitment-001"]}, yes="yes, closed"))
-        lines = self.r.pointer()
-        lines["session-doctor"] = (first.relative_to(self.r.room).as_posix(), first_sha)
-        (self.r.room / mind.POINTER).write_text(mind.pointer_text(lines))
-        self.failed_check("points behind the newest leaf")
-
-    def test_c3_a_leaf_outside_the_archives_root_is_refused(self):
-        leaf = self.genesis()
-        for folder in ("elsewhere", "surfaces"):                # "surfaces" was the leaf home before RoR-3
-            with self.subTest(folder):
-                other = self.r.room / "archives" / folder
-                other.mkdir(exist_ok=True)
-                (other / leaf.name).write_bytes(leaf.read_bytes())
-                lines = self.r.pointer()
-                lines["session-doctor"] = (f"archives/{folder}/{leaf.name}", lines["session-doctor"][1])
-                (self.r.room / mind.POINTER).write_text(mind.pointer_text(lines))
-                self.failed_check("is not a leaf name in archives/")
-
-    # -- RoR-3: leaves at the archives/ root, grouped by their MIND- prefix -------
-    def test_ror3_leaves_sit_at_the_archives_root(self):
-        leaf = self.genesis()
-        self.assertEqual(leaf.parent, self.r.room / "archives")
-        self.assertTrue(leaf.name.startswith("MIND-session-doctor-"))
-        self.assertTrue(self.r.pointer()["session-doctor"][0].startswith("archives/MIND-session-doctor-"))
-        self.ok(self.r.run("check"))
-
-    def test_ror3_other_archive_files_are_not_minds(self):
-        self.genesis()
-        archives = self.r.room / "archives"
-        (archives / "receipts").mkdir()
-        (archives / "receipts" / "some-receipt.md").write_text("a receipt\n")
-        (archives / "PoT-38854647.md").write_text("a snapshot\n")
-        (archives / "README.md").write_text("not a mind\n")
-        result = self.ok(self.r.run("check"))
-        self.assertNotIn("outside-pointer", result.stdout)
-        (archives / "MIND-nobody-2026-11-01-deadbeef.md").write_text("a stray leaf\n")
-        result = self.ok(self.r.run("check"))
-        self.assertIn("REPORT room outside-pointer : 1 MIND- files in archives/", result.stdout)
-
-    def test_ror3_a_linked_leaf_name_is_never_read(self):
-        leaf = self.genesis()
-        archives = self.r.room / "archives"
-        (archives / "receipts").mkdir()
-        target = archives / "receipts" / "x.md"
-        target.write_text("a receipt, not a mind\n")
-        link = archives / "MIND-session-doctor-2026-11-01-deadbeef.md"
-        link.symlink_to(target)
-        real = mind.Path.read_bytes
-        seen = []
-        def spy(path):
-            seen.append(Path(path))
-            return real(path)
-        with mock.patch.object(mind.Path, "read_bytes", autospec=True, side_effect=spy):
-            ahead, outside = mind.other_leaves(self.r.room, "session-doctor", set(), mind.sha256(leaf.read_bytes()))
-        self.assertIn(link.name, outside)
-        self.assertNotIn(link, seen)
-        self.assertNotIn(target, seen)
-
-    def test_c4_a_resident_of_another_room_cannot_write_here(self):
-        base = Path(self.tmp.name)
-        self.r.registry.write_text(json.dumps({"identities": [
-            {"key": "session-doctor", "person": "P", "role": "R", "room": str(base / "elsewhere")},
-            {"key": "claudine-colbert", "person": "P", "role": "R", "room": str(self.r.room)}]}))
-        self.refused(self.r.write({"add": [CORE]}), "registered to the room")
-        self.assertEqual(self.r.files(), [])
-
-    def test_c5_one_resident_has_one_mind(self):
-        self.genesis()
-        text = (self.r.room / mind.POINTER).read_text()
-        line = text.splitlines()[-1]
-        (self.r.room / mind.POINTER).write_text(text + line + "\n")
-        self.refused(self.r.run("check"), "twice")
-        self.refused(self.r.write({"add": [LESSON]}), "twice")
-
-    def test_c5_a_key_registered_twice_is_refused(self):
-        self.r.registry.write_text(json.dumps({"identities": [
-            {"key": "session-doctor", "person": "P", "role": "R", "room": str(self.r.room)},
-            {"key": "session-doctor", "person": "Q", "role": "R", "room": str(self.r.room)},
-            {"key": "claudine-colbert", "person": "P", "role": "R", "room": str(self.r.room)}]}))
-        self.refused(self.r.write({"add": [CORE]}), "registered 2 times")
-
-    def test_c6_each_leaf_records_the_policy_it_was_written_under(self):
-        leaf = self.genesis()
-        self.assertIn(f"policy: {mind.policy_digest()}", leaf.read_text())
-        head, entries, data = mind.load_leaf(self.r.room, "session-doctor", self.r.pointer()["session-doctor"][0])
-        changed = dict(head, written="2026-10-30T19:00:00Z", policy="0" * 16, change="retire commitment-001",
-                       predecessor=f"{self.r.pointer()['session-doctor'][0]} sha256={mind.sha256(data)}")
-        self.r.plant(changed, [e for e in entries if e["id"] != "commitment-001"])
-        result = self.ok(self.r.run("check"))
-        self.assertIn(f"REPORT session-doctor policy : written under policy {'0' * 16}", result.stdout)
-
-    def test_c7_values_are_screened_as_plain_lines(self):
+    # -- concepts only ----------------------------------------------------------
+    def test_the_screen_refuses_the_fact_of_the_moment(self):
         cases = {
-            "newline before a short id": dict(CORE, text="see\nab12cd34 for it"),
-            "tab before a long id": dict(CORE, text="see\t" + "ab12" * 8),
-            "secret with a tab": dict(LESSON, text="password\t= hunter"),
-            "zero-width joiner": dict(CORE, text="Shan\u200bnon"),
-            "a uuid": dict(LESSON, source="0000abcd-0000-4000-8000-00000000abcd"),
-            "a sixteen-digit hash (F6)": dict(LESSON, text="commit e75e115474f87cf1"),
-            "medical": dict(LESSON, event="after the surgery"),
+            "a date": "The cutover landed on 2026-11-09 and held.",
+            "a time": "Rotate at 14:30 when the room is quiet.",
+            "a word that dates the text": "The board is currently clean.",
+            "a count or size": "All 51 suites pass before a merge.",
+            "a path or file name": "The tool lives in ops/lib/scripts and nowhere else.",
+            "an address": "The source is https://example.invalid for this.",
+            "a pull request, issue or version number": "The cutover left with #71.",
+            "code or a command line": "Run it with --force when stuck.",
+            "an identifier": "The body was " + SESSION + ".",
+            "medical content": "A hospital stay changes the schedule.",
+            "possible secret": "The password is in the vault.",
         }
-        for label, entry in cases.items():
-            with self.subTest(label):
-                self.refused(self.r.write({"add": [entry]}), "nothing was written")
+        for kind, body in cases.items():
+            with self.subTest(kind=kind):
+                result = self.refused(self.r.add(body, "A plain title"), kind)
+                self.assertNotIn(body, result.stderr)
                 self.assertEqual(self.r.files(), [])
-        self.refused(self.r.write({"add": [CORE]}, yes="yes\nab12cd34"), "nothing was written")
 
-    def test_c7_the_yes_words_are_screened(self):
-        self.refused(self.r.write({"add": [CORE]}, yes="yes, token: abc"), "possible secret")
+    def test_the_title_is_screened_too(self):
+        self.refused(self.r.add(IDEA, "What happened on 2026-11-09"), "title: a date")
+        self.assertEqual(self.r.files(), [])
 
-    def test_c9_leaves_survive_an_ancestor_moved_to_custody(self):
-        first = self.genesis()
-        self.ok(self.r.write({"retire": ["commitment-001"]}, yes="yes, closed"))
-        self.ok(self.r.write({"add": [COMMIT]}, yes="yes, open again"))
-        first.unlink()
+    def test_abstractions_pass(self):
+        for n, body in enumerate((
+                "Measure before explaining: a claim is a lead until the evidence is read.",
+                "PoT 4.2.4 and 1.2.10 say who decides; read them before acting on a mind.",
+                "Two readers who disagree are a finding, not a fault.",
+                "A resident's handoff is for the present; a mind is for what stays true."), 1):
+            with self.subTest(body=body):
+                self.ok(self.r.add(body, f"An idea, number {n}"))
+
+    def test_limits_are_generous_but_bounded(self):
+        self.refused(self.r.add(IDEA, "t" * (mind.TITLE_LIMIT + 1)), "the limit is 100")
+        self.refused(self.r.add("word " * 401, "Too long"), "the limit is 2000")
+        self.refused(self.r.add("   \n\n", "Empty"), "body: empty")
+        self.refused(self.r.add("A line\x07 with a bell.", "Bell"), "U+0007")
+        self.assertEqual(self.r.files(), [])
+        self.ok(self.r.add("word " * 399, "t" * mind.TITLE_LIMIT))
+
+    def test_the_index_is_refused_when_full_but_supersede_still_flows(self):
+        with mock.patch.object(mind, "INDEX_LIMIT", 2):
+            self.assertEqual(self.r.add().returncode, 0)
+            for title in ("First", "Second"):
+                rc, _, err = in_process(self.r, "add", "--agent", "session-doctor", "--title", title,
+                                        "--body", str(self.write_body(IDEA)))
+            self.assertEqual(rc, 2, err)
+            self.assertIn("holds 2 pointers, its limit", err)
+            first = self.r.ids()[1]
+            rc, out, err = in_process(self.r, "add", "--agent", "session-doctor", "--title", "Replaced",
+                                      "--body", str(self.write_body(SECOND)), "--supersedes", first)
+            self.assertEqual(rc, 0, err)
+            self.assertEqual(len(self.r.index()), 2)
+
+    def write_body(self, text):
+        path = self.r.base / "in-process-body.md"
+        path.write_text(text)
+        return path
+
+    # -- ownership and authority ------------------------------------------------
+    def test_supersede_replaces_the_line_in_place_and_the_old_leaf_is_not_served(self):
+        self.ok(self.r.add())
+        self.ok(self.r.add(SECOND, "Rotation is continuity"))
+        self.ok(self.r.add(IDEA + " Read the record first.", "Evidence outranks recollection, always",
+                           supersedes="MIND-2026-10-30-001"))
+        self.assertEqual(self.r.ids(), ["MIND-2026-10-30-003", "MIND-2026-10-30-002"])
+        self.assertIn("supersedes: MIND-2026-10-30-001", self.r.leaf("MIND-2026-10-30-003").read_text())
+        self.assertTrue(self.r.leaf("MIND-2026-10-30-001").exists())
+        self.refused(self.r.run("read", "MIND-2026-10-30-001"), "only live leaves are served")
+        self.refused(self.r.add(SECOND, "Again", supersedes="MIND-2026-10-30-001"), "is not a live leaf")
+
+    def test_a_resident_changes_only_its_own_leaves(self):
+        self.ok(self.r.add())
+        self.refused(self.r.run("retire", "--agent", "claudine-colbert", "MIND-2026-10-30-001"),
+                     "belongs to session-doctor")
+        self.refused(self.r.add(SECOND, "Mine now", agent="claudine-colbert", supersedes="MIND-2026-10-30-001"),
+                     "belongs to session-doctor")
+        self.assertEqual(self.r.ids(), ["MIND-2026-10-30-001"])
+
+    def test_only_a_resident_registered_once_in_this_room_writes(self):
+        elsewhere = Path(self.tmp.name) / "elsewhere"
+        elsewhere.mkdir()
+        other = Room(elsewhere)
+        extra = ({"key": "visitor", "room": str(other.room)}, {"key": "twice", "room": str(self.r.room)},
+                 {"key": "twice", "room": str(self.r.room)})
+        self.r.registry.write_text(json.dumps({"identities": [
+            {"key": "session-doctor", "room": str(self.r.room)}, *extra]}))
+        self.refused(self.r.add(agent="nobody"), "registered 0 times")
+        self.refused(self.r.add(agent="twice"), "registered 2 times")
+        self.refused(self.r.add(agent="visitor"), "registered to another room")
+        self.refused(self.r.add(agent="Not A Key"), "is not a registry key")
+        self.assertEqual(self.r.files(), [])
+
+    def test_no_approval_is_asked_and_the_chain_commands_are_gone(self):
+        self.ok(self.r.add())
+        for args in (("preview", "session-doctor", "--changes", "-"), ("write", "session-doctor"),
+                     ("history", "session-doctor"), ("add", "--agent", "session-doctor", "--title", "x",
+                                                     "--body", "-", "--yes", "yes")):
+            with self.subTest(command=args[0]):
+                result = self.r.run(*args, stdin=IDEA)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn("usage:", result.stderr)
+
+    def test_retire_takes_the_pointer_out_and_keeps_the_leaf(self):
+        self.ok(self.r.add())
+        self.ok(self.r.run("retire", "--agent", "session-doctor", "MIND-2026-10-30-001"))
+        self.assertEqual(self.r.index(), [])
+        self.assertTrue(self.r.leaf("MIND-2026-10-30-001").exists())
+        self.ok(self.r.run("check"))
+
+    # -- integrity --------------------------------------------------------------
+    def test_a_changed_leaf_fails_check_and_is_not_served_until_its_owner_retires_it(self):
+        self.ok(self.r.add())
+        self.ok(self.r.add(SECOND, "Rotation is continuity"))
+        leaf = self.r.leaf("MIND-2026-10-30-001")
+        leaf.write_text(leaf.read_text().replace("never a finding", "always a finding"))
+        self.failed_check("not the one the ledger recorded")
+        self.refused(self.r.run("show"), "not served until its check passes")
+        self.refused(self.r.run("read", "MIND-2026-10-30-002"), "not served until its check passes")
+        self.ok(self.r.run("retire", "--agent", "session-doctor", "MIND-2026-10-30-001"))
+        self.ok(self.r.run("check"))
+
+    def test_a_hand_written_index_line_is_refused(self):
+        self.ok(self.r.add())
+        index = self.r.room / "MIND.md"
+        index.write_text(index.read_text() + "a note added by hand\n")
+        self.failed_check("holds a line that is not a pointer")
+        self.refused(self.r.add(SECOND, "Another"), "holds a line that is not a pointer")
+
+    def test_an_index_line_without_a_ledger_record_fails(self):
+        self.ok(self.r.add())
+        data = mind.render_leaf({"id": "MIND-2026-10-30-009", "agent": "session-doctor",
+                                 "written": "2026-10-30T17:09:00Z", "title": "Planted", "supersedes": "none"}, SECOND)
+        self.r.leaf("MIND-2026-10-30-009").write_text(data)
+        lines = self.r.index() + [("MIND-2026-10-30-009", "session-doctor", "Planted")]
+        (self.r.room / "MIND.md").write_text(mind.index_text(lines))
+        self.failed_check("the ledger records no add of this leaf")
+
+    def test_the_retired_chain_format_is_refused_with_a_custody_instruction(self):
+        (self.r.room / "MIND.md").write_text("resident=session-doctor|leaf=archives/MIND-x.md|sha256=" + "0" * 64 + "\n")
+        for result in (self.r.add(), self.r.run("show")):
+            self.refused(result, "move it and every archives/MIND-*.md", "to custody")
+        self.failed_check("not a pointer index")
+        (self.r.room / "MIND.md").unlink()
+        (self.r.room / "archives").mkdir()
+        (self.r.room / "archives" / "MIND-session-doctor-2026-10-30-0a1b2c3d.md").write_text("old\n")
+        self.refused(self.r.add(), "retired chain format", "move them to custody")
+        self.failed_check("FAIL legacy")
+        self.assertFalse((self.r.room / "MIND.md").exists())
+
+    def test_a_leaf_that_fails_a_tightened_screen_is_reported_not_blocked(self):
+        self.ok(self.r.add())
+        tighter = mind.CONCEPT_SCREEN + (("a new kind", __import__("re").compile("recollection")),)
+        with mock.patch.object(mind, "CONCEPT_SCREEN", tighter):
+            rc, out, _ = in_process(self.r, "check")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("REPORT leaf : MIND-2026-10-30-001: no longer passes the current screen", out)
+        self.assertIn("supersede or retire it", out)
+
+    def test_strays_are_reported(self):
+        self.ok(self.r.add())
+        (self.r.leaf("MIND-2026-10-30-001").parent / "stray.md").write_text("x\n")
         result = self.ok(self.r.run("check"))
-        self.assertIn("REPORT session-doctor chain-history", result.stdout)
-        self.ok(self.r.write({"retire": ["commitment-002"]}, yes="yes, closed again"))
+        self.assertIn("REPORT strays : 1 files under archives/mind/", result.stdout)
 
-    def test_c9_the_immediate_predecessor_must_exist(self):
-        first = self.genesis()
-        self.ok(self.r.write({"retire": ["commitment-001"]}, yes="yes, closed"))
-        first.unlink()
-        self.failed_check("is not on disk")
+    def test_every_file_and_directory_is_private(self):
+        previous = os.umask(0)
+        try:
+            self.ok(self.r.add())
+        finally:
+            os.umask(previous)
+        for rel, mode in (("MIND.md", 0o600), ("archives", 0o700), ("archives/mind", 0o700),
+                          ("archives/mind/MIND-2026-10-30-001.md", 0o600), ("logs", 0o700), ("logs/mind", 0o700),
+                          ("logs/mind/ledger.jsonl", 0o600), ("logs/mind.lock", 0o600)):
+            with self.subTest(path=rel):
+                self.assertEqual(stat.S_IMODE((self.r.room / rel).stat().st_mode), mode)
 
-    def test_c10_a_change_file_that_is_not_utf8_is_refused(self):
-        path = self.r.changes(None, raw=b'{"add": [{"layer": "core", "text": "\xff\xfe"}]}')
-        self.refused(self.r.run("write", "session-doctor", "--changes", path, "--preview", "0" * 64, "--yes", "yes, go",
-                                "--by", "claudine-colbert"), "not UTF-8")
-        dup = self.r.changes(None, raw=b'{"add": [{"layer": "core", "text": "a", "text": "b"}]}')
-        self.refused(self.r.run("preview", "session-doctor", "--changes", dup), "twice")
-        self.assertEqual(self.r.files(), [])
+    def test_no_output_carries_a_session_identifier(self):
+        self.ok(self.r.add())
+        for args in (("show",), ("check",), ("read", "MIND-2026-10-30-001")):
+            result = self.ok(self.r.run(*args))
+            self.assertNotIn(SESSION, result.stdout + result.stderr)
+        self.assertNotIn(SESSION, (self.r.room / "MIND.md").read_text())
 
-    # -- rules the port keeps ----------------------------------------------
-    def test_layer_rules_and_trauma_guard(self):
-        cases = {
-            "incident without fix": (dict(LESSON, kind="incident", closed="2026-10-29"), "incident"),
-            "blame in core": (dict(CORE, text="My careless mistake defines me."), "blame words"),
-            "lesson without not_when": ({k: v for k, v in LESSON.items() if k != "not_when"}, "needs not_when"),
-            "commitment without owner": ({k: v for k, v in COMMIT.items() if k != "owner"}, "needs owner"),
-            "core without kind": ({k: v for k, v in CORE.items() if k != "kind"}, "needs kind"),
-            "owner on core": (dict(CORE, owner="me"), "cannot be set here"),
-            "an id from the writer": (dict(CORE, id="core-009"), "cannot be set here"),
-            "a yes inside the change": (dict(CORE, yes="2026-10-30, \"yes\""), "cannot be set here"),
-            "bad date": (dict(CORE, date="2026-13-40"), "not a YYYY-MM-DD date"),
-        }
-        for label, (entry, words) in cases.items():
-            with self.subTest(label):
-                self.refused(self.r.write({"add": [entry]}), words)
-        self.assertEqual(self.r.files(), [])
-
-    def test_core_over_budget_is_refused_whole(self):
-        big = [dict(CORE, text=f"Entry {i} " + "x" * 2000) for i in range(7)]
-        self.refused(self.r.write({"add": big}), "over its budget")
-
-    def test_amend_cannot_change_layer_or_change_nothing(self):
-        self.genesis()
-        self.refused(self.r.write({"amend": [{"id": "core-001", "layer": "bond"}]}), "cannot be set here")
-        self.refused(self.r.write({"amend": [{"id": "core-001", "text": CORE["text"]}]}), "changes nothing")
-
-    def test_a_hand_written_pointer_is_left_as_it_is(self):
-        (self.r.room / mind.POINTER).write_text("# My mind, by hand\n")
-        self.refused(self.r.write({"add": [CORE]}), "not a pointer this tool wrote")
-        self.assertEqual((self.r.room / mind.POINTER).read_text(), "# My mind, by hand\n")
-
-    def test_no_first_leaf_while_leaves_exist_without_a_pointer(self):
-        self.genesis()
-        (self.r.room / mind.POINTER).write_text(mind.POINTER_HEAD)
-        self.refused(self.r.write({"add": [CORE]}), "restore the pointer first")
-
-    def test_a_reordered_leaf_is_not_canonical(self):
-        leaf = self.genesis()
-        text = leaf.read_text().replace("  event: naming\n  date: 2026-08-09\n", "  date: 2026-08-09\n  event: naming\n")
-        with self.assertRaises(mind.Refused):
-            mind.parse_leaf(text)
-
-    def test_leaves_and_pointer_are_private(self):
-        leaf = self.genesis()
-        for path in (leaf, self.r.room / mind.POINTER):
-            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600, path.name)
+    def test_reading_runs_no_git_and_check_does(self):
+        self.ok(self.r.add())
+        with mock.patch.object(mind.subprocess, "run", side_effect=AssertionError("git was called")):
+            self.assertEqual(in_process(self.r, "show")[0], 0)
+            self.assertEqual(in_process(self.r, "read", "MIND-2026-10-30-001")[0], 0)
+            self.assertEqual(mind.verify(self.r.room, mind.read_registry(self.r.registry))[1], [])
+        self.assertIn("PASS out-of-git", self.ok(self.r.run("check")).stdout)
 
     def test_minds_live_out_of_git(self):
         if subprocess.run(["git", "--version"], capture_output=True).returncode != 0:
             self.skipTest("git is not installed")
         subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
-        self.refused(self.r.write({"add": [CORE]}), "not ignored by Git")
-        self.assertFalse((self.r.room / mind.POINTER).exists())
-        self.assertEqual(list(self.r.room.glob("archives/MIND-*")), [])
-        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/MIND-*\n/storage/\n")
-        self.ok(self.r.write({"add": [CORE]}))
+        self.refused(self.r.add(), "not ignored by Git")
+        self.assertFalse((self.r.room / mind.INDEX).exists())
+        self.assertEqual(list(self.r.room.glob("archives/mind/*")), [])
+        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/\n/logs/\n")
+        self.ok(self.r.add())
+        self.assertIn("PASS out-of-git", self.ok(self.r.run("check")).stdout)
+        (self.r.room / ".gitignore").write_text("/archives/\n/logs/\n")
+        self.failed_check("FAIL out-of-git", "MIND.md is not ignored by Git")
 
-    # -- George's read, 10-30: F1, the Git check fails closed --------------------
+    # -- the Git check fails closed ---------------------------------------------
     def fake_git(self, script: str) -> dict:
         """A PATH whose only git is this shell script; the env for a run of mind.py."""
         bin_dir = Path(self.tmp.name) / "fakebin"
@@ -434,14 +378,14 @@ class MindTests(unittest.TestCase):
     def test_f1_no_git_on_path_is_a_refusal(self):
         empty = Path(self.tmp.name) / "empty-bin"
         empty.mkdir()
-        result = self.r.write({"add": [CORE]}, env=dict(os.environ, PATH=str(empty)))
+        result = self.r.add(env=dict(os.environ, PATH=str(empty)))
         self.refused(result, "Git is not installed")
         self.assertEqual(self.r.files(), [])
 
     def test_f1_a_git_that_does_not_answer_is_a_refusal(self):
         env = self.fake_git(f"exec {shutil.which('sleep')} 5\n")
         with mock.patch.dict(os.environ, {"PATH": env["PATH"]}), mock.patch.object(mind, "GIT_TIMEOUT", 0.3):
-            problems = mind.git_exposed(self.r.room, [self.r.room / mind.POINTER])
+            problems = mind.git_exposed(self.r.room, [self.r.room / mind.INDEX])
         self.assertEqual(len(problems), 1)
         self.assertIn("gave no answer within 0.3 seconds", problems[0])
 
@@ -456,13 +400,13 @@ class MindTests(unittest.TestCase):
                 return subprocess.CompletedProcess(cmd, 0, str(self.r.room) + "\n", "")
             return subprocess.CompletedProcess(cmd, 0, "true\n", "")
         with mock.patch.object(mind.subprocess, "run", side_effect=fake):
-            problems = mind.git_exposed(self.r.room, [self.r.room / mind.POINTER])
+            problems = mind.git_exposed(self.r.room, [self.r.room / mind.INDEX])
         self.assertEqual(problems, [f"git check-ignore gave no answer within {mind.GIT_TIMEOUT:g} seconds"])
         self.assertIs(subprocess.run, real)
 
     def test_f1_a_broken_repository_is_a_refusal(self):
         subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
-        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/MIND-*\n/storage/\n")
+        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/\n/logs/\n")
         real_git = shutil.which("git")
         self.assertIsNotNone(real_git)
         bin_dir = self.r.base / "ceiling-bin"
@@ -479,17 +423,17 @@ class MindTests(unittest.TestCase):
         env = dict(os.environ, PATH=str(bin_dir))
         head = self.r.room / ".git" / "HEAD"
         head.write_text("not a ref\n")                          # Git now says "not a git repository" here
-        self.refused(self.r.write({"add": [CORE]}, env=env), "a broken repository is not proof of being outside Git")
+        self.refused(self.r.add(env=env), "a broken repository is not proof of being outside Git")
         head.write_text("ref: refs/heads/main\n")
         (self.r.room / ".git" / "config").write_text("[[[ broken\n")
-        self.refused(self.r.write({"add": [CORE]}, env=env), "git rev-parse failed (exit 128")
-        self.assertFalse((self.r.room / mind.POINTER).exists())
-        self.assertEqual(list(self.r.room.glob("archives/MIND-*")), [])
+        self.refused(self.r.add(env=env), "git rev-parse failed (exit 128")
+        self.assertFalse((self.r.room / mind.INDEX).exists())
+        self.assertEqual(list(self.r.room.glob("archives/mind/*")), [])
 
     def test_f1_a_broken_inner_repository_is_refused_with_valid_parent(self):
         subprocess.run(["git", "init", "-q", str(self.r.base)], check=True)
         (self.r.base / ".gitignore").write_text(
-            "/room/MIND.md\n/room/archives/MIND-*\n/room/storage/\n"
+            "/room/MIND.md\n/room/archives/\n/room/logs/\n"
         )
         subprocess.run(["git", "init", "-q", str(self.r.room)], check=True)
         head = self.r.room / ".git" / "HEAD"
@@ -507,18 +451,18 @@ class MindTests(unittest.TestCase):
             check=True,
         )
         ignored = subprocess.run(
-            ["git", "-C", str(self.r.room), "check-ignore", "-q", str(self.r.room / mind.POINTER)],
+            ["git", "-C", str(self.r.room), "check-ignore", "-q", str(self.r.room / mind.INDEX)],
             check=False,
         )
         self.assertEqual(inside.stdout.strip(), "true")
         self.assertEqual(Path(top.stdout.strip()), self.r.base)
         self.assertEqual(ignored.returncode, 0)
-        self.refused(self.r.write({"add": [CORE]}), "a broken repository is not proof of being outside Git")
-        self.assertFalse((self.r.room / mind.POINTER).exists())
-        self.assertEqual(list(self.r.room.glob("archives/MIND-*")), [])
+        self.refused(self.r.add(), "a broken repository is not proof of being outside Git")
+        self.assertFalse((self.r.room / mind.INDEX).exists())
+        self.assertEqual(list(self.r.room.glob("archives/mind/*")), [])
 
         shutil.rmtree(self.r.room / ".git")
-        self.ok(self.r.write({"add": [CORE]}))
+        self.ok(self.r.add())
 
     def test_f1_a_broken_nearest_ancestor_is_refused(self):
         outer = Path(self.tmp.name) / "outer"
@@ -526,7 +470,7 @@ class MindTests(unittest.TestCase):
         outer.mkdir()
         subprocess.run(["git", "init", "-q", str(outer)], check=True)
         (outer / ".gitignore").write_text(
-            "/middle/room/MIND.md\n/middle/room/archives/MIND-*\n/middle/room/storage/\n"
+            "/middle/room/MIND.md\n/middle/room/archives/\n/middle/room/logs/\n"
         )
         subprocess.run(["git", "init", "-q", str(middle)], check=True)
         room = Room(middle)
@@ -546,16 +490,16 @@ class MindTests(unittest.TestCase):
             check=True,
         )
         ignored = subprocess.run(
-            ["git", "-C", str(room.room), "check-ignore", "-q", str(room.room / mind.POINTER)],
+            ["git", "-C", str(room.room), "check-ignore", "-q", str(room.room / mind.INDEX)],
             check=False,
         )
         self.assertFalse((room.room / ".git").exists())
         self.assertEqual(inside.stdout.strip(), "true")
         self.assertEqual(Path(top.stdout.strip()), outer)
         self.assertEqual(ignored.returncode, 0)
-        self.refused(room.write({"add": [CORE]}), "nearest .git marker", "broken repository")
-        self.assertFalse((room.room / mind.POINTER).exists())
-        self.assertEqual(list(room.room.glob("archives/MIND-*")), [])
+        self.refused(room.add(), "nearest .git marker", "broken repository")
+        self.assertFalse((room.room / mind.INDEX).exists())
+        self.assertEqual(list(room.room.glob("archives/mind/*")), [])
 
     def test_f1_valid_nearer_repository_ignores_broken_higher_ancestor(self):
         outer = Path(self.tmp.name) / "outer"
@@ -564,7 +508,7 @@ class MindTests(unittest.TestCase):
         subprocess.run(["git", "init", "-q", str(outer)], check=True)
         subprocess.run(["git", "init", "-q", str(middle)], check=True)
         room = Room(middle)
-        (middle / ".gitignore").write_text("/room/MIND.md\n/room/archives/MIND-*\n/room/storage/\n")
+        (middle / ".gitignore").write_text("/room/MIND.md\n/room/archives/\n/room/logs/\n")
         (outer / ".git" / "HEAD").write_text("not a ref\n")
 
         top = subprocess.run(
@@ -574,7 +518,7 @@ class MindTests(unittest.TestCase):
             check=True,
         )
         self.assertEqual(Path(top.stdout.strip()), middle)
-        self.ok(room.write({"add": [CORE]}))
+        self.ok(room.add())
 
     def test_f1_valid_worktree_git_file_allows_ignored_writes(self):
         repository = self.r.base / "worktree-source"
@@ -593,8 +537,8 @@ class MindTests(unittest.TestCase):
             check=True,
         )
         self.assertTrue((self.r.room / ".git").is_file())
-        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/MIND-*\n/storage/\n")
-        self.ok(self.r.write({"add": [CORE]}))
+        (self.r.room / ".gitignore").write_text("/MIND.md\n/archives/\n/logs/\n")
+        self.ok(self.r.add())
 
     def test_f1_only_a_positive_answer_passes(self):
         path = shlex.quote(str(self.r.room))
@@ -605,61 +549,17 @@ class MindTests(unittest.TestCase):
             "check-ignore errors": (
                 'case "$4" in --is-inside-work-tree) echo true;; '
                 f'--show-toplevel) echo {path};; *) echo "fatal: boom" >&2; exit 128;; esac\n',
-                                    "git check-ignore failed for archives/MIND-"),
+                                    "git check-ignore failed for MIND.md"),
         }
         for label, (script, words) in cases.items():
             with self.subTest(label):
-                self.refused(self.r.write({"add": [CORE]}, env=self.fake_git(script)), words)
+                self.refused(self.r.add(env=self.fake_git(script)), words)
                 self.assertEqual(self.r.files(), [])
         ignored = self.fake_git(
             'case "$4" in --is-inside-work-tree) echo true;; '
             f'--show-toplevel) echo {path};; *) exit 0;; esac\n'
         )
-        self.ok(self.r.write({"add": [CORE]}, env=ignored))
-
-    # -- George's read, 10-30: F2, the write is bound to the preview ------------
-    def test_f2_write_needs_the_preview_binding(self):
-        path = self.r.changes({"add": [CORE]})
-        for extra in ((), ("--preview", "abc")):
-            with self.subTest(extra=extra):
-                self.refused(self.r.run("write", "session-doctor", "--changes", path, *extra, "--yes", "yes, go",
-                                        "--by", "claudine-colbert"), "write needs --preview")
-        self.assertEqual(self.r.files(), [])
-
-    def test_f2_a_change_file_edited_after_the_preview_is_refused(self):
-        path = self.r.changes({"add": [CORE]})
-        binding = self.r.preview("session-doctor", path)
-        Path(path).write_text(json.dumps({"add": [dict(CORE, text="Something Kevin never saw.")]}))
-        args = ("write", "session-doctor", "--changes", path, "--yes", "yes, go", "--by", "claudine-colbert")
-        self.refused(self.r.run(*args, "--preview", binding), "is not what the preview showed")
-        self.assertEqual(self.r.files(), [])
-        self.ok(self.r.run(*args, "--preview", self.r.preview("session-doctor", path)))
-        self.assertIn("Something Kevin never saw.", self.r.leaf().read_text())
-
-    def test_f2_layout_does_not_matter_but_content_does(self):
-        compact = self.r.changes({"add": [CORE]})
-        spaced = self.r.changes(None, raw=json.dumps({"add": [CORE]}, indent=4).encode())
-        self.assertEqual(self.r.preview("session-doctor", compact), self.r.preview("session-doctor", spaced))
-        self.assertNotEqual(self.r.preview("session-doctor", compact),
-                            self.r.preview("claudine-colbert", compact))
-
-    def test_f2_changes_from_standard_input(self):
-        text = json.dumps({"add": [CORE]})
-        binding = self.r.preview("session-doctor", "-", stdin=text)
-        args = ("write", "session-doctor", "--changes", "-", "--preview", binding, "--yes", "yes, go", "--by", "claudine-colbert")
-        self.refused(self.r.run(*args, stdin=json.dumps({"add": [LESSON]})), "is not what the preview showed")
-        self.assertEqual(self.r.files(), [])
-        self.ok(self.r.run(*args, stdin=text))
-
-    def test_f2_a_moved_predecessor_is_refused(self):
-        self.genesis()
-        path = self.r.changes({"retire": ["commitment-001"]})
-        binding = self.r.preview("session-doctor", path)
-        self.ok(self.r.write({"add": [dict(LESSON, text="Another lesson.")]}, yes="yes, add it"))
-        moved = self.r.pointer()["session-doctor"]
-        self.refused(self.r.run("write", "session-doctor", "--changes", path, "--preview", binding, "--yes", "yes, close it",
-                                "--by", "claudine-colbert"), "is not what the preview showed")
-        self.assertEqual(self.r.pointer()["session-doctor"], moved)
+        self.ok(self.r.add(env=ignored))
 
 
 class LegacyStateGuard(unittest.TestCase):
@@ -724,7 +624,7 @@ class MindLockLocation(unittest.TestCase):
         room = self.room("fresh")
         previous = os.umask(0)
         try:
-            result = room.write({"add": [CORE]})
+            result = room.add()
         finally:
             os.umask(previous)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -748,7 +648,7 @@ class MindLockLocation(unittest.TestCase):
                 else:
                     os.mkfifo(old)
                 before = old.lstat()
-                result = room.write({"add": [CORE]})
+                result = room.add()
                 self.assertEqual(result.returncode, 2, result.stderr)
                 self.assertIn("legacy state", result.stderr)
                 after = old.lstat()
@@ -776,7 +676,7 @@ class MindLockLocation(unittest.TestCase):
                         target.mkdir()
                     parent.symlink_to(target)
                 before = parent.lstat()
-                result = room.write({"add": [CORE]})
+                result = room.add()
                 self.assertEqual(result.returncode, 2, result.stderr)
                 self.assertIn("legacy state parent", result.stderr)
                 after = parent.lstat()
@@ -793,7 +693,7 @@ class MindLockLocation(unittest.TestCase):
         parent.mkdir()
         parent.chmod(0)
         try:
-            result = room.write({"add": [CORE]})
+            result = room.add()
         finally:
             parent.chmod(0o700)
         self.assertEqual(result.returncode, 2, result.stderr)
@@ -807,7 +707,7 @@ class MindLockLocation(unittest.TestCase):
         with old.open("w") as handle:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             before = old.stat().st_ino
-            result = room.write({"add": [CORE]})
+            result = room.add()
             self.assertEqual(result.returncode, 2, result.stderr)
             self.assertEqual(old.stat().st_ino, before)
             self.assertFalse((room.room / "logs").exists())
@@ -855,152 +755,15 @@ class MindLockLocation(unittest.TestCase):
             self.assertEqual(new.read_bytes(), b"retained lock fixture")
         self.assertFalse(old.exists())
 
-    def test_legacy_lock_does_not_block_read_only_preview(self):
-        room = self.room("preview")
+    def test_legacy_lock_does_not_block_read_only_commands(self):
+        room = self.room("read-only")
         old = room.room / "storage/mind.lock"
         old.parent.mkdir()
         old.write_bytes(b"preserved")
-        changes = room.changes({"add": [CORE]})
-        self.assertTrue(room.preview("session-doctor", changes))
+        for args in (("check",), ("show",)):
+            self.assertEqual(room.run(*args).returncode, 0, args)
         self.assertFalse((room.room / "logs").exists())
         self.assertEqual(old.read_bytes(), b"preserved")
-
-
-class RetiredNotebookTests(unittest.TestCase):
-    """The notebook (W5) is retired. The tool writes version 1 leaves only, still reads and verifies a version 2 leaf
-    as it was written, keeps its notebook line as history, and checks no seal."""
-
-    OLD_POLICY = "a92a7c3f6a3b6112"          # the policy digest at main b710b60c, before leaf format 2
-
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="mind-retired-notebook-")
-        self.r = Room(Path(self.tmp.name))
-
-    def tearDown(self):
-        self.tmp.cleanup()
-
-    def ok(self, result):
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        return result
-
-    def check(self):
-        return self.r.run("check", "--key", "session-doctor")
-
-    REF = "archives/NOTEBOOK-session-doctor-2026-10-30-0123abcd.tar sha256=0123abcd" + "e" * 56
-
-    def plant_version_2(self) -> str:
-        """A version 2 leaf after the current version 1 leaf, as the third slice wrote them; its seal is not on disk."""
-        rel = self.r.pointer()["session-doctor"][0]
-        head, entries, data = mind.load_leaf(self.r.room, "session-doctor", rel)
-        yes = '2026-10-30, "yes, with the seal"'
-        new, issued, added, amended, retired, _ = mind.apply_changes(
-            entries, mind.parse_issued(head["issued"]), [LESSON], [], [], yes)
-        head2 = dict(head, written="2026-10-30T17:30:00Z", by="claudine-colbert",
-                     predecessor=f"{rel} sha256={mind.sha256(data)}", change=mind.change_text(added, amended, retired),
-                     yes=yes, issued=mind.issued_text(issued), notebook=self.REF)
-        name = self.r.plant(head2, new)
-        self.r.minute = 40
-        return name
-
-    def test_a_version_1_leaf_of_the_real_shape_still_passes(self):
-        """A first leaf of three lessons, two of them closed incidents, written under the old policy."""
-        lesson = {"layer": "lesson", "event": "a value written before it was measured", "date": "2026-10-29",
-                  "source": "Receipts/x.md", "applies_when": "a record carries a value", "not_when": "nothing is recorded"}
-        yes = '2026-10-30, "yes, all three"'
-        entries = [dict(lesson, id="lesson-001", text="Stamp every value inside the writing command.", kind="incident",
-                        fix="the append reads the clock itself", closed="2026-10-30", yes=yes),
-                   dict(lesson, id="lesson-002", text="Keep no sole copy of work in volatile scratch.", kind="incident",
-                        fix="build in the room scratch and push early", closed="2026-10-29", yes=yes),
-                   dict(lesson, id="lesson-003", text="Make the unknown form fail closed.", yes=yes)]
-        head = {"title": "Role (Person session-doctor)", "resident": "session-doctor", "written": "2026-10-30T06:49:00Z",
-                "by": "session-doctor", "predecessor": "none", "change": "add lesson-001, lesson-002, lesson-003",
-                "yes": yes, "issued": "core=0 bond=0 lesson=3 commitment=0 pointer=0", "policy": self.OLD_POLICY}
-        data = mind.render_leaf(head, entries).encode("utf-8")
-        name = f"MIND-session-doctor-2026-10-30-{mind.sha256(data)[:8]}.md"
-        (self.r.room / "archives").mkdir()
-        (self.r.room / "archives" / name).write_bytes(data)
-        (self.r.room / mind.POINTER).write_text(mind.pointer_text({"session-doctor": (f"archives/{name}", mind.sha256(data))}))
-        text = self.r.leaf().read_text()
-        self.assertNotIn("\nnotebook: ", text)
-        self.assertEqual(mind.render_leaf(*mind.parse_leaf(text)), text)
-        self.assertEqual(mind.leaf_format(mind.parse_leaf(text)[0]), 1)
-        out = self.ok(self.check()).stdout
-        self.assertIn(f"REPORT session-doctor policy : written under policy {self.OLD_POLICY}", out)
-        self.assertNotIn("seal", out)
-        self.assertEqual(self.ok(self.r.run("show", "session-doctor")).stdout, text)
-        self.assertNotIn("notebook", self.ok(self.r.run("history", "session-doctor")).stdout)
-        self.ok(self.r.write({"add": [CORE]}))
-        self.assertNotIn("\nnotebook: ", self.r.leaf().read_text())
-        self.ok(self.check())
-
-    def test_the_binding_is_the_plain_body(self):
-        changes = ([{"layer": "core", "text": "x"}], [], [])
-        old = mind.sha256(json.dumps({"key": "k", "predecessor": "none", "changes": {"add": changes[0], "amend": [],
-                                     "retire": []}}, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode())
-        self.assertEqual(mind.binding_of("k", "none", *changes), old)
-        with self.assertRaises(TypeError):
-            mind.binding_of("k", "none", *changes, "archives/NOTEBOOK-k-2026-10-30-00000000.tar")
-
-    def test_a_version_2_leaf_is_read_and_served_and_its_seal_is_not_checked(self):
-        self.ok(self.r.write({"add": [CORE]}))
-        self.plant_version_2()
-        text = self.r.leaf().read_text()
-        self.assertIn(f"\nnotebook: {self.REF}\n", text)
-        self.assertEqual(mind.leaf_format(mind.parse_leaf(text)[0]), 2)
-        self.assertFalse((self.r.room / "archives" / self.REF.split()[0][len("archives/"):]).exists())
-        out = self.ok(self.check()).stdout
-        self.assertNotIn("seal", out)
-        self.assertEqual(self.ok(self.r.run("show", "session-doctor")).stdout, text)
-        self.ok(self.r.write({"add": [COMMIT]}, yes="yes, a plain one"))     # a version 1 leaf after it
-        self.assertNotIn("\nnotebook: ", self.r.leaf().read_text())
-        self.ok(self.check())
-        history = self.ok(self.r.run("history", "session-doctor")).stdout.splitlines()
-        self.assertEqual([("; notebook " + self.REF) in line for line in history], [False, True, False])
-
-    def test_a_version_2_header_is_canonical_and_checked(self):
-        self.ok(self.r.write({"add": [CORE]}))
-        self.plant_version_2()
-        text = self.r.leaf().read_text()
-        lines = text.split("\n")
-        i = lines.index(f"notebook: {self.REF}")
-        swapped = lines[:i - 1] + [lines[i], lines[i - 1]] + lines[i + 1:]
-        for bad in ("\n".join(swapped), text.replace(f"notebook: {self.REF}\n", f"notebook: {self.REF}\nformat: 3\n"),
-                    text.replace(f"notebook: {self.REF}\n", f"format: 3\nnotebook: {self.REF}\n"),
-                    text.replace(f"notebook: {self.REF}\n", "notebook: \n")):
-            with self.subTest(bad=bad[:0]):
-                with self.assertRaises(mind.Refused):
-                    mind.parse_leaf(bad)
-        head, _ = mind.parse_leaf(text)
-        sha = self.REF.split("sha256=")[1]
-        cases = {"archives/elsewhere.tar sha256=" + sha: "not a seal reference",
-                 self.REF.replace("NOTEBOOK-session-doctor-", "NOTEBOOK-claudine-colbert-"): "another resident",
-                 self.REF.replace(sha, ("f" if sha[0] != "f" else "e") + sha[1:]): "disagree",
-                 self.REF.replace("-2026-10-30-", "-2026-13-40-"): "not a date"}
-        for value, word in cases.items():
-            with self.subTest(word=word):
-                self.assertTrue(any(word in p for p in mind.head_problems(dict(head, notebook=value))), word)
-        self.assertEqual([p for p in mind.head_problems(head) if "notebook" in p], [])
-
-    def test_the_policy_digest_still_covers_the_leaf_formats(self):
-        self.assertNotEqual(mind.policy_digest(), self.OLD_POLICY)
-        now = mind.policy_digest()
-        with mock.patch.object(mind, "LEAF_FORMATS", {1: mind.HEAD_KEYS}):
-            self.assertNotEqual(mind.policy_digest(), now)
-
-    def test_the_notebook_commands_and_options_are_gone(self):
-        self.ok(self.r.write({"add": [CORE]}))
-        path = self.r.changes({"add": [LESSON]})
-        for args in (("project", "--key", "session-doctor", "--notebook", str(self.r.base)),
-                     ("seal", "--key", "session-doctor", "--notebook", str(self.r.base)),
-                     ("unseal", "--key", "session-doctor", "--seal", "x", "--into", str(self.r.base)),
-                     ("check", "--key", "session-doctor", "--notebook", str(self.r.base)),
-                     ("preview", "session-doctor", "--changes", path, "--seal", "x")):
-            with self.subTest(command=args[0]):
-                result = self.r.run(*args)
-                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-                self.assertIn("usage:", result.stderr)
-        for name in ("cmd_project", "cmd_seal", "cmd_unseal", "read_seal", "projection_block", "seal_gate"):
-            self.assertFalse(hasattr(mind, name), name)
 
 
 if __name__ == "__main__":

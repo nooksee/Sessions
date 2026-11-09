@@ -824,13 +824,13 @@ for p in sys.argv[1:]:
   passed=$((passed + 1))
 
   # 17. The closeout card's single source is its template (PoT 1.2, SSOT):
-  #     it renders as six lines with the four slots filled, step 4 keeps
-  #     the operator's words, and the spec points to the template instead
+  #     it renders as six lines with the four slots filled, step 4 writes
+  #     concept leaves with no approval, and the spec points to the template instead
   #     of carrying a second copy of the card.
   out="$("$self" closeout --slot 'PERCENT=<N>' --slot 'WINDOW=<window>' --slot 'READING_TIME=<time>' --slot 'ROTATION_WRITER=Shannon')"
   expect "the card renders as six lines" test "$(printf '%s\n' "$out" | wc -l | tr -d ' ')" = "6"
   expect "card line 1 carries the reading" test "$(printf '%s\n' "$out" | head -n 1)" = "CLOSEOUT. Your context is <N> percent of <window>, measured from your own body at <time>. It is time to close out, in this order:"
-  expect "card step 4 keeps the operator's words" grep -qF 'then it is written with his words and the date.' <<< "$out"
+  expect "card step 4 writes concept leaves with no approval" grep -qF 'as a mind leaf (mind.py add): a concept, never a fact of the moment. Supersede or retire your own leaves that no longer hold. No approval is asked.' <<< "$out"
   expect "card step 5 renders the writer" test "$(printf '%s\n' "$out" | sed -n 6p)" = "5. Tell the operator you are ready for rotation. Shannon runs it."
   expect "the spec points to the card template" grep -qF 'ops/src/reports/closeout.md.tpl' "${ROOM_ROOT}/docs/ops/specs/scripts/closeout.md"
   expect "the spec carries no second card" bash -c '! grep -qF "CLOSEOUT. Your context is" "$1"' _ "${ROOM_ROOT}/docs/ops/specs/scripts/closeout.md"

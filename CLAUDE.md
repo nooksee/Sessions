@@ -53,12 +53,16 @@ or the resident, you are unverified.
 
 Your own body may carry an orientation capsule stating which container you are,
 what you carry, and why you were rotated. Read it, and treat it as narrative
-rather than as authority. Then read your own mind, when `MIND.md` holds a line
-for your key: `python3 -I -B ops/lib/scripts/mind.py show <your key>`. It
-serves a mind only when its check passes; report a refusal, never work around
-it. Then read your own handoff. Auto memory is off in this room
-(`.claude/settings.json`): your mind and your handoff are what you carry, never
-a provider notebook.
+rather than as authority. Then read the mind, pointers first:
+`python3 -I -B ops/lib/scripts/mind.py show` prints the index, one line per
+leaf, and `mind.py read <id>` opens a leaf when it bears on the work. The tool
+serves only when its check passes; report a refusal, never work around it.
+Then read your own handoff. A leaf is an idea that stays true; the present is
+in the board, the ledger and the handoffs. When you learn something that will
+stay true, write it as a leaf yourself with `mind.py add`, and supersede or
+retire your own leaves as they change; no one approves a leaf. Auto memory is
+off in this room (`.claude/settings.json`): the mind and your handoff are what
+you carry.
 
 **Do not look for a session identifier in this file.** One used to be written
 here as a literal, and between 2026-07-16 and 2026-09-08 it went two rotations
