@@ -1,13 +1,13 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-09, the Session Continuity Manager: the mind is pointer first (RoR-22); the notebook and its wrapper are retired.
+Updated: 2026-11-09, the Session Continuity Manager: the Orchestrator seat is active (RoR-23); the mind is pointer first (RoR-22).
 Status: active current-state board. At most 40 lines of at most 200 characters, checked by `ops/bin/help --test`.
 Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/`. This board grants no live act.
 
 ## Now
 
 - **Repository:** `nooksee/Sessions`, public; `main` protected (pull requests only, strict `sessions-gates`).
-- **Team:** the Manager, the Assistant, the Apprentice and the Auditor (PoT 4.1.9). The operator decides.
+- **Team:** the Manager, the Assistant, the Apprentice, the Auditor (PoT 4.1.9) and the Orchestrator, who does the team's Git work on handoff (C16, RoR-23).
 - **Routes:** Claude residents by session message; the Apprentice by the accepted relay; others by the operator's paste.
 - **Custody:** three roots on three disks; tier 2 is hard_vol1 by the operator's ruling of 2026-11-08; the failing medium is read-only.
 - **Host:** SQLite rolled back to the official 3.45.1-1ubuntu2.8 on 2026-11-07, its .9 pinned out, by the maintenance resident's receipt; the indexer quiet since; its audit is Control's.
