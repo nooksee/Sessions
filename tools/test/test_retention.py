@@ -62,5 +62,39 @@ class LiveClaudeSessionRecordTests(unittest.TestCase):
             self.assertNotIn(dead.resolve(), held)
 
 
+
+class DefaultQuarantineTests(unittest.TestCase):
+    """A sweep given no --quarantine moves into Project-Archives/Session-Quarantine on the archive volume the host
+    fingerprint names, never the working volume: the operator's choice of 2026-11-08. Both roots are synthetic."""
+
+    def test_a_sweep_without_quarantine_lands_on_the_archive_root(self):
+        import contextlib, io, json, sys
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d)
+            roots = {"working": base / "working", "archive": base / "archive"}
+            for r in roots.values():
+                r.mkdir()
+            (base / "official").mkdir()
+            asked = []
+            def volume_root(name):
+                asked.append(name)
+                return roots[name]
+            with mock.patch.object(ret, "_volume_root", volume_root), \
+                    mock.patch.object(ret, "OFFICIAL", {"claude-projects": base / "official"}), \
+                    mock.patch.object(ret, "active_ids", lambda: {}), \
+                    mock.patch.object(ret, "chat_bound_ids", lambda: {}), \
+                    mock.patch.object(ret, "gate_clean", lambda: True), \
+                    mock.patch.object(ret, "held_open_under", lambda roots: {}), \
+                    mock.patch.object(ret, "live_claude_session_bodies", lambda: {}), \
+                    mock.patch.object(sys, "argv", ["retention.py", "--sweep"]), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                ret.main()
+            self.assertEqual(asked, ["archive"])
+            stamps = list((roots["archive"] / "Project-Archives" / "Session-Quarantine").iterdir())
+            self.assertEqual(len(stamps), 1)
+            self.assertEqual(json.loads((stamps[0] / "MANIFEST.json").read_text())["moved"], 0)
+            self.assertEqual(list(roots["working"].iterdir()), [])
+
 if __name__ == "__main__":
     unittest.main()
