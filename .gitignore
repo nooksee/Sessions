@@ -68,10 +68,10 @@
 #   archives/legacy/     frozen copies of retired lanes, including runtime data that carries session identifiers
 #   archives/RoR-words.md  the ledger's source: each entry with the operator's words in place; RoR.md is its derived copy (PoT 1.2.10, 1.3.2)
 #   archives/words/      the sources of other records that quote the operator; their tracked copies are derived by the redact tool (PoT 1.2.10)
-#   MIND.md, archives/MIND-*, archives/NOTEBOOK-*  minds and sealed notebooks: who a resident is
-#   .claude-code-gui/    the plugin's project setting: one key, naming the launch wrapper, a pointer the plugin's path fixes (PoT 1.1.9)
-#   ops/etc/notebook-wired.json  the keys wired to their notebooks; held by the rule for ops/etc/* below (W5)
-#   ops/etc/notebooks/  each resident's own notebook home, one folder per registry key at mode 0700, projected from the mind and sealed at closeout (W5)
+#   MIND.md, archives/MIND-*  minds: who a resident is
+#   archives/NOTEBOOK-*  seals of the retired notebook (W5, retired 2026-11-09): private history, never admitted
+#   .claude/             the room's own Claude settings, host-local; settings.json turns auto memory off (docs/ops/README.md)
+#   .claude-code-gui/    the plugin's project setting, host-local; nothing in this room uses it since the notebook was retired
 #   ops/etc/*            the registry, roster, promotions, host bindings and any other binding in any format: identity; only .gitkeep is admitted
 #   logs/*               telemetry: output, not a record
 #   storage/             only its declared skeleton is versioned; payload stays private by default

@@ -53,7 +53,12 @@ or the resident, you are unverified.
 
 Your own body may carry an orientation capsule stating which container you are,
 what you carry, and why you were rotated. Read it, and treat it as narrative
-rather than as authority. Then read your own handoff.
+rather than as authority. Then read your own mind, when `MIND.md` holds a line
+for your key: `python3 -I -B ops/lib/scripts/mind.py show <your key>`. It
+serves a mind only when its check passes; report a refusal, never work around
+it. Then read your own handoff. Auto memory is off in this room
+(`.claude/settings.json`): your mind and your handoff are what you carry, never
+a provider notebook.
 
 **Do not look for a session identifier in this file.** One used to be written
 here as a literal, and between 2026-07-16 and 2026-09-08 it went two rotations

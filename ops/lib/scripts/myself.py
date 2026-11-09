@@ -13,11 +13,11 @@ authority 0.
 from __future__ import annotations
 
 import datetime as dt
-import importlib.machinery
 import importlib.util
 import json
 import os
 import re
+import stat
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
@@ -42,7 +42,9 @@ TIMESTAMP_CLUSTER_MINIMUM = 20
 EXPECTED_LEGS = 10
 AUTO_MEMORY_SWITCH = "CLAUDE_CODE_DISABLE_AUTO_MEMORY"
 SWITCH_OFF_VALUES = ("", "0", "false")   # any other value reads as the switch: a wrong finding costs less than a wrong pass
-DECISION_LOG_LIMIT = 2_097_152
+AUTO_MEMORY_KEY = "autoMemoryEnabled"
+ROOM_SETTINGS = (".claude/settings.local.json", ".claude/settings.json")   # the room's own scopes, local over project
+SETTINGS_LIMIT = 65_536
 GAUGE_PATH = Path(__file__).resolve().with_name("gauge.py")
 LIMIT_TEXT = (
     "This tool rules out only the known identity, coverage, context-pressure, "
@@ -63,8 +65,7 @@ class CheckPaths:
     codex_lock_root: Path
     proc_root: Path = Path("/proc")
     window_spec: Path | None = None      # the gauge's reviewed window table; None is the gauge's own SPEC
-    room: Path | None = None             # the room the launch wrapper decides for; None leaves the notebook leg unknown
-    wrapper: Path | None = None          # the launch wrapper, whose own reader reads the wired list
+    room: Path | None = None             # the room whose own settings turn auto memory off; None leaves that leg unknown
 
     @classmethod
     def live(cls) -> "CheckPaths":
@@ -75,7 +76,6 @@ class CheckPaths:
             bindings=sessions / "ops/etc/host-bindings.json",
             codex_lock_root=Path.home() / ".codex/thread-writer-locks",
             room=sessions,
-            wrapper=sessions / "ops/bin/claude-resident",
         )
 
 
@@ -752,21 +752,6 @@ def _private_mode_discrepancy(path: Path) -> str | None:
     return None
 
 
-def _load_wrapper(path: Path):
-    """The launch wrapper's module, for its reader of the wired list, so one rule reads that file. Loaded only when the
-    notebook leg runs: importing this script loads nothing, and resolve_caller never comes here."""
-    loader = importlib.machinery.SourceFileLoader("myself_claude_resident", str(path))
-    spec = importlib.util.spec_from_loader(loader.name, loader)
-    module = importlib.util.module_from_spec(spec)
-    writes = sys.dont_write_bytecode
-    sys.dont_write_bytecode = True
-    try:
-        loader.exec_module(module)
-    finally:
-        sys.dont_write_bytecode = writes
-    return module
-
-
 def _launch_process(proc_root: Path, start_pid: int | None, session_id: str) -> tuple[int, list[str]] | None:
     """The nearest Claude process in the ancestry whose own arguments name this session."""
     _, _, processes, _ = _ancestry_signals(proc_root, start_pid)
@@ -800,94 +785,89 @@ def _switch_is_on(proc_root: Path, pid: int) -> bool:
     return False
 
 
-def _newest_log_row(room: Path, key: str) -> str:
-    """Why, as far as the wrapper's decision log says: the newest row naming this key. Its text is the wrapper's fixed
-    text; the log holds no session and no argument. The caller's finding stands whatever this finds."""
-    try:
-        fd = os.open(room / "logs/claude-resident/decisions.log", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+def _auto_memory_setting(source: str) -> tuple[str, Any]:
+    """One settings source: a file path, or inline JSON as the provider's --settings also takes it.
+    Returns ('set', value), ('unset', None), ('absent', None) or ('broken', None). Never follows a link."""
+    if source.lstrip().startswith("{"):
+        data = source.encode("utf-8", "replace")
+    else:
         try:
-            data = os.read(fd, DECISION_LOG_LIMIT)
+            fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        except FileNotFoundError:
+            return "absent", None
+        except OSError:
+            return "broken", None
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                return "broken", None
+            data = os.read(fd, SETTINGS_LIMIT + 1)
+        except OSError:
+            return "broken", None
         finally:
             os.close(fd)
-    except OSError:
-        return "the decision log cannot be read"
-    for line in reversed(data.split(b"\n")):
-        try:
-            row = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(row, dict) and row.get("key") == key:
-            return (f"the decision log's newest row for this key: time={row.get('time')}; "
-                    f"branch={row.get('branch')}; reason={row.get('reason')}")
-    return "the decision log holds no row for this key"
+    if len(data) > SETTINGS_LIMIT:
+        return "broken", None
+    try:
+        payload = json.loads(data)
+    except ValueError:
+        return "broken", None
+    if not isinstance(payload, dict):
+        return "broken", None
+    if AUTO_MEMORY_KEY not in payload:
+        return "unset", None
+    return "set", payload[AUTO_MEMORY_KEY]
 
 
-def _notebook_route(
+def _auto_memory(
     paths: CheckPaths,
     identity: dict[str, Any] | None,
     caller: CallerSignal | None,
-    rows: list[dict[str, Any]],
     start_pid: int | None,
 ) -> tuple[str, str, tuple[str, ...]]:
-    """What this launch carried, read from its own process, against the wired list. A resident whose notebook is lost
-    hears it here, at its wake. It sees what the launch carried, not what the provider then loaded."""
+    """Whether this launch runs with the provider's auto memory off, as this room requires: a Claude resident of
+    this room wakes from its own mind and handoff, never from a notebook the provider shares across the room. Read
+    from the launch's own environment and settings arguments, then the room's local and project settings, in the
+    provider's order of precedence. It sees what the launch carried, not what the provider then loaded."""
     registry = (_surface(paths.registry),)
     if caller is None or identity is None:
         return "undetermined", "caller identity or its registry row is unavailable", registry
     if caller.provider != "claude":
-        return "pass", "not a Claude row: no notebook route applies", registry
-    if paths.room is None or paths.wrapper is None:
-        return "undetermined", "no room or launch wrapper is configured", registry
+        return "pass", "not a Claude row: auto memory does not apply", registry
+    if paths.room is None:
+        return "undetermined", "no room is configured", registry
     row_room = identity.get("room")
     if not isinstance(row_room, str) or not row_room:
         return "undetermined", "the registry row names no room", registry
     if os.path.realpath(row_room) != os.path.realpath(paths.room):
-        return "pass", "a row of another room: the wired list does not apply", registry
+        return "pass", "a row of another room: this room's setting does not apply", registry
     launch = _launch_process(paths.proc_root, start_pid, caller.session_id)
     if launch is None:
         return "undetermined", "no Claude process in the ancestry names this session", registry
     pid, tokens = launch
+    room_files = [(paths.room / rel, rel) for rel in ROOM_SETTINGS]
     surfaces = (_surface(paths.proc_root / str(pid) / "cmdline"), _surface(paths.proc_root / str(pid) / "environ"),
-                _surface(paths.room / "ops/etc/notebook-wired.json"))
+                *(_surface(path) for path, _ in room_files))
     try:
-        switch = _switch_is_on(paths.proc_root, pid)
+        if _switch_is_on(paths.proc_root, pid):
+            return "pass", f"auto memory is off by the launch's environment ({AUTO_MEMORY_SWITCH})", surfaces
     except OSError:
         return "undetermined", "the launch's own environment cannot be read", surfaces
-    try:
-        wrapper = _load_wrapper(paths.wrapper)
-        read_wired, broken = wrapper.read_wired, wrapper.Broken
-    except (Exception, SystemExit):
-        return "undetermined", "the launch wrapper's reader of the wired list cannot load", surfaces
-    key = identity["key"]
-    why = ""
-    wired: frozenset[str] = frozenset()
-    try:
-        wired = read_wired(paths.room, rows)
-    except broken as exc:
-        why = f"the wired list is broken ({exc})"
-    except Exception:
-        return "undetermined", "the wired list could not be judged against the registry", surfaces
-    settings = _settings_values(tokens)
-    own = os.path.realpath(paths.room / "logs/claude-resident" / f"{key}.settings.json")
-    carries_own = len(settings) == 1 and os.path.realpath(settings[0]) == own
-    on_list = key in wired
-    if why:
-        pass
-    elif settings and not carries_own:
-        why = "this launch carries a settings source that is not this key's own: the wrong notebook, or none"
-    elif switch and on_list:
-        why = "wired, and this launch runs with auto memory off: no notebook"
-    elif switch:
-        why = "not wired, and this launch runs with auto memory off: it has lost its notes and nothing else says so"
-    elif carries_own and not on_list:
-        why = "not on the wired list, yet this launch carries a notebook route"
-    elif not carries_own and on_list:
-        why = "wired, and this launch carries no notebook route: it has the provider's default"
-    if why:
-        return "finding", f"{why}; {_newest_log_row(paths.room, key)}", surfaces
-    if on_list:
-        return "pass", "wired, and this launch carries its own notebook route", surfaces
-    return "pass", "not wired: this launch has the provider's default, as a row not yet wired should", surfaces
+    sources = [(value, "a --settings argument of the launch") for value in _settings_values(tokens)]
+    sources += [(str(path), rel) for path, rel in room_files]
+    for source, label in sources:
+        state, value = _auto_memory_setting(source)
+        if state == "broken":
+            return "undetermined", f"{label} cannot be read as a settings object", surfaces
+        if state != "set":
+            continue
+        if value is False:
+            return "pass", f"auto memory is off by {label}", surfaces
+        if value is True:
+            return "finding", (f"auto memory is on by {label}: every resident of this room would share one "
+                               "provider notebook"), surfaces
+        return "finding", f"{label} sets {AUTO_MEMORY_KEY} to a value that is not true or false", surfaces
+    return "finding", (f"nothing turns auto memory off: {ROOM_SETTINGS[1]} needs \"{AUTO_MEMORY_KEY}\": false, "
+                       "or the launch has the provider's shared notebook"), surfaces
 
 
 def run_check(
@@ -1368,10 +1348,8 @@ def run_check(
             _surface(analysis.path),
         )
 
-    route_status, route_detail, route_surfaces = _notebook_route(
-        paths, identity, caller, _identity_rows(registry_payload), start_pid
-    )
-    report.add("notebook route", route_status, route_detail, *route_surfaces)
+    memory_status, memory_detail, memory_surfaces = _auto_memory(paths, identity, caller, start_pid)
+    report.add("auto memory", memory_status, memory_detail, *memory_surfaces)
 
     return report
 

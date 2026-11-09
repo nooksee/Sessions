@@ -2197,20 +2197,10 @@ class ClaudeAdapterTests(unittest.TestCase):
         self.adapter_path = "fixtures/adapter.json"
         self.process_path = "fixtures/adapter-process.json"
         self.pristine = "fixtures/adapter-pristine.fixture"
-        self.notebook_path = "fixtures/notebook.json"
-        self.memory_path = "fixtures/notebook/MEMORY.md"
         self.compaction_path = "fixtures/compaction.json"
         self.after_path = "fixtures/after-gauge.json"
         self.save(self.process_path, {"schema": "rotate-process/1", "observable": True,
                                       "holders": [], "session_records": []})
-        mind = ROTATE.sibling("mind")
-        block = mind.projection_block(KEY, self.leaf, (self.room / self.leaf).read_bytes())
-        self.save(self.memory_path, block + "Invented notebook only.\n", text=True)
-        self.make_seal()
-        self.notebook = {"schema": "rotate-notebook-fixture/1", "key": KEY,
-                         "mind_sha256": self.leaf_sha, "writer_stopped": True,
-                         "memory": self.ref(self.memory_path), "seal": self.ref(self.seal_path)}
-        self.save(self.notebook_path, self.notebook)
         uid = "0000f101-0000-4000-8000-00000000f101"
         self.pristine_rows = [
             {"type": "custom-title", "customTitle": self.spare_row["label"]},
@@ -2244,7 +2234,7 @@ class ClaudeAdapterTests(unittest.TestCase):
                         "gauge_sha256": self.sha(self.gauge), "closeout_sha256": self.sha(self.state),
                         "destination_sha256": hashlib.sha256(DESTINATION.encode()).hexdigest(),
                         "provider_version": "invented-cli-version", "process_model": self.ref(self.process_path),
-                        "notebook": self.ref(self.notebook_path), "pristine": self.ref(self.pristine),
+                        "pristine": self.ref(self.pristine),
                         "destination_metadata": self.ref(self.spare), "compaction": self.ref(self.compaction_path)}
         self.save_adapter()
 
@@ -2256,20 +2246,6 @@ class ClaudeAdapterTests(unittest.TestCase):
 
     def save_pristine(self):
         self.save(self.pristine, "".join(json.dumps(r) + "\n" for r in self.pristine_rows), text=True)
-
-    def bind_notebook(self):
-        self.notebook["seal"] = self.ref(self.seal_path)
-        self.save(self.notebook_path, self.notebook)
-        self.adapter["notebook"] = self.ref(self.notebook_path)
-        self.save_adapter()
-
-    def make_seal(self, key=KEY, raw=None):
-        if raw is None:
-            raw, _, _ = ROTATE.sibling("mind").seal_bytes(key, (self.room / self.memory_path).parent)
-        self.seal_path = "archives/NOTEBOOK-" + key + "-2026-11-05-" + hashlib.sha256(raw).hexdigest()[:8] + ".tar"
-        path = self.room / self.seal_path
-        path.write_bytes(raw)
-        path.chmod(0o600)
 
     def bind_compaction(self):
         self.save(self.after_path, self.after)
@@ -2299,7 +2275,7 @@ class ClaudeAdapterTests(unittest.TestCase):
         self.assertTrue(all(result["build"]["gates"].values()))
 
     def test_later_inputs_absent_are_not_read_at_earlier_stops(self):
-        for name, phase in ((self.notebook_path, 1), (self.pristine, 2), (self.compaction_path, 3)):
+        for name, phase in ((self.pristine, 2), (self.compaction_path, 3)):
             with self.subTest(name=name):
                 path = self.room / name
                 raw = path.read_bytes()
@@ -2326,7 +2302,7 @@ class ClaudeAdapterTests(unittest.TestCase):
 
     def test_any_holder_blocks_preparation_without_proc_read(self):
         self.save(self.process_path, {"schema": "rotate-process/1", "observable": True,
-                                      "holders": [self.memory_path], "session_records": []})
+                                      "holders": [self.pristine], "session_records": []})
         self.adapter["process_model"] = self.ref(self.process_path)
         self.save_adapter()
         with mock.patch.object(ROTATE, "no_fixture_holders", side_effect=AssertionError("no host proc")):
@@ -2339,66 +2315,12 @@ class ClaudeAdapterTests(unittest.TestCase):
         self.save_adapter()
         self.refused(0, "process-model-unobservable")
 
-    def test_seal_binds_actual_memory_bytes(self):
-        path = self.room / self.memory_path
-        self.save(self.memory_path, path.read_text() + "New invented trailing notes.\n", text=True)
-        self.notebook["memory"] = self.ref(self.memory_path)
-        self.bind_notebook()
-        self.refused(2, "claude-seal-memory-mismatch")
-
-    def test_memory_needs_the_current_canonical_projection(self):
-        self.save(self.memory_path, "Invented stale projection.\n", text=True)
-        self.notebook["memory"] = self.ref(self.memory_path)
-        self.make_seal()
-        self.bind_notebook()
-        self.refused(2, "claude-notebook-projection-mismatch")
-
-    def test_canonical_seal_reader_refuses_another_key(self):
-        self.make_seal(WRITER)
-        self.bind_notebook()
-        self.refused(2, "claude-seal-verification-refused")
-
-    def test_canonical_seal_reader_refuses_malformed_bytes(self):
-        self.make_seal(raw=b"Not a tar archive")
-        self.bind_notebook()
-        self.refused(2, "claude-seal-verification-refused")
-
-    def test_canonical_seal_reader_is_reused_and_rechecked(self):
-        mind = ROTATE.sibling("mind")
-        real_sibling = ROTATE.sibling
-        real_reader = mind.read_seal
-        with mock.patch.object(ROTATE, "sibling", side_effect=lambda name: mind if name == "mind" else real_sibling(name)):
-            with mock.patch.object(mind, "read_seal", wraps=real_reader) as reader:
-                rc, result = self.invoke(2)
-                self.assertEqual(rc, 0, result)
-                reader.assert_called_once_with(self.room, KEY, self.seal_path)
-            raw, members = real_reader(self.room, KEY, self.seal_path)
-            with mock.patch.object(mind, "read_seal", return_value=(raw + b"changed", members)):
-                self.refused(2, "claude-seal-preimage-changed")
-
-    def test_seal_must_hold_exactly_the_named_memory_member(self):
-        mind = ROTATE.sibling("mind")
-        raw, _ = mind.read_seal(self.room, KEY, self.seal_path)
-        real_sibling = ROTATE.sibling
-        memory = (self.room / self.memory_path).read_bytes()
-        with mock.patch.object(ROTATE, "sibling", side_effect=lambda name: mind if name == "mind" else real_sibling(name)):
-            for members in ([], [("OTHER.md", "file", memory, 0)], [("MEMORY.md", "dir", memory, 0)]):
-                with self.subTest(members=len(members)), mock.patch.object(mind, "read_seal", return_value=(raw, members)):
-                    self.refused(2, "claude-seal-memory-mismatch")
-
-    def test_running_notebook_writer_refuses(self):
-        for value in (False, 1, None):
-            with self.subTest(value=value):
-                self.notebook["writer_stopped"] = value
-                self.bind_notebook()
-                self.refused(2, "claude-notebook-writer-not-stopped")
-
     def test_pristine_hash_is_checked(self):
         self.save(self.pristine, "changed\n", text=True)
         self.refused(3, "evidence-hash-mismatch")
 
     def test_destination_metadata_is_the_same_bound_preimage(self):
-        self.adapter["destination_metadata"] = self.ref(self.memory_path)
+        self.adapter["destination_metadata"] = self.ref(self.process_path)
         self.save_adapter()
         self.refused(3, "claude-destination-metadata-mismatch")
 
@@ -2560,8 +2482,6 @@ def bad_adapter_field(attribute, field, phase, reason):
         getattr(self, attribute)[field] = "wrong-fixture-value"
         if attribute == "adapter":
             self.save_adapter()
-        elif attribute == "notebook":
-            self.bind_notebook()
         else:
             self.bind_compaction()
         self.refused(phase, reason)
@@ -2572,7 +2492,6 @@ for field in ("schema", "kind", "key", "writer", "binding", "gauge_sha256", "clo
     setattr(ClaudeAdapterTests, "test_header_" + field,
             bad_adapter_field("adapter", field, 0, "claude-adapter-" + field.replace("_", "-") + "-mismatch"))
 for attribute, fields, phase, prefix in (
-    ("notebook", ("schema", "key", "mind_sha256"), 2, "claude-notebook-"),
     ("compaction", ("schema", "actor", "method", "before_gauge_sha256"), 4, "claude-compaction-"),
 ):
     for field in fields:

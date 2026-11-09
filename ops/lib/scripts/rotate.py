@@ -287,27 +287,6 @@ def claude_contract(args, evidence, row, binding, inputs):
     return plan
 
 
-def claude_mind_binding(args, evidence, plan, mind_ref):
-    """Reuse canonical mind projection/seal readers on invented fixtures."""
-    notebook = evidence.notice.decode(evidence.reference(plan.get("notebook")))
-    for field, value in {"schema": "rotate-notebook-fixture/1", "key": args.key,
-                         "mind_sha256": mind_ref["sha256"]}.items():
-        require(notebook.get(field) == value, "claude-notebook-" + field + "-mismatch")
-    require(notebook.get("writer_stopped") is True, "claude-notebook-writer-not-stopped")
-    memory = evidence.reference(notebook.get("memory"), LIMIT)
-    mind = sibling("mind")
-    block = mind.projection_block(args.key, mind_ref["leaf"], evidence.read(mind_ref["leaf"]))
-    require(memory.startswith(block.encode("utf-8")), "claude-notebook-projection-mismatch")
-    seal_raw = evidence.reference(notebook.get("seal"), LIMIT)
-    try:
-        verified, members = mind.read_seal(evidence.room, args.key, notebook["seal"]["path"])
-    except Exception:
-        raise Refused("claude-seal-verification-refused") from None
-    require(verified == seal_raw, "claude-seal-preimage-changed")
-    members_by_name = {name: (kind, data) for name, kind, data, _ in members}
-    require(members_by_name.get("MEMORY.md") == ("file", memory), "claude-seal-memory-mismatch")
-
-
 def claude_destination(args, evidence, plan, admission):
     rows, raw = synthetic_rows(evidence, plan.get("pristine"), args.destination)
     require([r.get("type") for r in rows] == ["custom-title", "user", "assistant"],
@@ -1073,8 +1052,6 @@ def main(argv=None) -> int:
             result["completed"].append(1)
         if args.phase >= 2:
             result["mind"] = mind_ready(args, evidence, expected)
-            if adapter is not None:
-                claude_mind_binding(args, evidence, adapter, result["mind"])
             result["completed"].append(2)
         if args.phase >= 3:
             plan = build_plan(args, evidence, binding)

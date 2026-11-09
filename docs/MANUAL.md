@@ -51,7 +51,9 @@ scratch closeout. Continuity operations follow their existing specifications:
 measured closeout, separately approved mind entries, verified custody,
 destination-native successor, required go, closed-writer join, native
 readback and operator acceptance. This sequence does not imply that an
-unwritten runner, unwired hook or notebook integration exists.
+unwritten runner or unwired hook exists. A Claude resident of this room runs
+with auto memory off and wakes from its own mind and handoff (CONTEXT X01);
+the notebook and its launch wrapper were retired on 2026-11-09.
 
 ---
 
@@ -108,8 +110,7 @@ The authority for who each resident is lives only in the registry. A resident ch
 | gauge | `ops/lib/scripts/gauge.py` | `docs/ops/specs/scripts/gauge.md` | `tools/test/test_gauge.py` | built; see its specification for measurement behavior and installed scope |
 | closeout | `ops/lib/scripts/closeout.py` | `docs/ops/specs/scripts/closeout.md` | `tools/test/test_closeout.py` | implemented and synthetically tested; current-hash review and native delivery proof precede installation (PoT 6.1.2) |
 | notice (operator backstop) | `ops/lib/scripts/notice.py` | `docs/ops/specs/scripts/notice.md` | `tools/test/test_notice.py` | source integrated on `main` (PR #10, 2026-11-05) with the Independent Reviewer's source PASS and post-integration audit; unwired, live go pending the registry permission finding (F1) and George's activation; consumes one exact gauge row, submits an operator-only notice, never delivers resident context |
-| mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; `project` writes a leaf copy into a named notebook folder (source only, no default home); actual use, a real notebook and the launch wrapper have separate acceptance |
-| Claude resident wrapper | `ops/bin/claude-resident` | `docs/ops/specs/scripts/claude-resident.md` | `tools/test/test_claude_resident.py` | source implemented and reviewed; the nine proofs passed on the wrapper before Part C's slice and are owed again on its final hash; `cliPath` untouched |
+| mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; writes version 1 leaves only; the notebook commands were retired on 2026-11-09; actual use has separate acceptance |
 | rotate | `ops/lib/scripts/rotate.py` | `docs/ops/specs/scripts/rotate.md` | `tools/test/test_rotate.py` | synthetic phases 0 to 9 implemented, dry-run only; temporary fixture artifacts are removed at each stop; no live rotation, persistent recovery or provider-load proof |
 
 Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.md`.
@@ -286,11 +287,13 @@ does not reopen its expired live window.
 
 Spec: `docs/ops/specs/scripts/mind.md`. Source and synthetic tests exist;
 current test results belong to their validation receipt, not a frozen count
-here. The `project` command exists in source (W5 first slice): it copies a
-verified leaf into a notebook folder the operator names; the operator must
-first stop that notebook's writer, which the tool cannot detect. No notebook
-home is chosen, no sealing or wrapper exists, and a projection is not proof
-that a provider loaded it.
+here. A resident reads its own mind at wake with
+`python3 -I -B ops/lib/scripts/mind.py show <its key>`, after its identity
+passes and before its handoff; `show` serves a mind only when its check
+passes. The room keeps the provider's auto memory off (`.claude/settings.json`,
+`"autoMemoryEnabled": false`), so the mind and the handoff are the whole of a
+resident's carried continuity. The notebook (W5: `project`, `seal`, `unseal`,
+the launch wrapper) was retired on 2026-11-09.
 
 **What a mind is.** The small curated record of who a resident is, what it has learned and what it owes. It travels into every successor beside the donor's own summary and window, and never replaces them.
 

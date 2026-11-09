@@ -9,7 +9,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - Command, from the room root: `python3 -I -B tools/test/test_mind.py`
 - Required flags: none. Positional arguments: none (standard `unittest` arguments are accepted).
 - Expected exit behavior:
-  - `0` when all 93 tests pass (four tests skip if `git` is not installed).
+  - `0` when all 65 tests pass (four tests skip if `git` is not installed).
   - `1` when any test fails or errors.
 - Reviewers also run it at umask 0002, 0022 and 0077.
 
@@ -25,7 +25,7 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 - Exit codes the tests assert on the tool: `0` success, `1` a failed `check`, `2` a refusal.
 
 ## Invariants and failure modes
-93 tests. The 43 numbered below, the 10 projection, 16 sealing and 8 seal-field tests listed after them, and 16 tests of the legacy-state guard, the lock location and the nearest-Git rule (B1) that this list does not yet itemize; the base suite at d7e9ae51 measured 59.
+65 tests. The 43 numbered below, the 6 retired-notebook tests listed after them, and 16 tests of the legacy-state guard, the lock location and the nearest-Git rule (B1) that this list does not yet itemize; the base suite at d7e9ae51 measured 59.
 
 **The basic loop (3).**
 1. `test_write_check_show_round_trip`: write, check and show agree; `show` returns the leaf byte for byte; the leaf records the operator's words, the writer, `predecessor: none` and the declared change.
@@ -80,58 +80,19 @@ Prove, in synthetic rooms only, that `mind` writes a leaf only with the operator
 42. `test_f2_changes_from_standard_input`: the supported stdin route is covered.
 43. `test_f2_a_moved_predecessor_is_refused`: a moved predecessor invalidates the binding.
 
-**Notebook projection, W5 first slice (10, class `ProjectTests`).** Each uses its own synthetic notebook folder (0700) with a one-line `MEMORY.md` (0600).
-- `test_w5_project_puts_one_block_at_the_top_and_keeps_every_other_byte`: the block is the leaf verbatim between its two markers, at the top; the earlier bytes follow unchanged; the index stays 0600; the room's leaf and pointer are unchanged; output says the copy is not evidence of loading and prints no session id.
-- `test_w5_project_creates_the_index_in_a_named_empty_notebook`: with no `MEMORY.md`, the index is created holding the block alone, at 0600.
-- `test_w5_project_is_idempotent_and_follows_a_new_leaf`: a second run reports unchanged and writes nothing; after a new leaf the block is replaced and the tail kept.
-- `test_w5_project_has_no_default_notebook`: no `--notebook`, a blank one, or an absent folder is refused, and no folder is created.
-- `test_w5_project_refuses_unsafe_notebook_paths`: a linked ancestor, a linked notebook folder, a folder not 0700, an index not 0600, an index with two hard links, a linked index and a file in place of the folder are each refused; the link target is untouched.
-- `test_w5_project_refuses_wrong_duplicate_malformed_and_misplaced_markers`: another key's block, a duplicated block, a malformed marker, an end without a begin, a block below the top and a CRLF marker are each refused with the index byte for byte as it was.
-- `test_w5_an_edited_block_is_reported_and_replaced`: a hand-edited block is reported as edited and replaced by the leaf, never trusted.
-- `test_w5_an_unverified_mind_is_never_projected_and_nothing_is_locked`: no pointer line, a forged leaf, or an unregistered key is refused; a refusal before the lock creates no `logs/`.
-- `test_w5_oversize_is_refused_never_truncated`: a mind whose block exceeds 200 lines is refused whole.
-- `test_w5_project_needs_positive_git_exclusion`: a notebook inside a Git work tree that does not ignore `MEMORY.md` is refused; once ignored, it is projected. Skips if `git` is absent.
-
-**Notebook seals and the two check gates, W5 second slice (15, class `SealTests`).** Each uses a synthetic notebook folder (0700) holding `MEMORY.md`, a topic file and a subfolder with one file (0600). Hostile seals are built in the test with a correct name hash, as a forger would build them.
-- `test_w5_seal_writes_once_binding_key_and_hash`: the seal is named for the key, the UTC date and its own hash, mode 0600, opens with `SEAL.json` and `notebook`, and its manifest names the key and every member; a repeat is reported unchanged with one file; a changed notebook gives a second seal and the first stays byte for byte.
-- `test_w5_seal_never_overwrites_other_bytes`: a seal name holding other bytes is refused and left as it is.
-- `test_w5_seal_refuses_links_specials_hard_links_and_an_unregistered_key`: a linked member, a pipe, a file with two hard links, an unregistered key, a folder not 0700, a blank or missing `--notebook` are each refused; no seal is written and no lock is created.
-- `test_w5_seal_needs_positive_git_exclusion`: in a room inside a Git work tree that does not ignore the seal, it is refused; once ignored, it is written. Skips if `git` is absent.
-- `test_w5_unseal_restores_byte_for_byte_into_an_absent_folder`: every file comes back byte for byte, folders 0700 and files 0600, and no staging folder is left.
-- `test_w5_a_note_the_provider_wrote_at_0664_seals_and_comes_back_at_0600`: a note at 0664 in the 0700 folder, as proof 5 recorded, seals, and comes back byte for byte at 0600; the wrapper's rule reads only the folder and the index.
-- `test_w5_unseal_fills_an_empty_folder_and_replaces_only_with_replace`: an empty folder is filled; a non-empty one is refused without `--replace`; with it, the seal takes the name and the earlier folder is kept beside it with its bytes.
-- `test_w5_unseal_checks_fixity_before_extracting`: one flipped bit in the seal is refused on its name hash; no target and no staging folder exist afterwards.
-- `test_w5_unseal_refuses_hostile_members_without_extracting`: an absolute member, a `..` escape, a symbolic link, a hard link, a character device, a pipe, a foreign owner, a member outside `notebook/`, a member before its folder, a manifest of another key, a manifest hash that does not match and a manifest that omits a member are each refused, and nothing is extracted.
-- `test_w5_unseal_binds_the_key`: a seal of one key is refused for another by its name; renamed to the other key, it is refused by its manifest; a malformed name is refused.
-- `test_w5_unseal_refuses_unsafe_targets`: a linked parent, a linked target, a target not 0700 and an absent parent are each refused.
-- `test_w5_unseal_needs_positive_git_exclusion`: a target inside a Git work tree that does not ignore it is refused; once ignored, it is restored. Skips if `git` is absent.
-- `test_w5_a_staged_tree_must_equal_the_seal`: the staged-tree comparison rejects other bytes, another mode and an extra file.
-- `test_w5_a_bad_staged_write_never_takes_the_name`: in process, a staged write that loses a byte is caught by the comparison; the target never appears and the staging folder is removed.
-- `test_w5_check_seal_gate`: no seals passes; a valid seal passes; a seal with one changed byte fails `check` (exit 1) while `show` still serves the mind; a garbled `NOTEBOOK-` name is reported at room level.
-- `test_w5_check_projection_gate`: no projection fails; a fresh projection passes; a hand-edited block fails; a newer leaf not yet projected fails as stale; `--notebook` without `--key` is refused.
-
-Each guard of this slice was disabled in turn (26 mutations: links, specials, hard links, overwrite, preflight before the lock, registration, fixity, escape, special members, ownership, manifest key, member hash, member count, folder order, `--replace`, the staged comparison, keeping the earlier folder, the name's key, the target's parent and privacy, both Git rules and both gates, and `--notebook` without `--key`); the suite caught 26 of 26.
-
-**Leaf format 2, the seal in the leaf, W5 third slice (8, class `SealFieldTests`).** Synthetic rooms and notebooks; the operator's words are invented.
-- `test_w5_a_version_1_leaf_of_the_real_shape_still_passes`: a first leaf shaped like a real one (three lessons, two of them closed incidents with fixes, written under the policy before this slice, `a92a7c3f6a3b6112`) parses and renders byte for byte as version 1, passes `check` with `policy` reported and not failed and `leaf-seal` passing, is served by `show` byte for byte, has no notebook in `history`, and takes a version 2 successor.
-- `test_w5_the_binding_without_a_seal_is_unchanged`: without a seal the binding equals the old three-part body's digest; with one it differs.
-- `test_w5_write_with_a_seal_records_a_version_2_leaf`: the `notebook:` line follows `policy` with the seal's path and full SHA-256; the leaf is version 2, canonical and 0600; `check` passes `leaf-seal`; `show` prints the line; a later write without a seal is version 1; `history` marks only the sealed leaf.
-- `test_w5_preview_shows_the_seal_and_the_binding_covers_it`: preview shows the line and names the seal in its instruction; the binding differs from the one without a seal; a write with another seal, with none, or with a binding previewed without the seal is refused, and the pointer does not move.
-- `test_w5_write_refuses_a_seal_it_cannot_trust`: a seal not on disk, another key's seal, a malformed name, a seal at 0644, a linked seal, a seal with one flipped bit and a seal renamed to another key are each refused, and the pointer does not move.
-- `test_w5_check_gate_for_the_leaf_seal`: a named seal moved away is reported under `seal-history`, with exit 0; a changed seal fails `leaf-seal`; a leaf whose recorded digest differs from the seal's after the first 8 digits fails it too.
-- `test_w5_a_version_2_header_is_canonical_and_checked`: a `notebook:` line out of place, a `format:` line after or before it, and an empty `notebook:` value are refused by the parser; a reference that is not a seal path, one of another resident, one whose name and digest disagree, and one with an impossible date each fail the header check.
-- `test_w5_the_policy_digest_covers_the_leaf_formats`: the digest differs from the one before this slice, and changes again when the formats change.
-
-Each new guard of this slice was disabled in turn (18 mutations: parsing and rendering version 2, the reference's form, key, digest prefix and date, the binding's seal, the seal's verification and its 0600 mode, the line in the leaf, custody as a report, a bad seal as a failure, the full digest, the gate's blocking, the history line, the policy's formats, and preview's line and instruction); the suite caught 18 of 18.
+**The retired notebook (6, class `RetiredNotebookTests`).** The notebook classes of W5 (`ProjectTests`, `SealTests`, `SealFieldTests`, 34 tests) were removed with the notebook on 2026-11-09; Git history keeps them. What remains proves the retirement leaves every mind readable:
+- `test_a_version_1_leaf_of_the_real_shape_still_passes`: a first leaf shaped like a real one, written under the policy before version 2 (`a92a7c3f6a3b6112`), is canonical, version 1, passes `check` with its policy reported and no seal gate, is served by `show`, and takes a new version 1 leaf after it.
+- `test_the_binding_is_the_plain_body`: the binding equals the three-part body's digest, and `binding_of` takes no seal.
+- `test_a_version_2_leaf_is_read_and_served_and_its_seal_is_not_checked`: a version 2 leaf whose seal is not on disk passes `check` with no seal gate, is served byte for byte, takes a version 1 leaf after it, and `history` prints its notebook line on its own row only.
+- `test_a_version_2_header_is_canonical_and_checked`: a `notebook:` line out of place, a `format:` line after or before it, and an empty `notebook:` value are refused by the parser; a reference of another form, another resident, a disagreeing digest or a bad date fails the entries gate.
+- `test_the_policy_digest_still_covers_the_leaf_formats`: the digest differs from the one before version 2, and changes when the formats change.
+- `test_the_notebook_commands_and_options_are_gone`: `project`, `seal`, `unseal`, `check --notebook` and `preview --seal` are refused as usage errors, and the module has none of their functions.
 
 ## Not covered
 - That the words passed to `--yes` are truly the operator's: the tool cannot know, and the spec says so. The audit is the chain, the declared changes and the words held against the conversation.
-- The Sessions room itself: no test reads or writes a real mind, notebook or seal.
+- The Sessions room itself: no test reads or writes a real mind.
 - Any hook, timer or capsule wiring: none exists.
-- That a provider loads the projected block: projection source is not evidence of loading; that needs its own native proof.
-- A real notebook or its home, a real seal or unseal, and the launch wrapper: none is touched or built here.
-- A seal-only leaf, with no change to the entries: not possible (the tool spec says why).
-- Whether a provider writes the notebook during a seal or unseal: the tool cannot detect its writer; the seam is the operator's.
+- Whether a real version 2 leaf exists on the host: the operator's preconditions read `archives/` for one before the retirement is pulled.
 
 ## Anecdotal Anchor
 Claudio's audit of 2026-10-30 (section 130) found that the first design's store let a model edit drop a ratified entry and let an archive-then-use revive a closed one. The operator removed the machinery those gaps lived in. These tests are the record that each gap stays closed: an item fixed by design has a test that tries the old path and is refused.

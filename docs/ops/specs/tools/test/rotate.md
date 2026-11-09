@@ -38,9 +38,10 @@ and actual successor/media construction. Every static predicate has negative
 fixtures; gate results are real execution results, not constant success slots.
 Tree snapshots check bytes, modes, inodes and mtimes rather than atime.
 
-The suite has 280 tests: the first two slices' 115 (92 plus 23
+The suite has 270 tests: the first two slices' 115 (92 plus 23
 distinct C1 tests from the section 276 gap table), 107 third-slice tests,
-and 58 Claude adapter preparation tests.
+and 48 Claude adapter preparation tests (10 notebook cases removed with the
+notebook on 2026-11-09).
 The original C1 tests are paired with one single-clause or
 property omission in the author's retained mutation table, not a whole
 require-call skip. The new test names identify those exact cases:
@@ -161,7 +162,7 @@ and rotate-estimate/1 schemas remain unchanged.
 All six preparation stops preserve input snapshots, with later evidence
 absent where it must not be read. Cases independently bind the adapter
 header, provider/version, closed-writer process model, actual checked mind,
-notebook memory and canonical projection/seal readers, pristine first exchange, metadata reference,
+pristine first exchange, metadata reference,
 message identity/chain/time, operator-only compaction declaration, before
 and after readings, actual boundary and summary times, and late changes.
 The post-compaction reading may be below the original trigger: its real
@@ -176,6 +177,6 @@ tests, caught/surviving result and exact source hash. Mutants and the full
 three-umask matrix run behind accepted masked2, with its barrier proof and
 tripwire count reported. The earlier fixture install/rollback tests remain.
 
-This checks preparation and refusal on invented notebook archives, not an
-accepted native adapter, real notebook preservation, installed version, physical-disk copies, persistent recovery, real
+This checks preparation and refusal on invented fixtures, not an
+accepted native adapter, installed version, physical-disk copies, persistent recovery, real
 provider, disposable exercise or resident rotation. No live go is requested.

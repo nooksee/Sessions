@@ -25,16 +25,12 @@ import datetime as dt
 import fcntl
 import hashlib
 import importlib.util
-import io
 import json
 import math
 import os
 import re
-import shutil
-import stat
 import subprocess
 import sys
-import tarfile
 import tempfile
 import unicodedata
 from pathlib import Path
@@ -68,9 +64,11 @@ MIN_YES = 3
 GIT_TIMEOUT = 30
 HEAD_KEYS = ("resident", "written", "by", "predecessor", "change", "yes", "issued", "policy")
 NOTEBOOK_KEY = "notebook"
-# Leaf formats. Version 1 is the eight header lines above. Version 2 is the same eight plus one notebook line,
-# naming the seal taken at the same seam. Any later version adds an explicit "format: N" line, which no leaf
-# carries yet: this tool refuses one as not understood.
+# Leaf formats. Version 1 is the eight header lines above, and the only format this tool writes. Version 2, the
+# same eight plus one notebook line naming a notebook seal, was written while the notebook existed (W5) and was
+# retired with it: a version 2 leaf is still read and verified as written, its notebook line kept as history, and
+# nothing checks the seal it names. Any later version adds an explicit "format: N" line, which no leaf carries:
+# this tool refuses one as not understood.
 LEAF_FORMATS = {1: HEAD_KEYS, 2: HEAD_KEYS + (NOTEBOOK_KEY,)}
 
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -204,7 +202,7 @@ def parse_issued(text: str) -> dict:
 
 
 def leaf_format(head: dict) -> int:
-    """2 when the header names a seal, else 1."""
+    """2 when the header carries a (retired) notebook line, else 1."""
     return 2 if head.get(NOTEBOOK_KEY) else 1
 
 
@@ -750,12 +748,9 @@ def load_changes(source: str) -> tuple[list, list, list]:
     return add, amend, retire
 
 
-def binding_of(key: str, predecessor: str, add: list, amend: list, retire: list, seal: str | None = None) -> str:
-    """What Kevin's yes is bound to: the change exactly as previewed, the leaf it builds on, whose mind it is, and,
-    with --seal, the seal reference exactly as shown. Without a seal the body is what it always was."""
+def binding_of(key: str, predecessor: str, add: list, amend: list, retire: list) -> str:
+    """What Kevin's yes is bound to: the change exactly as previewed, the leaf it builds on, and whose mind it is."""
     body = {"key": key, "predecessor": predecessor, "changes": {"add": add, "amend": amend, "retire": retire}}
-    if seal is not None:
-        body["notebook"] = seal
     return sha256(json.dumps(body, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
 
 
@@ -843,9 +838,7 @@ def prepare(args, now: dt.datetime, words: str | None):
             raise Refused(f"leaves for {key!r} already exist in {SURFACES}/ but {POINTER} has no line for it; restore the pointer first")
         head, entries, issued, predecessor = None, [], {layer: 0 for layer in LAYERS}, "none"
     add, amend, retire = load_changes(args.changes)
-    seal = getattr(args, "seal", None)
-    reference = seal_reference(room, key, seal) if seal is not None else None
-    binding = binding_of(key, predecessor, add, amend, retire, reference)
+    binding = binding_of(key, predecessor, add, amend, retire)
     yes = f'{now.date().isoformat()}, "{words if words is not None else "(Kevin, at write)"}"'
     new_entries, new_issued, added, amended, retired, before = apply_changes(entries, issued, add, amend, retire, yes)
     problems = [p for e in new_entries for p in entry_problems(e)] + budget_problems(new_entries)
@@ -858,558 +851,9 @@ def prepare(args, now: dt.datetime, words: str | None):
     new_head = {"title": title_of(entry), "resident": key, "written": iso(now), "by": getattr(args, "by", None) or key,
                 "predecessor": predecessor, "change": change_text(added, amended, retired), "yes": yes,
                 "issued": issued_text(new_issued), "policy": policy_digest()}
-    if reference is not None:
-        new_head[NOTEBOOK_KEY] = reference
     text = render_leaf(new_head, new_entries)
     report = change_report(added, amended, retired, before, new_entries, with_yes=words is not None)
-    if reference is not None:
-        report += f"notebook: {reference}\n"
     return text, new_head, new_entries, head, entries, lines, reg, report, binding
-
-
-# --------------------------------------------------------------------------
-# Projection (W5, first slice): a copy of the current leaf, as one marked
-# block at the top of a resident's notebook MEMORY.md, so the provider loads
-# it at start. The leaf stays the authority. The caller names the notebook
-# folder every time: this tool has no notebook home and creates none.
-# --------------------------------------------------------------------------
-NOTEBOOK_INDEX = "MEMORY.md"
-LOAD_LINES = 200        # the provider loads only the first 200 lines of MEMORY.md (design of 2026-10-31, fact 4)
-LOAD_BYTES = 25000      # and at most 25 KB; the smaller reading of that limit is used
-MARK = "<!-- mind-projection "
-BEGIN_RE = re.compile(r"^<!-- mind-projection begin key=([a-z0-9][a-z0-9-]*) leaf=(archives/MIND-\S+\.md) "
-                      r"sha256=([0-9a-f]{64}): a copy written by mind\.py project; the leaf is the authority -->\n$")
-END_RE = re.compile(r"^<!-- mind-projection end key=([a-z0-9][a-z0-9-]*) -->\n$")
-
-
-def projection_block(key: str, rel: str, data: bytes) -> str:
-    return (f"{MARK}begin key={key} leaf={rel} sha256={sha256(data)}: a copy written by mind.py project; "
-            f"the leaf is the authority -->\n" + data.decode("utf-8") + f"{MARK}end key={key} -->\n")
-
-
-def private_path_problems(notebook: Path) -> list[str]:
-    """The notebook folder and every ancestor exist and none is a symbolic link; the folder is a directory
-    of this user at mode 0700; an existing MEMORY.md is a single-link regular file of this user at 0600."""
-    current = Path(notebook.anchor)
-    for part in notebook.parts[1:]:
-        current = current / part
-        try:
-            st = os.lstat(current)
-        except FileNotFoundError:
-            return [f"{current} does not exist; this tool names no notebook home and creates none"]
-        if stat.S_ISLNK(st.st_mode):
-            return [f"{current} is a symbolic link; a notebook path must hold none"]
-    problems = []
-    st = os.lstat(notebook)
-    if not stat.S_ISDIR(st.st_mode):
-        return [f"{notebook} is not a directory"]
-    if st.st_uid != os.geteuid():
-        problems.append(f"{notebook} is not owned by this user")
-    if stat.S_IMODE(st.st_mode) != 0o700:
-        problems.append(f"{notebook} is mode {stat.S_IMODE(st.st_mode):04o}, not 0700")
-    index = notebook / NOTEBOOK_INDEX
-    try:
-        st = os.lstat(index)
-    except FileNotFoundError:
-        return problems
-    if not stat.S_ISREG(st.st_mode):
-        return problems + [f"{index} is not a regular file"]
-    if st.st_uid != os.geteuid():
-        problems.append(f"{index} is not owned by this user")
-    if stat.S_IMODE(st.st_mode) != 0o600:
-        problems.append(f"{index} is mode {stat.S_IMODE(st.st_mode):04o}, not 0600")
-    if st.st_nlink != 1:
-        problems.append(f"{index} has {st.st_nlink} hard links; a notebook index has one")
-    return problems
-
-
-def nl_lines(text: str) -> list[str]:
-    """Lines split at newline only, each keeping its newline; joining them gives back the text."""
-    parts = text.split("\n")
-    return [p + "\n" for p in parts[:-1]] + ([parts[-1]] if parts[-1] else [])
-
-
-def project_text(existing: str, key: str, rel: str, data: bytes) -> tuple[str, str]:
-    """The new MEMORY.md and a note on the block it replaces. Every byte outside the one block is kept."""
-    lines = nl_lines(existing)
-    marks = [(i, line) for i, line in enumerate(lines) if line.startswith(MARK)]
-    block = projection_block(key, rel, data)
-    if not marks:
-        return block + existing, "no earlier block; inserted at the top"
-    for i, line in marks:
-        if not (BEGIN_RE.match(line) or END_RE.match(line)):
-            raise Refused(f"{NOTEBOOK_INDEX} line {i + 1} is a malformed projection marker; it is left as it is")
-    if len(marks) != 2 or not BEGIN_RE.match(marks[0][1]) or not END_RE.match(marks[1][1]):
-        raise Refused(f"{NOTEBOOK_INDEX} holds {len(marks)} projection markers, not one begin and one end in order")
-    (start, begin), (end, finish) = marks
-    owners = {BEGIN_RE.match(begin).group(1), END_RE.match(finish).group(1)}
-    if owners != {key}:
-        raise Refused(f"{NOTEBOOK_INDEX} holds a projection for {', '.join(sorted(owners))}, not {key}; "
-                      "one notebook carries one resident's mind")
-    if start != 0:
-        raise Refused(f"the projection in {NOTEBOOK_INDEX} starts at line {start + 1}, not at the top; it is left as it is")
-    named = BEGIN_RE.match(begin).group(3)
-    inner = "".join(lines[start + 1:end]).encode("utf-8")
-    note = ("the earlier block matched the leaf it named" if sha256(inner) == named else
-            "the earlier block did not hash to the leaf it named (edited by hand); it is replaced, never trusted")
-    return block + "".join(lines[end + 1:]), note
-
-
-def project_plan(args) -> tuple[Path, str, str, str, str]:
-    """Read-only preflight: every gate, nothing written. Returns (index, new text, old text, rel, note)."""
-    if not KEY_RE.match(args.key or ""):
-        raise Refused("project needs --key with a registry key")
-    raw = args.notebook
-    if raw is None or not str(raw).strip():
-        raise Refused("project needs --notebook; this tool has no notebook home")
-    notebook = Path(os.path.abspath(raw))
-    reg = read_registry(args.registry)
-    rep, current = verify(args.room, args.key, reg, read_pointer(args.room) or {})
-    if rep.failures():
-        raise Refused("this mind is not projected until its check passes: " + "; ".join(rep.failures()))
-    rel, _, _, data = current
-    problems = private_path_problems(notebook)
-    if problems:
-        raise Refused("nothing was written: " + "; ".join(problems))
-    index = notebook / NOTEBOOK_INDEX
-    exposed = git_exposed(notebook, [index])
-    if exposed:
-        raise Refused("nothing was written: " + "; ".join(exposed))
-    try:
-        old = index.read_bytes().decode("utf-8") if index.exists() else ""
-    except UnicodeDecodeError:
-        raise Refused(f"{index} is not UTF-8; it is left as it is") from None
-    new, note = project_text(old, args.key, rel, data)
-    block = projection_block(args.key, rel, data)
-    if block.count("\n") > LOAD_LINES or len(block.encode("utf-8")) > LOAD_BYTES:
-        raise Refused(f"the projection needs {block.count(chr(10))} lines and {len(block.encode('utf-8'))} bytes; "
-                      f"the provider loads {LOAD_LINES} lines and {LOAD_BYTES} bytes, and a mind is never truncated")
-    return index, new, old, rel, note
-
-
-def cmd_project(args):
-    project_plan(args)                       # a refusal here changes nothing, not even the lock
-    with room_lock(args.room):
-        index, new, old, rel, note = project_plan(args)
-        state = "unchanged" if new == old else "written"
-        if new != old:
-            write_atomic(index, new.encode("utf-8"))
-    begin = BEGIN_RE.match(nl_lines(new)[0])
-    block_lines = new[:new.index(f"{MARK}end key={args.key} -->\n")].count("\n") + 1
-    sys.stdout.write(f"mind {args.key}: projection {state} in {index}\n"
-                     f"leaf {rel} sha256 {begin.group(3)}\n"
-                     f"block: {block_lines} of {LOAD_LINES} loaded lines; {note}\n"
-                     "This is a copy of the leaf; it is not evidence that any provider loaded it.\n")
-    return 0
-
-
-# --------------------------------------------------------------------------
-# Seals (W5, second slice): a write-once tar of one resident's notebook, at
-# the archives/ root beside the leaves, named NOTEBOOK-<key>-<date>-<hash8>.tar.
-# The name binds the key and the hash of the whole; the first member is a
-# manifest that binds the key and every member's hash. unseal verifies all of
-# it before extracting anything, stages beside the target, and replaces a
-# non-empty folder only when asked, keeping the old one. The notebook folder
-# and the target are always named: there is no default home.
-# --------------------------------------------------------------------------
-SEAL_PREFIX = "NOTEBOOK-"
-SEAL_RE = re.compile(r"^NOTEBOOK-(?P<key>[a-z0-9][a-z0-9-]*?)-(?P<date>\d{4}-\d{2}-\d{2})-(?P<hash>[0-9a-f]{8})\.tar$")
-SEAL_FORMAT = "mind-notebook-seal/1"
-SEAL_MANIFEST = "SEAL.json"
-SEAL_ROOT = "notebook"
-SEAL_MAX_BYTES = 16 * 1024 * 1024      # a notebook's files, in total; a larger one is refused whole
-
-
-def link_free(path: Path) -> list[str]:
-    """Every component of path exists and none is a symbolic link."""
-    current = Path(path.anchor)
-    for part in path.parts[1:]:
-        current = current / part
-        try:
-            st = os.lstat(current)
-        except FileNotFoundError:
-            return [f"{current} does not exist"]
-        if stat.S_ISLNK(st.st_mode):
-            return [f"{current} is a symbolic link; the path must hold none"]
-    return []
-
-
-def named_folder(raw, flag: str) -> Path:
-    if raw is None or not str(raw).strip():
-        raise Refused(f"{flag} is required; this tool has no notebook home")
-    return Path(os.path.abspath(raw))
-
-
-def read_regular(path: Path, st: os.stat_result) -> bytes:
-    """Read a file without following a link, and only if it is still the object that was inspected."""
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    try:
-        now = os.fstat(fd)
-        if (now.st_dev, now.st_ino) != (st.st_dev, st.st_ino) or not stat.S_ISREG(now.st_mode):
-            raise Refused(f"{path} changed while it was read")
-        chunks = []
-        while True:
-            chunk = os.read(fd, 1 << 20)
-            if not chunk:
-                return b"".join(chunks)
-            chunks.append(chunk)
-    finally:
-        os.close(fd)
-
-
-def notebook_members(notebook: Path) -> list[tuple[str, str, Path, os.stat_result]]:
-    """Every folder and file under the notebook, sorted. Links, devices, pipes, sockets, files of
-    another owner and files with more than one hard link are refused, so a seal never holds one."""
-    found, problems, total = [], [], 0
-
-    def visit(folder: Path, rel: str) -> None:
-        nonlocal total
-        for name in sorted(os.listdir(folder)):
-            path, member = folder / name, f"{rel}/{name}" if rel else name
-            st = os.lstat(path)
-            if stat.S_ISLNK(st.st_mode):
-                problems.append(f"{member} is a symbolic link; a seal holds none")
-            elif st.st_uid != os.geteuid():
-                problems.append(f"{member} is not owned by this user")
-            elif stat.S_ISDIR(st.st_mode):
-                found.append((member, "dir", path, st))
-                visit(path, member)
-            elif not stat.S_ISREG(st.st_mode):
-                problems.append(f"{member} is not a regular file or a folder (a device, pipe or socket)")
-            elif st.st_nlink != 1:
-                problems.append(f"{member} has {st.st_nlink} hard links; a seal holds single-link files only")
-            else:
-                total += st.st_size
-                found.append((member, "file", path, st))
-
-    visit(notebook, "")
-    if total > SEAL_MAX_BYTES:
-        problems.append(f"the notebook holds {total} bytes, over the {SEAL_MAX_BYTES} a seal takes; nothing is cut")
-    if problems:
-        raise Refused("nothing was written: " + "; ".join(problems))
-    return found
-
-
-def tar_entry(tar, name: str, kind: str, mtime: int, data: bytes = b"") -> None:
-    info = tarfile.TarInfo(name)
-    info.type = tarfile.DIRTYPE if kind == "dir" else tarfile.REGTYPE
-    info.mode = 0o700 if kind == "dir" else 0o600
-    info.uid, info.gid, info.uname, info.gname = os.geteuid(), os.getegid(), "", ""
-    info.mtime = max(0, int(mtime))
-    info.size = 0 if kind == "dir" else len(data)
-    tar.addfile(info, io.BytesIO(data) if kind == "file" else None)
-
-
-def seal_bytes(key: str, notebook: Path) -> tuple[bytes, int, int]:
-    """The seal of this notebook as bytes: the same notebook gives the same bytes."""
-    members = notebook_members(notebook)
-    contents = {name: read_regular(path, st) for name, kind, path, st in members if kind == "file"}
-    listed = [{"path": name, "type": kind} | ({"sha256": sha256(contents[name]), "size": len(contents[name])}
-                                              if kind == "file" else {}) for name, kind, _, _ in members]
-    manifest = json.dumps({"format": SEAL_FORMAT, "key": key, "members": listed},
-                          sort_keys=True, separators=(",", ":")).encode("utf-8") + b"\n"
-    buf = io.BytesIO()
-    with tarfile.open(fileobj=buf, mode="w", format=tarfile.PAX_FORMAT) as tar:
-        tar_entry(tar, SEAL_MANIFEST, "file", 0, manifest)
-        tar_entry(tar, SEAL_ROOT, "dir", 0)
-        for name, kind, _, st in members:
-            tar_entry(tar, f"{SEAL_ROOT}/{name}", kind, st.st_mtime, contents.get(name, b""))
-    files = sum(1 for _, kind, _, _ in members if kind == "file")
-    return buf.getvalue(), files, len(members) - files
-
-
-def seal_members(key: str, data: bytes) -> list[tuple[str, str, bytes, int]]:
-    """Validate a seal's bytes completely, extracting nothing. Returns (path under the notebook, kind,
-    content, mtime) for each member after the root. Any doubt is a refusal."""
-    try:
-        with tarfile.open(fileobj=io.BytesIO(data), mode="r:") as tar:
-            infos = tar.getmembers()
-            contents = {i.name: tar.extractfile(i).read() for i in infos if i.isreg()}
-    except (tarfile.TarError, OSError, EOFError) as exc:
-        raise Refused(f"the seal is not a readable tar ({exc.__class__.__name__})") from None
-    seen = set()
-    for info in infos:
-        parts = info.name.split("/")
-        if info.name.startswith("/") or any(p in ("", ".", "..") for p in parts) or "\\" in info.name or "\0" in info.name:
-            raise Refused(f"seal member {info.name!r} is absolute or escapes the notebook")
-        if not (info.isreg() or info.isdir()):
-            raise Refused(f"seal member {info.name!r} is a link, device, pipe or other special file")
-        if info.uid != os.geteuid() or info.uname or info.gname:
-            raise Refused(f"seal member {info.name!r} carries foreign ownership")
-        if info.name in seen:
-            raise Refused(f"seal member {info.name!r} appears twice")
-        seen.add(info.name)
-    if len(infos) < 2 or infos[0].name != SEAL_MANIFEST or not infos[0].isreg() \
-            or infos[1].name != SEAL_ROOT or not infos[1].isdir():
-        raise Refused(f"the seal does not open with {SEAL_MANIFEST} and the {SEAL_ROOT} folder")
-    try:
-        manifest = json.loads(contents[SEAL_MANIFEST].decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
-        raise Refused(f"the seal's {SEAL_MANIFEST} is not JSON") from None
-    if not isinstance(manifest, dict) or manifest.get("format") != SEAL_FORMAT or not isinstance(manifest.get("members"), list):
-        raise Refused(f"the seal's {SEAL_MANIFEST} is not a {SEAL_FORMAT} manifest")
-    if manifest.get("key") != key:
-        raise Refused(f"the seal's manifest belongs to {manifest.get('key')!r}, not {key!r}")
-    out, dirs = [], {SEAL_ROOT}
-    body = infos[2:]
-    if len(body) != len(manifest["members"]):
-        raise Refused("the seal's members are not the ones its manifest lists")
-    for info, listed in zip(body, manifest["members"]):
-        if not isinstance(listed, dict) or info.name != f"{SEAL_ROOT}/{listed.get('path')}" \
-                or listed.get("type") != ("dir" if info.isdir() else "file"):
-            raise Refused(f"seal member {info.name!r} is not the one its manifest lists")
-        if info.name.rsplit("/", 1)[0] not in dirs:
-            raise Refused(f"seal member {info.name!r} comes before its folder")
-        if info.isdir():
-            dirs.add(info.name)
-            out.append((listed["path"], "dir", b"", info.mtime))
-            continue
-        content = contents[info.name]
-        if listed.get("sha256") != sha256(content) or listed.get("size") != len(content):
-            raise Refused(f"seal member {info.name!r} does not hash as its manifest records")
-        out.append((listed["path"], "file", content, info.mtime))
-    return out
-
-
-def read_seal(room: Path, key: str, name: str) -> tuple[bytes, list]:
-    """A seal by name: in archives/, of this key, not a link, its bytes matching the hash in its name
-    (fixity), then validated whole. Nothing is extracted."""
-    name = name[len(SURFACES) + 1:] if name.startswith(SURFACES + "/") else name
-    m = SEAL_RE.match(name)
-    if not m or "/" in name:
-        raise Refused(f"{name!r} is not a seal name in {SURFACES}/")
-    if m.group("key") != key:
-        raise Refused(f"{name} belongs to {m.group('key')!r}, not {key!r}")
-    path = room / SURFACES / name
-    if path.is_symlink():
-        raise Refused(f"{SURFACES}/{name} is a symbolic link")
-    if not path.is_file():
-        raise Missing(f"{SURFACES}/{name} is not on disk")
-    if path.resolve().parent != (room / SURFACES).resolve():
-        raise Refused(f"{SURFACES}/{name} resolves outside {SURFACES}/")
-    data = path.read_bytes()
-    if not sha256(data).startswith(m.group("hash")):
-        raise Refused(f"{SURFACES}/{name}: its bytes no longer match the hash in its name; nothing is extracted")
-    return data, seal_members(key, data)
-
-
-def seal_plan(args) -> tuple[Path, bytes, str, int, int]:
-    """Read-only preflight for seal: the key, the notebook, the Git rule, the name. Writes nothing."""
-    if not KEY_RE.match(args.key or ""):
-        raise Refused("seal needs --key with a registry key")
-    notebook = named_folder(args.notebook, "--notebook")
-    _, problems = registered(read_registry(args.registry), args.key, args.room)
-    if problems:
-        raise Refused("nothing was written: " + "; ".join(problems))
-    problems = private_path_problems(notebook)
-    if problems:
-        raise Refused("nothing was written: " + "; ".join(problems))
-    data, files, folders = seal_bytes(args.key, notebook)
-    name = f"{SEAL_PREFIX}{args.key}-{iso(args.now)[:10]}-{sha256(data)[:8]}.tar"
-    path = args.room / SURFACES / name
-    exposed = git_exposed(args.room, [path])
-    if exposed:
-        raise Refused("nothing was written: " + "; ".join(exposed))
-    if path.is_symlink():
-        raise Refused(f"{SURFACES}/{name} exists as a symbolic link; it is left as it is")
-    state = "new"
-    if path.exists():
-        if not path.is_file() or path.read_bytes() != data:
-            raise Refused(f"{SURFACES}/{name} exists with other bytes; a seal is never overwritten")
-        state = "unchanged"
-    return path, data, state, files, folders
-
-
-def cmd_seal(args):
-    seal_plan(args)                          # a refusal here changes nothing, not even the lock
-    with room_lock(args.room):
-        path, data, state, files, folders = seal_plan(args)
-        if state == "new":
-            write_exclusive(path, data)
-    sys.stdout.write(f"mind {args.key}: notebook {'sealed' if state == 'new' else 'already sealed, unchanged'}: "
-                     f"{SURFACES}/{path.name} sha256 {sha256(data)}\n{files} files, {folders} folders. "
-                     "A seal is a copy taken at a seam; it is not evidence that any provider wrote or loaded it.\n")
-    return 0
-
-
-def unseal_plan(args) -> tuple[Path, list, str, Path]:
-    """Read-only preflight for unseal: the key, the seal's fixity and members, the target, the Git rule."""
-    if not KEY_RE.match(args.key or ""):
-        raise Refused("unseal needs --key with a registry key")
-    target = named_folder(args.into, "--into")
-    _, problems = registered(read_registry(args.registry), args.key, args.room)
-    if problems:
-        raise Refused("nothing was extracted: " + "; ".join(problems))
-    _, members = read_seal(args.room, args.key, args.seal or "")
-    parent = target.parent
-    problems = link_free(parent)
-    if problems:
-        raise Refused("nothing was extracted: " + "; ".join(problems))
-    st = os.lstat(parent)
-    if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.geteuid():
-        raise Refused(f"nothing was extracted: {parent} is not a folder of this user")
-    keep = parent / f".{target.name}.replaced-{args.now.strftime('%Y%m%dT%H%M%SZ')}"
-    if os.path.lexists(target):
-        problems = private_path_problems(target)
-        if problems:
-            raise Refused("nothing was extracted: " + "; ".join(problems))
-        if os.listdir(target):
-            if not args.replace:
-                raise Refused(f"{target} is not empty; nothing is replaced without --replace")
-            if os.path.lexists(keep):
-                raise Refused(f"{keep} already exists; the earlier notebook would have nowhere to go")
-            state = "replace"
-        else:
-            state = "empty"
-    else:
-        state = "absent"
-    probes = [target / NOTEBOOK_INDEX] + [target / rel for rel, kind, _, _ in members if kind == "file" and rel != NOTEBOOK_INDEX]
-    probes += [parent / f".{target.name}.unseal-probe"] + ([keep] if state == "replace" else [])
-    exposed = git_exposed(parent, probes)
-    if exposed:
-        raise Refused("nothing was extracted: " + "; ".join(exposed))
-    return target, members, state, keep
-
-
-def staged_matches(stage: Path, members: list) -> bool:
-    want = {rel: (kind, content) for rel, kind, content, _ in members}
-    got = {}
-    for folder, dirs, files in os.walk(stage):
-        for name in dirs + files:
-            path = Path(folder) / name
-            st = os.lstat(path)
-            rel = path.relative_to(stage).as_posix()
-            if stat.S_ISDIR(st.st_mode) and stat.S_IMODE(st.st_mode) == 0o700:
-                got[rel] = ("dir", b"")
-            elif stat.S_ISREG(st.st_mode) and stat.S_IMODE(st.st_mode) == 0o600:
-                got[rel] = ("file", path.read_bytes())
-            else:
-                return False
-    return got == want
-
-
-def cmd_unseal(args):
-    unseal_plan(args)                        # a refusal here changes nothing, not even the lock
-    with room_lock(args.room):
-        target, members, state, keep = unseal_plan(args)
-        stage = Path(tempfile.mkdtemp(dir=target.parent, prefix=f".{target.name}.unseal-"))
-        try:
-            os.chmod(stage, 0o700)
-            for rel, kind, content, _ in members:
-                dest = stage / rel
-                if kind == "dir":
-                    os.mkdir(dest, 0o700)
-                    os.chmod(dest, 0o700)
-                    continue
-                fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-                try:
-                    write_all(fd, content)
-                    os.fsync(fd)
-                finally:
-                    os.close(fd)
-                os.chmod(dest, 0o600)
-            for rel, _, _, mtime in reversed(members):
-                os.utime(stage / rel, (mtime, mtime), follow_symlinks=False)
-            if not staged_matches(stage, members):
-                raise Refused("the staged notebook does not match the seal; nothing was replaced")
-            if state == "replace":
-                os.rename(target, keep)
-                try:
-                    os.rename(stage, target)
-                except BaseException:
-                    os.rename(keep, target)
-                    raise
-            else:
-                os.rename(stage, target)     # onto an absent name, or an empty folder
-        except BaseException:
-            if stage.exists():
-                shutil.rmtree(stage)
-            raise
-    files = sum(1 for _, kind, _, _ in members if kind == "file")
-    sys.stdout.write(f"mind {args.key}: unsealed {args.seal} into {target}: {files} files, "
-                     f"{len(members) - files} folders, verified against the seal before it took the name.\n"
-                     + (f"The earlier notebook is kept, unread, at {keep}.\n" if state == "replace" else ""))
-    return 0
-
-
-def projection_problems(room: Path, key: str, notebook: Path, current) -> tuple[list[str], str]:
-    """The check gate: the notebook's MEMORY.md opens with exactly the block project would write now."""
-    if current is None:
-        return ["no verified current leaf to compare the projection with"], ""
-    rel, _, _, data = current
-    index = notebook / NOTEBOOK_INDEX
-    problems = link_free(notebook)
-    if problems:
-        return problems, ""
-    if index.is_symlink() or not index.is_file():
-        return [f"{index} is not a regular file"], ""
-    try:
-        text = index.read_bytes().decode("utf-8")
-    except UnicodeDecodeError:
-        return [f"{index} is not UTF-8"], ""
-    marks = [line for line in nl_lines(text) if line.startswith(MARK)]
-    if not marks:
-        return [f"{index} holds no projection"], ""
-    begin = BEGIN_RE.match(marks[0])
-    if len(marks) != 2 or not begin or not END_RE.match(marks[1]):
-        return [f"{index} holds {len(marks)} projection markers, not one begin and one end"], ""
-    if begin.group(1) != key:
-        return [f"{index} holds a projection for {begin.group(1)!r}, not {key!r}"], ""
-    if (begin.group(2), begin.group(3)) != (rel, sha256(data)):
-        return [f"the projection names {begin.group(2)}, not the current leaf {rel}; project again"], ""
-    if not text.startswith(projection_block(key, rel, data)):
-        return ["the projection is not the current leaf byte for byte (edited by hand, or not at the top)"], ""
-    return [], f"matches {rel}"
-
-
-def seal_reference(room: Path, key: str, name: str) -> str:
-    """write --seal: the seal is at the archives root, this key's, a regular file at 0600 that hashes to its name and
-    validates whole (read_seal). Returns the reference a version 2 leaf records: its path and full SHA-256."""
-    data, _ = read_seal(room, key, name)
-    bare = name[len(SURFACES) + 1:] if name.startswith(SURFACES + "/") else name
-    mode = stat.S_IMODE(os.lstat(room / SURFACES / bare).st_mode)
-    if mode != 0o600:
-        raise Refused(f"{SURFACES}/{bare} is mode {mode:04o}, not 0600; a seal a leaf names is private")
-    return f"{SURFACES}/{bare} sha256={sha256(data)}"
-
-
-def leaf_seal_gate(room: Path, key: str, chain: list) -> tuple[list[str], list[str], str]:
-    """The check gate: every leaf of the chain that names a seal names one that is on disk, belongs to the key and
-    hashes to the full digest recorded. A seal not on disk is reported, as chain-history reports an ancestor."""
-    problems, custody, named = [], [], 0
-    for rel, head in chain:
-        if not head.get(NOTEBOOK_KEY):
-            continue
-        named += 1
-        m = NOTEBOOK_REF_RE.match(head[NOTEBOOK_KEY])
-        if not m:
-            problems.append(f"{rel}: its notebook line is not a seal reference")
-            continue
-        try:
-            data, _ = read_seal(room, key, m.group("name"))
-        except Missing:
-            custody.append(f"{rel} names {SURFACES}/{m.group('name')}, which is not on disk (moved to custody, or lost)")
-            continue
-        except Refused as exc:
-            problems.append(f"{rel}: {exc}")
-            continue
-        if sha256(data) != m.group("sha"):
-            problems.append(f"{rel}: {SURFACES}/{m.group('name')} does not hash to the digest the leaf records")
-    return problems, custody, (f"{named} leaves of the chain name a seal" if named else "no leaf names a seal")
-
-
-def seal_gate(room: Path, key: str) -> tuple[list[str], str]:
-    """The check gate: every seal named for this key hashes as its name says and belongs to the key."""
-    surfaces = room / SURFACES
-    names = sorted(p.name for p in surfaces.iterdir() if SEAL_RE.match(p.name)
-                   and SEAL_RE.match(p.name).group("key") == key) if surfaces.is_dir() else []
-    problems = []
-    for name in names:
-        try:
-            read_seal(room, key, name)
-        except Refused as exc:
-            problems.append(str(exc))
-    return problems, (f"{len(names)} seals, each hashing as named and belonging to {key}" if names else "no seals")
 
 
 # --------------------------------------------------------------------------
@@ -1420,8 +864,7 @@ def cmd_preview(args):
     sys.stdout.write(f"mind {args.key}: proposed change, for Kevin's yes. Nothing is written.\n" + report
                      + f"binding: {binding}\n"
                      + f"After Kevin's yes, write exactly this change: write {args.key} --changes <the same changes> "
-                     + f"--preview {binding} --yes \"<his words>\" --by <your key>"
-                     + (f" --seal {args.seal}" if getattr(args, "seal", None) else "") + "\n")
+                     + f"--preview {binding} --yes \"<his words>\" --by <your key>\n")
     return 0
 
 
@@ -1463,8 +906,6 @@ def cmd_write(args):
 
 
 def cmd_check(args):
-    if args.notebook is not None and not args.key:
-        raise Refused("check --notebook needs --key: one notebook carries one resident's mind")
     reg = read_registry(args.registry)
     lines = read_pointer(args.room)
     print(f"mind check: room {args.room}")
@@ -1475,16 +916,7 @@ def cmd_check(args):
     print(f"PASS pointer : {len(lines)} pointer lines, each resident once")
     failed = 0
     for key in keys:
-        rep, current = verify(args.room, key, reg, lines)
-        rep.add("seal", True, *seal_gate(args.room, key))
-        if current is not None:
-            chain = walk(args.room, key, *current)[3]
-            problems, custody, detail = leaf_seal_gate(args.room, key, chain)
-            rep.add("leaf-seal", True, problems, detail)
-            if custody:
-                rep.add("seal-history", False, custody)
-        if args.notebook is not None:
-            rep.add("projection", True, *projection_problems(args.room, key, named_folder(args.notebook, "--notebook"), current))
+        rep, _ = verify(args.room, key, reg, lines)
         for gate, blocking, problems, detail in rep.rows:
             status = "PASS" if not problems else ("FAIL" if blocking else "REPORT")
             failed += status == "FAIL"
@@ -1495,10 +927,6 @@ def cmd_check(args):
                         and not (NAME_RE.match(p.name) and NAME_RE.match(p.name).group("key") in lines))
         if strays:
             print(f"REPORT room outside-pointer : {len(strays)} {LEAF_PREFIX} files in {SURFACES}/ belong to no resident in {POINTER}")
-        loose = sorted(p.name for p in surfaces.iterdir() if p.name.startswith(SEAL_PREFIX)
-                       and not (SEAL_RE.match(p.name) and SEAL_RE.match(p.name).group("key") in lines))
-        if loose:
-            print(f"REPORT room outside-pointer : {len(loose)} {SEAL_PREFIX} files in {SURFACES}/ belong to no resident in {POINTER}")
     print(f"blocking failures: {failed}")
     return 1 if failed else 0
 
@@ -1548,7 +976,6 @@ def build_parser() -> argparse.ArgumentParser:
     sub = ap.add_subparsers(dest="command", required=True)
     p = sub.add_parser("check", help="every gate, for one resident or every resident in the room")
     p.add_argument("--key")
-    p.add_argument("--notebook", help="with --key: also check that this notebook's projection is the current leaf")
     p.set_defaults(run=cmd_check)
     p = sub.add_parser("show", help="print the verified current leaf byte for byte, or nothing")
     p.add_argument("key")
@@ -1560,7 +987,6 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("preview", help="show exactly what a change would do; writes nothing")
     p.add_argument("key")
     p.add_argument("--changes", required=True, help="a JSON file of add, amend and retire, or - for stdin")
-    p.add_argument("--seal", help="a seal in archives/ to record in the new leaf (version 2); the binding covers it")
     p.set_defaults(run=cmd_preview)
     p = sub.add_parser("write", help="after Kevin's yes: write a new leaf and move the pointer")
     p.add_argument("key")
@@ -1568,23 +994,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--yes", help="Kevin's own words from the conversation")
     p.add_argument("--preview", help="the binding that preview printed for the change Kevin said yes to")
     p.add_argument("--by", help="the registry key of the resident running the write")
-    p.add_argument("--seal", help="the same seal preview was shown with; the leaf records its path and full SHA-256")
     p.set_defaults(run=cmd_write)
-    p = sub.add_parser("project", help="copy the verified current leaf as one marked block at the top of a "
-                                       "notebook's MEMORY.md; the notebook folder is always named, never defaulted")
-    p.add_argument("--key", required=True, help="the registry key whose mind is projected")
-    p.add_argument("--notebook", required=True, help="the resident's own notebook folder (exists, 0700, no links)")
-    p.set_defaults(run=cmd_project)
-    p = sub.add_parser("seal", help="write a write-once tar of a named notebook folder beside the leaves")
-    p.add_argument("--key", required=True, help="the registry key whose notebook is sealed")
-    p.add_argument("--notebook", required=True, help="the resident's own notebook folder (exists, 0700, no links)")
-    p.set_defaults(run=cmd_seal)
-    p = sub.add_parser("unseal", help="verify a seal whole, then restore it into a named folder by staging")
-    p.add_argument("--key", required=True, help="the registry key the seal must belong to")
-    p.add_argument("--seal", required=True, help="the seal's name in archives/, as seal printed it")
-    p.add_argument("--into", required=True, help="the folder to restore into; absent, empty, or replaced with --replace")
-    p.add_argument("--replace", action="store_true", help="replace a non-empty folder, keeping it beside the new one")
-    p.set_defaults(run=cmd_unseal)
     return ap
 
 
