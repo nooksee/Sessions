@@ -19,7 +19,7 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 - **W3** health desk: measured and corrected; one unregistered family and six Control drift paths open.
 - **W4** cadence: the finite retry passed on 2026-11-07, 4 of 4 dry-run cycles, withdrawn whole, audited.
 - **W4** next: the first real notification, its own named go.
-- **W5** launch wiring: step 1 merged (#52, #53); 13 native proofs passed; step 3's room setting live and audited 2026-11-09, nobody wired.
+- **W5** launch wiring: step 1 merged (#52, #53); 13 native proofs passed; steps 3 to 5 done 2026-11-09: the room setting live, nobody wired.
 - **W6** rotation runner: the Claude adapter's preparation merged (#68); slice 6, the disposable exercise's native path, next.
 - **W7** retention: closes each operation after its result; W4's inventory in preparation.
 - **W8** host independence: rests; test paths synthetic; host paths in configuration (#61, #62).
@@ -28,7 +28,7 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 
 - Two 6 TB drives replace the old ones as they arrive; 42 sets on one drive wait for George Friend, standing down.
 - Control's rounds timer exits 2 at every run (a work order with Control).
-- No new resident or seat until one real rotation runs (RoR-20). Lease pushes on a writer's own branch: RoR-21, in review.
+- No new resident or seat until one real rotation runs (RoR-20). Lease pushes on a writer's own branch: RoR-21, in force.
 - The README first screen and two `storage/lab/` folders: Central's word.
 
 ## Read-in
