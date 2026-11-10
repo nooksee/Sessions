@@ -2,10 +2,34 @@
 
 Tool: `ops/lib/scripts/rotate.py` (`SCRIPT-04`).
 Test: `tools/test/test_rotate.py` (`TEST-48`). Writer: Joe Codex.
-Status: synthetic phases 0 to 9 implemented, dry-run only. No native rotation,
-persistent recovery or provider-load claim.
+Status: synthetic phases 0 to 9 plus explicit disposable-operation source.
+No real rotation, native exercise or operator acceptance is proved here.
 
-Slice 5 adds 58 Claude adapter preparation tests, still fixture-only.
+Slice 5 retains 48 Claude adapter preparation tests after notebook retirement,
+still fixture-only.
+Slice 6's prepared candidate adds 246 synthetic native-operation test methods
+and 93 file/JSONL reader tests. The completed author matrix runs all 611
+methods at each of umask 0022, 0027 and 0077: 1833 case executions, zero
+failures, errors or skips. These are synthetic source results, not independent
+acceptance or native-load proof.
+
+The packet-27 correction adds 21 methods: twelve strict overlap cases,
+six provider/target registry cases, two allowed-envelope cases and one
+explicitly fault-isolated custody-branch case. Quantifier evidence accounts
+for all 70 rows: 60 retained catches and 10 survivor rechecks caught.
+Require evidence accounts for 259 rows: 235 historical catches carried over
+an identical native-code AST plus 24 later exact-source catches. This is
+not a fresh 259-row mutation run on the corrected tests. The structural
+survey has not run; no universal guard-completeness claim is made.
+
+The custody any/all alternatives are equivalent while the preceding
+uniform-presence guard holds. Its local-property test explicitly disables
+only that adjacent guard on invented files, then checks the existing-member
+read and absence of an add attempt. That catch is not an ordinary-input
+unsafe-admission demonstration or an equivalence waiver. The normal partial
+presence refusal test remains separate. Exact hashes, witnesses, retained
+iterations and carry provenance are in the author's successor freeze for
+the Auditor.
 
 ## First Principles Rationale
 
@@ -19,7 +43,7 @@ Temporary fixture artifacts are removed before return in every write phase.
 ## Mechanics and Sequencing
 
 Run the tests with the configured interpreter and `-I -B tools/test/test_rotate.py` under
-umask 0002, 0022 and 0077. Every fixture lives in its own private temporary
+umask 0022, 0027 and 0077 for the current slice-6 matrix. Every fixture lives in its own private temporary
 room under this clone's `var/tmp/`; cleanup removes only that fixture.
 Registries, gauge rows, closeout state, handoffs, approvals and mind leaves
 are invented. Fixture minds are written by the actual mind tool and checked
@@ -40,9 +64,26 @@ and actual successor/media construction. Every static predicate has negative
 fixtures; gate results are real execution results, not constant success slots.
 Tree snapshots check bytes, modes, inodes and mtimes rather than atime.
 
-The suite has 272 tests: the first two slices' 117 (94 plus 23
+The suite retains 272 baseline tests: the first two slices' 117 (94 plus 23
 distinct C1 tests from the section 276 gap table), 107 third-slice tests,
-and 48 Claude adapter preparation tests.
+and 48 Claude adapter preparation tests. Slice 6 adds 246 operation and
+93 reader cases, totaling the 611 methods executed in each completed
+permission run. Its operation class mocks the Git
+exposure reader and physical-disk map; an independent scratch smoke uses the
+actual Git reader and custody copier behind masked2. No host provider or
+native store is available. Reader tests isolate overlapping predicates
+through explicit synthetic dependency faults. The joint instrument probe
+separately runs the passed I2-I5 functions on invented files and consumes
+the exported I1 packet pair, while I1 processes, Git privacy and physical
+disks remain modeled. Staging, rename and after-rename observation are
+separate stops. Inverse completion needs post-restore I1 output times and
+I5; checkpoint-aware export recovery never applies a body change.
+Remaining native coverage is tracked in the
+author's current handoff, not treated as a passing omitted denominator.
+Some defensive contracts are redundant for ordinary decoded JSON. Exact
+reason assertions distinguish their local refusal from a later refusal;
+byte-source/decoder faults isolate the row-count lower bound and I5 type
+check. Those catches do not demonstrate an unsafe JSON-admission bypass.
 The original C1 tests are paired with one single-clause or
 property omission in the author's retained mutation table, not a whole
 require-call skip. The new test names identify those exact cases:
@@ -99,9 +140,10 @@ and existing builders remain ingredients, not evidence of that workflow.
 Passing synthetic gates proves no real resident closed, no operator typed
 an approval, no card reached native context and no provider loaded a body.
 The fixture marker is a declaration, not hostile same-user confinement.
-Native phases 6 to 9, persistent recovery, physical custody, production swap
-and rollback, native append, first native gauge and real operator acceptance
-remain unimplemented.
+The default fixture and slice-5 paths have no native phases 6 to 9. The
+separate slice-6 disposable engine implements gated custody/swap/recovery
+and append readers, tested only on invented objects. No real physical
+custody, provider wake, first native gauge or operator acceptance is proved.
 The gate's 20-percent bound checks a hash-bound supplied wake estimate; it
 does not implement a tokenizer or claim a measured native wake. Media files
 and candidate bytes exist only during the synthetic invocation, including
