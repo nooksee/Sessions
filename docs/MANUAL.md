@@ -108,7 +108,7 @@ The authority for who each resident is lives only in the registry. A resident ch
 | closeout | `ops/lib/scripts/closeout.py` | `docs/ops/specs/scripts/closeout.md` | `tools/test/test_closeout.py` | implemented and synthetically tested; current-hash review and native delivery proof precede installation (PoT 6.1.2) |
 | notice (operator backstop) | `ops/lib/scripts/notice.py` | `docs/ops/specs/scripts/notice.md` | `tools/test/test_notice.py` | source integrated on `main` (PR #10, 2026-11-05) with the Independent Reviewer's source PASS and post-integration audit; unwired, live go pending the registry permission finding (F1) and George's activation; consumes one exact gauge row, submits an operator-only notice, never delivers resident context |
 | mind | `ops/lib/scripts/mind.py` | `docs/ops/specs/scripts/mind.md` | `tools/test/test_mind.py` | built and tested on synthetic rooms; pointer-first index, concept leaves, ledger; residents write their own leaves |
-| rotate | `ops/lib/scripts/rotate.py` | `docs/ops/specs/scripts/rotate.md` | `tools/test/test_rotate.py` | synthetic phases 0 to 9 implemented, dry-run only; temporary fixture artifacts are removed at each stop; no live rotation, persistent recovery or provider-load proof |
+| rotate | `ops/lib/scripts/rotate.py` | `docs/ops/specs/scripts/rotate.md` | `tools/test/test_rotate.py` | default synthetic phases 0 to 9 remain dry-run only; separate hash-gated disposable engine has private resumable checkpoints and external observer joins; no accepted live rotation or provider-load proof |
 
 Registries: `docs/ops/registry/scripts.md`, `test.md`, `binaries.md`, `runbook.md`.
 
@@ -160,9 +160,12 @@ Reviewers also run each suite at the host umasks 0002 and 0022 as well as 0077; 
 ### Closeout and rotate
 `closeout.py` is an implemented hook entry point, not an interactive phase
 runner; its specification defines JSON input and the staged validation route.
-`rotate.py` implements synthetic dry-run phases 0 to 9. Each stop removes
-its temporary fixture artifacts. There is no live rotation, persistent
-recovery or provider-load proof.
+`rotate.py` implements synthetic dry-run phases 0 to 9. Each fixture stop
+removes its temporary artifacts. Its separately selected slice-6 disposable
+operation path has private persistent checkpoints and hash-bound per-action
+go/proof inputs; the exact CLI and fields are in the rotate specification.
+It starts no provider, changes no resident binding and proves no actual
+native wake or operator acceptance merely by being integrated.
 These facts do not authorize
 hook wiring or a native canary (PoT 6.1.2, 6.1.5).
 

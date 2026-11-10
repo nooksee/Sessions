@@ -6,6 +6,7 @@ under umask 0002, 0022 and 0077. Fixture minds contain invented leaves only.
 """
 import contextlib
 import copy
+import datetime as dt
 import hashlib
 import importlib.util
 import io
@@ -15,6 +16,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import types
 import unittest
 from pathlib import Path
@@ -2513,6 +2515,3072 @@ for attribute, fields, phase, prefix in (
     for field in fields:
         setattr(ClaudeAdapterTests, "test_" + attribute + "_" + field,
                 bad_adapter_field(attribute, field, phase, prefix + field + "-mismatch"))
+
+
+class NativeDisposableTests(unittest.TestCase):
+    """Forward-contract fixtures only; the parent runs these behind masked2.
+
+    The Git exposure reader is an explicit synthetic dependency. Its refusing
+    result is tested below; no real Git command, provider or process is run.
+    Physical devices are also modeled, not inferred from the host fixture disk.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(dir=TOOL.parents[3] / "var/tmp")
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name)
+        self.base.chmod(0o700)
+        # Separate parents let strict custody-ancestor tests overlap exactly
+        # one selected path, rather than concealing an omitted path check.
+        self.room, self.project, self.store = [self.base / (p + "-parent") / p
+                                               for p in ("room", "project", "store")]
+        self.records_dir = self.base / "records"
+        self.operation = "fixture-native"
+        self.case = self.room / "storage/active" / self.operation
+        self.roots = [self.base / "custody-one", self.base / "custody-two"]
+        for path in [self.room, self.project, self.store, self.records_dir, *self.roots]:
+            self.mkdir(path)
+        self.mkdir(self.case)
+        self.registry_path = self.room / "ops/etc/resident-identities.json"
+        self.registry = {"identities": [
+            {"key": WRITER, "person": "Fixture Writer", "role": "Assistant",
+             "room": str(self.room), "provider": "codex", "session_id": WRITER_SID},
+            {"key": "fixture-auditor", "person": "Fixture Auditor", "role": "Auditor",
+             "room": str(self.room), "provider": "claude",
+             "session_id": "0000f644-0000-4000-8000-00000000f644"}]}
+        self.put(self.registry_path, self.registry)
+        self.donor = self.store / (SID + ".jsonl")
+        self.destination = self.store / (DESTINATION + ".jsonl")
+        self.stage = self.store / (DESTINATION + ".jsonl.NEW")
+        self.donor_rows = [
+            self.row("system", 1, None, subtype="compact_boundary"),
+            self.row("user", 2, 1, "An invented summary.", isCompactSummary=True),
+            self.row("user", 3, 2, "Which invented bracket supports the shelf?"),
+            self.row("assistant", 4, 3, "The lower invented bracket supports it.")]
+        self.put_rows(self.donor, self.donor_rows)
+        self.pristine_rows = [
+            {"type": "custom-title", "customTitle": "Fixture - spare body, do not open",
+             "sessionId": DESTINATION},
+            self.row("user", 11, None, ROTATE.FIRST_PROMPT, sid=DESTINATION),
+            self.row("assistant", 12, 11, "READY", sid=DESTINATION)]
+        self.put_rows(self.destination, self.pristine_rows)
+        self.put(self.store / "unrelated.bin", b"Invented unrelated baseline bytes.\n")
+        self.candidate_path = self.case / "candidate.jsonl"
+        candidate = copy.deepcopy(self.donor_rows)
+        for row in candidate:
+            row["sessionId"] = DESTINATION
+        candidate += [self.row("user", 5, 4,
+                              "<session_clinic_orientation>\nInvented capsule only.\n</session_clinic_orientation>",
+                              sid=DESTINATION),
+                      {"type": "custom-title", "customTitle": "Fixture Resident", "sessionId": DESTINATION},
+                      {"type": "agent-name", "agentName": "Fixture Resident", "sessionId": DESTINATION}]
+        self.put_rows(self.candidate_path, candidate)
+        self.capsule = self.case / "capsule.txt"
+        self.window = self.case / "window.json"
+        self.gates_path = self.case / "gates.json"
+        self.put(self.capsule, b"Invented capsule only.\n")
+        self.put(self.window, {"schema": "fixture-window/1", "summary": "Invented summary."})
+        self.gates = {"schema": "rotate-native-gates/1", "phase": 5,
+                      "donor_sha256": self.sha(self.donor), "pristine_sha256": self.sha(self.destination),
+                      "candidate_sha256": self.sha(self.candidate_path),
+                      "gates": dict.fromkeys(("trigger", "closeout", "operator_compaction", "window", "static", "media"), True)}
+        self.put(self.gates_path, self.gates)
+        self.plan = {"schema": "rotate-disposable/1", "operation": self.operation, "provider": "claude",
+                     "provider_version": "invented-cli-version", "writer": WRITER, "room": str(self.room),
+                     "registry": self.ref(self.registry_path), "project": str(self.project), "store": str(self.store),
+                     "records_dir": str(self.records_dir), "synthetic_root": str(self.base),
+                     "donor": {**self.ref(self.donor), "session_id": SID},
+                     "destination": {**self.ref(self.destination), "session_id": DESTINATION},
+                     "candidate": self.ref(self.candidate_path),
+                     "artifacts": [{"name": name, **self.ref(path)} for name, path in
+                                   (("capsule", self.capsule), ("gates", self.gates_path), ("window", self.window))],
+                     "custody_roots": list(map(str, self.roots)), "date": "20261109"}
+        self.plan_path, self.go_path, self.proof_path = [self.case / p for p in ("plan.json", "go.json", "proof.json")]
+        self.put(self.plan_path, self.plan)
+        self.state_home = self.room / "logs/rotate" / self.operation
+        self.state_path = self.state_home / "state.json"
+        self.custody = ROTATE.sibling("custody")
+        self.mind = ROTATE.sibling("mind")
+        self.pristine_bytes = self.destination.read_bytes()
+        self.donor_bytes = self.donor.read_bytes()
+        self.original_store = self.inventory(self.store)
+        self.custody_result = None
+        self.instrument_serial = 0
+
+    def mkdir(self, path):
+        pending = []
+        while not path.exists():
+            pending.append(path)
+            path = path.parent
+        for path in reversed(pending):
+            path.mkdir(mode=0o700)
+
+    def put(self, path, value):
+        self.mkdir(path.parent)
+        path.write_bytes(value if isinstance(value, bytes) else json.dumps(value, sort_keys=True).encode("ascii"))
+        path.chmod(0o600)
+
+    @staticmethod
+    def sha(path):
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def ref(self, path):
+        return {"path": str(path), "sha256": self.sha(path)}
+
+    def row(self, kind, number, parent, content=None, sid=SID, **extra):
+        uid = lambda n: "0000%04x-0000-4000-8000-00000000%04x" % (n, n)
+        result = {"type": kind, "uuid": uid(number), "parentUuid": None if parent is None else uid(parent),
+                  "sessionId": sid, "cwd": str(self.project), "timestamp": "2026-11-09T12:00:00Z"}
+        if content is not None:
+            result["message"] = {"role": kind, "content": content}
+        return {**result, **extra}
+
+    def put_rows(self, path, rows):
+        self.put(path, b"".join(json.dumps(r, sort_keys=True).encode("ascii") + b"\n" for r in rows))
+
+    def snapshot(self, path):
+        if not path.exists():
+            return {"type": "absent"}
+        st = path.lstat()
+        return {"type": "file", "dev": st.st_dev, "ino": st.st_ino, "size": st.st_size,
+                "sha256": self.sha(path), "mode": stat.S_IMODE(st.st_mode), "uid": st.st_uid,
+                "gid": st.st_gid, "mtime_ns": st.st_mtime_ns, "ctime_ns": st.st_ctime_ns, "nlink": st.st_nlink}
+
+    @staticmethod
+    def inventory(root):
+        result = {}
+        for path in sorted(root.rglob("*")):
+            st = path.lstat()
+            kind = "link" if path.is_symlink() else "file" if stat.S_ISREG(st.st_mode) else "directory"
+            value = os.readlink(path) if kind == "link" else (
+                hashlib.sha256(path.read_bytes()).hexdigest() if kind == "file" else None)
+            result[str(path.relative_to(root))] = (kind, st.st_size, value,
+                                                  stat.S_IMODE(st.st_mode), st.st_uid, st.st_gid)
+        return result
+
+    def prepare(self, action, go_change=None, proof_change=None, reuse_go=False):
+        if self.state_path.exists():
+            state = json.loads(self.state_path.read_bytes())
+            if state["phase"] in ("rollback-restored", "rolled-back"):
+                delay = 2.05 - (time.time_ns() - state["restored_at_ns"]) / 1e9
+                if delay > 0:
+                    time.sleep(delay)
+        now = dt.datetime.now(dt.timezone.utc)
+        plan_sha = self.sha(self.plan_path)
+        go = {"schema": "rotate-native-go/1", "operation": self.operation, "plan_sha256": plan_sha,
+              "writer": WRITER, "action": action, "at": now.isoformat()}
+        if action == "install":
+            go.update(pristine_sha256=hashlib.sha256(self.pristine_bytes).hexdigest(),
+                      candidate_sha256=self.sha(self.candidate_path),
+                      custody_manifest_sha256=self.custody_result["custody_manifest_sha256"],
+                      inverse="restore-pristine-and-stop")
+        if action == "rollback":
+            go["destination_sha256"] = self.sha(self.destination)
+        if go_change:
+            go_change(go)
+        if not reuse_go:
+            self.put(self.go_path, go)
+        project = self.project.stat()
+        observations = [{"at": (now - dt.timedelta(seconds=seconds)).isoformat(),
+                         "donor": self.snapshot(self.donor), "destination": self.snapshot(self.destination),
+                         "project": {"dev": project.st_dev, "ino": project.st_ino},
+                         "same_user_observable": True, "holders": 0, "session_records": 0,
+                         "argument_holders": 0, "locks": 0, "unreadable": 0, "foreign_processes": 0}
+                        for seconds in (2, 1)]
+        proof = {"schema": "rotate-native-proof/1", "operation": self.operation,
+                 "plan_sha256": plan_sha, "action": action, "quiescence": observations}
+        if action == "install":
+            review = {"schema": "rotate-custody-audit/1", "operation": self.operation,
+                      "plan_sha256": plan_sha, "manifest_sha256": self.custody_result["custody_manifest_sha256"],
+                      "auditor": "fixture-auditor", "verdict": "PASS"}
+            review_path = self.case / "audit.json"
+            self.put(review_path, review)
+            proof["custody_audit"] = {**{k: review[k] for k in ("manifest_sha256", "auditor", "verdict")},
+                                      "review": self.ref(review_path)}
+        proof["instruments"] = self.instrument_bindings(action, proof)
+        if proof_change:
+            proof_change(proof)
+        self.put(self.proof_path, proof)
+        return ["--adapter", "claude", "--native-apply", "--native-action", action,
+                "--native-plan", str(self.plan_path), "--native-plan-sha256", plan_sha,
+                "--native-go", str(self.go_path), "--native-go-sha256", self.sha(self.go_path),
+                "--native-proof", str(self.proof_path), "--native-proof-sha256", self.sha(self.proof_path)]
+
+    def instrument_bindings(self, action, proof):
+        """Invented observer records; real reader-format join is a separate probe.
+
+        Keep fixture construction independent of the production packet builder
+        so a missing/wrong production key cannot manufacture its own oracle.
+        """
+        state = json.loads(self.state_path.read_bytes()) if self.state_path.exists() else None
+        objects = {"donor": str(self.donor), "destination": str(self.destination), "candidate": str(self.candidate_path),
+                   **{item["name"]: item["path"] for item in self.plan["artifacts"]}}
+        def bind(name, result):
+            self.instrument_serial += 1
+            filename = "fixture-%d.json" % self.instrument_serial
+            pk = {"evidence": str(self.case), "record_name": filename, "synthetic_root": str(self.base)}
+            if name == "I1":
+                pk.update(targets={name: str(path) for name, path in (("donor", self.donor), ("destination", self.destination))
+                                   if path.exists()},
+                          project=str(self.project), session_ids=[SID, DESTINATION],
+                          records_dir=str(self.records_dir), interval_s=1)
+            elif name == "I2":
+                pk.update(objects=objects, project=str(self.store))
+            elif name in ("I3B", "I3A"):
+                pk.update(preimage=state["i2"]["record"]["path"], destination=str(self.destination),
+                          staged=str(self.stage), candidate_sha256=self.sha(self.candidate_path), destination_token="destination")
+                if name == "I3A":
+                    pk["before"] = state["i3b"]["record"]["path"]
+            elif name == "I4":
+                pk.update(postimage=state["i4_postimage"]["path"], destination=str(self.destination),
+                          destination_sid=DESTINATION, donor_sid=SID)
+            else:
+                retained = state.get("retained_append")
+                pk.update(preimages=state["i2"]["record"]["path"], items=objects, donor="donor", project=str(self.store),
+                          custody=[] if retained is None else [{"path": str(root / "sessions-fixture-writer-20261109" / retained["name"]),
+                                                                "sha256": retained["sha256"]} for root in self.roots],
+                          holders=proof["instruments"]["I1"][-1]["record"]["path"])
+            record_path = self.case / filename
+            packet_path = self.case / (filename + ".packet.json")
+            self.put(record_path, result)
+            self.put(packet_path, pk)
+            return {"packet": self.ref(packet_path), "record": self.ref(record_path)}
+        clear = {"held": [], "own_unreadable": 0, "foreign_unreadable": 0}
+        bindings = {"I1": [bind("I1", clear), bind("I1", clear)]}
+        for binding, observation in zip(bindings["I1"], proof["quiescence"]):
+            stamp = dt.datetime.fromisoformat(observation["at"]).timestamp()
+            os.utime(binding["record"]["path"], (stamp, stamp))
+        proof["instruments"] = bindings
+        if action == "disposable-exercise":
+            listing = {path.name: ["file", stat.S_IMODE(path.stat().st_mode), path.stat().st_size]
+                       for path in self.store.iterdir() if path.is_file()}
+            bindings["I2"] = bind("I2", {"objects": {name: self.snapshot(Path(path)) for name, path in objects.items()},
+                                         "listing": listing, "project": [self.store.stat().st_dev, self.store.stat().st_ino]})
+        if state and action == "install":
+            if state["phase"] == "install-prepared":
+                bindings["I3B"] = bind("I3B", {"staged": state["staged"]})
+            elif state["phase"] == "install-renamed":
+                bindings["I3A"] = bind("I3A", {"postimage": self.snapshot(self.destination)})
+        if state and action == "load":
+            tail = self.destination.read_bytes()[state["installed"]["size"]:]
+            rows = [json.loads(line) for line in tail.splitlines()]
+            kinds = {}
+            for row in rows:
+                key = str(row.get("type"))
+                kinds[key] = kinds.get(key, 0) + 1
+            bindings["I4"] = bind("I4", {"appended": len(rows), "by_type": kinds})
+        if state and action == "rollback" and state["phase"] in ("rollback-restored", "rolled-back"):
+            bindings["I5"] = bind("I5", {"differences": [], "notes": []})
+        return bindings
+
+    def invoke(self, action="disposable-exercise", edit_args=None, exposure=False, same_disk=False, **prepare):
+        args = self.prepare(action, **prepare)
+        if edit_args:
+            edit_args(args)
+        self.before = self.inventory(self.base)
+        real_sibling = ROTATE.sibling
+        def sibling(name):
+            return self.custody if name == "custody" else self.mind if name == "mind" else real_sibling(name)
+        stdout, stderr = io.StringIO(), io.StringIO()
+        commands = []
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(contextlib.redirect_stdout(stdout))
+            stack.enter_context(contextlib.redirect_stderr(stderr))
+            stack.enter_context(mock.patch.object(ROTATE, "sibling", side_effect=sibling))
+            self.exposure_reader = stack.enter_context(mock.patch.object(self.mind, "git_exposed", return_value=exposure))
+            stack.enter_context(mock.patch.object(self.custody, "root_device", side_effect=lambda p: 101 + self.roots.index(Path(p))))
+            stack.enter_context(mock.patch.object(self.custody, "disks", side_effect=lambda dev:
+                frozenset({"fixture-disk" if same_disk else "fixture-disk-" + str(dev)})))
+            for name in ("run", "Popen", "call", "check_call", "check_output"):
+                commands.append(stack.enter_context(mock.patch.object(subprocess, name, side_effect=AssertionError("no commands"))))
+            rc = ROTATE.main(args)
+        for command in commands:
+            command.assert_not_called()
+        self.after = self.inventory(self.base)
+        text = stdout.getvalue()
+        for private in (SID, DESTINATION, str(self.base), SECRET):
+            self.assertNotIn(private, text + stderr.getvalue())
+        result = json.loads(text)
+        self.assertEqual(result["schema"], "rotate-native/1")
+        self.assertIs(result["operator_accepted"], False)
+        return rc, result
+
+    def refused(self, action="disposable-exercise", **kwargs):
+        before = self.inventory(self.store)
+        rc, result = self.invoke(action, **kwargs)
+        self.assertEqual(rc, 2, result)
+        self.assertEqual(result["status"], "refused", result)
+        self.assertRegex(result["reason"], r"^[a-z0-9][a-z0-9-]{0,159}$")
+        self.assertEqual(self.inventory(self.store), before)
+        return result
+
+    def stop(self, action, phase, **kwargs):
+        rc, result = self.invoke(action, **kwargs)
+        self.assertEqual(rc, 0, result)
+        self.assertEqual(result["status"], "stop", result)
+        self.assertEqual(result["phase"], phase)
+        for field in ("resident_mind", "notebook", "launcher_join"):
+            self.assertEqual(result[field], "NOT APPLICABLE")
+        self.assertIs(result["provider_started"], False)
+        self.assertIs(result["compaction_triggered"], False)
+        return result
+
+    def preserve(self):
+        self.stop("disposable-exercise", "admitted")
+        self.custody_result = self.stop("custody", "custodied")
+
+    def install(self):
+        self.stop("install", "install-prepared")
+        self.assertEqual(self.destination.read_bytes(), self.pristine_bytes)
+        self.assertTrue(self.stage.exists())
+        self.stop("install", "install-renamed", reuse_go=True)
+        self.stop("install", "installed", reuse_go=True)
+
+    def inverse(self, **kwargs):
+        missing_donor = not self.donor.exists()
+        self.stop("rollback", "rollback-donor-pending" if missing_donor else "rollback-restored", **kwargs)
+        if missing_donor:
+            self.stop("rollback", "rollback-restored", reuse_go=True, **kwargs)
+        self.stop("rollback", "rolled-back", reuse_go=True, **kwargs)
+
+    def test_admission_records_private_state_without_rewriting_bodies(self):
+        self.stop("disposable-exercise", "admitted")
+        self.assertEqual(self.inventory(self.store), self.original_store)
+        self.assertEqual(self.donor.read_bytes(), self.donor_bytes)
+        self.assertEqual(stat.S_IMODE(self.state_home.stat().st_mode), 0o700)
+        for path in self.state_home.iterdir():
+            if path.is_file():
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+        self.assertGreater(self.exposure_reader.call_count, 0)
+
+    def test_missing_go_refuses_without_creating_state(self):
+        def edit(args):
+            index = args.index("--native-go")
+            del args[index:index + 2]
+        self.refused(edit_args=edit)
+        self.assertFalse(self.state_home.exists())
+        self.assertEqual(self.before, self.after)
+
+    def test_bad_go_hash_refuses_without_creating_state(self):
+        self.refused(edit_args=lambda a: a.__setitem__(a.index("--native-go-sha256") + 1, "0" * 64))
+        self.assertFalse(self.state_home.exists())
+        self.assertEqual(self.before, self.after)
+
+    def test_bad_plan_hash_refuses_without_creating_state(self):
+        self.refused(edit_args=lambda a: a.__setitem__(a.index("--native-plan-sha256") + 1, "0" * 64))
+        self.assertFalse(self.state_home.exists())
+        self.assertEqual(self.before, self.after)
+
+    def test_missing_native_apply_refuses_without_state(self):
+        self.refused(edit_args=lambda a: a.remove("--native-apply"))
+        self.assertFalse(self.state_home.exists())
+
+    def test_explicit_dry_run_refuses_even_with_apply(self):
+        self.refused(edit_args=lambda a: a.append("--dry-run"))
+        self.assertFalse(self.state_home.exists())
+
+    def test_git_exposure_reader_refusal_is_enforced(self):
+        self.refused(exposure=True)
+        self.assertGreater(self.exposure_reader.call_count, 0)
+
+    def test_plan_schema_provider_and_version_are_checked(self):
+        for field, value in (("schema", "wrong/1"), ("provider", "codex"),
+                             ("provider_version", ""), ("provider_version", "x" * 65)):
+            with self.subTest(field=field, value=value):
+                plan = copy.deepcopy(self.plan)
+                plan[field] = value
+                self.put(self.plan_path, plan)
+                self.refused()
+
+    def test_go_binds_action_operation_writer_and_plan(self):
+        for field in ("schema", "action", "operation", "writer", "plan_sha256"):
+            with self.subTest(field=field):
+                self.refused(go_change=lambda go, key=field: go.__setitem__(key, "wrong"))
+
+    def test_registered_target_is_not_disposable(self):
+        self.registry["identities"][0]["session_id"] = SID
+        self.put(self.registry_path, self.registry)
+        self.plan["registry"] = self.ref(self.registry_path)
+        self.put(self.plan_path, self.plan)
+        self.refused()
+
+    def test_ambiguous_registry_writer_refuses(self):
+        self.registry["identities"].append(copy.deepcopy(self.registry["identities"][0]))
+        self.put(self.registry_path, self.registry)
+        self.plan["registry"] = self.ref(self.registry_path)
+        self.put(self.plan_path, self.plan)
+        self.refused()
+
+    def test_nonprivate_registry_refuses(self):
+        self.registry_path.chmod(0o664)
+        self.refused()
+
+    def test_hardlinked_candidate_refuses(self):
+        os.link(self.candidate_path, self.case / "candidate-link")
+        self.refused()
+
+    def test_changed_closed_donor_hash_refuses(self):
+        self.put(self.donor, self.donor_bytes + b"\n")
+        self.refused()
+
+    def test_changed_candidate_hash_refuses(self):
+        self.put(self.candidate_path, self.candidate_path.read_bytes() + b"\n")
+        self.refused()
+
+    def test_existing_new_is_preserved_and_blocks_admission(self):
+        self.put(self.stage, b"Unknown interrupted stage.\n")
+        self.refused()
+        self.assertEqual(self.stage.read_bytes(), b"Unknown interrupted stage.\n")
+
+    def test_quiescence_requires_two_fresh_distinct_readings(self):
+        for change in (lambda p: p.__setitem__("quiescence", p["quiescence"][:1]),
+                       lambda p: p["quiescence"][1].__setitem__("at", p["quiescence"][0]["at"]),
+                       lambda p: p["quiescence"][0].__setitem__("at", "2020-01-01T00:00:00Z")):
+            with self.subTest(change=change):
+                self.refused(proof_change=change)
+
+    def test_each_process_evidence_guard_refuses_independently(self):
+        for field in ("holders", "session_records", "argument_holders", "locks", "unreadable", "foreign_processes"):
+            with self.subTest(field=field):
+                self.refused(proof_change=lambda p, key=field: p["quiescence"][0].__setitem__(key, 1))
+
+    def test_unobservable_process_evidence_refuses(self):
+        self.refused(proof_change=lambda p: p["quiescence"][0].__setitem__("same_user_observable", False))
+
+    def test_each_preparation_gate_must_be_true(self):
+        for field in self.gates["gates"]:
+            with self.subTest(field=field):
+                gates = copy.deepcopy(self.gates)
+                gates["gates"][field] = False
+                self.put(self.gates_path, gates)
+                plan = copy.deepcopy(self.plan)
+                next(a for a in plan["artifacts"] if a["name"] == "gates").update(self.ref(self.gates_path))
+                self.put(self.plan_path, plan)
+                self.refused()
+
+    def test_admission_repeat_is_idempotent(self):
+        self.stop("disposable-exercise", "admitted")
+        before = self.inventory(self.state_home)
+        self.stop("disposable-exercise", "admitted")
+        after = self.inventory(self.state_home)
+        # A repeat exports a fresh pair of exclusive observer output names;
+        # admission, preimages and lock remain unchanged.
+        for key in ("state.json", "preimages.json", "operation.lock"):
+            self.assertEqual(after[key], before[key])
+
+    def test_custody_install_rollback_restore_whole_store_inventory(self):
+        self.preserve()
+        self.install()
+        self.assertEqual(self.destination.read_bytes(), self.candidate_path.read_bytes())
+        self.assertEqual(self.donor.read_bytes(), self.donor_bytes)
+        self.inverse()
+        self.assertEqual(self.inventory(self.store), self.original_store)
+        self.assertFalse(self.stage.exists())
+        self.assertEqual(self.donor.read_bytes(), self.donor_bytes)
+
+    def test_install_requires_independent_registered_auditor(self):
+        self.preserve()
+        for name in ("", WRITER, "not-registered"):
+            with self.subTest(name=name):
+                self.refused("install", proof_change=lambda p, name=name: p["custody_audit"].__setitem__("auditor", name))
+
+    def test_changed_pristine_after_custody_refuses_install(self):
+        self.preserve()
+        self.put(self.destination, self.pristine_bytes + b"\n")
+        self.refused("install")
+
+    def test_unknown_destination_bytes_are_not_overwritten_by_rollback(self):
+        self.preserve()
+        self.install()
+        self.put(self.destination, b"Unknown newer destination bytes.\n")
+        self.refused("rollback")
+        self.assertEqual(self.destination.read_bytes(), b"Unknown newer destination bytes.\n")
+
+    def test_after_rename_before_journal_save_resumes_same_go(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        save = ROTATE.NativeOperation.save
+        def interrupted(operation):
+            if operation.state["phase"] == "install-renamed":
+                raise OSError("Invented interruption before committed state.")
+            return save(operation)
+        with mock.patch.object(ROTATE.NativeOperation, "save", new=interrupted):
+            rc, result = self.invoke("install", reuse_go=True)
+        self.assertEqual(rc, 2, result)
+        self.assertEqual(self.destination.read_bytes(), self.candidate_path.read_bytes())
+        self.assertEqual(json.loads(self.state_path.read_text())["phase"], "install-prepared")
+        self.stop("install", "install-renamed", reuse_go=True)
+        self.stop("install", "installed", reuse_go=True)
+        self.inverse()
+        self.assertEqual(self.inventory(self.store), self.original_store)
+
+    def change_instrument(self, proof, name, transform, packet=False, index=None):
+        binding = proof["instruments"][name]
+        if index is not None:
+            binding = binding[index]
+        key = "packet" if packet else "record"
+        path = Path(binding[key]["path"])
+        record = json.loads(path.read_bytes())
+        transform(record)
+        self.put(path, record)
+        binding[key] = self.ref(path)
+
+    def test_initial_packet_export_does_not_admit_or_touch_store(self):
+        self.stop("disposable-exercise", "awaiting-instruments", edit_args=lambda a: a.append("--native-export-instruments"),
+                  proof_change=lambda p: p.pop("instruments"))
+        self.assertFalse(self.state_home.exists())
+        self.assertEqual(self.inventory(self.store), self.original_store)
+        index = json.loads((self.case / "instrument-packets.json").read_bytes())
+        self.assertEqual(set(index), {"I1", "I2"})
+        self.assertEqual(len(index["I1"]), 2)
+        packets = {name: json.loads(Path((ref[0] if isinstance(ref, list) else ref)["path"]).read_bytes())
+                   for name, ref in index.items()}
+        pair = [json.loads(Path(ref["path"]).read_bytes()) for ref in index["I1"]]
+        self.assertNotEqual(pair[0]["record_name"], pair[1]["record_name"])
+        self.assertEqual(packets["I1"]["project"], str(self.project))
+        self.assertEqual(packets["I2"]["project"], str(self.store))
+
+    def test_missing_actual_i1_records_refuses(self):
+        result = self.refused(proof_change=lambda p: p.pop("instruments"))
+        self.assertEqual(result["reason"], "native-two-i1-records-required")
+
+    def test_reexport_never_reuses_exclusive_observer_output_names(self):
+        kwargs = {"edit_args": lambda a: a.append("--native-export-instruments"),
+                  "proof_change": lambda p: p.pop("instruments")}
+        self.stop("disposable-exercise", "awaiting-instruments", **kwargs)
+        index = json.loads((self.case / "instrument-packets.json").read_bytes())
+        old = json.loads(Path(index["I1"][0]["path"]).read_bytes())
+        old_record = self.case / old["record_name"]
+        self.put(old_record, b"Invented retained old observation.\n")
+        self.stop("disposable-exercise", "awaiting-instruments", **kwargs)
+        index = json.loads((self.case / "instrument-packets.json").read_bytes())
+        new = json.loads(Path(index["I1"][0]["path"]).read_bytes())
+        self.assertNotEqual(old["record_name"], new["record_name"])
+        self.assertEqual(old_record.read_bytes(), b"Invented retained old observation.\n")
+
+    def test_i1_record_holders_and_unreadable_counts_are_enforced(self):
+        for field, value in (("held", [["invented holder", 1]]), ("own_unreadable", 1), ("foreign_unreadable", 1)):
+            with self.subTest(field=field):
+                result = self.refused(proof_change=lambda p, k=field, v=value:
+                    self.change_instrument(p, "I1", lambda r: r.__setitem__(k, v), index=0))
+                self.assertEqual(result["reason"], "native-i1-not-clear")
+
+    def test_i1_false_is_not_integer_zero(self):
+        result = self.refused(proof_change=lambda p:
+            self.change_instrument(p, "I1", lambda r: r.__setitem__("own_unreadable", False), index=0))
+        self.assertEqual(result["reason"], "native-i1-count-type")
+
+    def test_reusing_one_i1_inode_is_not_two_readings(self):
+        result = self.refused(proof_change=lambda p: p["instruments"]["I1"].__setitem__(1, p["instruments"]["I1"][0]))
+        self.assertEqual(result["reason"], "native-distinct-i1-records-required")
+
+    def test_old_i1_record_refuses_despite_fresh_wrapper(self):
+        def age(proof):
+            path = Path(proof["instruments"]["I1"][0]["record"]["path"])
+            os.utime(path, (1, 1))
+        self.assertEqual(self.refused(proof_change=age)["reason"], "native-i1-record-stale")
+
+    def test_i1_file_times_must_show_the_actual_interval(self):
+        def same_time(proof):
+            left, right = proof["instruments"]["I1"]
+            stamp = Path(left["record"]["path"]).stat().st_mtime_ns
+            os.utime(right["record"]["path"], ns=(stamp, stamp))
+        self.assertEqual(self.refused(proof_change=same_time)["reason"], "native-i1-record-interval")
+
+    def test_i2_actual_objects_not_internal_checkpoint_are_required(self):
+        result = self.refused(proof_change=lambda p:
+            self.change_instrument(p, "I2", lambda r: r["objects"]["donor"].__setitem__("sha256", "0" * 64)))
+        self.assertEqual(result["reason"], "native-i2-objects")
+
+    def test_i2_listing_and_store_identity_are_checked_separately(self):
+        for edit in (lambda r: r.__setitem__("listing", {}), lambda r: r.__setitem__("project", [0, 0])):
+            with self.subTest(edit=edit):
+                result = self.refused(proof_change=lambda p: self.change_instrument(p, "I2", edit))
+                self.assertEqual(result["reason"], "native-i2-store-listing")
+
+    def test_reader_packet_wrong_working_folder_refuses(self):
+        result = self.refused(proof_change=lambda p: self.change_instrument(
+            p, "I1", lambda r: r.__setitem__("project", str(self.store)), packet=True, index=0))
+        self.assertEqual(result["reason"], "native-instrument-packet-mismatch")
+
+    def test_install_first_call_stops_with_original_target_and_real_stage(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        self.assertEqual(self.destination.read_bytes(), self.pristine_bytes)
+        self.assertEqual(self.stage.read_bytes(), self.candidate_path.read_bytes())
+        exports = json.loads((self.state_home / "instrument-packets.json").read_bytes())
+        pk = json.loads(Path(exports["I3B"]["path"]).read_bytes())
+        self.assertEqual(pk["destination_token"], "destination")
+        self.assertEqual(pk["staged"], str(self.stage))
+
+    def test_missing_i3b_leaves_candidate_staged_not_installed(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        result = self.refused("install", reuse_go=True, proof_change=lambda p: p["instruments"].pop("I3B"))
+        self.assertEqual(result["reason"], "native-instrument-reference-required")
+        self.assertTrue(self.stage.exists())
+
+    def test_i3b_must_observe_the_exact_staged_inode(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        result = self.refused("install", reuse_go=True, proof_change=lambda p: self.change_instrument(
+            p, "I3B", lambda r: r["staged"].__setitem__("ino", 0)))
+        self.assertEqual(result["reason"], "native-i3b-staged-inode")
+
+    def test_i3b_missing_destination_token_refuses(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        result = self.refused("install", reuse_go=True, proof_change=lambda p: self.change_instrument(
+            p, "I3B", lambda r: r.pop("destination_token"), packet=True))
+        self.assertEqual(result["reason"], "native-instrument-packet-mismatch")
+
+    def test_i3a_wrong_postimage_does_not_claim_installed(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        self.stop("install", "install-renamed", reuse_go=True)
+        result = self.refused("install", reuse_go=True, proof_change=lambda p: self.change_instrument(
+            p, "I3A", lambda r: r["postimage"].__setitem__("sha256", "0" * 64)))
+        self.assertEqual(result["reason"], "native-i3a-postimage")
+        self.assertEqual(json.loads(self.state_path.read_bytes())["phase"], "install-renamed")
+
+    def test_export_recovers_saved_stage_without_rerunning_install(self):
+        self.preserve()
+        publish = ROTATE.NativeOperation.publish_instruments
+        def fail_after_stage(operation):
+            if operation.state["phase"] == "install-prepared":
+                raise OSError("Invented interruption before packet publication.")
+            return publish(operation)
+        with mock.patch.object(ROTATE.NativeOperation, "publish_instruments", new=fail_after_stage):
+            rc, result = self.invoke("install")
+        self.assertEqual(rc, 2, result)
+        before = self.inventory(self.store)
+        self.stop("install", "install-prepared", reuse_go=True,
+                  edit_args=lambda a: a.append("--native-export-instruments"),
+                  proof_change=lambda p: p.pop("instruments"))
+        self.assertEqual(self.inventory(self.store), before)
+        index = json.loads((self.state_home / "instrument-packets.json").read_bytes())
+        self.assertIn("I3B", index)
+        packet = json.loads(Path(index["I3B"]["path"]).read_bytes())
+        self.assertEqual(packet["staged"], str(self.stage))
+
+    def test_pre_restore_i1_cannot_close_inverse_even_with_current_snapshots(self):
+        self.preserve()
+        self.install()
+        self.stop("rollback", "rollback-restored")
+        state = json.loads(self.state_path.read_bytes())
+        def predates(proof):
+            for index, binding in enumerate(proof["instruments"]["I1"]):
+                stamp = state["restored_at_ns"] - (2 - index) * 1_000_000_000
+                os.utime(binding["record"]["path"], ns=(stamp, stamp))
+        result = self.refused("rollback", reuse_go=True, proof_change=predates)
+        self.assertEqual(result["reason"], "native-i1-before-restore")
+
+    def test_published_inverse_reader_uses_the_new_second_i1_output(self):
+        self.preserve()
+        self.install()
+        self.stop("rollback", "rollback-restored")
+        index = json.loads((self.state_home / "instrument-packets.json").read_bytes())
+        second = json.loads(Path(index["I1"][1]["path"]).read_bytes())
+        inverse = json.loads(Path(index["I5"]["path"]).read_bytes())
+        self.assertEqual(inverse["holders"], str(self.case / second["record_name"]))
+        self.assertFalse(Path(inverse["holders"]).exists())
+
+    def append_reply(self):
+        row = self.row("assistant", 101, 5, [{"type": "text", "text": "Invented appended reply."}], sid=DESTINATION)
+        row["message"].update(id="invented-call", model="claude-sonnet-4-5-20250929",
+                              usage={"input_tokens": 123, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0})
+        self.put(self.destination, self.destination.read_bytes() + json.dumps(row).encode() + b"\n")
+        return self.destination.read_bytes()
+
+    def gauge_proof(self, proof):
+        proof["first_gauge"] = ROTATE.sibling("gauge").read_claude(self.destination)
+
+    def test_load_reads_append_and_actual_i4_then_custodies_it_before_restore(self):
+        self.preserve()
+        self.install()
+        appended = self.append_reply()
+        self.stop("load", "loaded", proof_change=self.gauge_proof)
+        state = json.loads(self.state_path.read_bytes())
+        flat = json.loads(Path(state["i4_postimage"]["path"]).read_bytes())
+        self.assertIn("uuids", flat)
+        self.assertNotIn("postimage", flat)
+        self.inverse(proof_change=lambda p: p.__setitem__("appended_sha256", hashlib.sha256(appended).hexdigest()))
+        state = json.loads(self.state_path.read_bytes())
+        for root in self.roots:
+            kept = root / "sessions-fixture-writer-20261109" / state["retained_append"]["name"]
+            self.assertEqual(kept.read_bytes(), appended)
+        self.assertEqual(self.inventory(self.store), self.original_store)
+
+    def test_i4_not_a_clean_append_refuses_without_marking_loaded(self):
+        self.preserve()
+        self.install()
+        self.append_reply()
+        def bad(proof):
+            self.gauge_proof(proof)
+            self.change_instrument(proof, "I4", lambda r: r.__setitem__("appended", 0))
+        result = self.refused("load", proof_change=bad)
+        self.assertEqual(result["reason"], "native-i4-clean-append-required")
+        self.assertEqual(json.loads(self.state_path.read_bytes())["phase"], "installed")
+
+    def test_inverse_waits_for_external_i5(self):
+        self.preserve()
+        self.install()
+        self.stop("rollback", "rollback-restored")
+        result = self.refused("rollback", reuse_go=True, proof_change=lambda p: p["instruments"].pop("I5"))
+        self.assertEqual(result["reason"], "native-instrument-reference-required")
+        self.assertEqual(self.inventory(self.store), self.original_store)
+
+    def test_inverse_i5_difference_refuses_final_acceptance(self):
+        self.preserve()
+        self.install()
+        self.stop("rollback", "rollback-restored")
+        result = self.refused("rollback", reuse_go=True, proof_change=lambda p: self.change_instrument(
+            p, "I5", lambda r: r.__setitem__("differences", ["invented difference"])))
+        self.assertEqual(result["reason"], "native-i5-inverse-not-clear")
+
+    def test_missing_donor_restore_requires_its_explicit_go(self):
+        self.preserve()
+        self.install()
+        self.donor.unlink()
+        self.refused("rollback")
+        self.assertFalse(self.donor.exists())
+        self.inverse(go_change=lambda g: g.__setitem__("restore_absent_donor", True))
+        self.assertEqual(self.donor.read_bytes(), self.donor_bytes)
+        self.assertEqual(self.inventory(self.store), self.original_store)
+
+    def test_two_partitions_on_one_physical_disk_are_not_two_copies(self):
+        self.refused(same_disk=True)
+        self.assertFalse(self.state_path.exists())
+
+    def test_well_formed_changed_donor_is_stopped_by_closed_hash_guard(self):
+        rows = copy.deepcopy(self.donor_rows)
+        rows[2]["message"]["content"] = "A different invented question."
+        self.put_rows(self.donor, rows)
+        result = self.refused()
+        self.assertEqual(result["reason"], "native-closed-target-hash")
+
+
+    def guard_plan(self, edit, reason):
+        """Alter only a supplied record after the independent fixture is built.
+
+        Hash-bind the changed plan and its go/proof, so the tested predicate,
+        rather than an unrelated stale digest, must reject the input.
+        """
+        def revise(args):
+            p = copy.deepcopy(self.plan)
+            edit(p)
+            self.put(self.plan_path, p)
+            plan_sha = self.sha(self.plan_path)
+            args[args.index("--native-plan-sha256") + 1] = plan_sha
+            for path, flag in ((self.go_path, "--native-go-sha256"),
+                               (self.proof_path, "--native-proof-sha256")):
+                value = json.loads(path.read_bytes())
+                value["plan_sha256"] = plan_sha
+                self.put(path, value)
+                args[args.index(flag) + 1] = self.sha(path)
+            self.guard_store_before = self.inventory(self.store)
+        rc, result = self.invoke(edit_args=revise)
+        self.assertEqual(rc, 2, result)
+        self.assertEqual(result["status"], "refused")
+        self.assertEqual(result["reason"], reason)
+        self.assertEqual(self.inventory(self.store), self.guard_store_before)
+        self.assertFalse(self.state_path.exists())
+
+    def guard_registry(self, edit, reason):
+        def revise(p):
+            registry = copy.deepcopy(self.registry)
+            edit(registry)
+            self.put(self.registry_path, registry)
+            p["registry"] = self.ref(self.registry_path)
+        self.guard_plan(revise, reason)
+
+    def test_guard_operation_type(self):
+        def change(p):
+            p["operation"] = 12
+        self.guard_plan(change, "native-operation-name")
+
+    def test_guard_operation_spelling(self):
+        def change(p):
+            p["operation"] = "../outside"
+        self.guard_plan(change, "native-operation-name")
+
+    def test_guard_writer_type(self):
+        def change(p):
+            p["writer"] = 12
+        self.guard_plan(change, "native-writer-key")
+
+    def test_guard_writer_spelling(self):
+        def change(p):
+            p["writer"] = "Bad Writer!"
+        self.guard_plan(change, "native-writer-key")
+
+    def test_guard_project_not_store(self):
+        def change(p):
+            p["project"] = str(self.store)
+        self.guard_plan(change, "native-private-disposable-project-required")
+
+    def test_guard_project_not_room(self):
+        def change(p):
+            p["project"] = str(self.room)
+        self.guard_plan(change, "native-private-disposable-project-required")
+
+    def test_guard_store_not_room(self):
+        def change(p):
+            p["store"] = str(self.room)
+        self.guard_plan(change, "native-private-disposable-project-required")
+
+    def test_guard_registry_shape(self):
+        def change(p):
+            p["registry"] = []
+        self.guard_plan(change, "native-canonical-registry-required")
+
+    def test_guard_registry_canonical_home(self):
+        def change(p):
+            p["registry"] = self.ref(self.capsule)
+        self.guard_plan(change, "native-canonical-registry-required")
+
+    def test_guard_donor_shape(self):
+        def change(p):
+            p["donor"] = []
+        self.guard_plan(change, "native-target-required")
+
+    def test_guard_donor_identity_type(self):
+        def change(p):
+            p["donor"]["session_id"] = 12
+        self.guard_plan(change, "native-target-identity")
+
+    def test_guard_donor_identity_shape(self):
+        def change(p):
+            p["donor"]["session_id"] = "not-an-identifier"
+        self.guard_plan(change, "native-target-identity")
+
+    def test_guard_donor_store_parent(self):
+        def change(p):
+            p["donor"]["path"] = str(self.case / self.donor.name)
+        self.guard_plan(change, "native-target-store-mapping")
+
+    def test_guard_donor_store_filename(self):
+        def change(p):
+            p["donor"]["path"] = str(self.store / 'wrong.jsonl')
+        self.guard_plan(change, "native-target-store-mapping")
+
+    def test_guard_donor_digest_type(self):
+        def change(p):
+            p["donor"]["sha256"] = 12
+        self.guard_plan(change, "native-target-digest")
+
+    def test_guard_donor_digest_shape(self):
+        def change(p):
+            p["donor"]["sha256"] = "not-a-digest"
+        self.guard_plan(change, "native-target-digest")
+
+    def test_guard_distinct_targets(self):
+        def change(p):
+            p["destination"] = copy.deepcopy(p['donor'])
+        self.guard_plan(change, "native-two-distinct-containers-required")
+
+    def test_guard_candidate_home(self):
+        def change(p):
+            p["candidate"] = self.ref(self.donor)
+        self.guard_plan(change, "native-candidate-evidence-home")
+
+    def test_guard_artifacts_shape(self):
+        def change(p):
+            p["artifacts"] = {"one": 1, "two": 2, "three": 3}
+        self.guard_plan(change, "native-artifact-list")
+
+    def test_guard_artifacts_count(self):
+        def change(p):
+            p["artifacts"] = p['artifacts'][:2]
+        self.guard_plan(change, "native-artifact-list")
+
+    def test_guard_artifact_shape(self):
+        def change(p):
+            p["artifacts"][0] = []
+        self.guard_plan(change, "native-artifact-object")
+
+    def test_guard_artifact_name_type(self):
+        def change(p):
+            p["artifacts"][0]["name"] = 12
+        self.guard_plan(change, "native-artifact-name")
+
+    def test_guard_artifact_name_shape(self):
+        def change(p):
+            p["artifacts"][0]["name"] = "Bad Name!"
+        self.guard_plan(change, "native-artifact-name")
+
+    def test_guard_artifact_name_unique(self):
+        def change(p):
+            p["artifacts"][1]["name"] = "capsule"
+        self.guard_plan(change, "native-artifact-name")
+
+    def test_guard_artifact_reserved_name(self):
+        def change(p):
+            p["artifacts"][0]["name"] = "candidate"
+        self.guard_plan(change, "native-artifact-name")
+
+    def test_guard_artifact_home(self):
+        def change(p):
+            p["artifacts"][0]["path"] = str(self.donor)
+            p["artifacts"][0]["sha256"] = self.sha(self.donor)
+        self.guard_plan(change, "native-artifact-evidence-home")
+
+    def test_guard_artifact_required_names(self):
+        def change(p):
+            p["artifacts"][0]["name"] = "other"
+        self.guard_plan(change, "native-required-staged-objects")
+
+    def test_guard_custody_roots_shape(self):
+        def change(p):
+            p["custody_roots"] = {"one": 1, "two": 2}
+        self.guard_plan(change, "native-custody-roots")
+
+    def test_guard_custody_roots_count(self):
+        def change(p):
+            p["custody_roots"] = p['custody_roots'][:1]
+        self.guard_plan(change, "native-custody-roots")
+
+    def test_guard_rows_type(self):
+        def change(r):
+            r["identities"] = {"invented": []}
+        self.guard_registry(change, "native-registry-rows")
+
+    def test_guard_rows_empty(self):
+        def change(r):
+            r["identities"] = []
+        self.guard_registry(change, "native-registry-rows")
+
+    def test_guard_row_type(self):
+        def change(r):
+            r["identities"][1] = []
+        self.guard_registry(change, "native-registry-row")
+
+    def test_guard_key_type(self):
+        def change(r):
+            r["identities"][1]["key"] = 12
+        self.guard_registry(change, "native-registry-identity")
+
+    def test_guard_key_shape(self):
+        def change(r):
+            r["identities"][1]["key"] = "Bad Key!"
+        self.guard_registry(change, "native-registry-identity")
+
+    def test_guard_provider(self):
+        def change(r):
+            r["identities"][1]["provider"] = "other"
+        self.guard_registry(change, "native-registry-identity")
+
+    def test_guard_sid_type(self):
+        def change(r):
+            r["identities"][1]["session_id"] = 12
+        self.guard_registry(change, "native-registry-identity")
+
+    def test_guard_sid_shape(self):
+        def change(r):
+            r["identities"][1]["session_id"] = "invalid identity with spaces"
+        self.guard_registry(change, "native-registry-identity")
+
+    def test_guard_project_already_resident(self):
+        def change(r):
+            r["identities"][1]["room"] = str(self.project)
+        self.guard_registry(change, "native-project-already-resident")
+
+    def test_guard_registered_writer_missing(self):
+        def change(r):
+            r["identities"][0]["key"] = "other-writer"
+        self.guard_registry(change, "native-registered-writer-required")
+
+    def test_guard_registered_writer_room(self):
+        def change(r):
+            r["identities"][0]["room"] = str(self.project / "other")
+        self.guard_registry(change, "native-registered-writer-required")
+
+
+    def test_guard_future_go_time(self):
+        result = self.refused(go_change=lambda g: g.__setitem__(
+            "at", (dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=5)).isoformat()))
+        self.assertEqual(result["reason"], "native-go-time")
+
+    def test_guard_expired_go_time(self):
+        result = self.refused(go_change=lambda g: g.__setitem__(
+            "at", (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=2)).isoformat()))
+        self.assertEqual(result["reason"], "native-go-time")
+
+    def test_guard_quiescence_observation_type(self):
+        result = self.refused(proof_change=lambda p: p["quiescence"].__setitem__(0, []))
+        self.assertEqual(result["reason"], "native-quiescence-object")
+
+    def test_guard_quiescence_target_snapshot(self):
+        result = self.refused(proof_change=lambda p: p["quiescence"][0]["donor"].__setitem__("ino", -1))
+        self.assertEqual(result["reason"], "native-quiescence-target-changed")
+
+    def test_guard_quiescence_project_identity(self):
+        result = self.refused(proof_change=lambda p: p["quiescence"][0]["project"].__setitem__("ino", -1))
+        self.assertEqual(result["reason"], "native-quiescence-project")
+
+    def test_guard_proof_envelope_fields(self):
+        for field in ("schema", "operation", "plan_sha256", "action"):
+            with self.subTest(field=field):
+                result = self.refused(proof_change=lambda p, f=field: p.__setitem__(f, "wrong"))
+                self.assertEqual(result["reason"], "native-proof-binding")
+
+    def test_guard_i2_exact_shape(self):
+        result = self.refused(proof_change=lambda p: self.change_instrument(
+            p, "I2", lambda r: r.__setitem__("unknown", 0)))
+        self.assertEqual(result["reason"], "native-i2-shape")
+
+
+    def test_guard_missing_plan_argument(self):
+        # The CLI without a plan takes the fixture refusal path. Exercise the
+        # operation constructor directly to check its independent guard.
+        args = ROTATE.build_parser().parse_args(self.prepare("disposable-exercise"))
+        args.native_plan = None
+        before = self.inventory(self.base)
+        with self.assertRaisesRegex(ROTATE.Refused, "^native-hash-bound-plan-required$"):
+            ROTATE.NativeOperation(args)
+        self.assertEqual(self.inventory(self.base), before)
+
+    def test_guard_missing_plan_hash_argument(self):
+        def edit(args):
+            index = args.index("--native-plan-sha256")
+            del args[index:index + 2]
+        result = self.refused(edit_args=edit)
+        self.assertEqual(result["reason"], "native-hash-bound-plan-required")
+
+    def guard_moved_record(self, flag, path, reason):
+        moved = self.base / (path.name + ".moved")
+        self.put(moved, path.read_bytes())
+        def edit(args):
+            # prepare() finishes generating the go/proof before this move.
+            self.put(moved, path.read_bytes())
+            args[args.index(flag) + 1] = str(moved)
+        result = self.refused(edit_args=edit)
+        self.assertEqual(result["reason"], reason)
+        self.assertFalse(self.state_path.exists())
+
+    def test_guard_plan_evidence_home(self):
+        self.guard_moved_record("--native-plan", self.plan_path, "native-operation-evidence-home")
+
+    def test_guard_go_evidence_home(self):
+        self.put(self.go_path, {})
+        self.guard_moved_record("--native-go", self.go_path, "native-go-proof-evidence-home")
+
+    def test_guard_proof_evidence_home(self):
+        self.put(self.proof_path, {})
+        self.guard_moved_record("--native-proof", self.proof_path, "native-go-proof-evidence-home")
+
+    def test_guard_custody_overlaps_room(self):
+        def change(p):
+            self.roots[0] = self.room
+            p["custody_roots"] = list(map(str, self.roots))
+        self.guard_plan(change, "native-custody-overlap")
+
+    def quantifier_overlap(self, selected, direction, position):
+        target = getattr(self, selected)
+        root = target.parent if direction == "ancestor" else target / "custody-child"
+        self.mkdir(root)
+        self.assertNotEqual(root, target)
+        self.assertEqual(root.is_relative_to(target), direction == "descendant")
+        self.assertEqual(target.is_relative_to(root), direction == "ancestor")
+        for other in ("room", "project", "store"):
+            if other != selected:
+                unrelated = getattr(self, other)
+                self.assertFalse(root.is_relative_to(unrelated) or unrelated.is_relative_to(root))
+        def change(plan):
+            self.roots[position] = root
+            plan["custody_roots"] = list(map(str, self.roots))
+        self.guard_plan(change, "native-custody-overlap")
+        self.assertEqual(self.before, self.after)
+        self.assertFalse(self.state_home.exists())
+
+    def quantifier_registered_target(self, provider, target):
+        sid = SID if target == "donor" else DESTINATION
+        def change(registry):
+            registry["identities"].append({
+                "key": "fixture-bound-target", "person": "Invented Registered Target",
+                "role": "Resident", "provider": provider, "session_id": sid,
+                "room": str(self.room)})
+        self.guard_registry(change, "native-target-is-resident")
+        self.assertEqual(self.before, self.after)
+        self.assertFalse(self.state_home.exists())
+
+    def quantifier_allowed_pristine_envelope(self, kind):
+        rows = copy.deepcopy(self.pristine_rows)
+        rows.append({"type": kind, "sessionId": DESTINATION})
+        self.put_rows(self.destination, rows)
+        self.pristine_bytes = self.destination.read_bytes()
+        self.plan["destination"].update(self.ref(self.destination))
+        self.gates["pristine_sha256"] = self.sha(self.destination)
+        self.put(self.gates_path, self.gates)
+        next(item for item in self.plan["artifacts"] if item["name"] == "gates").update(self.ref(self.gates_path))
+        self.put(self.plan_path, self.plan)
+        before = self.inventory(self.store)
+        self.stop("disposable-exercise", "admitted")
+        self.assertEqual(self.inventory(self.store), before)
+        self.assertEqual(self.destination.read_bytes(), self.pristine_bytes)
+
+    def test_quantifier_custody_any_to_all_under_uniform_guard_fault(self):
+        """Local branch contract, not a reachable unsafe-input counterexample.
+
+        any/all are equivalent for the nonempty uniform booleans enforced
+        immediately before this branch. Inject precisely that guard's fault
+        to expose partial presence; every other check still executes.
+        A partial existing item must never enter the add-new-member branch.
+        The ordinary partial-presence refusal has its own unmodified test.
+        """
+        self.preserve()
+        copies = [root / "sessions-fixture-writer-20261109" / (self.operation + "-donor")
+                  for root in self.roots]
+        copies[1].unlink()
+        kept = copies[0].read_bytes()
+        real_require = ROTATE.require
+        observed = []
+        def require(condition, reason):
+            if reason == "native-partial-custody-item":
+                observed.append(condition)
+                return
+            return real_require(condition, reason)
+        with mock.patch.object(ROTATE, "require", side_effect=require), \
+                mock.patch.object(self.custody, "cmd_add", return_value=2) as add, \
+                mock.patch.object(ROTATE, "native_read", wraps=ROTATE.native_read) as read:
+            self.refused("custody")
+            add.assert_not_called()
+            # The original branch re-verifies the existing member. An
+            # all-mutant instead takes the missing-item branch and refuses
+            # before that read, even though both outer calls refuse.
+            self.assertIn(copies[0], [call.args[0] for call in read.call_args_list])
+        self.assertEqual(observed, [False])
+        self.assertEqual(copies[0].read_bytes(), kept)
+        self.assertFalse(copies[1].exists())
+        self.assertEqual(self.before, self.after)
+
+    def test_guard_instrument_output_path(self):
+        def change(proof):
+            binding = proof["instruments"]["I2"]
+            wrong = self.case / "different-result.json"
+            self.put(wrong, Path(binding["record"]["path"]).read_bytes())
+            binding["record"] = self.ref(wrong)
+        result = self.refused(proof_change=change)
+        self.assertEqual(result["reason"], "native-instrument-output-path")
+
+    def test_guard_instrument_ref_type(self):
+        def change(proof):
+            proof["instruments"]["I2"]["packet"] = []
+        result = self.refused(proof_change=change)
+        self.assertEqual(result["reason"], "native-instrument-evidence-home")
+
+    def test_guard_instrument_ref_home(self):
+        def change(proof):
+            binding = proof["instruments"]["I2"]
+            wrong = self.base / "outside-packet.json"
+            self.put(wrong, Path(binding["packet"]["path"]).read_bytes())
+            binding["packet"] = self.ref(wrong)
+        result = self.refused(proof_change=change)
+        self.assertEqual(result["reason"], "native-instrument-evidence-home")
+
+
+    def guard_native_body(self, which, change, reason):
+        path = self.destination if which == "destination" else self.candidate_path
+        def edit(p):
+            rows = [json.loads(line) for line in path.read_bytes().splitlines()]
+            change(rows)
+            self.put_rows(path, rows)
+            p[which]["sha256"] = self.sha(path)
+            # Bind fresh snapshots after an intentional fixture change; do not
+            # let quiescence hide the body-shape predicate under test.
+            proof = json.loads(self.proof_path.read_bytes())
+            for observation in proof["quiescence"]:
+                observation["destination"] = self.snapshot(self.destination)
+            self.put(self.proof_path, proof)
+        self.guard_plan(edit, reason)
+
+    def test_guard_pristine_dialogue_sequence(self):
+        self.guard_native_body("destination", lambda rows: rows.append(
+            self.row("assistant", 13, 12, "Extra invented reply.", sid=DESTINATION)),
+            "native-pristine-first-exchange")
+
+    def test_guard_pristine_user_prompt(self):
+        self.guard_native_body("destination", lambda rows: rows[1]["message"].__setitem__("content", "Other prompt."),
+                               "native-pristine-inert-exchange")
+
+    def test_guard_pristine_assistant_reply(self):
+        self.guard_native_body("destination", lambda rows: rows[2]["message"].__setitem__("content", "Other reply."),
+                               "native-pristine-inert-exchange")
+
+    def test_guard_pristine_envelope(self):
+        self.guard_native_body("destination", lambda rows: rows.append({"type": "unknown", "sessionId": DESTINATION}),
+                               "native-pristine-unknown-envelope")
+
+    def test_guard_candidate_boundary_type(self):
+        self.guard_native_body("candidate", lambda rows: rows[0].__setitem__("type", "user"),
+                               "native-candidate-boundary")
+
+    def test_guard_candidate_boundary_subtype(self):
+        self.guard_native_body("candidate", lambda rows: rows[0].__setitem__("subtype", "unknown"),
+                               "native-candidate-boundary")
+
+    def guard_native_gates(self, change, reason):
+        def edit(p):
+            gates = copy.deepcopy(self.gates)
+            change(gates)
+            self.put(self.gates_path, gates)
+            for item in p["artifacts"]:
+                if item["name"] == "gates":
+                    item["sha256"] = self.sha(self.gates_path)
+        self.guard_plan(edit, reason)
+
+    def test_guard_preparation_schema(self):
+        self.guard_native_gates(lambda g: g.__setitem__("schema", "wrong"), "native-preparation-gates-required")
+
+    def test_guard_preparation_phase(self):
+        self.guard_native_gates(lambda g: g.__setitem__("phase", 4), "native-preparation-gates-required")
+
+    def test_guard_preparation_object_bindings(self):
+        for field in ("donor_sha256", "pristine_sha256", "candidate_sha256"):
+            with self.subTest(field=field):
+                self.guard_native_gates(lambda g, f=field: g.__setitem__(f, "0" * 64),
+                                        "native-preparation-binding")
+
+
+    # Insertion-only methods for NativeDisposableTests. No setUp override.
+    # Author proposals: not executed by the worker.
+
+    def survivor_expect_exact_refusal(self, reason, action="disposable-exercise", **kwargs):
+        before_store = self.inventory(self.store)
+        before_project = self.inventory(self.project)
+        before_custody = [self.inventory(root) for root in self.roots]
+        before_state = self.state_path.read_bytes() if self.state_path.exists() else None
+        preimages = self.state_home / "preimages.json"
+        before_preimages = preimages.read_bytes() if preimages.exists() else None
+        rc, result = self.invoke(action, **kwargs)
+        self.assertEqual(rc, 2, result)
+        self.assertEqual(result["status"], "refused", result)
+        self.assertEqual(result["reason"], reason, result)
+        self.assertEqual(self.inventory(self.store), before_store)
+        self.assertEqual(self.inventory(self.project), before_project)
+        self.assertEqual([self.inventory(root) for root in self.roots], before_custody)
+        self.assertEqual(self.state_path.read_bytes() if self.state_path.exists() else None, before_state)
+        self.assertEqual(preimages.read_bytes() if preimages.exists() else None, before_preimages)
+        self.assertIs(result["operator_accepted"], False)
+        return result
+
+    def survivor_bind_registry(self):
+        self.put(self.registry_path, self.registry)
+        self.plan["registry"] = self.ref(self.registry_path)
+        self.put(self.plan_path, self.plan)
+
+    def survivor_bind_gates(self, checks):
+        gates = copy.deepcopy(self.gates)
+        gates["gates"] = checks
+        self.put(self.gates_path, gates)
+        next(item for item in self.plan["artifacts"] if item["name"] == "gates").update(self.ref(self.gates_path))
+        self.put(self.plan_path, self.plan)
+
+    def survivor_replace_observer_record(self, proof, name, value, index=None):
+        binding = proof["instruments"][name]
+        if index is not None:
+            binding = binding[index]
+        path = Path(binding["record"]["path"])
+        self.put(path, value)
+        binding["record"] = self.ref(path)
+        if name == "I1":
+            stamp = dt.datetime.fromisoformat(proof["quiescence"][index]["at"]).timestamp()
+            os.utime(path, (stamp, stamp))
+
+    def survivor_bind_review_auditor(self, proof, auditor):
+        audit = proof["custody_audit"]
+        audit["auditor"] = auditor
+        path = Path(audit["review"]["path"])
+        review = json.loads(path.read_bytes())
+        review["auditor"] = auditor
+        self.put(path, review)
+        audit["review"] = self.ref(path)
+
+    def test_survivor_native_0037_missing_go_has_the_early_boundary_reason(self):
+        def omit(args):
+            index = args.index("--native-go")
+            del args[index:index + 2]
+        self.survivor_expect_exact_refusal("native-named-go-required", edit_args=omit)
+        self.assertFalse(self.state_home.exists())
+        self.assertEqual(self.before, self.after)
+
+    def test_survivor_native_0038_missing_go_digest_is_checked_separately(self):
+        def omit(args):
+            index = args.index("--native-go-sha256")
+            del args[index:index + 2]
+        self.survivor_expect_exact_refusal("native-named-go-required", edit_args=omit)
+        self.assertFalse(self.state_home.exists())
+        self.assertEqual(self.before, self.after)
+
+    def test_survivor_native_0047_version_type_is_not_only_its_length(self):
+        self.plan["provider_version"] = 7
+        self.put(self.plan_path, self.plan)
+        self.survivor_expect_exact_refusal("native-provider-version")
+
+    def test_survivor_native_0067_duplicate_key_with_distinct_binding(self):
+        duplicate = copy.deepcopy(self.registry["identities"][1])
+        duplicate["session_id"] = "0000f688-0000-4000-8000-00000000f688"
+        self.registry["identities"].append(duplicate)
+        self.survivor_bind_registry()
+        self.survivor_expect_exact_refusal("native-ambiguous-registry")
+
+    def test_survivor_native_0068_duplicate_binding_with_distinct_key(self):
+        duplicate = copy.deepcopy(self.registry["identities"][1])
+        duplicate["key"] = "fixture-second-auditor"
+        self.registry["identities"].append(duplicate)
+        self.survivor_bind_registry()
+        self.survivor_expect_exact_refusal("native-ambiguous-registry")
+
+    def test_survivor_native_0081_extra_container_is_not_a_missing_donor(self):
+        sid = "0000f699-0000-4000-8000-00000000f699"
+        self.put_rows(self.store / (sid + ".jsonl"), [self.row("user", 199, None, "Invented third body.", sid=sid)])
+        self.survivor_expect_exact_refusal("native-exact-two-containers-required")
+        self.assertFalse(self.state_home.exists())
+
+    def test_survivor_native_0104_changed_opaque_artifact_reaches_its_digest_guard(self):
+        self.put(self.capsule, self.capsule.read_bytes() + b"Invented changed artifact.\n")
+        self.survivor_expect_exact_refusal("native-reference-hash")
+        self.assertFalse(self.state_home.exists())
+
+    def test_survivor_native_0110_binding_has_no_extra_valid_reference(self):
+        def extra(proof):
+            binding = proof["instruments"]["I2"]
+            binding["extra"] = copy.deepcopy(binding["record"])
+        self.survivor_expect_exact_refusal("native-instrument-reference-required", proof_change=extra)
+
+    def test_survivor_native_0118_two_item_mapping_is_not_an_observation_list(self):
+        def mapping(proof):
+            left, right = proof["quiescence"]
+            proof["quiescence"] = {"left": left, "right": right}
+        self.survivor_expect_exact_refusal("native-two-quiescence-readings", proof_change=mapping)
+
+    def test_survivor_native_0119_third_observation_cannot_be_silently_zip_truncated(self):
+        def third(proof):
+            proof["quiescence"].append(copy.deepcopy(proof["quiescence"][-1]))
+        self.survivor_expect_exact_refusal("native-two-quiescence-readings", proof_change=third)
+
+    def test_survivor_native_0121_two_item_mapping_is_not_an_i1_list(self):
+        def mapping(proof):
+            left, right = proof["instruments"]["I1"]
+            proof["instruments"]["I1"] = {"left": left, "right": right}
+        self.survivor_expect_exact_refusal("native-two-i1-records-required", proof_change=mapping)
+
+    def test_survivor_native_0122_third_i1_binding_cannot_be_silently_zip_truncated(self):
+        def third(proof):
+            bindings = proof["instruments"]["I1"]
+            bindings.append(copy.deepcopy(bindings[-1]))
+        self.survivor_expect_exact_refusal("native-two-i1-records-required", proof_change=third)
+
+    def test_survivor_native_0128_false_is_not_an_integer_process_count(self):
+        for field in ("holders", "session_records", "argument_holders", "locks", "unreadable", "foreign_processes"):
+            with self.subTest(field=field):
+                self.survivor_expect_exact_refusal(
+                    "native-quiescence-" + field.replace("_", "-"),
+                    proof_change=lambda p, key=field: p["quiescence"][0].__setitem__(key, False))
+
+    def test_survivor_native_0132_foreign_boolean_has_its_own_type_guard(self):
+        def foreign_false(proof):
+            self.survivor_replace_observer_record(
+                proof, "I1", {"held": [], "own_unreadable": 0, "foreign_unreadable": False}, index=0)
+        self.survivor_expect_exact_refusal("native-i1-count-type", proof_change=foreign_false)
+
+    def test_survivor_native_0163_gate_names_in_a_list_are_not_a_gate_mapping(self):
+        self.survivor_bind_gates(list(self.gates["gates"]))
+        self.survivor_expect_exact_refusal("native-preparation-incomplete")
+
+    def test_survivor_native_0164_true_gates_cannot_omit_one_required_name(self):
+        checks = dict(self.gates["gates"])
+        del checks["media"]
+        self.survivor_bind_gates(checks)
+        self.survivor_expect_exact_refusal("native-preparation-incomplete")
+
+    def test_survivor_native_0185_null_audit_has_the_typed_contract_reason(self):
+        self.preserve()
+        self.survivor_expect_exact_refusal("native-independent-custody-audit-required", "install",
+                                          proof_change=lambda p: p.__setitem__("custody_audit", None))
+
+    def test_survivor_native_0186_outer_audit_manifest_must_match(self):
+        self.preserve()
+        self.survivor_expect_exact_refusal("native-independent-custody-audit-required", "install",
+            proof_change=lambda p: p["custody_audit"].__setitem__("manifest_sha256", "0" * 64))
+
+    def test_survivor_native_0187_consistent_review_cannot_name_an_unregistered_auditor(self):
+        self.preserve()
+        self.survivor_expect_exact_refusal("native-independent-custody-audit-required", "install",
+            proof_change=lambda p: self.survivor_bind_review_auditor(p, "fixture-unregistered-auditor"))
+
+    def test_survivor_native_0188_registered_auditor_cannot_review_own_write(self):
+        self.registry["identities"][0]["role"] = "Auditor"
+        self.survivor_bind_registry()
+        self.preserve()
+        self.survivor_expect_exact_refusal("native-independent-custody-audit-required", "install",
+            proof_change=lambda p: self.survivor_bind_review_auditor(p, WRITER))
+
+    def test_survivor_native_0189_outer_hold_verdict_is_not_a_pass(self):
+        self.preserve()
+        self.survivor_expect_exact_refusal("native-independent-custody-audit-required", "install",
+            proof_change=lambda p: p["custody_audit"].__setitem__("verdict", "HOLD"))
+
+    def test_survivor_native_0231_valid_append_on_replaced_inode_is_not_owned(self):
+        self.preserve()
+        self.install()
+        appended = self.append_reply()
+        replacement = self.case / "replacement-destination.jsonl"
+        self.put(replacement, appended)
+        os.replace(replacement, self.destination)
+        self.survivor_expect_exact_refusal("native-rollback-unknown-destination", "rollback",
+            proof_change=lambda p: p.__setitem__("appended_sha256", hashlib.sha256(appended).hexdigest()))
+
+    def test_survivor_native_0232_matching_append_digest_does_not_authorize_a_changed_prefix(self):
+        self.preserve()
+        self.install()
+        appended = self.append_reply()
+        changed = b"[" + appended[1:]
+        self.put(self.destination, changed)
+        self.survivor_expect_exact_refusal("native-rollback-unknown-destination", "rollback",
+            proof_change=lambda p: p.__setitem__("appended_sha256", hashlib.sha256(changed).hexdigest()))
+
+    def test_survivor_native_0238_null_i5_has_the_typed_contract_reason(self):
+        self.preserve()
+        self.install()
+        self.stop("rollback", "rollback-restored")
+        # The strict JSON reader already rejects a top-level null. Isolate the
+        # downstream defensive contract with an explicit decoder fault; this
+        # is not an unsafe JSON-admission claim.
+        original = ROTATE.NativeOperation.instrument
+        def decoder_fault(operation, name, binding=None):
+            if name == "I5":
+                return None, binding
+            return original(operation, name, binding)
+        with mock.patch.object(ROTATE.NativeOperation, "instrument", new=decoder_fault):
+            self.survivor_expect_exact_refusal("native-i5-inverse-not-clear", "rollback", reuse_go=True)
+
+    def test_survivor_native_0239_i5_with_an_extra_field_is_not_the_exact_contract(self):
+        self.preserve()
+        self.install()
+        self.stop("rollback", "rollback-restored")
+        self.survivor_expect_exact_refusal("native-i5-inverse-not-clear", "rollback", reuse_go=True,
+            proof_change=lambda p: self.survivor_replace_observer_record(
+                p, "I5", {"differences": [], "notes": [], "unexpected": True}))
+
+    def test_survivor_native_0241_i5_notes_need_their_own_list_type(self):
+        self.preserve()
+        self.install()
+        self.stop("rollback", "rollback-restored")
+        self.survivor_expect_exact_refusal("native-i5-inverse-not-clear", "rollback", reuse_go=True,
+            proof_change=lambda p: self.survivor_replace_observer_record(p, "I5", {"differences": [], "notes": {}}))
+
+
+    # Insert these methods into NativeDisposableTests. No new class or setUp.
+    # Author-side proposals only: this worker has not executed these methods.
+
+    def _lifecycle_expect_reason(self, reason, action="disposable-exercise", **kwargs):
+        before = self.inventory(self.store)
+        result = self.refused(action, **kwargs)
+        self.assertEqual(result["reason"], reason, result)
+        self.assertEqual(self.inventory(self.store), before)
+        return result
+
+    def _lifecycle_refresh_fixture_refs(self, *, gates_bindings=True):
+        # Rebind only invented fixture bytes; keep the negative under test intact.
+        for name, path in (("donor", self.donor), ("destination", self.destination)):
+            self.plan[name].update(self.ref(path))
+        self.plan["candidate"] = self.ref(self.candidate_path)
+        if gates_bindings:
+            self.gates.update(donor_sha256=self.sha(self.donor),
+                              pristine_sha256=self.sha(self.destination),
+                              candidate_sha256=self.sha(self.candidate_path))
+        self.put(self.gates_path, self.gates)
+        for item in self.plan["artifacts"]:
+            item.update(self.ref(Path(item["path"])))
+        self.put(self.plan_path, self.plan)
+
+    def test_lifecycle_install_go_targets_are_independently_bound(self):
+        # native-0179, 0180, 0181, 0182.
+        self.preserve()
+        for field in ("pristine_sha256", "candidate_sha256", "custody_manifest_sha256", "inverse"):
+            with self.subTest(field=field):
+                self._lifecycle_expect_reason("native-install-go-targets", "install",
+                    go_change=lambda go, field=field: go.__setitem__(field, "wrong"))
+
+    def test_lifecycle_install_go_must_postdate_custody(self):
+        # native-0183. Equal timestamps are not post-custody authority.
+        self.preserve()
+        state = json.loads(self.state_path.read_bytes())
+        self._lifecycle_expect_reason("native-install-go-before-custody", "install",
+            go_change=lambda go: go.__setitem__("at", state["custody_at"]))
+
+    def test_lifecycle_audit_review_must_remain_inside_the_case(self):
+        # native-0190. The review remains valid, private and hash-bound.
+        self.preserve()
+        def outside(proof):
+            review = proof["custody_audit"]["review"]
+            path = self.base / "outside-review.json"
+            self.put(path, Path(review["path"]).read_bytes())
+            proof["custody_audit"]["review"] = self.ref(path)
+        self._lifecycle_expect_reason("native-custody-audit-evidence-home", "install",
+                                      proof_change=outside)
+
+    def test_lifecycle_audit_review_fields_are_bound(self):
+        # native-0191: the report inventories this all(...) as one atomic row.
+        self.preserve()
+        for field in ("schema", "operation", "plan_sha256", "manifest_sha256", "auditor", "verdict"):
+            with self.subTest(field=field):
+                def alter(proof, field=field):
+                    reference = proof["custody_audit"]["review"]
+                    path = Path(reference["path"])
+                    review = json.loads(path.read_bytes())
+                    review[field] = "wrong"
+                    self.put(path, review)
+                    proof["custody_audit"]["review"] = self.ref(path)
+                self._lifecycle_expect_reason("native-custody-audit-review-binding", "install",
+                                              proof_change=alter)
+
+    def test_lifecycle_install_resume_rejects_a_new_go_digest(self):
+        # native-0195. The fresh invocation intentionally does not reuse the go.
+        self.preserve()
+        self.stop("install", "install-prepared")
+        self._lifecycle_expect_reason("native-install-resume-go-changed", "install")
+
+    def test_lifecycle_install_rejects_changed_recorded_stage(self):
+        # native-0199. The changed stage is preserved, never silently rebuilt.
+        self.preserve()
+        self.stop("install", "install-prepared")
+        self.put(self.stage, b"Invented changed staged bytes.\n")
+        self._lifecycle_expect_reason("native-stage-changed", "install", reuse_go=True)
+
+    def test_lifecycle_export_rejects_changed_recorded_stage(self):
+        # native-0251. Export must not turn a changed stage into a new baseline.
+        self.preserve()
+        self.stop("install", "install-prepared")
+        self.put(self.stage, b"Invented changed staged bytes.\n")
+        self._lifecycle_expect_reason("native-stage-changed", "install", reuse_go=True,
+            edit_args=lambda args: args.append("--native-export-instruments"))
+
+    def test_lifecycle_checkpoint_envelope_fields_are_checked(self):
+        # native-0246: this all(...) is one atomic report row.
+        self.stop("disposable-exercise", "admitted")
+        original = json.loads(self.state_path.read_bytes())
+        for field in ("schema", "operation", "plan_sha256"):
+            with self.subTest(field=field):
+                changed = copy.deepcopy(original)
+                changed[field] = "wrong"
+                self.put(self.state_path, changed)
+                self._lifecycle_expect_reason("native-checkpoint-binding", "custody")
+        self.put(self.state_path, original)
+
+    def test_lifecycle_checkpoint_preimage_digest_is_checked(self):
+        # native-0247. The actual preimage file is kept intact.
+        self.stop("disposable-exercise", "admitted")
+        state = json.loads(self.state_path.read_bytes())
+        state["preimages_sha256"] = "0" * 64
+        self.put(self.state_path, state)
+        self._lifecycle_expect_reason("native-preimages-changed", "custody")
+
+    def test_lifecycle_nonadmission_action_cannot_create_a_checkpoint(self):
+        # native-0248. No checkpoint or preimages exist yet.
+        self._lifecycle_expect_reason("native-admission-required", "custody")
+
+    def test_lifecycle_orphan_preimages_are_not_replaced(self):
+        # native-0249. A failed admission's retained preimages are not absence.
+        path = self.state_home / "preimages.json"
+        self.put(path, {"invented": "retained interrupted admission"})
+        before = path.read_bytes()
+        self._lifecycle_expect_reason("native-admission-required")
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_lifecycle_existing_empty_state_home_cannot_export_as_admitted(self):
+        # native-0250. Existing directory, but no state or preimages file.
+        self.mkdir(self.state_home)
+        self._lifecycle_expect_reason("native-admission-required",
+            edit_args=lambda args: args.append("--native-export-instruments"))
+
+    def test_lifecycle_initial_export_requires_admission_action(self):
+        # native-0242. Constructor inputs and the synthetic proof are otherwise valid.
+        self._lifecycle_expect_reason("native-initial-export-action", "custody",
+            edit_args=lambda args: args.append("--native-export-instruments"))
+
+
+    # Append to NativeDisposableTests after the selected earlier lifecycle methods.
+    # Requires the existing _lifecycle_expect_reason helper. No subclass/setUp.
+    # These are unexecuted author-side proposals, not mutation results.
+
+    def test_remaining_custody_member_bytes_are_reverified(self):
+        # native-0173. Both manifests continue to agree; only copied bytes drift.
+        self.preserve()
+        alias = self.operation + "-donor"
+        for root in self.roots:
+            copied = root / "sessions-fixture-writer-20261109" / alias
+            self.put(copied, copied.read_bytes() + b"Invented custody drift.\n")
+        self._lifecycle_expect_reason("native-custody-member-hash", "custody")
+
+    def test_remaining_custody_manifest_binds_the_actual_member(self):
+        # native-0174. Alter the same valid digest field on both open manifests.
+        # Discover the manifest by its exact member row, not an assumed filename.
+        self.preserve()
+        alias = self.operation + "-donor"
+        expected = self.sha(self.donor)
+        for root in self.roots:
+            batch = root / "sessions-fixture-writer-20261109"
+            changed = []
+            for path in batch.iterdir():
+                if not path.is_file():
+                    continue
+                raw = path.read_bytes()
+                lines = raw.splitlines(keepends=True)
+                matches = [i for i, line in enumerate(lines)
+                           if line.decode("ascii").rstrip("\r\n").split("  ")[:2] == [expected, alias]]
+                if matches:
+                    self.assertEqual(len(matches), 1)
+                    index = matches[0]
+                    lines[index] = b"0" * 64 + lines[index][64:]
+                    self.put(path, b"".join(lines))
+                    changed.append(path)
+            self.assertEqual(len(changed), 1)
+            self.assertEqual(self.sha(batch / alias), expected)
+        self._lifecycle_expect_reason("native-custody-member-manifest", "custody")
+
+    def test_remaining_load_rejects_a_replacement_inode(self):
+        # native-0207. Valid appended bytes are retained on a different inode.
+        self.preserve()
+        self.install()
+        raw = self.append_reply()
+        replacement = self.store / "invented-replacement.fixture"
+        self.put(replacement, raw)
+        os.replace(replacement, self.destination)
+        self._lifecycle_expect_reason("native-load-inode-changed", "load",
+                                      proof_change=self.gauge_proof)
+
+    def test_remaining_load_requires_bytes_beyond_the_install(self):
+        # native-0208. The installed body and its inode are otherwise untouched.
+        self.preserve()
+        self.install()
+        self._lifecycle_expect_reason("native-load-prefix-changed", "load")
+
+    def test_remaining_load_requires_the_exact_installed_prefix(self):
+        # native-0209. Keep JSON, byte length, inode and appended chain valid.
+        self.preserve()
+        self.install()
+        raw = self.append_reply()
+        marker = b"Invented capsule only."
+        index = raw.index(marker)
+        changed = raw[:index] + b"X" + raw[index + 1:]
+        self.assertEqual(len(changed), len(raw))
+        self.put(self.destination, changed)
+        self._lifecycle_expect_reason("native-load-prefix-changed", "load",
+                                      proof_change=self.gauge_proof)
+
+    def test_remaining_load_validates_gauge_output_before_acceptance(self):
+        # native-0211, 0212, 0213. Only the reader's returned data is modeled;
+        # NativeOperation.load and all require calls remain real and unpatched.
+        self.preserve()
+        self.install()
+        self.append_reply()
+        gauge = ROTATE.sibling("gauge")
+        original = gauge.read_claude(self.destination)
+        real_sibling = ROTATE.sibling
+        for field, value in (("tokens", True), ("tokens", 0), ("compaction_after", True)):
+            with self.subTest(field=field, value=value):
+                reading = copy.deepcopy(original)
+                reading[field] = value
+                # sibling() creates a new module each time. Bind this exact
+                # synthetic reader into the path the operation really calls.
+                with mock.patch.object(ROTATE, "sibling", side_effect=lambda name:
+                        gauge if name == "gauge" else real_sibling(name)), \
+                        mock.patch.object(gauge, "read_claude", return_value=reading):
+                    self._lifecycle_expect_reason("native-load-first-gauge-unproved", "load",
+                                                  proof_change=self.gauge_proof)
+
+    def test_remaining_load_requires_a_gauge_proof_object(self):
+        # native-0214. Real synthetic append and gauge; wrong supplied shape only.
+        self.preserve()
+        self.install()
+        self.append_reply()
+        self._lifecycle_expect_reason("native-load-gauge-mismatch", "load",
+            proof_change=lambda proof: proof.__setitem__("first_gauge", []))
+
+    def test_remaining_load_binds_each_supplied_gauge_field(self):
+        # native-0215 is one atomic all(...) inventory row.
+        self.preserve()
+        self.install()
+        self.append_reply()
+        for field in ("tokens", "model", "reading_at", "call"):
+            with self.subTest(field=field):
+                def mismatch(proof, field=field):
+                    self.gauge_proof(proof)
+                    proof["first_gauge"][field] = "invented-mismatch"
+                self._lifecycle_expect_reason("native-load-gauge-mismatch", "load",
+                                              proof_change=mismatch)
+
+    def test_remaining_pending_state_blocks_before_the_action(self):
+        # native-0244. A forwarding spy retains every real preserve guard.
+        # It distinguishes early refusal from the same reason in save().
+        self.stop("disposable-exercise", "admitted")
+        pending = self.state_home / ".state.NEW"
+        self.put(pending, b"Invented interrupted state write.\n")
+        old_state = self.state_path.read_bytes()
+        real_preserve = ROTATE.NativeOperation.preserve
+        with mock.patch.object(ROTATE.NativeOperation, "preserve", autospec=True,
+                               side_effect=real_preserve) as action:
+            self._lifecycle_expect_reason("native-pending-state-write", "custody")
+            action.assert_not_called()
+        self.assertEqual(self.state_path.read_bytes(), old_state)
+        self.assertEqual(pending.read_bytes(), b"Invented interrupted state write.\n")
+
+    def test_remaining_pending_packets_block_before_the_action(self):
+        # native-0245. Without the early gate, publication could refuse too late.
+        self.stop("disposable-exercise", "admitted")
+        pending = self.state_home / ".packets.NEW"
+        self.put(pending, b"Invented interrupted packet export.\n")
+        old_state = self.state_path.read_bytes()
+        real_preserve = ROTATE.NativeOperation.preserve
+        with mock.patch.object(ROTATE.NativeOperation, "preserve", autospec=True,
+                               side_effect=real_preserve) as action:
+            self._lifecycle_expect_reason("native-pending-packet-export", "custody")
+            action.assert_not_called()
+        self.assertEqual(self.state_path.read_bytes(), old_state)
+        self.assertEqual(pending.read_bytes(), b"Invented interrupted packet export.\n")
+
+    def test_remaining_rollback_go_names_the_current_destination(self):
+        # native-0227. Refusal precedes any restore or append-custody act.
+        self.preserve()
+        self.install()
+        self._lifecycle_expect_reason("native-rollback-go-postimage", "rollback",
+            go_change=lambda go: go.__setitem__("destination_sha256", "0" * 64))
+
+    def test_remaining_rollback_resume_requires_the_original_go(self):
+        # native-0226. The first permitted restore is setup, not the attempted act.
+        self.preserve()
+        self.install()
+        self.stop("rollback", "rollback-restored")
+        self._lifecycle_expect_reason("native-rollback-resume-go-changed", "rollback")
+
+    def test_remaining_custody_rejects_an_installed_phase(self):
+        # native-0175. Explicit malformed checkpoint-phase fixture only.
+        self.stop("disposable-exercise", "admitted")
+        state = json.loads(self.state_path.read_bytes())
+        state["phase"] = "installed"
+        self.put(self.state_path, state)
+        self._lifecycle_expect_reason("native-custody-phase", "custody")
+
+    def test_remaining_install_requires_a_custodied_phase(self):
+        # native-0178. Supply normal-shaped go fields without inventing custody.
+        self.stop("disposable-exercise", "admitted")
+        self.custody_result = {"custody_manifest_sha256": "0" * 64}
+        self._lifecycle_expect_reason("native-install-phase", "install")
+
+    def test_remaining_load_requires_an_installed_phase(self):
+        # native-0206. Preserve real install evidence; make only its phase invalid.
+        self.preserve()
+        self.install()
+        state = json.loads(self.state_path.read_bytes())
+        state["phase"] = "admitted"
+        self.put(self.state_path, state)
+        self._lifecycle_expect_reason("native-load-phase", "load")
+
+    def test_remaining_rollback_rejects_a_merely_admitted_phase(self):
+        # native-0225. No custody was taken, so no inverse is available.
+        self.stop("disposable-exercise", "admitted")
+        self._lifecycle_expect_reason("native-rollback-phase", "rollback")
+
+
+    def test_guard_artifacts_upper_count(self):
+        self.guard_plan(lambda p: p.__setitem__("artifacts", p["artifacts"] * 22), "native-artifact-list")
+
+    def test_guard_custody_roots_upper_count(self):
+        self.guard_plan(lambda p: p.__setitem__("custody_roots", [str(self.roots[0])] * 5), "native-custody-roots")
+
+    def test_guard_quiescence_cannot_come_from_the_future(self):
+        result = self.refused(proof_change=lambda p: p["quiescence"][0].__setitem__(
+            "at", (dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=1)).isoformat()))
+        self.assertEqual(result["reason"], "native-quiescence-stale")
+
+    def test_guard_i1_record_cannot_come_from_the_future(self):
+        def change(proof):
+            future = time.time() + 60
+            os.utime(proof["instruments"]["I1"][0]["record"]["path"], (future, future))
+        result = self.refused(proof_change=change)
+        self.assertEqual(result["reason"], "native-i1-record-stale")
+
+
+    # Insert into NativeDisposableTests. Uses _lifecycle_expect_reason.
+    # Unexecuted author-side proposals; no subclass, setUp or target-guard mocks.
+
+    def test_inventory_extra_nonjsonl_store_name_blocks_readmission(self):
+        # native-0145. The exact-two JSONL admission condition remains satisfied.
+        self.stop("disposable-exercise", "admitted")
+        self.put(self.store / "invented-unrelated.txt", b"Invented extra file.\n")
+        self._lifecycle_expect_reason("native-store-listing-changed")
+
+    def test_inventory_changed_existing_store_entry_blocks_readmission(self):
+        # native-0146. Names and both JSONL bodies remain unchanged.
+        self.stop("disposable-exercise", "admitted")
+        self.put(self.store / "unrelated.bin", b"Invented changed baseline bytes.\n")
+        self._lifecycle_expect_reason("native-store-entry-changed")
+
+    def test_inventory_new_private_project_file_blocks_readmission(self):
+        # native-0147. No store object or store name changes.
+        self.stop("disposable-exercise", "admitted")
+        self.put(self.project / "invented-project.txt", b"Invented project change.\n")
+        self._lifecycle_expect_reason("native-project-listing-changed")
+
+    def test_inventory_custodied_operation_cannot_be_readmitted(self):
+        # native-0149. Real preserve setup, not a fabricated state phase.
+        self.preserve()
+        self._lifecycle_expect_reason("native-operation-already-admitted")
+
+    def test_inventory_changed_pristine_blocks_admission_repeat(self):
+        # native-0150. Fresh observations cannot replace the saved pristine.
+        self.stop("disposable-exercise", "admitted")
+        rows = copy.deepcopy(self.pristine_rows)
+        rows[2]["timestamp"] = "2026-11-09T12:00:01Z"
+        self.put_rows(self.destination, rows)
+        self._lifecycle_expect_reason("native-pristine-changed")
+
+    def test_inventory_partial_custody_member_is_not_completed_implicitly(self):
+        # native-0170. Only an owned synthetic custody copy is removed in setup.
+        self.preserve()
+        alias = self.operation + "-donor"
+        retained = self.roots[1] / "sessions-fixture-writer-20261109" / alias
+        kept = retained.read_bytes()
+        missing = self.roots[0] / "sessions-fixture-writer-20261109" / alias
+        missing.unlink()
+        self._lifecycle_expect_reason("native-partial-custody-item", "custody")
+        self.assertFalse(missing.exists())
+        self.assertEqual(retained.read_bytes(), kept)
+
+    def test_inventory_missing_custody_member_requires_explicit_add(self):
+        # native-0171. Re-verification does not recreate missing owned copies.
+        self.preserve()
+        copies = [root / "sessions-fixture-writer-20261109" / (self.operation + "-donor")
+                  for root in self.roots]
+        for path in copies:
+            path.unlink()
+        self._lifecycle_expect_reason("native-custody-item-missing", "custody")
+        for path in copies:
+            self.assertFalse(path.exists())
+
+    def test_inventory_custody_add_failure_is_not_success(self):
+        # native-0172. Model only the dependency's exit status, not any require.
+        self.stop("disposable-exercise", "admitted")
+        with mock.patch.object(self.custody, "cmd_add", return_value=2) as add:
+            self._lifecycle_expect_reason("native-custody-add-refused", "custody")
+            add.assert_called_once()
+
+    def test_inventory_changed_pristine_blocks_custody_repeat(self):
+        # native-0176. Earlier admission and preservation actually completed.
+        self.preserve()
+        rows = copy.deepcopy(self.pristine_rows)
+        rows[2]["timestamp"] = "2026-11-09T12:00:01Z"
+        self.put_rows(self.destination, rows)
+        self._lifecycle_expect_reason("native-pristine-changed", "custody")
+
+    def _inventory_expect_manifest_digest_reread(self, action):
+        # Forward every read to the real reader; observe all custody members.
+        # No snapshot, custody, digest or require predicate is replaced.
+        expected = {
+            root / "sessions-fixture-writer-20261109" / (self.operation + "-" + name)
+            for root in self.roots
+            for name in ("donor", "destination", "candidate", "preimages",
+                         *(item["name"] for item in self.plan["artifacts"]))}
+        seen = set()
+        real_read = ROTATE.native_read
+        def read(path, *args, **kwargs):
+            result = real_read(path, *args, **kwargs)
+            seen.add(Path(path))
+            return result
+        with mock.patch.object(ROTATE, "native_read", side_effect=read):
+            self._lifecycle_expect_reason("native-custody-manifest-changed", action)
+        self.assertTrue(expected <= seen, "not every required custody member was read")
+        self.assertEqual(self.destination.read_bytes(), self.pristine_bytes)
+        self.assertFalse(self.stage.exists())
+
+    def test_inventory_custody_reverification_checks_checkpoint_manifest_digest(self):
+        # native-0177. Change only the state value, not real copies or manifests.
+        self.preserve()
+        state = json.loads(self.state_path.read_bytes())
+        state["custody_manifest_sha256"] = "0" * 64
+        self.put(self.state_path, state)
+        self._inventory_expect_manifest_digest_reread("custody")
+
+    def test_inventory_install_rereads_copies_despite_matching_go_and_audit(self):
+        # native-0184. Fixture go and outer/inner audit follow the changed state
+        # digest, so no earlier authority guard can conceal the actual reread.
+        self.preserve()
+        state = json.loads(self.state_path.read_bytes())
+        state["custody_manifest_sha256"] = "0" * 64
+        self.put(self.state_path, state)
+        self.custody_result = {**self.custody_result, "custody_manifest_sha256": "0" * 64}
+        self._inventory_expect_manifest_digest_reread("install")
+
+
+    def test_guard_reinstall_rejects_an_appended_postimage(self):
+        self.preserve()
+        self.install()
+        self.append_reply()
+        self._lifecycle_expect_reason("native-installed-postimage-changed", "install", reuse_go=True)
+
+    def test_guard_after_rename_requires_the_recorded_postimage(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        self.stop("install", "install-renamed", reuse_go=True)
+        self.append_reply()
+        self._lifecycle_expect_reason("native-installed-postimage-changed", "install", reuse_go=True)
+
+    def test_guard_prepared_install_requires_the_same_pristine(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        rows = copy.deepcopy(self.pristine_rows)
+        rows[2]["timestamp"] = "2026-11-09T12:00:01Z"
+        self.put_rows(self.destination, rows)
+        self._lifecycle_expect_reason("native-install-preimage-changed", "install", reuse_go=True)
+
+    def test_guard_lost_stage_is_not_proof_of_rename(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        self.stage.unlink()
+        self._lifecycle_expect_reason("native-install-rename-witness-required", "install", reuse_go=True)
+
+    def test_guard_user_only_append_is_not_an_assistant_wake(self):
+        self.preserve()
+        self.install()
+        row = self.row("user", 101, 5, "An invented prompt without a reply.", sid=DESTINATION)
+        self.put(self.destination, self.destination.read_bytes() + json.dumps(row).encode("ascii") + b"\n")
+        self._lifecycle_expect_reason("native-load-no-assistant-append", "load")
+
+    def test_guard_rollback_keeps_a_changed_recorded_stage(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        self.put(self.stage, b"Invented unexpected staging bytes.\n")
+        self._lifecycle_expect_reason("native-rollback-unknown-stage", "rollback")
+
+    def test_guard_rollback_keeps_stage_when_pristine_has_changed(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        rows = copy.deepcopy(self.pristine_rows)
+        rows[2]["timestamp"] = "2026-11-09T12:00:01Z"
+        self.put_rows(self.destination, rows)
+        self._lifecycle_expect_reason("native-rollback-unknown-stage", "rollback")
+
+    def test_guard_rollback_append_needs_its_own_digest_evidence(self):
+        self.preserve()
+        self.install()
+        self.append_reply()
+        self._lifecycle_expect_reason("native-rollback-append-evidence-required", "rollback")
+
+    def test_guard_rollback_identical_bytes_do_not_authorize_a_replaced_inode(self):
+        self.preserve()
+        self.install()
+        replacement = self.case / "invented-identical-replacement.fixture"
+        self.put(replacement, self.destination.read_bytes())
+        os.replace(replacement, self.destination)
+        self._lifecycle_expect_reason("native-rollback-installed-identity-changed", "rollback")
+
+    def test_guard_rollback_before_install_requires_original_pristine(self):
+        self.preserve()
+        rows = copy.deepcopy(self.pristine_rows)
+        rows[2]["timestamp"] = "2026-11-09T12:00:01Z"
+        self.put_rows(self.destination, rows)
+        self._lifecycle_expect_reason("native-rollback-pristine-changed", "rollback")
+
+
+    def _guard_direct_operation(self, action="disposable-exercise", **prepare):
+        """Construct the real operation on invented inputs, without run/acts."""
+        args = ROTATE.build_parser().parse_args(self.prepare(action, **prepare))
+        real_sibling = ROTATE.sibling
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(ROTATE, "sibling", side_effect=lambda name:
+                self.mind if name == "mind" else self.custody if name == "custody" else real_sibling(name)))
+            stack.enter_context(mock.patch.object(self.mind, "git_exposed", return_value=False))
+            stack.enter_context(mock.patch.object(self.custody, "root_device",
+                side_effect=lambda p: 101 + self.roots.index(Path(p))))
+            stack.enter_context(mock.patch.object(self.custody, "disks",
+                side_effect=lambda dev: frozenset({"fixture-disk-" + str(dev)})))
+            operation = ROTATE.NativeOperation(args)
+        if self.state_path.exists():
+            operation.state = json.loads(self.state_path.read_bytes())
+            operation.preimages = json.loads((self.state_home / "preimages.json").read_bytes())
+        return operation
+
+    def test_guard_export_collision_preserves_the_old_packet(self):
+        # Pin only export entropy, not the packet equality predicate.
+        with mock.patch.object(ROTATE.os, "urandom", return_value=b"a" * 8):
+            self.stop("disposable-exercise", "awaiting-instruments",
+                      edit_args=lambda a: a.append("--native-export-instruments"))
+            index = json.loads((self.case / "instrument-packets.json").read_bytes())
+            path = Path(index["I1"][0]["path"])
+            self.put(path, b"Invented retained collision.\n")
+            self._lifecycle_expect_reason("native-instrument-export-changed",
+                edit_args=lambda a: a.append("--native-export-instruments"))
+        self.assertEqual(path.read_bytes(), b"Invented retained collision.\n")
+
+    def test_guard_export_pending_index_is_not_overwritten(self):
+        self.put(self.case / ".packets.NEW", b"Invented interrupted export.\n")
+        self._lifecycle_expect_reason("native-pending-packet-export",
+            edit_args=lambda a: a.append("--native-export-instruments"))
+        self.assertEqual((self.case / ".packets.NEW").read_bytes(), b"Invented interrupted export.\n")
+
+    def test_guard_export_rechecks_pending_index_before_replacement(self):
+        self.stop("disposable-exercise", "awaiting-instruments",
+                  edit_args=lambda a: a.append("--native-export-instruments"))
+        pending = self.case / ".packets.NEW"
+        real_exists = ROTATE.os.path.lexists
+        calls = []
+        def race(path):
+            if Path(path) == pending:
+                calls.append(path)
+                if len(calls) == 2:
+                    self.put(pending, b"Invented concurrent export.\n")
+            return real_exists(path)
+        with mock.patch.object(ROTATE.os.path, "lexists", side_effect=race):
+            self._lifecycle_expect_reason("native-pending-packet-export",
+                edit_args=lambda a: a.append("--native-export-instruments"))
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(pending.read_bytes(), b"Invented concurrent export.\n")
+
+    def test_guard_save_preserves_an_interrupted_state_file(self):
+        operation = self._guard_direct_operation()
+        self.mkdir(operation.directory)
+        operation.state = {"schema": "invented-state"}
+        path = operation.directory / ".state.NEW"
+        self.put(path, b"Invented interrupted state.\n")
+        before = self.inventory(self.base)
+        with self.assertRaisesRegex(ROTATE.Refused, "^native-pending-state-write$"):
+            operation.save()
+        self.assertEqual(self.inventory(self.base), before)
+
+    def _guard_go_ages_at_act(self, seconds):
+        operation = self._guard_direct_operation()
+        operation.go["at"] = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=seconds)).isoformat()
+        # Exercise the refresh method after admission, not the constructor's
+        # independent age check. Hash readers are observed, not bypassed.
+        before = self.inventory(self.base)
+        with mock.patch.object(operation, "root_identities") as roots, \
+                mock.patch.object(operation, "quiescence") as quiet:
+            with self.assertRaisesRegex(ROTATE.Refused, "^native-go-expired-at-act$"):
+                operation.refresh_at_act()
+            roots.assert_not_called()
+            quiet.assert_not_called()
+        self.assertEqual(self.inventory(self.base), before)
+
+    def test_guard_go_future_at_act(self):
+        self._guard_go_ages_at_act(-3600)
+
+    def test_guard_go_expired_at_act(self):
+        self._guard_go_ages_at_act(7200)
+
+    def test_guard_donor_residue_is_checked_after_row_validation(self):
+        # Typed reader fault isolates the second, independent structural
+        # residue scan; normal donor fields already fail native_rows.
+        real_rows = ROTATE.native_rows
+        def rows(raw, *args, **kwargs):
+            result = real_rows(raw, *args, **kwargs)
+            if raw == self.candidate_path.read_bytes():
+                values, ids, assistant = result
+                values = copy.deepcopy(values)
+                values[0]["invented_nested"] = {"sessionId": SID}
+                return values, ids, assistant
+            return result
+        with mock.patch.object(ROTATE, "native_rows", side_effect=rows):
+            self._lifecycle_expect_reason("native-candidate-donor-residue")
+
+    def test_guard_unknown_stage_is_rechecked_after_listing(self):
+        self.preserve()
+        real_listing = ROTATE.NativeOperation.listing
+        def race(operation, *args, **kwargs):
+            result = real_listing(operation, *args, **kwargs)
+            if operation.action == "install" and operation.state["phase"] == "custodied":
+                self.put(operation.stage, b"Invented concurrent stage.\n")
+            return result
+        with mock.patch.object(ROTATE.NativeOperation, "listing", new=race):
+            rc, result = self.invoke("install")
+        self.assertEqual(rc, 2, result)
+        self.assertEqual(result["reason"], "native-unknown-stage")
+        self.assertEqual(self.stage.read_bytes(), b"Invented concurrent stage.\n")
+        self.assertEqual(self.destination.read_bytes(), self.pristine_bytes)
+
+    def test_guard_i4_derived_binding_collision_is_not_reused(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        self.stop("install", "install-renamed", reuse_go=True)
+        state = json.loads(self.state_path.read_bytes())
+        _, ids, _ = ROTATE.native_rows(self.candidate_path.read_bytes(), DESTINATION, self.project)
+        raw = ROTATE.json_bytes({**state["installed"], "uuids": sorted(ids)})
+        path = self.case / ("i4-binding-" + hashlib.sha256(raw).hexdigest()[:16] + ".json")
+        self.put(path, b"Invented retained binding collision.\n")
+        self.survivor_expect_exact_refusal("native-i4-binding-changed", "install", reuse_go=True)
+
+    def _guard_rename_readback_fault(self, field, value, reason):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        real_current = ROTATE.NativeOperation.current
+        def fault(operation, name):
+            result = real_current(operation, name)
+            if name == "destination" and not operation.stage.exists():
+                return {**result, field: value}
+            return result
+        with mock.patch.object(ROTATE.NativeOperation, "current", new=fault):
+            rc, result = self.invoke("install", reuse_go=True)
+        self.assertEqual(rc, 2, result)
+        self.assertEqual(result["reason"], reason)
+        self.assertEqual(self.destination.read_bytes(), self.candidate_path.read_bytes())
+        self.assertEqual(json.loads(self.state_path.read_bytes())["phase"], "install-prepared")
+
+    def test_guard_rename_content_readback(self):
+        self._guard_rename_readback_fault("sha256", "0" * 64, "native-install-unknown-postimage")
+
+    def test_guard_rename_identity_readback(self):
+        self._guard_rename_readback_fault("ino", 0, "native-install-unknown-postimage")
+
+    def test_guard_candidate_digest_rechecked_after_rename(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        real_instrument = ROTATE.NativeOperation.instrument
+        def race(operation, name, binding=None):
+            result = real_instrument(operation, name, binding)
+            if name == "I3B" and not operation.stage.exists():
+                # Fault only after the post-rename I3B packet is validated;
+                # before that point its independent candidate pin refuses.
+                operation.candidate += b"Invented late memory fault.\n"
+            return result
+        with mock.patch.object(ROTATE.NativeOperation, "instrument", new=race):
+            rc, result = self.invoke("install", reuse_go=True)
+        self.assertEqual(rc, 2, result)
+        self.assertEqual(result["reason"], "native-installed-candidate-hash")
+        self.assertEqual(self.destination.read_bytes(), self.candidate_path.read_bytes())
+
+    def test_guard_rollback_stage_requires_prepared_phase(self):
+        self.preserve()
+        self.stop("install", "install-prepared")
+        state = json.loads(self.state_path.read_bytes())
+        state["phase"] = "custodied"
+        self.put(self.state_path, state)
+        self._lifecycle_expect_reason("native-rollback-unknown-stage", "rollback")
+
+    def test_guard_each_preparation_gate_rejects_truthy_nonboolean(self):
+        for field in self.gates["gates"]:
+            for value in (1, "yes", [True]):
+                with self.subTest(field=field, value=value):
+                    checks = dict(self.gates["gates"])
+                    checks[field] = value
+                    self.survivor_bind_gates(checks)
+                    self._lifecycle_expect_reason("native-preparation-incomplete")
+
+    def test_guard_destination_cannot_match_a_later_registry_row(self):
+        row = copy.deepcopy(self.registry["identities"][-1])
+        row.update(key="fixture-other", provider="codex", session_id=DESTINATION,
+                   room=str(self.base / "another-room"))
+        self.registry["identities"].append(row)
+        self.survivor_bind_registry()
+        self._lifecycle_expect_reason("native-target-is-resident")
+
+    def test_guard_absent_donor_requires_go_at_restore_seam(self):
+        self.preserve()
+        self.install()
+        operation = self._guard_direct_operation("rollback")
+        operation.state.update(phase="rollback-prepared", rollback_go_sha256=operation.go_sha,
+            rollback_initial={name: operation.current(name) for name in operation.targets},
+            restores={"donor": {}})
+        # A stale restore record is not authority. Keep every filesystem
+        # object unchanged and isolate only this defensive checkpoint seam.
+        before = self.inventory(self.store)
+        with mock.patch.object(operation, "quiescence"), \
+                mock.patch.object(operation, "custody_members"), \
+                mock.patch.object(operation, "restore_target") as restore:
+            with self.assertRaisesRegex(ROTATE.Refused, "^native-donor-restore-go-required$"):
+                operation.rollback()
+            restore.assert_called_once_with("destination")
+        self.assertEqual(self.inventory(self.store), before)
+
+    def test_guard_inverse_final_destination_is_not_assumed(self):
+        self.preserve()
+        self.install()
+        operation = self._guard_direct_operation("rollback")
+        operation.state.update(phase="rollback-prepared", rollback_go_sha256=operation.go_sha,
+            rollback_initial={name: operation.current(name) for name in operation.targets})
+        before = self.inventory(self.store)
+        # Deliberately no-op inverse models an interrupted/defective restore;
+        # the final independent inventory guard must reject it.
+        with mock.patch.object(operation, "quiescence"), \
+                mock.patch.object(operation, "custody_members"), \
+                mock.patch.object(operation, "restore_target"):
+            with self.assertRaisesRegex(ROTATE.Refused, "^native-rollback-inventory-mismatch$"):
+                operation.rollback()
+        self.assertEqual(self.inventory(self.store), before)
+
+    def test_guard_opened_lock_identity_must_match_its_path(self):
+        real_node = ROTATE.sibling("notice").private_node
+        real_sibling = ROTATE.sibling
+        notice = real_sibling("notice")
+        def fault(path, *args, **kwargs):
+            result = real_node(path, *args, **kwargs)
+            if Path(path) == self.state_home / "operation.lock":
+                fields = list(result)
+                fields[1] = 0
+                return os.stat_result(fields)
+            return result
+        def sibling(name):
+            return notice if name == "notice" else real_sibling(name)
+        with mock.patch.object(notice, "private_node", side_effect=fault), \
+                mock.patch.object(ROTATE, "sibling", side_effect=sibling):
+            self._lifecycle_expect_reason("native-operation-lock-replaced")
+        self.assertFalse(self.state_path.exists())
+
+
+    # Insert into NativeDisposableTests; reuse the parent-provided
+    # _guard_direct_operation and existing imports. Author proposal only:
+    # no worker execution, syntax check, or mutation catch is claimed.
+    # Destination rollback-prepared checkpoints are explicit unit fixtures;
+    # donor cases enter rollback-donor-pending through the real rollback path.
+    # No current/read/snapshot/digest/require result is replaced. Exact local
+    # refusals can distinguish a mutant from a later defensive refusal; that
+    # distinction alone is not evidence of unsafe admission.
+
+    @contextlib.contextmanager
+    def _restore_guard_case(self, name="destination"):
+        self.preserve()
+        self.install()
+        prepare = {}
+        if name == "donor":
+            self.donor.unlink()  # Invented donor only; verified custody remains.
+            prepare = {"go_change": lambda go: go.update(restore_absent_donor=True),
+                       "reuse_go": True}
+            self.stop("rollback", "rollback-donor-pending",
+                      go_change=prepare["go_change"])
+        real_sibling = ROTATE.sibling
+        commands = []
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(ROTATE, "sibling", side_effect=lambda key:
+                self.mind if key == "mind" else self.custody if key == "custody" else real_sibling(key)))
+            stack.enter_context(mock.patch.object(self.mind, "git_exposed", return_value=False))
+            for command in ("run", "Popen", "call", "check_call", "check_output"):
+                commands.append(stack.enter_context(mock.patch.object(
+                    subprocess, command, side_effect=AssertionError("no commands"))))
+            operation = self._guard_direct_operation("rollback", **prepare)
+            if name == "destination":
+                operation.state.update(
+                    phase="rollback-prepared", rollback_go_sha256=operation.go_sha,
+                    rollback_initial={key: operation.current(key) for key in operation.targets},
+                    restores={})
+                operation.save()
+            try:
+                yield operation
+            finally:
+                for command in commands:
+                    command.assert_not_called()
+
+    def _restore_guard_tree(self):
+        # Compare exact bytes, links, inode identity, ownership, permissions,
+        # link count, size and modification/change times, including directories.
+        # Access times are excluded because real reads can update them.
+        result = {}
+        for path in (self.base, *sorted(self.base.rglob("*"))):
+            node = path.lstat()
+            payload = (os.readlink(path) if stat.S_ISLNK(node.st_mode) else
+                       path.read_bytes() if stat.S_ISREG(node.st_mode) else None)
+            result[str(path.relative_to(self.base))] = (
+                node.st_dev, node.st_ino, node.st_mode, node.st_uid, node.st_gid,
+                node.st_nlink, node.st_size, node.st_mtime_ns, node.st_ctime_ns, payload)
+        return result
+
+    def _restore_guard_stage(self, operation, name="destination"):
+        # Explicit crash-resume fixture, persisted by the real checkpoint
+        # writer. The stage and custody bytes are real, not snapshot stand-ins.
+        path = operation.targets[name]
+        stage = path.with_name(path.name + ".NEW")
+        self.assertFalse(os.path.lexists(stage))
+        original = operation.preimages[name]
+        raw, _ = ROTATE.native_read(
+            operation.roots[0] / operation.batch / (operation.operation + "-" + name))
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), original["sha256"])
+        operation.write(stage, raw, (original["uid"], original["gid"]))
+        operation.state["restores"][name] = {"staged": ROTATE.native_snapshot(stage)}
+        operation.save()
+        return stage
+
+    def _restore_guard_refusal(self, operation, reason, name="destination"):
+        before_tree = self._restore_guard_tree()
+        before_state = copy.deepcopy(operation.state)
+        with mock.patch.object(operation, "write", wraps=operation.write) as write, \
+                mock.patch.object(operation, "save", wraps=operation.save) as save, \
+                mock.patch.object(operation, "refresh_at_act", wraps=operation.refresh_at_act) as refresh:
+            with self.assertRaises(ROTATE.Refused) as caught:
+                operation.restore_target(name)
+            self.assertEqual(str(caught.exception), reason)
+            write.assert_not_called()
+            save.assert_not_called()
+            refresh.assert_not_called()
+        self.assertEqual(operation.state, before_state)
+        self.assertEqual(self._restore_guard_tree(), before_tree)
+
+    def _restore_guard_success(self, operation, name="destination"):
+        before_tree = self._restore_guard_tree()
+        expected_state = copy.deepcopy(operation.state)
+        self.assertIsNone(operation.restore_target(name))
+        path = operation.targets[name]
+        stage = path.with_name(path.name + ".NEW")
+        self.assertFalse(os.path.lexists(stage))
+        restored = ROTATE.native_snapshot(path)
+        record = operation.state["restores"][name]
+        for field in ("type", "size", "sha256", "mode", "uid", "gid", "nlink"):
+            self.assertEqual(restored[field], operation.preimages[name][field], field)
+        self.assertEqual((restored["dev"], restored["ino"]),
+                         (record["staged"]["dev"], record["staged"]["ino"]))
+        self.assertEqual(record["installed"], restored)
+        # Both controls start with a saved stage; only its installed field
+        # may be added, in memory and in the real checkpoint on disk.
+        expected_state["restores"][name]["installed"] = restored
+        self.assertEqual(operation.state, expected_state)
+        self.assertEqual(json.loads(operation.state_path.read_bytes()), expected_state)
+        allowed = {str(p.relative_to(self.base)) for p in (
+            path, stage, operation.store, operation.directory, operation.state_path)}
+        after_tree = self._restore_guard_tree()
+        self.assertEqual({k: v for k, v in before_tree.items() if k not in allowed},
+                         {k: v for k, v in after_tree.items() if k not in allowed})
+
+    def test_restore_guard_native_0217_initial_target_changed(self):
+        with self._restore_guard_case() as operation:
+            self.put(self.destination, b"Invented concurrent destination bytes.\n")
+            self.assertNotEqual(operation.current("destination"),
+                                operation.state["rollback_initial"]["destination"])
+            self._restore_guard_refusal(operation, "native-restore-preimage-changed")
+
+    def test_restore_guard_native_0218_unrecorded_stage_kinds(self):
+        with self._restore_guard_case() as operation:
+            stage = self.destination.with_name(self.destination.name + ".NEW")
+            for kind in ("file", "directory", "dangling-link"):
+                with self.subTest(kind=kind):
+                    if kind == "file":
+                        self.put(stage, b"Invented unknown staged bytes.\n")
+                    elif kind == "directory":
+                        stage.mkdir(mode=0o700)
+                    else:
+                        stage.symlink_to(self.case / "invented-missing-link-target")
+                    self.assertTrue(os.path.lexists(stage))
+                    self._restore_guard_refusal(operation, "native-restore-unknown-stage")
+                    # Remove only the object just made by this subcase.
+                    if kind == "directory":
+                        stage.rmdir()
+                    else:
+                        stage.unlink()
+
+    def test_restore_guard_native_0219_custody_bytes_changed(self):
+        with self._restore_guard_case() as operation:
+            custody = operation.roots[0] / operation.batch / (operation.operation + "-destination")
+            self.put(custody, b"Invented changed custody bytes after verification.\n")
+            self.assertNotEqual(self.sha(custody), operation.preimages["destination"]["sha256"])
+            self._restore_guard_refusal(operation, "native-restore-custody-changed")
+
+    def test_restore_guard_native_0220_completed_restore_changed(self):
+        with self._restore_guard_case() as operation:
+            # Establish the installed record with the real fresh restore,
+            # including its real authority refresh, write, rename and saves.
+            operation.restore_target("destination")
+            self.assertEqual(self.destination.read_bytes(), self.pristine_bytes)
+            self.assertIn("installed", operation.state["restores"]["destination"])
+            self.put(self.destination, self.pristine_bytes + b"Invented later change.\n")
+            self._restore_guard_refusal(operation, "native-restored-postimage-changed")
+
+    def test_restore_guard_native_0221_recorded_stage_changed(self):
+        with self._restore_guard_case() as operation:
+            stage = self._restore_guard_stage(operation)
+            recorded = operation.state["restores"]["destination"]["staged"]
+            self.put(stage, stage.read_bytes() + b"Invented staged corruption.\n")
+            actual = ROTATE.native_snapshot(stage)
+            self.assertEqual((actual["dev"], actual["ino"]), (recorded["dev"], recorded["ino"]))
+            self.assertNotEqual(actual["sha256"], recorded["sha256"])
+            self._restore_guard_refusal(operation, "native-restore-stage-changed")
+
+    def test_restore_guard_native_0222_absent_donor_reappeared(self):
+        with self._restore_guard_case("donor") as operation:
+            stage = self._restore_guard_stage(operation, "donor")
+            self.assertEqual(operation.state["rollback_initial"]["donor"], {"type": "absent"})
+            self.put(self.donor, b"Invented independently recreated donor.\n")
+            # A valid, unchanged saved stage leaves only the target clause
+            # false. Removing it may still encounter the later I1 refusal.
+            self.assertEqual(ROTATE.native_snapshot(stage),
+                             operation.state["restores"]["donor"]["staged"])
+            self._restore_guard_refusal(operation, "native-restore-target-changed", "donor")
+
+    def test_restore_guard_native_0223_same_inode_has_changed_content(self):
+        with self._restore_guard_case() as operation:
+            stage = self._restore_guard_stage(operation)
+            recorded = operation.state["restores"]["destination"]["staged"]
+            # Real rename followed by an interrupted-checkpoint resume and
+            # real in-place corruption. The inode clause stays independently true.
+            os.replace(stage, self.destination)
+            self.put(self.destination, self.destination.read_bytes() + b"Invented post-rename corruption.\n")
+            actual = ROTATE.native_snapshot(self.destination)
+            self.assertEqual((actual["dev"], actual["ino"]), (recorded["dev"], recorded["ino"]))
+            self.assertNotEqual(actual["sha256"], recorded["sha256"])
+            self._restore_guard_refusal(operation, "native-restore-unknown-postimage")
+
+    def test_restore_guard_native_0224_identical_bytes_have_another_inode(self):
+        with self._restore_guard_case() as operation:
+            stage = self._restore_guard_stage(operation)
+            recorded = operation.state["restores"]["destination"]["staged"]
+            os.replace(stage, self.destination)
+            replacement = self.case / "invented-restore-identical-replacement.fixture"
+            # Allocate while the staged inode still exists, preventing inode
+            # reuse from turning this into an accidental equality case.
+            self.put(replacement, self.destination.read_bytes())
+            os.replace(replacement, self.destination)
+            actual = ROTATE.native_snapshot(self.destination)
+            for field in ("type", "size", "sha256", "mode", "uid", "gid", "nlink"):
+                self.assertEqual(actual[field], recorded[field], field)
+            self.assertNotEqual((actual["dev"], actual["ino"]), (recorded["dev"], recorded["ino"]))
+            self._restore_guard_refusal(operation, "native-restore-unknown-postimage")
+
+    def test_restore_guard_clean_staged_resume(self):
+        with self._restore_guard_case() as operation:
+            self._restore_guard_stage(operation)
+            self._restore_guard_success(operation)
+
+    def test_restore_guard_clean_renamed_donor_resume(self):
+        with self._restore_guard_case("donor") as operation:
+            stage = self._restore_guard_stage(operation, "donor")
+            os.replace(stage, self.donor)
+            self._restore_guard_success(operation, "donor")
+
+def quantifier_overlap_case(selected, direction, position):
+    def test(self):
+        self.quantifier_overlap(selected, direction, position)
+    return test
+
+
+for selected in ("room", "project", "store"):
+    for direction in ("ancestor", "descendant"):
+        for position in (0, 1):
+            setattr(NativeDisposableTests,
+                    "test_quantifier_overlap_%s_%s_root_%d" % (selected, direction, position),
+                    quantifier_overlap_case(selected, direction, position))
+
+
+def quantifier_registered_target_case(provider, target):
+    def test(self):
+        self.quantifier_registered_target(provider, target)
+    return test
+
+
+for provider in ("claude", "codex", "copilot"):
+    for target in ("donor", "destination"):
+        setattr(NativeDisposableTests, "test_quantifier_registered_%s_%s" % (provider, target),
+                quantifier_registered_target_case(provider, target))
+
+
+def quantifier_pristine_case(kind):
+    def test(self):
+        self.quantifier_allowed_pristine_envelope(kind)
+    return test
+
+
+for kind in ("file-history-snapshot", "queue-operation"):
+    setattr(NativeDisposableTests, "test_quantifier_pristine_allowed_" + kind.replace("-", "_"),
+            quantifier_pristine_case(kind))
+
+
+class NativeReaderTests(unittest.TestCase):
+    """Synthetic filesystem and JSONL predicates; no operation or provider API.
+
+    Race fixtures change only this test's private scratch. Dependency faults
+    isolate overlapping predicates without granting access to another path.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(dir=TOOL.parents[3] / "var/tmp")
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name)
+        self.base.chmod(0o700)
+        self.project = self.base / "project"
+        self.project.mkdir(mode=0o700)
+        self.source = self.base / "closed.fixture"
+        self.write(self.source, b"invented closed bytes\n")
+        self.notice = ROTATE.sibling("notice")
+        self.errors = (ROTATE.Refused, ValueError, OSError)
+        if hasattr(self.notice, "Refused"):
+            self.errors += (self.notice.Refused,)
+        def sibling(name):
+            if name != "notice":
+                raise AssertionError("Reader tests require only the notice parser/privacy API")
+            return self.notice
+        patcher = mock.patch.object(ROTATE, "sibling", side_effect=sibling)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @staticmethod
+    def write(path, raw):
+        path.write_bytes(raw)
+        path.chmod(0o600)
+
+    @staticmethod
+    def uid(number):
+        return "0000%04x-0000-4000-8000-00000000%04x" % (number, number)
+
+    def rows(self):
+        return [
+            {"type": "user", "sessionId": SID, "cwd": str(self.project),
+             "uuid": self.uid(0xc101), "parentUuid": None,
+             "message": {"role": "user", "content": [{"type": "text", "text": "An invented question."}]}},
+            {"type": "assistant", "sessionId": SID, "cwd": str(self.project),
+             "uuid": self.uid(0xc102), "parentUuid": self.uid(0xc101),
+             "message": {"role": "assistant", "content": [{"type": "text", "text": "An invented answer."}]}}]
+
+    @staticmethod
+    def raw(rows):
+        return b"".join(json.dumps(row, sort_keys=True).encode("ascii") + b"\n" for row in rows)
+
+    def parse(self, rows, prefix_ids=()):
+        return ROTATE.native_rows(self.raw(rows), SID, self.project, prefix_ids)
+
+    def refuses(self, call, reason=None):
+        with self.assertRaises(self.errors) as caught:
+            call()
+        if reason is not None:
+            self.assertEqual(str(caught.exception), reason)
+        return caught.exception
+
+    @contextlib.contextmanager
+    def read_seam(self, read=None, closed=None):
+        fdopen = os.fdopen
+        @contextlib.contextmanager
+        def wrapped(fd, mode):
+            with fdopen(fd, mode) as handle:
+                def consume(size):
+                    return handle.read(size) if read is None else read(handle, size)
+                yield types.SimpleNamespace(fileno=handle.fileno, read=consume)
+            if closed is not None:
+                closed()
+        with mock.patch.object(ROTATE.os, "fdopen", new=wrapped):
+            yield
+
+    def test_path_accepts_an_existing_private_absolute_file(self):
+        self.assertEqual(ROTATE.native_path(str(self.source)), self.source)
+
+    def test_path_requires_a_string(self):
+        self.refuses(lambda: ROTATE.native_path(123), "native-path-required")
+
+    def test_path_rejects_empty_text_at_the_input_guard(self):
+        self.refuses(lambda: ROTATE.native_path(""), "native-path-required")
+
+    def test_path_rejects_nul_at_the_input_guard(self):
+        self.refuses(lambda: ROTATE.native_path(str(self.source) + "\x00"), "native-path-required")
+
+    def test_path_relative_clause_is_independent_of_resolve(self):
+        # Resolve equality is neutralized; no relative path is ever opened.
+        with mock.patch.object(Path, "resolve", autospec=True, side_effect=lambda path: path), \
+                mock.patch.object(self.notice, "parent_chain") as parents:
+            self.refuses(lambda: ROTATE.native_path("invented-relative.fixture"),
+                         "native-plain-absolute-path-required")
+        parents.assert_not_called()
+
+    def test_path_parent_component_clause_is_independent_of_resolve(self):
+        raw = str(self.project / ".." / "closed.fixture")
+        with mock.patch.object(Path, "resolve", autospec=True, side_effect=lambda path: path), \
+                mock.patch.object(self.notice, "parent_chain") as parents:
+            self.refuses(lambda: ROTATE.native_path(raw), "native-plain-absolute-path-required")
+        parents.assert_not_called()
+
+    def test_path_rejects_a_final_symlink(self):
+        link = self.base / "linked.fixture"
+        link.symlink_to(self.source)
+        self.refuses(lambda: ROTATE.native_path(str(link)), "native-plain-absolute-path-required")
+
+    def test_path_rejects_a_linked_ancestor(self):
+        link = self.base / "linked-project"
+        link.symlink_to(self.project, target_is_directory=True)
+        self.write(self.project / "child.fixture", b"Invented child.\n")
+        self.refuses(lambda: ROTATE.native_path(str(link / "child.fixture")),
+                     "native-plain-absolute-path-required")
+
+    def test_path_invokes_the_ancestor_guard_before_return(self):
+        with mock.patch.object(self.notice, "parent_chain", side_effect=ROTATE.Refused("invented-ancestor-refusal")) as parents:
+            self.refuses(lambda: ROTATE.native_path(str(self.source)), "invented-ancestor-refusal")
+        parents.assert_called_once_with(self.source.parent)
+
+    def test_read_returns_exact_private_bytes_and_preimage_stat(self):
+        expected = self.source.read_bytes()
+        before = self.source.lstat()
+        raw, node = ROTATE.native_read(self.source)
+        self.assertEqual(raw, expected)
+        self.assertEqual((node.st_dev, node.st_ino, node.st_size, node.st_mode),
+                         (before.st_dev, before.st_ino, before.st_size, before.st_mode))
+        self.assertEqual(self.source.read_bytes(), expected)
+
+    def test_read_rejects_a_missing_file(self):
+        self.refuses(lambda: ROTATE.native_read(self.base / "missing.fixture"))
+
+    def test_read_rejects_group_readable_mode(self):
+        self.source.chmod(0o640)
+        self.refuses(lambda: ROTATE.native_read(self.source))
+
+    def test_read_rejects_group_writable_mode(self):
+        self.source.chmod(0o620)
+        self.refuses(lambda: ROTATE.native_read(self.source))
+
+    def test_read_rejects_world_readable_mode(self):
+        self.source.chmod(0o604)
+        self.refuses(lambda: ROTATE.native_read(self.source))
+
+    def test_read_rejects_a_directory(self):
+        self.refuses(lambda: ROTATE.native_read(self.project))
+
+    def test_read_rejects_a_fifo_without_opening_it(self):
+        fifo = self.base / "invented.fifo"
+        os.mkfifo(fifo, 0o600)
+        with mock.patch.object(ROTATE.os, "open", side_effect=AssertionError("A FIFO must not be opened")) as opened:
+            self.refuses(lambda: ROTATE.native_read(fifo))
+        opened.assert_not_called()
+
+    def test_read_rejects_hardlinks(self):
+        os.link(self.source, self.base / "second-name.fixture")
+        self.refuses(lambda: ROTATE.native_read(self.source))
+
+    def test_read_rejects_oversized_stat_before_open(self):
+        with mock.patch.object(ROTATE.os, "open", side_effect=AssertionError("Oversized input must not be opened")) as opened:
+            self.refuses(lambda: ROTATE.native_read(self.source, limit=1), "native-file-too-large")
+        opened.assert_not_called()
+
+    def test_read_allows_the_exact_limit(self):
+        raw = self.source.read_bytes()
+        self.assertEqual(ROTATE.native_read(self.source, limit=len(raw))[0], raw)
+
+    def test_read_uses_nofollow_and_nonblock(self):
+        opened = os.open
+        with mock.patch.object(ROTATE.os, "open", wraps=opened) as observed:
+            ROTATE.native_read(self.source)
+        calls = [call for call in observed.call_args_list if Path(call.args[0]) == self.source]
+        self.assertEqual(len(calls), 1)
+        flags = calls[0].args[1]
+        self.assertTrue(flags & os.O_NOFOLLOW)
+        self.assertTrue(flags & os.O_NONBLOCK)
+        self.assertEqual(flags & os.O_ACCMODE, os.O_RDONLY)
+
+    def test_read_detects_replacement_between_stat_and_open(self):
+        replacement = self.base / "replacement.fixture"
+        self.write(replacement, self.source.read_bytes())
+        opened = os.open
+        def replace_then_open(path, flags, *args, **kwargs):
+            if Path(path) == self.source:
+                os.replace(replacement, self.source)
+            return opened(path, flags, *args, **kwargs)
+        with mock.patch.object(ROTATE.os, "open", side_effect=replace_then_open):
+            self.refuses(lambda: ROTATE.native_read(self.source), "native-open-identity-changed")
+
+    def test_read_detects_in_place_change_while_handle_is_open(self):
+        original = self.source.read_bytes()
+        def change_after_read(handle, size):
+            raw = handle.read(size)
+            self.source.write_bytes(original + b"Invented concurrent append.\n")
+            return raw
+        with self.read_seam(read=change_after_read):
+            self.refuses(lambda: ROTATE.native_read(self.source), "native-read-identity-changed")
+
+    def test_read_detects_path_replacement_after_handle_closes(self):
+        replacement = self.base / "replacement.fixture"
+        self.write(replacement, self.source.read_bytes())
+        with self.read_seam(closed=lambda: os.replace(replacement, self.source)):
+            self.refuses(lambda: ROTATE.native_read(self.source), "native-read-preimage-changed")
+
+    def test_read_checks_returned_length_independently_of_stat(self):
+        original = self.source.read_bytes()
+        with self.read_seam(read=lambda handle, size: handle.read(size) + b"!"):
+            self.refuses(lambda: ROTATE.native_read(self.source, len(original)), "native-read-preimage-changed")
+
+    def test_snapshot_file_reports_all_contract_fields(self):
+        node = self.source.lstat()
+        expected = {"type": "file", "dev": node.st_dev, "ino": node.st_ino, "size": node.st_size,
+                    "sha256": hashlib.sha256(self.source.read_bytes()).hexdigest(),
+                    "mode": 0o600, "uid": node.st_uid, "gid": node.st_gid,
+                    "mtime_ns": node.st_mtime_ns, "ctime_ns": node.st_ctime_ns, "nlink": 1}
+        self.assertEqual(ROTATE.native_snapshot(self.source), expected)
+
+    def test_snapshot_directory_has_no_content_digest(self):
+        node = self.project.lstat()
+        snap = ROTATE.native_snapshot(self.project)
+        self.assertEqual(snap["type"], "directory")
+        self.assertIsNone(snap["sha256"])
+        self.assertEqual((snap["dev"], snap["ino"], snap["mode"], snap["uid"], snap["gid"]),
+                         (node.st_dev, node.st_ino, 0o700, node.st_uid, node.st_gid))
+
+    def test_snapshot_directory_requires_private_mode(self):
+        self.project.chmod(0o750)
+        self.refuses(lambda: ROTATE.native_snapshot(self.project))
+
+    def test_snapshot_rejects_a_final_link(self):
+        link = self.base / "snapshot-link"
+        link.symlink_to(self.source)
+        self.refuses(lambda: ROTATE.native_snapshot(link))
+
+    def test_snapshot_has_its_own_type_guard_after_privacy_check(self):
+        fifo = self.base / "snapshot.fifo"
+        os.mkfifo(fifo, 0o600)
+        with mock.patch.object(self.notice, "private_node", return_value=fifo.lstat()):
+            self.refuses(lambda: ROTATE.native_snapshot(fifo), "native-inventory-type")
+
+    def test_inventory_is_an_immediate_sorted_listing(self):
+        child = self.project / "child"
+        child.mkdir(mode=0o700)
+        self.write(child / "nested.fixture", b"Invented nested bytes.\n")
+        self.write(self.project / "first.fixture", b"Invented direct bytes.\n")
+        result = ROTATE.native_inventory(self.project)
+        self.assertEqual(list(result), ["child", "first.fixture"])
+        self.assertEqual(result["child"]["type"], "directory")
+        self.assertEqual(result["first.fixture"]["sha256"],
+                         hashlib.sha256(b"Invented direct bytes.\n").hexdigest())
+        self.assertNotIn("nested.fixture", result)
+
+    def test_inventory_rejects_nonprivate_root_before_children(self):
+        self.project.chmod(0o750)
+        with mock.patch.object(ROTATE, "native_snapshot") as snapshots:
+            self.refuses(lambda: ROTATE.native_inventory(self.project))
+        snapshots.assert_not_called()
+
+    def test_inventory_rejects_child_link_before_snapshot(self):
+        link = self.project / "link"
+        link.symlink_to(self.source)
+        with mock.patch.object(ROTATE, "native_snapshot", return_value={}) as snapshots:
+            self.refuses(lambda: ROTATE.native_inventory(self.project), "native-inventory-link")
+        snapshots.assert_not_called()
+
+    def test_inventory_checks_child_file_privacy(self):
+        child = self.project / "child.fixture"
+        self.write(child, b"Invented child.\n")
+        child.chmod(0o644)
+        self.refuses(lambda: ROTATE.native_inventory(self.project))
+
+    def test_rows_accepts_typed_jsonl_and_returns_identity_set(self):
+        expected = self.rows()
+        rows, seen, assistants = self.parse(expected)
+        self.assertEqual(rows, expected)
+        self.assertEqual(seen, {self.uid(0xc101), self.uid(0xc102)})
+        self.assertEqual(assistants, 1)
+
+    def test_rows_requires_nonempty_input(self):
+        class EmptyWithIndependentTerminator(bytes):
+            def endswith(self, suffix):
+                return True
+        # Neutralize the overlapping terminator predicate at this unit seam.
+        # No malformed body reaches an operation; the next row guard remains.
+        self.refuses(lambda: ROTATE.native_rows(EmptyWithIndependentTerminator(), SID, self.project),
+                     "native-body-not-terminated")
+
+    def test_rows_requires_terminal_newline(self):
+        self.refuses(lambda: ROTATE.native_rows(self.raw(self.rows()).rstrip(b"\n"), SID, self.project),
+                     "native-body-not-terminated")
+
+    def test_rows_rejects_malformed_json(self):
+        self.refuses(lambda: ROTATE.native_rows(b"{broken\n", SID, self.project))
+
+    def test_rows_rejects_nonobject_json(self):
+        for value in (None, True, 7, "invented", []):
+            with self.subTest(value=value):
+                self.refuses(lambda value=value: ROTATE.native_rows(self.raw([value]), SID, self.project))
+
+    def test_rows_rejects_duplicate_json_keys(self):
+        raw = b'{"type":"user","type":"assistant","sessionId":"' + SID.encode("ascii") + b'"}\n'
+        self.refuses(lambda: ROTATE.native_rows(raw, SID, self.project))
+
+    def test_rows_rejects_nonfinite_json(self):
+        raw = b'{"type":"user","sessionId":"' + SID.encode("ascii") + b'","bad":NaN}\n'
+        self.refuses(lambda: ROTATE.native_rows(raw, SID, self.project))
+
+    def test_rows_enforces_upper_row_limit_before_identity_checks(self):
+        raw = b'{"type":"progress"}\n' * 65537
+        self.refuses(lambda: ROTATE.native_rows(raw, SID, self.project), "native-row-limit")
+
+    def test_rows_rejects_foreign_camel_case_session(self):
+        rows = self.rows()
+        rows[0]["sessionId"] = DESTINATION
+        self.refuses(lambda: self.parse(rows), "native-body-foreign-session")
+
+    def test_rows_rejects_foreign_snake_case_session(self):
+        rows = self.rows()
+        rows[0]["session_id"] = DESTINATION
+        self.refuses(lambda: self.parse(rows), "native-body-foreign-session")
+
+    def test_rows_requires_at_least_one_top_level_identity(self):
+        rows = self.rows()
+        for row in rows:
+            row.pop("sessionId")
+            row["message"]["content"][0]["text"] = json.dumps({"sessionId": SID})
+        self.refuses(lambda: self.parse(rows), "native-identities-or-tool-pairs")
+
+    def test_rows_rejects_foreign_project(self):
+        rows = self.rows()
+        rows[1]["cwd"] = str(self.base)
+        self.refuses(lambda: self.parse(rows), "native-body-project")
+
+    def test_rows_rejects_nontext_project(self):
+        rows = self.rows()
+        rows[1]["cwd"] = None
+        self.refuses(lambda: self.parse(rows), "native-body-project")
+
+    def test_rows_message_id_must_be_a_string(self):
+        rows = self.rows()
+        rows[0]["uuid"] = 7
+        self.refuses(lambda: self.parse(rows), "native-message-id")
+
+    def test_rows_message_id_must_not_be_empty(self):
+        rows = self.rows()
+        rows[0]["uuid"] = ""
+        self.refuses(lambda: self.parse(rows), "native-message-id")
+
+    def test_rows_message_ids_must_be_unique(self):
+        rows = self.rows()
+        rows[1]["uuid"] = rows[0]["uuid"]
+        self.refuses(lambda: self.parse(rows), "native-message-id")
+
+    def test_rows_first_parent_must_be_null(self):
+        rows = self.rows()
+        rows[0]["parentUuid"] = self.uid(0xc199)
+        self.refuses(lambda: self.parse(rows), "native-parent-chain")
+
+    def test_rows_later_parent_must_have_been_seen(self):
+        rows = self.rows()
+        rows[1]["parentUuid"] = self.uid(0xc199)
+        self.refuses(lambda: self.parse(rows), "native-parent-chain")
+
+    def test_rows_later_parent_cannot_be_null(self):
+        rows = self.rows()
+        rows[1]["parentUuid"] = None
+        self.refuses(lambda: self.parse(rows), "native-parent-chain")
+
+    def test_rows_prefix_ids_admit_a_clean_append(self):
+        rows = self.rows()[1:]
+        parsed, seen, count = self.parse(rows, (self.uid(0xc101),))
+        self.assertEqual(parsed, rows)
+        self.assertEqual(seen, {self.uid(0xc101), self.uid(0xc102)})
+        self.assertEqual(count, 1)
+
+    def test_rows_prefix_ids_forbid_reusing_an_existing_message(self):
+        rows = self.rows()[1:]
+        self.refuses(lambda: self.parse(rows, (self.uid(0xc101), self.uid(0xc102))), "native-message-id")
+
+    def test_rows_sidechain_assistant_is_not_a_clean_append_count(self):
+        rows = self.rows()
+        rows[1]["isSidechain"] = True
+        self.assertEqual(self.parse(rows)[2], 0)
+
+    def test_rows_nonassistant_does_not_increment_assistant_count(self):
+        rows = self.rows()
+        rows[1]["type"] = "progress"
+        self.assertEqual(self.parse(rows)[2], 0)
+
+    def test_rows_rejects_nondictionary_content_blocks(self):
+        for bad in (None, "invented", 7, []):
+            with self.subTest(block=bad):
+                rows = self.rows()
+                rows[0]["message"]["content"] = [bad]
+                self.refuses(lambda: self.parse(rows), "native-message-content-block")
+
+    def tool_rows(self, token="invented-tool"):
+        rows = self.rows()
+        rows[0]["type"] = rows[0]["message"]["role"] = "assistant"
+        rows[1]["type"] = rows[1]["message"]["role"] = "user"
+        rows[0]["message"]["content"] = [{"type": "tool_use", "id": token, "name": "invented", "input": {}}]
+        rows[1]["message"]["content"] = [{"type": "tool_result", "tool_use_id": token, "content": "Invented output."}]
+        return rows
+
+    def test_rows_accepts_paired_tool_headers(self):
+        rows = self.tool_rows()
+        self.assertEqual(self.parse(rows)[0], rows)
+
+    def test_rows_rejects_nontext_tool_use_id(self):
+        rows = self.tool_rows()
+        rows[0]["message"]["content"][0]["id"] = 7
+        self.refuses(lambda: self.parse(rows), "native-tool-use")
+
+    def test_rows_rejects_empty_tool_use_id_even_if_paired(self):
+        self.refuses(lambda: self.parse(self.tool_rows("")), "native-tool-use")
+
+    def test_rows_rejects_duplicate_pending_tool_use(self):
+        rows = self.tool_rows()
+        rows[0]["message"]["content"].append(copy.deepcopy(rows[0]["message"]["content"][0]))
+        self.refuses(lambda: self.parse(rows), "native-tool-use")
+
+    def test_rows_rejects_result_without_prior_tool_use(self):
+        rows = self.rows()
+        rows[0]["message"]["content"] = [{"type": "tool_result", "tool_use_id": "invented-missing"}]
+        self.refuses(lambda: self.parse(rows), "native-tool-result")
+
+    def test_rows_rejects_nontext_tool_result_id(self):
+        rows = self.tool_rows()
+        rows[1]["message"]["content"][0]["tool_use_id"] = ["invented-nontext"]
+        self.refuses(lambda: self.parse(rows))
+
+    def test_rows_empty_result_id_has_its_own_guard(self):
+        rows = self.rows()[:1]
+        rows[0]["message"]["content"] = [{"type": "tool_result", "tool_use_id": ""}]
+        # Model a faulty pending-set dependency so membership cannot conceal
+        # removal of the separate nonempty-ID clause.
+        with mock.patch.object(ROTATE, "set", create=True, side_effect=[set(), {""}]):
+            self.refuses(lambda: self.parse(rows), "native-tool-result")
+
+    def test_rows_rejects_duplicate_result_for_one_tool_use(self):
+        rows = self.tool_rows()
+        rows[1]["message"]["content"].append(copy.deepcopy(rows[1]["message"]["content"][0]))
+        self.refuses(lambda: self.parse(rows), "native-tool-result")
+
+    def test_rows_rejects_unfinished_tool_use(self):
+        rows = self.tool_rows()
+        rows[1]["message"]["content"] = [{"type": "text", "text": "No invented result."}]
+        self.refuses(lambda: self.parse(rows), "native-identities-or-tool-pairs")
+
+    def test_rows_does_not_interpret_tool_input_or_result_payload_as_headers(self):
+        rows = self.tool_rows()
+        opaque = {"sessionId": DESTINATION, "session_id": DESTINATION, "cwd": str(self.base),
+                  "uuid": rows[0]["uuid"], "type": "tool_result", "tool_use_id": "not-an-outer-tool",
+                  "message": {"content": [{"type": "tool_use", "id": "opaque-only"}]}}
+        rows[0]["message"]["content"][0]["input"] = opaque
+        rows[1]["message"]["content"][0]["content"] = opaque
+        self.assertEqual(self.parse(rows)[0], rows)
+
+    def test_rows_does_not_parse_json_embedded_in_text(self):
+        rows = self.rows()
+        rows[0]["message"]["content"] = json.dumps({"sessionId": DESTINATION, "type": "tool_use", "id": "opaque"})
+        self.assertEqual(self.parse(rows)[0], rows)
+
+
+    def operation_reader(self):
+        operation = object.__new__(ROTATE.NativeOperation)
+        operation.notice = self.notice
+        operation.evidence_directory = self.project
+        operation.plan = {}
+        operation.state = {}
+        operation.proof = {}
+        return operation
+
+    def test_native_same_checks_each_required_property(self):
+        baseline = dict(type="file", size=7, sha256="a" * 64, mode=0o600,
+                        uid=1000, gid=1000, nlink=1, dev=2, ino=3,
+                        mtime_ns=4, ctime_ns=5)
+        common = ("type", "size", "sha256", "mode", "uid", "gid", "nlink")
+        identity = ("dev", "ino", "mtime_ns", "ctime_ns")
+        for with_identity in (True, False):
+            with self.subTest(equal=True, identity=with_identity):
+                self.assertTrue(ROTATE.native_same(baseline, dict(baseline), with_identity))
+            for field in common + identity:
+                with self.subTest(field=field, identity=with_identity):
+                    changed = {**baseline, field: "invented mismatch"}
+                    expected = not with_identity and field in identity
+                    self.assertIs(ROTATE.native_same(baseline, changed, with_identity), expected)
+                    self.assertIs(ROTATE.native_same(changed, baseline, with_identity), expected)
+
+    def test_guard_unsupported_action_before_records(self):
+        args = types.SimpleNamespace(native_action="invented-unsupported", native_apply=True, dry_run=False)
+        self.refuses(lambda: ROTATE.NativeOperation(args), "native-action-not-supported")
+
+    def test_guard_wrong_adapter_before_records(self):
+        args = types.SimpleNamespace(native_action="disposable-exercise", native_apply=True,
+                                     dry_run=False, adapter="codex")
+        self.refuses(lambda: ROTATE.NativeOperation(args), "native-claude-adapter-required")
+
+    def test_guard_reference_shape(self):
+        self.refuses(lambda: self.operation_reader().reference([]), "native-reference-required")
+
+    def test_guard_reference_digest_type(self):
+        self.refuses(lambda: self.operation_reader().reference({"path": str(self.source), "sha256": 12}),
+                     "native-reference-required")
+
+    def test_guard_reference_digest_shape(self):
+        self.refuses(lambda: self.operation_reader().reference({"path": str(self.source), "sha256": "wrong"}),
+                     "native-reference-required")
+
+    def test_guard_record_path_required(self):
+        self.refuses(lambda: self.operation_reader().record(None, "0" * 64), "native-record-hash-required")
+
+    def test_guard_record_digest_type(self):
+        self.refuses(lambda: self.operation_reader().record(str(self.source), 12), "native-record-hash-required")
+
+    def test_guard_record_digest_shape(self):
+        self.refuses(lambda: self.operation_reader().record(str(self.source), "wrong"), "native-record-hash-required")
+
+    def test_guard_record_name_type(self):
+        self.refuses(lambda: self.operation_reader().instrument_packet("I2", 12), "native-instrument-record-name")
+
+    def test_guard_record_name_shape(self):
+        self.refuses(lambda: self.operation_reader().instrument_packet("I2", "../outside.json"),
+                     "native-instrument-record-name")
+
+    def test_guard_unknown_instrument_name(self):
+        self.refuses(lambda: self.operation_reader().instrument_packet("UNKNOWN", "reader.json"), "native-instrument-name")
+
+    def test_guard_instrument_bindings_shape(self):
+        self.refuses(lambda: self.operation_reader().instrument("I2"), "native-instrument-bindings-required")
+
+
+    def guard_root_identity_field(self, field, value, root="project_root"):
+        # A direct method fixture isolates each declared root property. It
+        # changes recorded metadata only, never a host directory or account.
+        operation = self.operation_reader()
+        operation.project, operation.store = self.project, self.base
+        operation.preimages = {"project_root": ROTATE.native_snapshot(self.project),
+                               "store_root": ROTATE.native_snapshot(self.base)}
+        operation.preimages[root][field] = value
+        before = NativeDisposableTests.inventory(self.base)
+        self.refuses(operation.root_identities, "native-operation-root-changed")
+        self.assertEqual(NativeDisposableTests.inventory(self.base), before)
+
+    def test_guard_root_identity_type(self):
+        self.guard_root_identity_field("type", "file")
+
+    def test_guard_root_identity_dev(self):
+        self.guard_root_identity_field("dev", -1)
+
+    def test_guard_root_identity_ino(self):
+        self.guard_root_identity_field("ino", -1)
+
+    def test_guard_root_identity_mode(self):
+        self.guard_root_identity_field("mode", 0o755)
+
+    def test_guard_root_identity_uid(self):
+        self.guard_root_identity_field("uid", -1)
+
+    def test_guard_root_identity_gid(self):
+        self.guard_root_identity_field("gid", -1)
+
+    def test_guard_store_root_properties_are_checked_separately(self):
+        for field, value in (("type", "file"), ("dev", -1), ("ino", -1),
+                             ("mode", 0o755), ("uid", -1), ("gid", -1)):
+            with self.subTest(field=field):
+                self.guard_root_identity_field(field, value, "store_root")
+
+
+    def test_guard_empty_row_list_under_byte_reader_fault(self):
+        # Ordinary nonempty newline-terminated bytes always yield at least one
+        # split line. Isolate this redundant lower bound with an explicit
+        # broken byte-source contract, not a claim of unsafe JSON admission.
+        class EmptyRows(bytes):
+            def splitlines(self):
+                return []
+        self.refuses(lambda: ROTATE.native_rows(EmptyRows(b"\n"), SID, self.project), "native-row-limit")
+
+
+    def donor_guard_fixture(self, action, restored=None):
+        operation = self.operation_reader()
+        current = ROTATE.native_snapshot(self.source)
+        operation.current = lambda name: dict(current)
+        operation.action = action
+        operation.go = {}
+        operation.preimages = {"donor": {**current, "sha256": "0" * 64}}
+        operation.state = {} if restored is None else {"restores": {"donor": {"installed": restored(current)}}}
+        return operation
+
+    def test_guard_donor_changed_without_authorized_restore(self):
+        operation = self.donor_guard_fixture("custody")
+        self.refuses(operation.unchanged_donor, "native-donor-preimage-changed")
+
+    def test_guard_donor_restore_record_is_not_authority_outside_rollback(self):
+        operation = self.donor_guard_fixture("custody", restored=lambda current: dict(current))
+        self.refuses(operation.unchanged_donor, "native-donor-preimage-changed")
+
+    def test_guard_rollback_donor_requires_an_existing_restore_record(self):
+        operation = self.donor_guard_fixture("rollback")
+        self.refuses(operation.unchanged_donor, "native-donor-preimage-changed")
+
+    def test_guard_restored_donor_must_match_its_record(self):
+        operation = self.donor_guard_fixture("rollback", restored=lambda current: {**current, "sha256": "1" * 64})
+        self.refuses(operation.unchanged_donor, "native-donor-preimage-changed")
 
 
 if __name__ == "__main__":

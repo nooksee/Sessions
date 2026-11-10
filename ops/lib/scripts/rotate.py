@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""rotate: dry-run phase gates in an explicitly synthetic room.
+"""rotate: fixture rehearsal and separately gated disposable operations.
 
 Generated with ops/bin/template; implemented by Joe Codex. Phases 0 to 4
 inspect synthetic evidence; phases 5 to 9 use disposable fixture artifacts.
-No native bodies, providers, physical custody or production installation.
+The default fixture path admits no native body. The explicit disposable
+path requires hash-bound plan/go/proof inputs and starts no provider.
 Spec: docs/ops/specs/scripts/rotate.md. Tests: tools/test/test_rotate.py.
 """
 from __future__ import annotations
@@ -11,6 +12,8 @@ from __future__ import annotations
 import argparse
 import contextlib
 import copy
+import datetime as dt
+import fcntl
 import hashlib
 import importlib.util
 import io
@@ -21,6 +24,7 @@ import stat
 import sys
 import subprocess
 import tempfile
+import time
 from fractions import Fraction
 from pathlib import Path
 
@@ -1000,10 +1004,887 @@ def late_phases(args, evidence, operation, admission, plan, window, result,
         raise
 
 
+NATIVE_LIMIT = 64 * 1024 * 1024
+NATIVE_SCHEMA = "rotate-disposable/1"
+NATIVE_SID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\Z")
+NATIVE_ACTIONS = {"disposable-exercise", "custody", "install", "load", "rollback"}
+
+
+def native_path(raw):
+    require(isinstance(raw, str) and raw and "\x00" not in raw, "native-path-required")
+    path = Path(raw)
+    require(path.is_absolute() and ".." not in path.parts and path == path.resolve(),
+            "native-plain-absolute-path-required")
+    sibling("notice").parent_chain(path.parent)
+    return path
+
+
+def native_read(path, limit=NATIVE_LIMIT):
+    """Private bracketed read; a replacement or a change is never an absence."""
+    notice = sibling("notice")
+    path = native_path(str(path))
+    before = notice.private_node(path)
+    require(before.st_size <= limit, "native-file-too-large")
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as handle:
+        require(node_id(os.fstat(handle.fileno())) == node_id(before), "native-open-identity-changed")
+        raw = handle.read(limit + 1)
+        require(node_id(os.fstat(handle.fileno())) == node_id(before), "native-read-identity-changed")
+    require(len(raw) <= limit and node_id(path.lstat()) == node_id(before), "native-read-preimage-changed")
+    return raw, before
+
+
+def native_snapshot(path):
+    path = native_path(str(path))
+    st = path.lstat()
+    if stat.S_ISREG(st.st_mode):
+        raw, st = native_read(path)
+        sha = digest(raw)
+        kind = "file"
+    else:
+        sibling("notice").private_node(path, True)
+        require(stat.S_ISDIR(st.st_mode), "native-inventory-type")
+        sha, kind = None, "directory"
+    return {"type": kind, "dev": st.st_dev, "ino": st.st_ino, "size": st.st_size,
+            "sha256": sha, "mode": stat.S_IMODE(st.st_mode), "uid": st.st_uid,
+            "gid": st.st_gid, "mtime_ns": st.st_mtime_ns, "ctime_ns": st.st_ctime_ns,
+            "nlink": st.st_nlink}
+
+
+def native_inventory(directory):
+    """The named folder's immediate listing; never follows a child link."""
+    sibling("notice").private_node(directory, True)
+    result = {}
+    for item in sorted(directory.iterdir()):
+        require(not item.is_symlink(), "native-inventory-link")
+        result[item.name] = native_snapshot(item)
+    return result
+
+
+def native_same(left, right, identity=True):
+    fields = ("type", "size", "sha256", "mode", "uid", "gid", "nlink")
+    if identity:
+        fields += ("dev", "ino", "mtime_ns", "ctime_ns")
+    return all(left.get(k) == right.get(k) for k in fields)
+
+
+def native_rows(raw, session, project, prefix_ids=()):
+    require(bool(raw) and raw.endswith(b"\n"), "native-body-not-terminated")
+    notice = sibling("notice")
+    rows = [notice.decode(line) for line in raw.splitlines()]
+    require(0 < len(rows) <= 65536, "native-row-limit")
+    seen, pending = set(prefix_ids), set()
+    assistant, identities = 0, 0
+
+    def blocks(row):
+        nonlocal identities
+        for key in ("sessionId", "session_id"):
+            if key in row:
+                require(row[key] == session, "native-body-foreign-session")
+                identities += 1
+        message = row.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, list):
+            return
+        for value in content:
+            require(isinstance(value, dict), "native-message-content-block")
+            # Inputs, outputs, text and embedded records are opaque payloads.
+            if value.get("type") == "tool_use":
+                token = value.get("id")
+                require(isinstance(token, str) and bool(token) and token not in pending, "native-tool-use")
+                pending.add(token)
+            elif value.get("type") == "tool_result":
+                token = value.get("tool_use_id")
+                require(isinstance(token, str) and bool(token) and token in pending, "native-tool-result")
+                pending.remove(token)
+
+    for row in rows:
+        blocks(row)
+        if "cwd" in row:
+            require(row["cwd"] == str(project), "native-body-project")
+        if "uuid" in row:
+            uid = row["uuid"]
+            require(isinstance(uid, str) and uid and uid not in seen, "native-message-id")
+            parent = row.get("parentUuid")
+            require(parent in seen if seen else parent is None, "native-parent-chain")
+            seen.add(uid)
+        if row.get("type") == "assistant" and not row.get("isSidechain"):
+            assistant += 1
+    require(identities > 0 and not pending, "native-identities-or-tool-pairs")
+    return rows, seen, assistant
+
+
+class NativeOperation:
+    """Explicit disposable operation, never a resident route or provider driver.
+
+    Go/proof files are externally supplied records, not authenticated people.
+    Every named go and every actual object must be revalidated at the act.
+    """
+
+    def __init__(self, args):
+        self.args = args
+        self.notice = sibling("notice")
+        self.action = args.native_action
+        require(getattr(args, "native_apply", False) is True and not args.dry_run,
+                "native-explicit-apply-required")
+        require(self.action in NATIVE_ACTIONS, "native-action-not-supported")
+        require(args.adapter == "claude", "native-claude-adapter-required")
+        # No native/body/state read is reachable without both named go inputs.
+        require(args.native_go and args.native_go_sha256, "native-named-go-required")
+        self.go, self.go_sha = self.record(args.native_go, args.native_go_sha256)
+        require(args.native_plan and args.native_plan_sha256, "native-hash-bound-plan-required")
+        self.plan, self.plan_sha = self.record(args.native_plan, args.native_plan_sha256)
+        p, g = self.plan, self.go
+        require(p.get("schema") == NATIVE_SCHEMA and p.get("provider") == "claude", "native-plan-schema-provider")
+        self.operation = p.get("operation")
+        require(isinstance(self.operation, str) and re.fullmatch(r"[a-z][a-z0-9-]{1,47}", self.operation),
+                "native-operation-name")
+        self.writer = p.get("writer")
+        require(isinstance(self.writer, str) and self.notice.KEY.fullmatch(self.writer), "native-writer-key")
+        version = p.get("provider_version")
+        require(isinstance(version, str) and 0 < len(version.strip()) <= 64, "native-provider-version")
+        expected = {"schema": "rotate-native-go/1", "operation": self.operation,
+                    "plan_sha256": self.plan_sha, "writer": self.writer, "action": self.action}
+        require(all(g.get(k) == v for k, v in expected.items()), "native-go-binding")
+        now = dt.datetime.now(dt.timezone.utc)
+        age = (now - self.notice.stamp(g.get("at"))).total_seconds()
+        require(0 <= age <= 3600, "native-go-time")
+        self.room = native_path(p.get("room"))
+        self.evidence_directory = self.room / "storage" / "active" / self.operation
+        require(native_path(str(args.native_plan)).parent == self.evidence_directory,
+                "native-operation-evidence-home")
+        self.notice.private_node(self.evidence_directory, True)
+        require(native_path(str(args.native_go)).parent == self.evidence_directory
+                and native_path(str(args.native_proof)).parent == self.evidence_directory,
+                "native-go-proof-evidence-home")
+        self.project = native_path(p.get("project"))
+        self.store = native_path(p.get("store"))
+        self.records_dir = native_path(p.get("records_dir"))
+        self.notice.private_node(self.project, True)
+        self.notice.private_node(self.store, True)
+        self.notice.private_node(self.records_dir, True)
+        require(self.project != self.store and self.project != self.room and self.store != self.room,
+                "native-private-disposable-project-required")
+        self.registry = p.get("registry")
+        require(isinstance(self.registry, dict) and self.registry.get("path") == str(self.room / "ops/etc/resident-identities.json"),
+                "native-canonical-registry-required")
+        registry, _ = self.reference(self.registry, SMALL * 16)
+        rows = self.notice.decode(registry).get("identities")
+        require(isinstance(rows, list) and rows, "native-registry-rows")
+        keys, bindings, writers = set(), set(), []
+        self.auditors = set()
+        for row in rows:
+            require(isinstance(row, dict), "native-registry-row")
+            key, provider, sid = (row.get(k) for k in ("key", "provider", "session_id"))
+            require(isinstance(key, str) and self.notice.KEY.fullmatch(key)
+                    and provider in ("claude", "codex", "copilot")
+                    and isinstance(sid, str) and self.notice.SID.fullmatch(sid), "native-registry-identity")
+            require(key not in keys and (provider, sid) not in bindings, "native-ambiguous-registry")
+            require(row.get("room") != str(self.project), "native-project-already-resident")
+            keys.add(key)
+            bindings.add((provider, sid))
+            if key == self.writer:
+                writers.append(row)
+            if row.get("role") == "Auditor":
+                self.auditors.add(key)
+        require(len(writers) == 1 and writers[0].get("room") == str(self.room), "native-registered-writer-required")
+        self.targets = {}
+        for name in ("donor", "destination"):
+            target = p.get(name)
+            require(isinstance(target, dict), "native-target-required")
+            sid = target.get("session_id")
+            require(isinstance(sid, str) and NATIVE_SID.fullmatch(sid), "native-target-identity")
+            require(not any(binding[1] == sid for binding in bindings), "native-target-is-resident")
+            path = native_path(target.get("path"))
+            require(path.parent == self.store and path.name == sid + ".jsonl", "native-target-store-mapping")
+            require(isinstance(target.get("sha256"), str) and DIGEST.fullmatch(target["sha256"]),
+                    "native-target-digest")
+            self.targets[name] = path
+        require(self.targets["donor"] != self.targets["destination"], "native-two-distinct-containers-required")
+        wanted = {q.name for q in self.targets.values()}
+        if (self.action == "rollback" and self.go.get("restore_absent_donor") is True
+                and not os.path.lexists(self.targets["donor"])):
+            wanted.remove(self.targets["donor"].name)
+        require({q.name for q in self.store.glob("*.jsonl")} == wanted,
+                "native-exact-two-containers-required")
+        self.candidate, _ = self.reference(p.get("candidate"))
+        require(native_path(p["candidate"]["path"]).is_relative_to(self.evidence_directory),
+                "native-candidate-evidence-home")
+        artifacts = p.get("artifacts")
+        require(isinstance(artifacts, list) and 3 <= len(artifacts) <= 64, "native-artifact-list")
+        names = set()
+        self.artifacts = []
+        for item in artifacts:
+            require(isinstance(item, dict), "native-artifact-object")
+            name = item.get("name")
+            require(isinstance(name, str) and re.fullmatch(r"[a-z][a-z0-9-]{0,39}", name)
+                    and name not in names and name not in {"donor", "destination", "candidate"}, "native-artifact-name")
+            self.reference(item)
+            require(native_path(item.get("path")).is_relative_to(self.evidence_directory),
+                    "native-artifact-evidence-home")
+            names.add(name)
+            self.artifacts.append(item)
+        require({"capsule", "gates", "window"} <= names, "native-required-staged-objects")
+        self.custody = sibling("custody")
+        roots = p.get("custody_roots")
+        require(isinstance(roots, list) and 2 <= len(roots) <= 4, "native-custody-roots")
+        self.roots = self.custody.check_roots(roots, False)
+        for root in self.roots:
+            native_path(str(root))
+            self.notice.private_node(root, True)
+            require(not any(root.is_relative_to(path) or path.is_relative_to(root)
+                            for path in (self.room, self.project, self.store)), "native-custody-overlap")
+        self.batch = self.custody.batch_name(self.writer, p.get("date"))
+        self.directory = self.room / "logs" / "rotate" / self.operation
+        self.state_path = self.directory / "state.json"
+        self.preimages_path = self.directory / "preimages.json"
+        self.stage = self.targets["destination"].with_name(self.targets["destination"].name + ".NEW")
+        self.proof, self.proof_sha = self.record(args.native_proof, args.native_proof_sha256)
+        require(all(self.proof.get(k) == v for k, v in {
+            "schema": "rotate-native-proof/1", "operation": self.operation,
+            "plan_sha256": self.plan_sha, "action": self.action}.items()), "native-proof-binding")
+        for path in (*self.targets.values(), native_path(p["candidate"]["path"]),
+                     *(native_path(item["path"]) for item in self.artifacts)):
+            self.git_private(path.parent, path)
+        self.state = None
+
+    @staticmethod
+    def git_private(base, path):
+        require(not sibling("mind").git_exposed(base, [path]), "native-git-exposure-or-unknown")
+
+    def write(self, path, raw, owner=None):
+        self.git_private(path.parent, path)
+        return private_write(path, raw, self.notice, owner)
+
+    def record(self, path, expected):
+        require(path and isinstance(expected, str) and DIGEST.fullmatch(expected), "native-record-hash-required")
+        raw, _ = native_read(native_path(str(path)), SMALL * 16)
+        require(digest(raw) == expected, "native-record-hash-mismatch")
+        return self.notice.decode(raw), expected
+
+    def reference(self, ref, limit=NATIVE_LIMIT):
+        require(isinstance(ref, dict) and isinstance(ref.get("sha256"), str)
+                and DIGEST.fullmatch(ref["sha256"]), "native-reference-required")
+        raw, st = native_read(native_path(ref.get("path")), limit)
+        require(digest(raw) == ref["sha256"], "native-reference-hash")
+        return raw, st
+
+    def current(self, name):
+        if (name == "donor" and self.action == "rollback" and self.go.get("restore_absent_donor") is True
+                and not os.path.lexists(self.targets[name])):
+            return {"type": "absent"}
+        return native_snapshot(self.targets[name])
+
+    def instrument_objects(self):
+        return {**{name: str(path) for name, path in self.targets.items()},
+                "candidate": self.plan["candidate"]["path"],
+                **{item["name"]: item["path"] for item in self.artifacts}}
+
+    def instrument_packet(self, name, record_name, holders=None):
+        """Exact keys consumed by the independently reviewed I1-I5 readers.
+
+        I1's project is the working cwd, not the store listing used by I2/I5.
+        I4 receives a separately named, flattened I3A binding with the UUID set.
+        Neither an export nor a supplied record authenticates its author.
+        """
+        require(isinstance(record_name, str) and re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]{0,119}\.json", record_name),
+                "native-instrument-record-name")
+        pk = {"evidence": str(self.evidence_directory), "record_name": record_name}
+        if "synthetic_root" in self.plan:
+            pk["synthetic_root"] = str(native_path(self.plan["synthetic_root"]))
+        if name == "I1":
+            # An explicitly authorized absent-donor restore has no inode to
+            # lstat. Both session IDs still participate in process inspection.
+            pk.update(targets={key: str(path) for key, path in self.targets.items() if os.path.lexists(path)}, project=str(self.project),
+                      session_ids=[self.plan[key]["session_id"] for key in self.targets],
+                      records_dir=str(self.records_dir), interval_s=1)
+        elif name == "I2":
+            pk.update(objects=self.instrument_objects(), project=str(self.store))
+        elif name in ("I3B", "I3A"):
+            pk.update(preimage=self.state["i2"]["record"]["path"], destination=str(self.targets["destination"]),
+                      staged=str(self.stage), candidate_sha256=digest(self.candidate), destination_token="destination")
+            if name == "I3A":
+                pk["before"] = self.state["i3b"]["record"]["path"]
+        elif name == "I4":
+            pk.update(postimage=self.state["i4_postimage"]["path"], destination=str(self.targets["destination"]),
+                      destination_sid=self.plan["destination"]["session_id"], donor_sid=self.plan["donor"]["session_id"])
+        else:
+            require(name == "I5", "native-instrument-name")
+            retained = self.state.get("retained_append")
+            pk.update(preimages=self.state["i2"]["record"]["path"], items=self.instrument_objects(), donor="donor",
+                      custody=[] if retained is None else [
+                          {"path": str(root / self.batch / retained["name"]), "sha256": retained["sha256"]}
+                          for root in self.roots], project=str(self.store),
+                      holders=holders if holders is not None else self.proof["instruments"]["I1"][-1]["record"]["path"])
+        return pk
+
+    def instrument(self, name, binding=None):
+        if binding is None:
+            bindings = self.proof.get("instruments")
+            require(isinstance(bindings, dict), "native-instrument-bindings-required")
+            binding = bindings.get(name)
+        require(isinstance(binding, dict) and set(binding) == {"packet", "record"},
+                "native-instrument-reference-required")
+        for ref in binding.values():
+            require(isinstance(ref, dict) and native_path(ref.get("path")).parent == self.evidence_directory,
+                    "native-instrument-evidence-home")
+        packet = self.notice.decode(self.reference(binding["packet"], SMALL * 16)[0])
+        expected = self.instrument_packet(name, packet.get("record_name"))
+        require(packet == expected, "native-instrument-packet-mismatch")
+        require(binding["record"]["path"] == str(self.evidence_directory / packet["record_name"]),
+                "native-instrument-output-path")
+        return self.notice.decode(self.reference(binding["record"], SMALL * 16)[0]), binding
+
+    def publish_instruments(self):
+        """Export inert packets only. No observer, provider or child is run."""
+        names = ["I2"]
+        phase = self.state["phase"] if self.state else "awaiting-instruments"
+        if phase == "install-prepared":
+            names.append("I3B")
+        if phase == "install-renamed":
+            names.append("I3A")
+        if phase in ("installed", "loaded"):
+            names.append("I4")
+        if phase in ("rollback-restored", "rolled-back"):
+            names.append("I5")
+        # Exclusive observer outputs are never reused, including a repeated
+        # stop or recovery export at an otherwise unchanged checkpoint.
+        suffix = digest(json_bytes(self.state if self.state else self.plan))[:16] + "-" + os.urandom(8).hex()
+        exports = {}
+        labels = [("I1", "i1a"), ("I1", "i1b")] + [(name, name.lower()) for name in names]
+        fresh_holders = str(self.evidence_directory / ("i1b-" + suffix + ".result.json"))
+        for name, label in labels:
+            packet = self.instrument_packet(name, label + "-" + suffix + ".result.json",
+                                            holders=fresh_holders if name == "I5" else None)
+            path = self.evidence_directory / (label + "-" + suffix + ".packet.json")
+            raw = json_bytes(packet)
+            if os.path.lexists(path):
+                require(native_read(path)[0] == raw, "native-instrument-export-changed")
+            else:
+                self.write(path, raw)
+            ref = {"path": str(path), "sha256": digest(raw)}
+            if name == "I1":
+                exports.setdefault(name, []).append(ref)
+            else:
+                exports[name] = ref
+        # Private paths never enter the public CLI result.
+        home = self.directory if self.state else self.evidence_directory
+        path = home / "instrument-packets.json"
+        require(not os.path.lexists(home / ".packets.NEW"), "native-pending-packet-export")
+        raw = json_bytes(exports)
+        if not os.path.lexists(path):
+            self.write(path, raw)
+        elif native_read(path)[0] != raw:
+            temp = home / ".packets.NEW"
+            require(not os.path.lexists(temp), "native-pending-packet-export")
+            self.write(temp, raw)
+            os.replace(temp, path)
+            self.sync(home)
+
+    def quiescence(self):
+        observations = self.proof.get("quiescence")
+        require(isinstance(observations, list) and len(observations) == 2, "native-two-quiescence-readings")
+        times = []
+        now = dt.datetime.now(dt.timezone.utc)
+        current = {name: self.current(name) for name in self.targets}
+        project = self.project.stat()
+        bindings = self.proof.get("instruments")
+        require(isinstance(bindings, dict) and isinstance(bindings.get("I1"), list)
+                and len(bindings["I1"]) == 2, "native-two-i1-records-required")
+        identities = set()
+        witness_times = []
+        for observation, binding in zip(observations, bindings["I1"]):
+            require(isinstance(observation, dict), "native-quiescence-object")
+            at = self.notice.stamp(observation.get("at"))
+            require(0 <= (now - at).total_seconds() <= 60, "native-quiescence-stale")
+            times.append(at)
+            for name, expected in current.items():
+                require(observation.get(name) == expected, "native-quiescence-target-changed")
+            require(observation.get("project") == {"dev": project.st_dev, "ino": project.st_ino},
+                    "native-quiescence-project")
+            require(observation.get("same_user_observable") is True, "native-process-observability")
+            for field in ("holders", "session_records", "argument_holders", "locks", "unreadable", "foreign_processes"):
+                require(type(observation.get(field)) is int and observation[field] == 0,
+                        "native-quiescence-" + field.replace("_", "-"))
+            record, _ = self.instrument("I1", binding)
+            require(record == {"held": [], "own_unreadable": 0, "foreign_unreadable": 0},
+                    "native-i1-not-clear")
+            require(type(record["own_unreadable"]) is int and type(record["foreign_unreadable"]) is int,
+                    "native-i1-count-type")
+            node = native_snapshot(native_path(binding["record"]["path"]))
+            identities.add((node["dev"], node["ino"]))
+            witness_times.append(node["mtime_ns"])
+            require(0 <= now.timestamp() - node["mtime_ns"] / 1e9 <= 60, "native-i1-record-stale")
+            if (self.state or {}).get("phase") in ("rollback-restored", "rolled-back"):
+                require(node["mtime_ns"] >= self.state["restored_at_ns"], "native-i1-before-restore")
+        require(len(identities) == 2, "native-distinct-i1-records-required")
+        require(witness_times[1] - witness_times[0] >= 1_000_000_000, "native-i1-record-interval")
+        require((times[1] - times[0]).total_seconds() >= 1, "native-quiescence-interval")
+
+    def refresh_at_act(self):
+        """Refresh authority bytes and the bounded external witness at the act."""
+        self.record(self.args.native_go, self.go_sha)
+        self.record(self.args.native_plan, self.plan_sha)
+        self.record(self.args.native_proof, self.proof_sha)
+        self.reference(self.registry, SMALL * 16)
+        self.reference(self.plan["candidate"])
+        for item in self.artifacts:
+            self.reference(item)
+        if self.action == "install" and "i3b" in self.state:
+            self.instrument("I3B", self.state["i3b"])
+        age = (dt.datetime.now(dt.timezone.utc) - self.notice.stamp(self.go["at"])).total_seconds()
+        require(0 <= age <= 3600, "native-go-expired-at-act")
+        self.root_identities()
+        self.quiescence()
+
+    def unchanged_donor(self):
+        current = self.current("donor")
+        restored = ((self.state or {}).get("restores", {}).get("donor", {}).get("installed"))
+        allowed_absence = (self.action == "rollback" and self.go.get("restore_absent_donor") is True
+                           and current == {"type": "absent"})
+        require(allowed_absence or native_same(current, self.preimages["donor"])
+                or (self.action == "rollback" and restored is not None and native_same(current, restored)),
+                "native-donor-preimage-changed")
+
+    def root_identities(self):
+        for name, path in (("project_root", self.project), ("store_root", self.store)):
+            current = native_snapshot(path)
+            expected = self.preimages[name]
+            require(all(current[key] == expected[key] for key in ("type", "dev", "ino", "mode", "uid", "gid")),
+                    "native-operation-root-changed")
+
+    def listing(self, allow_stage=False, restored=False):
+        expected = self.preimages["store"]
+        actual = native_inventory(self.store)
+        extras = {self.stage.name} if allow_stage else set()
+        require(set(actual) == set(expected) | extras, "native-store-listing-changed")
+        for name, recorded in expected.items():
+            if name == self.targets["destination"].name and not restored:
+                continue
+            require(native_same(actual[name], recorded, identity=not restored), "native-store-entry-changed")
+        require(native_inventory(self.project) == self.preimages["project"], "native-project-listing-changed")
+
+    def save(self):
+        raw = json_bytes(self.state)
+        temp = self.directory / ".state.NEW"
+        require(not os.path.lexists(temp), "native-pending-state-write")
+        self.write(temp, raw)
+        os.replace(temp, self.state_path)
+        self.sync(self.directory)
+
+    @staticmethod
+    def sync(directory):
+        fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+    def admission(self):
+        if self.state is not None:
+            require(self.state["phase"] == "admitted", "native-operation-already-admitted")
+            self.quiescence()
+            self.unchanged_donor()
+            require(native_same(self.current("destination"), self.preimages["destination"]), "native-pristine-changed")
+            self.listing()
+            return
+        require(not os.path.lexists(self.stage), "native-unknown-stage")
+        self.quiescence()
+        before = {name: self.current(name) for name in self.targets}
+        for name, snap in before.items():
+            require(snap["sha256"] == self.plan[name]["sha256"], "native-closed-target-hash")
+        donor_raw, _ = native_read(self.targets["donor"])
+        pristine, _ = native_read(self.targets["destination"])
+        native_rows(donor_raw, self.plan["donor"]["session_id"], self.project)
+        rows, _, _ = native_rows(pristine, self.plan["destination"]["session_id"], self.project)
+        dialogue = [row for row in rows if row.get("type") in ("user", "assistant")]
+        require([row.get("type") for row in dialogue] == ["user", "assistant"], "native-pristine-first-exchange")
+        def inert(row, role, text):
+            message = row.get("message")
+            if not isinstance(message, dict) or message.get("role") != role:
+                return False
+            content = message.get("content")
+            return content == text or content == [{"type": "text", "text": text}]
+        require(inert(dialogue[0], "user", FIRST_PROMPT) and inert(dialogue[1], "assistant", "READY"),
+                "native-pristine-inert-exchange")
+        require(all(row.get("type") in ("custom-title", "user", "assistant", "file-history-snapshot", "queue-operation")
+                    for row in rows), "native-pristine-unknown-envelope")
+        candidate_rows, _, _ = native_rows(self.candidate, self.plan["destination"]["session_id"], self.project)
+        require(sibling("successor").count_residue(candidate_rows, self.plan["donor"]["session_id"])[0] == 0,
+                "native-candidate-donor-residue")
+        require(candidate_rows[0].get("type") == "system"
+                and candidate_rows[0].get("subtype") == "compact_boundary", "native-candidate-boundary")
+        gates_ref = next(item for item in self.artifacts if item["name"] == "gates")
+        gates = self.notice.decode(self.reference(gates_ref)[0])
+        require(gates.get("schema") == "rotate-native-gates/1" and gates.get("phase") == 5,
+                "native-preparation-gates-required")
+        for field, value in {"donor_sha256": before["donor"]["sha256"],
+                             "pristine_sha256": before["destination"]["sha256"],
+                             "candidate_sha256": digest(self.candidate)}.items():
+            require(gates.get(field) == value, "native-preparation-binding")
+        checks = gates.get("gates")
+        require(isinstance(checks, dict) and set(checks) == {
+            "trigger", "closeout", "operator_compaction", "window", "static", "media"}
+                and all(value is True for value in checks.values()), "native-preparation-incomplete")
+        self.preimages = {**before, "store": native_inventory(self.store), "project": native_inventory(self.project),
+                          "project_root": native_snapshot(self.project), "store_root": native_snapshot(self.store)}
+        i2, binding = self.instrument("I2")
+        require(set(i2) == {"objects", "listing", "project"}, "native-i2-shape")
+        require(i2["objects"] == {name: native_snapshot(native_path(path))
+                                 for name, path in self.instrument_objects().items()}, "native-i2-objects")
+        require(i2["project"] == [self.preimages["store_root"][key] for key in ("dev", "ino")]
+                and i2["listing"] == {name: ["file" if row["type"] == "file" else "dir", row["mode"], row["size"]]
+                                     for name, row in self.preimages["store"].items()}, "native-i2-store-listing")
+        self.write(self.preimages_path, json_bytes(self.preimages))
+        self.state = {"schema": "rotate-native-state/1", "operation": self.operation,
+                      "plan_sha256": self.plan_sha, "preimages_sha256": digest(json_bytes(self.preimages)),
+                      "phase": "admitted", "admitted_at": self.go["at"], "go_sha256": self.go_sha, "i2": binding}
+        self.save()
+
+    def members(self):
+        return [{"name": self.operation + "-" + name, "path": str(self.targets[name]),
+                 "sha256": self.preimages[name]["sha256"]} for name in self.targets] + [
+            {"name": self.operation + "-candidate", **self.plan["candidate"]},
+            {"name": self.operation + "-preimages", "path": str(self.preimages_path),
+             "sha256": self.state["preimages_sha256"]}] + [
+            {**item, "name": self.operation + "-" + item["name"]} for item in self.artifacts]
+
+    def custody_members(self, members, add=False):
+        batches = [root / self.batch for root in self.roots]
+        self.custody.agree(batches)
+        for item in members:
+            for root, batch in zip(self.roots, batches):
+                self.git_private(root, batch / item["name"])
+            present = [os.path.lexists(batch / item["name"]) for batch in batches]
+            require(len(set(present)) == 1, "native-partial-custody-item")
+            if not any(present):
+                require(add, "native-custody-item-missing")
+                self.reference(item)
+                call = argparse.Namespace(root=[str(root) for root in self.roots], same_device_ok=False,
+                                          direct=[], writer=self.writer, date=self.plan["date"],
+                                          files=[item["path"]], as_name=item["name"])
+                with contextlib.redirect_stdout(io.StringIO()):
+                    require(self.custody.cmd_add(call) == 0, "native-custody-add-refused")
+            for batch in batches:
+                raw, _ = native_read(batch / item["name"])
+                require(digest(raw) == item["sha256"], "native-custody-member-hash")
+                manifest = self.custody.manifest_rows(batch)
+                require(sum(line.split("  ")[:2] == [item["sha256"], item["name"]]
+                            for line in manifest) == 1, "native-custody-member-manifest")
+        self.custody.agree(batches)
+        return digest(json_bytes([{k: item[k] for k in ("name", "sha256")} for item in members]))
+
+    def preserve(self):
+        require(self.state["phase"] in ("admitted", "custody-intent", "custodied"), "native-custody-phase")
+        self.quiescence()
+        self.unchanged_donor()
+        require(native_same(self.current("destination"), self.preimages["destination"]), "native-pristine-changed")
+        self.listing()
+        members = self.members()
+        if self.state["phase"] == "custodied":
+            require(self.custody_members(members) == self.state["custody_manifest_sha256"], "native-custody-manifest-changed")
+            return
+        self.state["phase"] = "custody-intent"
+        self.save()
+        sha = self.custody_members(members, add=True)
+        self.state.update(phase="custodied", custody_manifest_sha256=sha,
+                          custody_at=dt.datetime.now(dt.timezone.utc).isoformat())
+        self.save()
+
+    def installation(self):
+        require(self.state["phase"] in ("custodied", "install-prepared", "install-renamed", "installed"), "native-install-phase")
+        require(self.go.get("pristine_sha256") == self.preimages["destination"]["sha256"]
+                and self.go.get("candidate_sha256") == digest(self.candidate)
+                and self.go.get("custody_manifest_sha256") == self.state.get("custody_manifest_sha256")
+                and self.go.get("inverse") == "restore-pristine-and-stop", "native-install-go-targets")
+        require(self.notice.stamp(self.go["at"]) > self.notice.stamp(self.state["custody_at"]),
+                "native-install-go-before-custody")
+        self.quiescence()
+        self.unchanged_donor()
+        require(self.custody_members(self.members()) == self.state["custody_manifest_sha256"], "native-custody-manifest-changed")
+        audit = self.proof.get("custody_audit")
+        require(isinstance(audit, dict) and audit.get("manifest_sha256") == self.state["custody_manifest_sha256"]
+                and audit.get("auditor") in self.auditors and audit["auditor"] != self.writer
+                and audit.get("verdict") == "PASS", "native-independent-custody-audit-required")
+        review, _ = self.reference(audit.get("review"), SMALL)
+        require(native_path(audit["review"]["path"]).is_relative_to(self.evidence_directory), "native-custody-audit-evidence-home")
+        review = self.notice.decode(review)
+        require(all(review.get(key) == value for key, value in {
+            "schema": "rotate-custody-audit/1", "operation": self.operation, "plan_sha256": self.plan_sha,
+            "manifest_sha256": self.state["custody_manifest_sha256"], "auditor": audit["auditor"],
+            "verdict": "PASS"}.items()), "native-custody-audit-review-binding")
+        if self.state["phase"] == "installed":
+            require(native_same(self.current("destination"), self.state["installed"]), "native-installed-postimage-changed")
+            self.listing()
+            return
+        if self.state["phase"] == "custodied":
+            self.listing()
+            require(native_same(self.current("destination"), self.preimages["destination"]), "native-install-pristine-changed")
+            require(not os.path.lexists(self.stage), "native-unknown-stage")
+            old = self.preimages["destination"]
+            self.write(self.stage, self.candidate, (old["uid"], old["gid"]))
+            self.state.update(phase="install-prepared", staged=native_snapshot(self.stage), install_go_sha256=self.go_sha)
+            self.save()
+            # A real external I3B run must inspect this exact inode before a
+            # separate invocation can rename it. Staging is not installation.
+            return
+        require(self.state["install_go_sha256"] == self.go_sha, "native-install-resume-go-changed")
+        if self.state["phase"] == "install-renamed":
+            installed = self.current("destination")
+            require(native_same(installed, self.state["installed"]), "native-installed-postimage-changed")
+            after, binding = self.instrument("I3A")
+            require(after == {"postimage": installed}, "native-i3a-postimage")
+            _, ids, _ = native_rows(self.candidate, self.plan["destination"]["session_id"], self.project)
+            # I3A emits {postimage: ...}; I4 expects a flat record and UUIDs.
+            # This explicit derived binding is not called an I3A output.
+            raw = json_bytes({**installed, "uuids": sorted(ids)})
+            path = self.evidence_directory / ("i4-binding-" + digest(raw)[:16] + ".json")
+            if not os.path.lexists(path):
+                self.write(path, raw)
+            require(native_read(path)[0] == raw, "native-i4-binding-changed")
+            self.state.update(phase="installed", i3a=binding,
+                              i4_postimage={"path": str(path), "sha256": digest(raw)})
+            self.save()
+            self.listing()
+            return
+        if os.path.lexists(self.stage):
+            self.listing(allow_stage=True)
+            require(native_same(native_snapshot(self.stage), self.state["staged"]), "native-stage-changed")
+            require(native_same(self.current("destination"), self.preimages["destination"]), "native-install-preimage-changed")
+            before, binding = self.instrument("I3B")
+            require(before == {"staged": self.state["staged"]}, "native-i3b-staged-inode")
+            self.state["i3b"] = binding
+            self.save()
+            self.refresh_at_act()
+            os.replace(self.stage, self.targets["destination"])
+            self.sync(self.store)
+        installed = self.current("destination")
+        require("i3b" in self.state, "native-install-rename-witness-required")
+        self.instrument("I3B", self.state["i3b"])
+        require(native_same(installed, self.state["staged"], False)
+                and (installed["dev"], installed["ino"]) == (self.state["staged"]["dev"], self.state["staged"]["ino"]),
+                "native-install-unknown-postimage")
+        require(installed["sha256"] == digest(self.candidate), "native-installed-candidate-hash")
+        self.state.update(phase="install-renamed", installed=installed)
+        self.save()
+        self.listing()
+
+    def load(self):
+        require(self.state["phase"] in ("installed", "loaded"), "native-load-phase")
+        self.quiescence()
+        self.unchanged_donor()
+        self.listing()
+        current = self.current("destination")
+        before = self.state["installed"]
+        require((current["dev"], current["ino"]) == (before["dev"], before["ino"]), "native-load-inode-changed")
+        raw, _ = native_read(self.targets["destination"])
+        require(len(raw) > before["size"] and digest(raw[:before["size"]]) == before["sha256"], "native-load-prefix-changed")
+        _, ids, _ = native_rows(self.candidate, self.plan["destination"]["session_id"], self.project)
+        _, _, assistant = native_rows(raw[before["size"]:], self.plan["destination"]["session_id"], self.project, ids)
+        require(assistant > 0, "native-load-no-assistant-append")
+        reading = sibling("gauge").read_claude(self.targets["destination"])
+        require(type(reading.get("tokens")) is int and reading["tokens"] > 0
+                and not reading.get("compaction_after"), "native-load-first-gauge-unproved")
+        supplied = self.proof.get("first_gauge")
+        require(isinstance(supplied, dict) and all(supplied.get(key) == reading.get(key)
+                    for key in ("tokens", "model", "reading_at", "call")), "native-load-gauge-mismatch")
+        self.reference(self.state["i4_postimage"], SMALL * 16)
+        observed, _ = self.instrument("I4")
+        tail_rows = [self.notice.decode(line) for line in raw[before["size"]:].splitlines()]
+        kinds = {}
+        for row in tail_rows:
+            key = str(row.get("type"))
+            kinds[key] = kinds.get(key, 0) + 1
+        require(observed == {"appended": len(tail_rows), "by_type": kinds}, "native-i4-clean-append-required")
+        self.state.update(phase="loaded", appended=current, first_gauge=reading)
+        self.save()
+
+    def restore_target(self, name):
+        """Resume only a recorded staged inode or its known rename postimage."""
+        original = self.preimages[name]
+        current = self.current(name)
+        restores = self.state.setdefault("restores", {})
+        if name not in restores and native_same(current, original, False):
+            return
+        path = self.targets[name]
+        stage = path.with_name(path.name + ".NEW")
+        if name not in restores:
+            require(current == self.state["rollback_initial"][name], "native-restore-preimage-changed")
+            require(not os.path.lexists(stage), "native-restore-unknown-stage")
+            raw, _ = native_read(self.roots[0] / self.batch / (self.operation + "-" + name))
+            require(digest(raw) == original["sha256"], "native-restore-custody-changed")
+            self.write(stage, raw, (original["uid"], original["gid"]))
+            restores[name] = {"staged": native_snapshot(stage)}
+            self.save()
+        record = restores[name]
+        if "installed" in record:
+            require(native_same(self.current(name), record["installed"]), "native-restored-postimage-changed")
+            return
+        if os.path.lexists(stage):
+            require(native_same(native_snapshot(stage), record["staged"]), "native-restore-stage-changed")
+            require(self.current(name) == self.state["rollback_initial"][name], "native-restore-target-changed")
+            self.refresh_at_act()
+            os.replace(stage, path)
+            self.sync(self.store)
+        restored = self.current(name)
+        require(native_same(restored, record["staged"], False)
+                and (restored["dev"], restored["ino"]) == (record["staged"]["dev"], record["staged"]["ino"]),
+                "native-restore-unknown-postimage")
+        record["installed"] = restored
+        self.save()
+
+    def rollback(self):
+        require(self.state["phase"] in ("custodied", "install-prepared", "install-renamed", "installed", "loaded",
+                                        "rollback-prepared", "rollback-donor-pending", "rollback-restored", "rolled-back"),
+                "native-rollback-phase")
+        self.quiescence()
+        self.unchanged_donor()
+        self.custody_members(self.members())
+        destination = self.current("destination")
+        final_readback = self.state["phase"] in ("rollback-restored", "rolled-back")
+        if self.state["phase"] in ("rollback-prepared", "rollback-donor-pending", "rollback-restored", "rolled-back"):
+            require(self.state.get("rollback_go_sha256") == self.go_sha, "native-rollback-resume-go-changed")
+        else:
+            require(self.go.get("destination_sha256") == destination["sha256"], "native-rollback-go-postimage")
+            if os.path.lexists(self.stage):
+                require(self.state["phase"] == "install-prepared"
+                        and native_same(native_snapshot(self.stage), self.state["staged"])
+                        and native_same(destination, self.preimages["destination"]), "native-rollback-unknown-stage")
+                # Only the recorded, rebuildable candidate stage, after custody.
+                self.stage.unlink()
+                self.sync(self.store)
+            installed = self.state.get("installed")
+            if installed is None and self.state["phase"] == "install-prepared":
+                staged = self.state.get("staged")
+                if (staged and native_same(destination, staged, False)
+                        and (destination["dev"], destination["ino"]) == (staged["dev"], staged["ino"])):
+                    installed = destination
+            if installed is not None and destination["sha256"] != installed["sha256"]:
+                raw, _ = native_read(self.targets["destination"])
+                require((destination["dev"], destination["ino"]) == (installed["dev"], installed["ino"])
+                        and digest(raw[:installed["size"]]) == installed["sha256"], "native-rollback-unknown-destination")
+                require(self.proof.get("appended_sha256") == destination["sha256"], "native-rollback-append-evidence-required")
+                item = {"name": self.operation + "-appended-" + destination["sha256"][:12],
+                        "path": str(self.targets["destination"]), "sha256": destination["sha256"]}
+                self.custody_members([item], add=True)
+                self.state["retained_append"] = item
+            elif installed is not None:
+                require(native_same(destination, installed), "native-rollback-installed-identity-changed")
+            else:
+                require(native_same(destination, self.preimages["destination"]), "native-rollback-pristine-changed")
+            self.state.update(phase="rollback-prepared", rollback_go_sha256=self.go_sha,
+                              rollback_initial={name: self.current(name) for name in self.targets})
+            self.save()
+        if not final_readback:
+            self.restore_target("destination")
+            if self.current("donor") == {"type": "absent"} or "donor" in self.state.get("restores", {}):
+                require(self.go.get("restore_absent_donor") is True, "native-donor-restore-go-required")
+                if self.state["phase"] != "rollback-donor-pending":
+                    # The first rename invalidates the old two-target witness.
+                    # Obtain fresh I1 evidence before restoring the other file.
+                    self.state["phase"] = "rollback-donor-pending"
+                    self.save()
+                    return
+                self.restore_target("donor")
+        self.unchanged_donor()
+        require(native_same(self.current("destination"), self.preimages["destination"], False), "native-rollback-inventory-mismatch")
+        self.listing(restored=True)
+        if "retained_append" in self.state:
+            self.custody_members([self.state["retained_append"]])
+        if final_readback:
+            observed, binding = self.instrument("I5")
+            require(isinstance(observed, dict) and set(observed) == {"differences", "notes"}
+                    and observed["differences"] == [] and isinstance(observed["notes"], list),
+                    "native-i5-inverse-not-clear")
+            self.state.update(phase="rolled-back", i5=binding)
+        else:
+            # The external inverse reader needs the restored files and a fresh
+            # post-restore I1. Its second call alone can close the operation.
+            self.state.update(phase="rollback-restored", restored_at_ns=time.time_ns())
+        self.save()
+
+    def run(self):
+        if self.args.native_export_instruments and not os.path.lexists(self.directory):
+            require(self.action == "disposable-exercise", "native-initial-export-action")
+            self.publish_instruments()
+            return {"schema": "rotate-native/1", "status": "stop", "action": self.action, "dry_run": False,
+                    "phase": "awaiting-instruments", "resident_mind": "NOT APPLICABLE", "notebook": "NOT APPLICABLE",
+                    "launcher_join": "NOT APPLICABLE", "operator_accepted": False,
+                    "provider_started": False, "compaction_triggered": False}
+        self.notice.parent_chain(self.directory)
+        # Only the mapped logs lane is created. No default state elsewhere.
+        for directory in (self.room / "logs", self.room / "logs/rotate", self.directory):
+            if not os.path.lexists(directory):
+                directory.mkdir(mode=0o700)
+            self.notice.private_node(directory, True)
+        lock_path = self.directory / "operation.lock"
+        self.git_private(lock_path.parent, lock_path)
+        if os.path.lexists(lock_path):
+            self.notice.private_node(lock_path)
+        fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+        try:
+            lock_node = self.notice.private_node(lock_path)
+            require(node_id(lock_node) == node_id(os.fstat(fd)), "native-operation-lock-replaced")
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise Refused("native-operation-busy") from None
+            require(not os.path.lexists(self.directory / ".state.NEW"), "native-pending-state-write")
+            require(not os.path.lexists(self.directory / ".packets.NEW"), "native-pending-packet-export")
+            if os.path.lexists(self.state_path):
+                self.state = self.notice.decode(native_read(self.state_path, SMALL * 16)[0])
+                require(all(self.state.get(k) == v for k, v in {
+                    "schema": "rotate-native-state/1", "operation": self.operation,
+                    "plan_sha256": self.plan_sha}.items()), "native-checkpoint-binding")
+                raw, _ = native_read(self.preimages_path, SMALL * 16)
+                require(digest(raw) == self.state.get("preimages_sha256"), "native-preimages-changed")
+                self.preimages = self.notice.decode(raw)
+                self.instrument("I2", self.state["i2"])
+                self.root_identities()
+            else:
+                require(self.action == "disposable-exercise" and not os.path.lexists(self.preimages_path),
+                        "native-admission-required")
+            actions = {"disposable-exercise": self.admission, "custody": self.preserve,
+                       "install": self.installation, "load": self.load, "rollback": self.rollback}
+            if self.args.native_export_instruments:
+                require(self.state is not None, "native-admission-required")
+                if self.state["phase"] == "install-prepared" and os.path.lexists(self.stage):
+                    require(native_same(native_snapshot(self.stage), self.state["staged"]), "native-stage-changed")
+            else:
+                actions[self.action]()
+            self.publish_instruments()
+            return {"schema": "rotate-native/1", "status": "stop", "action": self.action,
+                    "dry_run": False,
+                    "phase": self.state["phase"], "state_sha256": digest(json_bytes(self.state)),
+                    "custody_manifest_sha256": self.state.get("custody_manifest_sha256"),
+                    "resident_mind": "NOT APPLICABLE", "notebook": "NOT APPLICABLE",
+                    "launcher_join": "NOT APPLICABLE", "operator_accepted": False,
+                    "provider_started": False, "compaction_triggered": False}
+        finally:
+            os.close(fd)
+
+
+def native_entry(args):
+    try:
+        result = NativeOperation(args).run()
+        rc = 0
+    except (Refused, OSError, ValueError, KeyError, TypeError, RecursionError) as error:
+        result = {"schema": "rotate-native/1", "status": "refused", "action": args.native_action,
+                  "reason": str(error) if isinstance(error, Refused) else "native-input-or-io-refused",
+                  "operator_accepted": False, "provider_started": False, "compaction_triggered": False}
+        rc = 2
+    except Exception:
+        result = {"schema": "rotate-native/1", "status": "refused", "action": args.native_action,
+                  "reason": "native-dependency-refused", "operator_accepted": False}
+        rc = 2
+    print(json.dumps(result, sort_keys=True))
+    return rc
+
+
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="rotate", description="Synthetic dry-run rotation rehearsal; no live mode")
+    ap = argparse.ArgumentParser(prog="rotate", description="Fixture rehearsal or explicitly hash-gated disposable operations")
     ap.add_argument("--phase", type=int, choices=range(10), default=0)
-    ap.add_argument("--dry-run", action="store_true", default=True, help="the default and only supported mode")
+    ap.add_argument("--dry-run", action="store_true", help="fixture rehearsal; forbids a native action even with --native-apply")
     ap.add_argument("--room", type=Path, help="explicit existing synthetic room; never defaults to the live room")
     ap.add_argument("--key")
     ap.add_argument("--writer")
@@ -1016,12 +1897,23 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--adapter", choices=("fixture", "claude", "codex"), default="fixture",
                     help="fixture rehearsal or explicit Claude adapter preparation; never a live mode")
     ap.add_argument("--adapter-plan", help="rotate-claude-adapter/1 fixture plan, relative to the synthetic room")
-    ap.add_argument("--native-action", choices=tuple(NATIVE_GO), help="explicitly refused; no native act is implemented")
+    ap.add_argument("--native-action", choices=tuple(NATIVE_GO), help="refused by default; disposable actions require all native gates")
+    ap.add_argument("--native-apply", action="store_true", help="explicit disposable operation selection; grants no authority or default go")
+    ap.add_argument("--native-plan", help="explicit private disposable operation plan; no default")
+    ap.add_argument("--native-plan-sha256", help="exact operation-plan digest")
+    ap.add_argument("--native-go", help="separate named go record for this one action")
+    ap.add_argument("--native-go-sha256", help="exact named-go digest")
+    ap.add_argument("--native-proof", help="private, current instrument evidence for this action")
+    ap.add_argument("--native-proof-sha256", help="exact instrument-evidence digest")
+    ap.add_argument("--native-export-instruments", action="store_true",
+                    help="export initial inert I1/I2 packets under the named disposable go, without admission")
     return ap
 
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    if args.native_plan is not None:
+        return native_entry(args)
     result = {"schema": "rotate/1", "phase": args.phase, "name": PHASES[args.phase][0],
               "dry_run": True, "writes": 0, "native_load_proved": False, "operator_accepted": False,
               "completed": [], "next_phase": args.phase + 1 if args.phase < 9 else None}

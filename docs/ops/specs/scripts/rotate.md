@@ -8,7 +8,9 @@ Map: `docs/ops/README.md`.
 
 Status: synthetic phases 0 to 9 implemented, dry-run only, with Claude-only
 window/build rehearsal and disposable custody, install, acceptance and close.
-No live rotation, persistent recovery or provider-load proof.
+The fixture path has no live rotation or persistent recovery. Slice 6 adds
+an explicitly gated disposable operation engine and persistent checkpoints;
+it has no provider driver and no actual native-load or operator-acceptance proof.
 
 Slice 5 adds explicit Claude adapter preparation on synthetic fixtures only,
 through phase 5; native phases 6 to 9 refuse before reading evidence.
@@ -71,6 +73,175 @@ restart, native W5 joins, physical custody, durable media paths, native
 promotion/load/rollback and both named live exercises. The Manager owns the
 separate custody-tool disk check. Safe roots, F1 registry privacy and C09
 remain required. This slice creates no runtime map entry or live capability.
+
+### Disposable operation engine (slice 6)
+
+This separate path is selected only by `--native-apply --adapter claude --native-plan PATH
+--native-plan-sha256 SHA --native-action ACTION --native-go PATH
+--native-go-sha256 SHA --native-proof PATH --native-proof-sha256 SHA`.
+Without a native plan all earlier fixture refusals remain unchanged. Actions
+are `disposable-exercise` (admission only), `custody`, `install`, `load`
+(a reader, never a provider launch), and `rollback`. Resident rotation,
+compaction, launcher hold and donor disposition remain refused. There is
+no default plan, go, proof, store, body or custody root.
+An explicit `--dry-run` forbids this path even when `--native-apply` is also
+given. Omitting `--native-apply` refuses before reading any native input.
+
+These are execution-capable source interfaces, not installation authority.
+Go files record an externally supplied named authorization; a digest proves
+bytes, not the identity of the author. A reviewed operation packet and the
+operator's separate live words remain mandatory. The engine triggers no
+compaction, provider, launcher, registry update or notification. All
+validation of this slice uses invented objects behind masked2.
+
+The bounded private plan is `rotate-disposable/1`: `operation` is one plain
+lowercase name, `provider` is `claude`, `provider_version` is a nonblank
+label of at most 64 characters, and `writer` is exactly one registered key
+in this room. `room`, `project`, `store` and `records_dir` are absolute, unlinked paths;
+project and store are distinct existing 0700 owner directories; records_dir
+is also an existing 0700 owner directory. No resident
+has the disposable project as its room. `registry` is a hash-bound reference
+to the canonical room registry, regular single-link 0600 of its accepted
+owner, never a shadow registry. `donor` and `destination` each name `path`,
+`session_id` and closed `sha256`; their two distinct identifiers must be
+unregistered and their exact `<identifier>.jsonl` files are the only bodies
+in the named store. The engine never discovers or enrolls a container.
+
+The plan lives directly in `<room>/storage/active/<operation>/`, 0700.
+Its separately named go and instrument-proof files live there too.
+`candidate` is a `{path, sha256}` reference under that case; `artifacts`
+is a list of unique `{name, path, sha256}` references there, including
+`capsule`, `gates` and `window`, plus any durable media and supporting
+records. Artifact names cannot shadow donor, destination or candidate.
+Every file is regular, single-link, owner-only 0600, without linked
+ancestors; reads are bounded to 64 MiB per body/artifact and 1 MiB per
+record. A bracketed read checks identity, size, mtime and ctime before and
+after. Larger inputs refuse; the bound is not an inferred native capacity.
+
+`gates` is a `rotate-native-gates/1` phase-5 record binding
+`donor_sha256`, `pristine_sha256` and `candidate_sha256`. Its `gates` object
+names `trigger`, `closeout`, `operator_compaction`, `window`, `static` and
+`media`. All six must be true. This is a required upstream evidence join,
+not a native phase-0-to-5 producer or an authentication of the operator.
+The engine additionally parses the bodies, checks identity/parent/tool
+structure, the pristine inert first exchange, the candidate boundary, and
+structural donor residue. The accepted builder and complete static-gate
+evidence remain required; this reader does not replace them with a load flag.
+
+`custody_roots` names two to four existing private roots outside the room,
+project and store; `date` is YYYYMMDD. The engine calls custody.py in process
+with its real physical-disk checks and without the synthetic same-device
+override. The writer/day batch is the canonical `sessions-<writer>-<date>`.
+Aliases are `<operation>-donor`, `-destination`, `-candidate`, `-preimages`
+and `-<artifact-name>`. Open MANIFEST rows and direct full reads bind the
+operation members; the engine does not require or rewrite a shared daily
+batch as an exclusive whole-root SHA256SUMS inventory. Closing the day and
+its audit remain the writer's separate closeout, not an automatic side effect.
+
+The mapped runtime home is `<room>/logs/rotate/<operation>/`, private 0700,
+with `operation.lock`, immutable `preimages.json` and atomic `state.json`
+at 0600. The lock is nonblocking. State pins the plan and preimages, actual
+root/file identities and known staging/postimages. It never grants a go.
+Unknown state, a leftover `.state.NEW`, changed plan/preimages or an
+unrecorded stage refuses; no unknown file is swept away. Interrupted
+recorded renames can resume by matching the exact staged inode and bytes.
+
+Every `rotate-native-go/1` binds `operation`, `plan_sha256`, `writer`,
+`action` and a zoned `at` no more than one hour old. Install also binds
+`pristine_sha256`, `candidate_sha256`, `custody_manifest_sha256` and
+`inverse: restore-pristine-and-stop`; its time must follow custody.
+Rollback names the observed `destination_sha256`; absent-donor restoration
+requires explicit `restore_absent_donor: true`. An unchanged donor is never
+rewritten. The whole process remains stopped while partial joins are held.
+
+Each `rotate-native-proof/1` binds the same operation/plan/action and has
+`quiescence`: exactly two observations at least one second apart, no more
+than 60 seconds old. Each observation contains the actual donor/destination
+snapshot (type, dev, ino, size, sha256, mode, uid, gid, mtime_ns, ctime_ns,
+nlink), project dev/ino, `same_user_observable: true`, and integer-zero
+`holders`, `session_records`, `argument_holders`, `locks`, `unreadable` and
+`foreign_processes`. Missing observations are unknown, never zero. These
+are external-instrument records, not a substitute for I1's real process
+inspection. The present interface permits no accepted-foreign-process
+exception; a live packet needing one requires a reconciled contract.
+
+The proof's `instruments` object binds the actual observer inputs and outputs.
+Each binding is exactly `{packet: {path, sha256}, record: {path, sha256}}`,
+all directly in the operation's case. `I1` is a two-element list of bindings,
+with distinct fresh output inodes; each output is the actual reader's
+`{held: [], own_unreadable: 0, foreign_unreadable: 0}` shape. These records
+join the two timed observations; neither timestamp nor digest authenticates
+the writer. The adapter additionally refuses unreadable foreign processes,
+stricter than I1's standalone verdict. I2's recorded objects, listing and
+directory identity must equal actual preimages before admission. Its bound
+packet and record remain pinned in state throughout the operation.
+
+Before install, `custody_audit` in that proof binds the member-manifest
+digest, a distinct registered `auditor` with role `Auditor`, `verdict: PASS`
+and a hash-bound `review` under the case. That `rotate-custody-audit/1`
+record binds operation, plan digest, member digest, auditor and verdict.
+The engine also re-reads
+every required copy. The first install call writes one 0600 same-directory
+`.NEW`, fsyncs it, records its identity and returns `install-prepared` without
+renaming. The independent I3B reader then inspects that inode. A second
+install call requires the exact bound I3B output and unchanged target,
+atomically renames, fsyncs the directory, verifies the known postimage and
+returns `install-renamed`. A third requires I3A's actual postimage before
+returning `installed`. All three use the same post-custody go. Only this recorded
+stage can be resumed or removed by the authorized inverse.
+Go, plan and instrument bytes, go age and fresh quiescence are rechecked at
+the rename boundary, not only before the potentially lengthy custody read.
+
+Load reads an actual append after the installed prefix, requires the same
+inode, intact prefix, terminated linked rows, destination identities,
+unique message IDs, paired tools and an assistant reply. Its canonical
+`gauge.read_claude` result must equal proof `first_gauge` for tokens, model,
+reading_at and call; actual I4 output must also match the counted complete
+append. Recognition is not inferred; operator_accepted remains
+false. Rollback retains appended destination bytes under a NEW custody
+alias before restore and requires proof `appended_sha256`. Unknown edits
+refuse. Whole rollback compares the store/project listings and file type,
+size, hash, mode, uid and gid with the preimages; replacement inode changes
+are recorded rather than mistaken for data loss. Restore returns
+`rollback-restored`, not a completed inverse. A further call with the same
+rollback go, fresh post-restore I1 readings and I5's zero-difference record
+alone returns `rolled-back`. Both I1 output files must postdate the saved
+restore timestamp. An explicitly authorized absent-donor restore has an
+additional `rollback-donor-pending` stop after the destination is restored;
+fresh I1 evidence is required before the second target is written.
+
+**Instrument join:** source interface matched to the reviewed instruments
+SHA-256 `5c1ea1bc6ac84e0d3b2271527cc5df3f2036051b44fa4e649c4ef299770e6793`
+and the revision-4 design pin
+`0bf4def343117144e5506b988818e3a1d2ee710b844b4460b0097d7c5f9c252d`.
+The private `instrument-packets.json` index points to immutable hash-bound
+I1/I2 and phase-specific I3B/I3A/I4/I5 packets. I1 is an explicit two-packet
+array with distinct exclusive result names, at least one second apart by
+output-file mtime as well as the observation envelope. Every export uses
+fresh output names without replacing earlier observations. Initial
+`--native-export-instruments` under the disposable-exercise go exports only
+I1/I2, before admission or state creation. On an existing operation,
+the export flag loads the checked checkpoint under its lock and exports
+the phase-specific readers without applying the action. Re-export is inert;
+the adapter never runs an observer. After each later stop it exports the
+next reader's packet. No supplied packet or result is a live go.
+
+Every packet includes `evidence` and `record_name`; synthetic plans also
+name `synthetic_root`. Reader source requires `destination_token` for I3B
+and I3A despite its omission from ADAPTER_OUTPUTS; both packets supply it.
+I1's `project` is the private working cwd, correcting the table's ambiguous
+store-folder description. I2/I3/I5 use the provider-store folder for listings.
+I3A emits `{postimage: ...}`, but I4 reads flat metadata plus `uuids`; the
+adapter retains the exact I3A output and explicitly derives a separate
+hash-bound I4 input from that postimage and the installed candidate's IDs.
+It never labels the derived object as an observer output. I5 receives actual
+I2 objects/listing, every retained-append custody copy and the newly exported
+second I1 output path, never the pre-restore record.
+These interface differences require joint review before live use. Paths and identifiers
+remain only in the private case/checkpoint; stdout reports reason codes,
+hashes and phase names. Mind, notebook and launcher joins report
+`NOT APPLICABLE`, never passed. No resident route or real exercise is
+claimed by this source implementation.
 
 ### Implemented synthetic slices: one dry-run stop at a time
 
@@ -343,7 +514,7 @@ Tests: `tools/test/test_rotate.py`; test contract:
 `docs/ops/specs/tools/test/rotate.md`. The existing template generator
 supplied the initial script/test skeleton while preserving this spec.
 
-### Complete target workflow (all native acts remain unimplemented)
+### Complete resident target workflow (not implemented by the disposable engine)
 
 **Roles.**
 - **The operator:** chooses the tier, creates the destination container, gives the go, accepts or does not.
