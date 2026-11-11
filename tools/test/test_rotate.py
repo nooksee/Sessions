@@ -4191,6 +4191,25 @@ class NativeDisposableTests(unittest.TestCase):
                     self._lifecycle_expect_reason("native-load-first-gauge-unproved", "load",
                                                   proof_change=self.gauge_proof)
 
+    def test_load_refuses_a_reading_carried_in_the_installed_prefix(self):
+        # Review finding on #79: an append with no usable usage must not borrow the prefix's reading.
+        self.preserve()
+        self.install()
+        row = self.row("assistant", 101, 5, [{"type": "text", "text": "Invented appended reply."}], sid=DESTINATION)
+        row["message"].update(id="invented-call", model="claude-sonnet-4-5-20250929",
+                              usage={"input_tokens": 0, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0})
+        self.put(self.destination, self.destination.read_bytes() + json.dumps(row).encode() + b"\n")
+        gauge = ROTATE.sibling("gauge")
+        carried = {"tokens": 123, "model": "claude-sonnet-4-5-20250929", "reading_at": "2026-11-09T00:00:00Z",
+                   "call": "invented-carried-call", "compaction_after": None}
+        real_sibling = ROTATE.sibling
+        def supplied(proof):
+            proof["first_gauge"] = dict(carried)
+        with mock.patch.object(ROTATE, "sibling", side_effect=lambda name:
+                gauge if name == "gauge" else real_sibling(name)), \
+                mock.patch.object(gauge, "read_claude", return_value=dict(carried)):
+            self._lifecycle_expect_reason("native-load-gauge-not-appended", "load", proof_change=supplied)
+
     def test_remaining_load_requires_a_gauge_proof_object(self):
         # native-0214. Real synthetic append and gauge; wrong supplied shape only.
         self.preserve()
