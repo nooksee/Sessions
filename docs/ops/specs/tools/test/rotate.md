@@ -68,7 +68,10 @@ The suite retains 272 baseline tests: the first two slices' 117 (94 plus 23
 distinct C1 tests from the section 276 gap table), 107 third-slice tests,
 and 48 Claude adapter preparation tests. Slice 6 adds 246 operation and
 93 reader cases, totaling the 611 methods executed in each completed
-permission run. Its operation class mocks the Git
+permission run. One operation test was added on 2026-11-11, making 612: a
+load whose append carries no usable usage must refuse a reading carried in
+the installed prefix (`native-load-gauge-not-appended`; the review finding
+on #79). Its operation class mocks the Git
 exposure reader and physical-disk map; an independent scratch smoke uses the
 actual Git reader and custody copier behind masked2. No host provider or
 native store is available. Reader tests isolate overlapping predicates

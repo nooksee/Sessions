@@ -1685,6 +1685,19 @@ class NativeOperation:
         reading = sibling("gauge").read_claude(self.targets["destination"])
         require(type(reading.get("tokens")) is int and reading["tokens"] > 0
                 and not reading.get("compaction_after"), "native-load-first-gauge-unproved")
+        # The reading must be a row of the append itself, never one carried in the installed prefix.
+        def appended_reading(line):
+            row = self.notice.decode(line)
+            message = row.get("message")
+            usage = message.get("usage") if isinstance(message, dict) else None
+            parts = [usage.get(key) for key in ("input_tokens", "cache_read_input_tokens",
+                                                "cache_creation_input_tokens")] if isinstance(usage, dict) else []
+            return (row.get("type") == "assistant" and not row.get("isSidechain")
+                    and message.get("id") == reading.get("call") and row.get("timestamp") == reading.get("reading_at")
+                    and len(parts) == 3 and all(type(part) is int and part >= 0 for part in parts)
+                    and sum(parts) == reading["tokens"])
+        require(any(appended_reading(line) for line in raw[before["size"]:].splitlines()),
+                "native-load-gauge-not-appended")
         supplied = self.proof.get("first_gauge")
         require(isinstance(supplied, dict) and all(supplied.get(key) == reading.get(key)
                     for key in ("tokens", "model", "reading_at", "call")), "native-load-gauge-mismatch")
