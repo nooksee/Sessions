@@ -39,4 +39,4 @@ The caller is resolved from a native session variable only when it is corroborat
 - **Codex:** `CODEX_THREAD_ID`, and that thread's writer lock held open by a Codex ancestor.
 - **Copilot:** `COPILOT_AGENT_SESSION_ID`, and that session's own state folder holding an in-use lock named for a Copilot ancestor's process (`inuse.<pid>.lock`). Measured on 2026-11-11 by variable names and a yes or no only: the Orchestrator's session carries the variable, and its value equals the seat's registry row.
 
-A variable alone resolves nobody. A Copilot seat is registry-only, so the roster, binding and body legs stay as they were for it; the two identity legs are what this adds.
+A variable alone resolves nobody, and neither does a Copilot process's own arguments: a session named there is never identity evidence (the review finding on #82). A Copilot seat is registry-only, so the roster, binding and body legs stay as they were for it; the two identity legs are what this adds.
