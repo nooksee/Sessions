@@ -92,7 +92,8 @@ class RotateTests(unittest.TestCase):
         """One invented leaf, written by the mind tool itself, so its index and ledger are real."""
         body = self.base / "leaf-body.md"
         body.write_text("Check the exact target before choosing a recovery action.\n", encoding="utf-8")
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()), \
+                mock.patch.dict(os.environ, {"MIND_TEST_CALLER": agent}):   # the mind tool's test seam: the caller is the agent
             rc = ROTATE.sibling("mind").main(["--room", str(self.room), "--registry", str(self.room / self.registry),
                                               "--now", now, "add", "--agent", agent, "--title", title,
                                               "--body", str(body)])

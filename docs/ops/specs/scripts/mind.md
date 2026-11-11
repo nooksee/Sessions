@@ -12,7 +12,7 @@ A mind that records the present goes stale within the hour, and a stale fact rea
 
 **Bounded by construction.** A title is at most 100 characters and a body at most 2,000. The index holds at most 200 live leaves and is refused, never trimmed, when full; a superseding leaf still flows because it replaces a line. Nothing is ever dropped silently.
 
-**Flow without approvals.** A registered resident writes, supersedes and retires its own leaves. No preview, binding or per-entry yes is asked. The ledger is the audit: every write is one line with the leaf's id, agent, time, SHA-256 and size.
+**Flow without approvals.** A registered resident writes, supersedes and retires its own leaves, and only as itself: `add` and `retire` bind `--agent` to the caller's own verified identity ("The caller", below). No preview or per-entry yes is asked. The ledger is the audit: every write is one line with the leaf's id, agent, time, SHA-256 and size.
 
 **Immutable leaves.** A leaf is never edited. A change is a new leaf that supersedes the old one. A leaf whose bytes no longer match its ledger line is not served until its owner retires it.
 
@@ -63,12 +63,33 @@ The id is the UTC date of the write and a three-digit number that counts up with
 
 One JSON object per line, keys sorted: `action` (`add` or `retire`), `id`, `agent`, `time`, `sha256` and `bytes` of the leaf, and for `add`, `supersedes`.
 
+### The caller
+
+`add` and `retire` write only as the caller. Before anything else, before the screen, the lock or any read of the mind, each one:
+
+1. resolves the caller with `myself.py`'s own `resolve_caller`, loaded by path from beside `mind.py`, on the same inputs `myself.py` uses: the process environment, `/proc`, the parent process, and the Codex writer-lock root. There is no second resolver;
+2. refuses unless that resolution names exactly one native session with no signal problem;
+3. refuses unless the room's canonical registry (`ops/etc/resident-identities.json` beside the tool) holds exactly one keyed row with that session and provider, as `myself.py`'s identity-registry leg matches it;
+4. refuses unless that row's key is the `--agent` given.
+
+It works alike for Claude and Codex residents, since `resolve_caller` reads both. Unverified, ambiguous or absent identity refuses, and the refusal never prints a session identifier. Outside the test seam, a `--registry` other than the canonical one refuses `add` and `retire`. `show`, `read` and `check` take no caller and stay open to any reader.
+
+**A worker writes as its parent.** A subagent, workflow agent or background task runs inside its parent's session and carries its parent's signal, so the tool cannot tell it from its parent (PoT 3.5). A worker acts for its parent, and a leaf it writes is its parent's.
+
+**The test seam.** `MIND_TEST_CALLER=<key>` in the environment declares the caller for a test, in place of steps 1 to 3. It is honoured only when all three conditions hold:
+
+1. the registry is not the room's canonical one;
+2. every registry session is a synthetic `0000` identifier, rotate's own convention;
+3. the room is neither `mind.py`'s own room nor any room the canonical registry names.
+
+A canonical registry that is absent names no room; one present but unreadable keeps the seam shut. Anywhere else, setting the variable refuses; it never falls back to the real route. No real room can meet those conditions, so the seam cannot be reached from the command line in a real room. `tools/test/test_mind.py` and `tools/test/test_rotate.py` use it.
+
 ### Commands
 
 All take `--room` (default: this room), `--registry` (default: `ops/etc/resident-identities.json`) and `--now` (tests only).
 
-- **`add --agent <key> --title <text> --body <file or -> [--supersedes <id>]`.** Screens the title and the body, takes the lock, checks the agent is registered exactly once to this room, refuses while a retired-format mind is present, checks Git, writes the leaf, appends the ledger line and rewrites the index. A superseding leaf takes the old line's place; only the agent's own live leaf can be superseded.
-- **`retire --agent <key> <id>`.** Takes the agent's own live leaf out of the index and appends the ledger line. The leaf stays on disk. Retire works on a leaf that fails its check, so an owner can always clear a blocked mind.
+- **`add --agent <key> --title <text> --body <file or -> [--supersedes <id>]`.** Binds the caller, screens the title and the body, takes the lock, checks the agent is registered exactly once to this room, refuses while a retired-format mind is present, checks Git, writes the leaf, appends the ledger line and rewrites the index. A superseding leaf takes the old line's place; only the agent's own live leaf can be superseded.
+- **`retire --agent <key> <id>`.** Binds the caller, then takes the agent's own live leaf out of the index and appends the ledger line. The leaf stays on disk. Retire works on a leaf that fails its check, so an owner can always clear a blocked mind.
 - **`show [--agent <key>]`.** Prints the verified index lines, all or one agent's. Refused while any blocking check fails.
 - **`read <id>`.** Prints one live leaf byte for byte. Refused for a retired or superseded leaf, and while any blocking check fails.
 - **`check`.** Prints every gate as `PASS`, `FAIL` or `REPORT`, then the count of blocking failures. Exit 0 with none, 1 with any.
@@ -112,6 +133,6 @@ On 2026-11-09 the operator set aside the earlier designs, approved chains includ
 
 ## Integrity Filter Warnings
 
-- The tool cannot tell who typed a command. The agent is the registry key given; the ledger records it and the registry bounds it to residents of this room.
+- **The binding is a cooperating-writer guard, not a file permission.** It stops the room's own tool from writing or retiring as another resident. A same-user process can still change the files directly; the ledger hashes and `check` are the audit that finds that. It cannot tell a worker from its parent (see "The caller"). Finding 1 of Claudio Freeman's read of PR #72 (his section 288) is what it answers: before it, the agent was only a key the caller named.
 - The screen is a set of patterns. An idea phrased to slip past it is still a stale fact; readers treat a leaf as a lead, never as evidence.
 - PoT 1.2.10, 4.1.7 and 4.2.4 were written for the approved chain and still say the operator decides mind entries and the resident proposes them for a recorded yes. The operator's design of 2026-11-09 decides them once, as a standing yes for every leaf written under this tool and its screen; the wording of those clauses is the operator's to amend under PoT 7.3. PoT 5.1.3, 5.1.4 and 5.1.5 are enforced as written.

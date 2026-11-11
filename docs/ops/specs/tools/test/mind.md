@@ -1,6 +1,6 @@
 # Technical Specification: tools/test/test_mind.py
 
-Test file: `Sessions/tools/test/test_mind.py`. Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Status: 47 tests (measured 2026-11-09: 47 run, 1 skipped as root, at umask 0002, 0022 and 0077).
+Test file: `Sessions/tools/test/test_mind.py`. Tool under test: `Sessions/ops/lib/scripts/mind.py`. Tool spec: `docs/ops/specs/scripts/mind.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-02`). Status: 73 tests (measured 2026-11-09 behind the masked runner: 73 run, at umask 0002, 0022 and 0077; the caller binding added 26).
 
 ## Purpose
 Prove, in synthetic rooms only, that the mind is pointer first, holds concepts only, stays bounded, flows without approvals, keeps every leaf immutable and audited by its ledger line, and stays out of Git.
@@ -14,6 +14,8 @@ Prove, in synthetic rooms only, that the mind is pointer first, holds concepts o
 ## Inputs
 - `ops/lib/scripts/mind.py`, both imported and run as a subprocess with `python3 -I -B`.
 - A fresh temporary room per test (`Room`): a registry with two keys (`session-doctor`, `claudine-colbert`) whose session ids are an invented UUID, leaf bodies written beside the room, and a clock that advances one minute per command.
+- Every add and retire declares its caller through the test seam, `MIND_TEST_CALLER`, by default the `--agent` it names (`seam_env`); the parent's own value never leaks in. The binding tests also use a room with three keys, each with its own invented session and provider, two Claude and one Codex.
+- The real route is tested in process: `myself.py`'s `resolve_caller` alone is replaced, and the canonical registry is the test room's own.
 - No real room, registry, mind or body is read or written.
 
 ## Outputs
@@ -33,5 +35,7 @@ Prove, in synthetic rooms only, that the mind is pointer first, holds concepts o
 **The Git check fails closed (9).** No Git on the path, a Git that does not answer, a `check-ignore` that does not answer, a broken repository, a broken inner repository under a valid parent, and a broken nearest ancestor are each refusals; a valid nearer repository and a valid worktree allow ignored writes; only Git's positive answer passes.
 
 **The legacy-state guard (4).** `ops/lib/statepaths.py` proves `storage/mind.lock` absent without creating or changing anything, refuses an existing node, refuses escaping paths before inspection, and treats a metadata error as not absent.
+
+**The caller (26).** A write or a retire as another resident is refused, through the seam and through the real route, and nothing is written. A resident writes and retires as itself. `show`, `read` and `check` stay open with no caller. Each of the seam's three conditions is refused where it fails: the canonical registry; a session that is not synthetic, or absent; the tool's own room; a room the canonical registry names; and a canonical registry that is unreadable. An absent canonical registry names no room. The seam's value must be a key. On the real route: an unverified caller, any signal problem, an unregistered caller, a provider mismatch and an ambiguous match each refuse. A Codex resident writes. No session id is ever printed. Without the seam, another registry is refused. A missing sibling refuses. The resolution is `myself.resolve_caller`, with the parent process and `myself.py`'s own live paths. A contract test holds the registry match to `myself.py`'s identity-registry leg, case by case, with no store searched.
 
 **The lock location (8).** A fresh write uses only the private `logs/mind.lock`; every kind of legacy lock node, an unsafe or unsearchable legacy parent, and a live legacy lock each block writes without being changed; a fresh process holds the exact shared lock inode; a reviewed relocation keeps the inode; a legacy lock does not block `check` or `show`.
