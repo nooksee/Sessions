@@ -18,7 +18,7 @@ Prove, on synthetic records only, that the self-check finds its caller from the 
 - `unittest` progress and a summary line. Writes only inside each test's temporary directory.
 
 ## Invariants and failure modes
-83 tests in 6 classes, by the file's own count: `ResidentSelfCheckTests` 27, `HeldResidentTests` 8, `SharedGaugePressureTests` 16, `WindowTableTests` 6, `AutoMemoryTests` 12, `OrientationAfterIdeNoticesTests` 14.
+93 tests in 7 classes, by the file's own count: `ResidentSelfCheckTests` 27, `HeldResidentTests` 8, `SharedGaugePressureTests` 16, `WindowTableTests` 6, `AutoMemoryTests` 12, `OrientationAfterIdeNoticesTests` 14, `CopilotCallerSignal` 10 (added 2026-11-11: a Copilot caller resolves only by its session variable with a Copilot ancestor and that session's in-use lock).
 - `ResidentSelfCheckTests`: caller identification from the native signal and ancestry, registry, roster and binding agreement, orientation claims, coverage and fail-closed exits.
 - `HeldResidentTests`: a registry-only resident held from the launcher: absent from the launcher passes; present in it, bound under another key, with non-private bindings, through a link, by alias, with a malformed collection or an unknown launcher value, it is a finding.
 - `SharedGaugePressureTests`: the context-pressure leg agrees with the gauge's reader on the same synthetic bodies: ordinary readings, sidechains, zero usage, compaction before and after a fresh reading, incomplete rows, reader failure and repeated runs.
