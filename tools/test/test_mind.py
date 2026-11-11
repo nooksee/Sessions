@@ -31,6 +31,20 @@ _spec.loader.exec_module(mind)
 IDEA = "Evidence outranks recollection. What a resident remembers is a lead to check, never a finding."
 SECOND = "A rotation keeps the person and slims the body; the receipts remember what the body forgets."
 SESSION = "0000f00d-0000-4000-8000-000000000000"
+AUTO = object()   # the test seam's caller defaults to the --agent a write names
+
+
+def seam_env(args, env=None, caller=AUTO) -> dict:
+    """The environment for one call: MIND_TEST_CALLER is the --agent of an add or retire,
+    or the caller given, or absent when caller is None. The parent's own value never leaks in."""
+    base = dict(os.environ if env is None else env)
+    base.pop(mind.SEAM, None)
+    if caller is AUTO:
+        caller = (args[args.index("--agent") + 1]
+                  if args and args[0] in ("add", "retire") and "--agent" in args else None)
+    if caller is not None:
+        base[mind.SEAM] = caller
+    return base
 
 
 class Room:
@@ -44,18 +58,20 @@ class Room:
         self.registry.write_text(json.dumps({"identities": identities}))
         self.minute = 0
 
-    def run(self, *args, stdin=None, env=None, day="2026-10-30"):
+    def run(self, *args, stdin=None, env=None, day="2026-10-30", caller=AUTO):
         self.minute += 1
         cmd = [sys.executable, "-I", "-B", str(MIND), "--room", str(self.room), "--registry", str(self.registry),
                "--now", f"{day}T17:{self.minute:02d}:00Z", *args]
-        return subprocess.run(cmd, capture_output=True, text=True, input=stdin, timeout=60, env=env)
+        return subprocess.run(cmd, capture_output=True, text=True, input=stdin, timeout=60,
+                              env=seam_env(args, env, caller))
 
     def add(self, body=IDEA, title="Evidence outranks recollection", agent="session-doctor", supersedes=None,
-            env=None, day="2026-10-30"):
+            env=None, day="2026-10-30", caller=AUTO):
         path = self.base / f"body-{self.minute}.md"
         path.write_text(body, encoding="utf-8")
         extra = ("--supersedes", supersedes) if supersedes else ()
-        return self.run("add", "--agent", agent, "--title", title, "--body", str(path), *extra, env=env, day=day)
+        return self.run("add", "--agent", agent, "--title", title, "--body", str(path), *extra, env=env, day=day,
+                        caller=caller)
 
     def index(self) -> list:
         return mind.read_index(self.room) or []
@@ -75,9 +91,10 @@ class Room:
                       and p.name != "mind.lock")
 
 
-def in_process(room: Room, *args) -> tuple[int, str, str]:
+def in_process(room: Room, *args, caller=AUTO) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err), \
+            mock.patch.dict(os.environ, seam_env(args, caller=caller), clear=True):
         rc = mind.main(["--room", str(room.room), "--registry", str(room.registry),
                         "--now", "2026-10-30T18:00:00Z", *args])
     return rc, out.getvalue(), err.getvalue()
@@ -243,10 +260,12 @@ class MindTests(unittest.TestCase):
         elsewhere = Path(self.tmp.name) / "elsewhere"
         elsewhere.mkdir()
         other = Room(elsewhere)
-        extra = ({"key": "visitor", "room": str(other.room)}, {"key": "twice", "room": str(self.r.room)},
-                 {"key": "twice", "room": str(self.r.room)})
+        # Each row carries a synthetic session, so the test seam is open and the registration checks are reached.
+        extra = ({"key": "visitor", "room": str(other.room), "session_id": SESSION},
+                 {"key": "twice", "room": str(self.r.room), "session_id": SESSION},
+                 {"key": "twice", "room": str(self.r.room), "session_id": SESSION})
         self.r.registry.write_text(json.dumps({"identities": [
-            {"key": "session-doctor", "room": str(self.r.room)}, *extra]}))
+            {"key": "session-doctor", "room": str(self.r.room), "session_id": SESSION}, *extra]}))
         self.refused(self.r.add(agent="nobody"), "registered 0 times")
         self.refused(self.r.add(agent="twice"), "registered 2 times")
         self.refused(self.r.add(agent="visitor"), "registered to another room")
@@ -764,6 +783,269 @@ class MindLockLocation(unittest.TestCase):
             self.assertEqual(room.run(*args).returncode, 0, args)
         self.assertFalse((room.room / "logs").exists())
         self.assertEqual(old.read_bytes(), b"preserved")
+
+
+
+DOCTOR_SID = "0000d0c0-0000-4000-8000-000000000001"
+ASSISTANT_SID = "0000c1a0-0000-4000-8000-000000000002"
+CODEX_SID = "0000c0de-0000-4000-8000-000000000003"
+
+
+class BindingTests(unittest.TestCase):
+    """add and retire write only as the caller: myself.py's resolution, the canonical registry, and one seam."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self.tmp.name)
+        self.r = Room(self.base, keys=())
+        rows = [("session-doctor", DOCTOR_SID, "claude"), ("claudine-colbert", ASSISTANT_SID, "claude"),
+                ("joe-codex", CODEX_SID, "codex")]
+        self.r.registry.write_text(json.dumps({"identities": [
+            {"key": k, "person": f"Person {k}", "role": "Role", "room": str(self.r.room), "session_id": sid,
+             "provider": provider} for k, sid, provider in rows]}))
+        self.myself = mind.sibling("myself")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def ok(self, result):
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return result
+
+    def refused(self, result, *words):
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        for word in words:
+            self.assertIn(word, result.stderr)
+        return result
+
+    def nothing_written(self):
+        self.assertEqual(self.r.files(), [])
+        self.assertFalse((self.r.room / "logs").exists())
+
+    def body(self) -> Path:
+        path = self.base / "idea.md"
+        path.write_text(IDEA, encoding="utf-8")
+        return path
+
+    def add_args(self, agent="session-doctor"):
+        return ("add", "--agent", agent, "--title", "Evidence outranks recollection", "--body", str(self.body()))
+
+    # -- the seam: a resident writes only as itself ----------------------------
+    def test_add_as_another_resident_is_refused(self):
+        self.refused(self.r.add(agent="session-doctor", caller="claudine-colbert"),
+                     "the caller is 'claudine-colbert', not --agent 'session-doctor'")
+        self.nothing_written()
+
+    def test_retire_of_another_residents_leaf_is_refused_by_the_binding(self):
+        self.ok(self.r.add(agent="session-doctor"))
+        before = self.r.files(), (self.r.room / "MIND.md").read_bytes()
+        self.refused(self.r.run("retire", "--agent", "session-doctor", "MIND-2026-10-30-001",
+                                caller="claudine-colbert"), "a resident writes only as itself")
+        self.assertEqual((self.r.files(), (self.r.room / "MIND.md").read_bytes()), before)
+        self.assertEqual(self.r.ids(), ["MIND-2026-10-30-001"])
+
+    def test_a_resident_writes_and_retires_as_itself_through_the_seam(self):
+        self.ok(self.r.add(agent="claudine-colbert"))
+        self.ok(self.r.run("retire", "--agent", "claudine-colbert", "MIND-2026-10-30-001"))
+        self.assertEqual([r["agent"] for r in self.r.ledger()], ["claudine-colbert", "claudine-colbert"])
+
+    def test_show_read_and_check_stay_open_without_any_caller(self):
+        self.ok(self.r.add())
+        self.ok(self.r.run("show", caller=None))
+        self.ok(self.r.run("read", "MIND-2026-10-30-001", caller=None))
+        self.ok(self.r.run("check", caller=None))
+
+    def test_the_seam_value_must_be_a_registry_key(self):
+        self.refused(self.r.add(caller="Not A Key"), "MIND_TEST_CALLER is not a registry key")
+        self.nothing_written()
+
+    # -- the seam's three conditions, each refused where it fails -----------------
+    def test_seam_refused_with_the_canonical_registry(self):
+        with mock.patch.object(mind, "REGISTRY", self.r.registry):
+            rc, _, err = in_process(self.r, *self.add_args())
+        self.assertEqual(rc, 2)
+        self.assertIn("honoured only in a synthetic room: the registry is the room's canonical one", err)
+        self.nothing_written()
+
+    def test_seam_refused_when_a_registry_session_is_not_synthetic(self):
+        data = json.loads(self.r.registry.read_text())
+        data["identities"].append({"key": "real-resident", "room": "/elsewhere",
+                                   "session_id": "1234abcd-0000-4000-8000-000000000009", "provider": "claude"})
+        self.r.registry.write_text(json.dumps(data))
+        self.refused(self.r.add(), "a registry session is not a synthetic 0000 identifier")
+        self.nothing_written()
+
+    def test_seam_refused_when_a_registry_row_has_no_session(self):
+        data = json.loads(self.r.registry.read_text())
+        data["identities"].append({"key": "no-session", "room": str(self.r.room)})
+        self.r.registry.write_text(json.dumps(data))
+        self.refused(self.r.add(), "a registry session is not a synthetic 0000 identifier")
+        self.nothing_written()
+
+    def test_seam_refused_in_the_tools_own_room(self):
+        with mock.patch.object(mind, "SESSIONS", self.r.room):
+            rc, _, err = in_process(self.r, *self.add_args())
+        self.assertEqual(rc, 2)
+        self.assertIn("the room is this tool's own room", err)
+        self.nothing_written()
+
+    def test_seam_refused_in_a_room_the_canonical_registry_names(self):
+        canonical = self.base / "canonical.json"
+        canonical.write_text(json.dumps({"identities": [{"key": "a-resident", "room": str(self.r.room),
+                                                         "session_id": "1234abcd-0000-4000-8000-000000000009"}]}))
+        with mock.patch.object(mind, "REGISTRY", canonical):
+            rc, _, err = in_process(self.r, *self.add_args())
+        self.assertEqual(rc, 2)
+        self.assertIn("the room is named by the canonical registry", err)
+        self.nothing_written()
+
+    def test_seam_refused_when_the_canonical_registry_is_unreadable(self):
+        canonical = self.base / "canonical.json"
+        canonical.write_text("{not json")
+        with mock.patch.object(mind, "REGISTRY", canonical):
+            rc, _, err = in_process(self.r, *self.add_args())
+        self.assertEqual(rc, 2)
+        self.assertIn("the canonical registry is unreadable, so its rooms cannot be ruled out", err)
+        self.nothing_written()
+
+    def test_an_absent_canonical_registry_names_no_room(self):
+        with mock.patch.object(mind, "REGISTRY", self.base / "absent.json"):
+            rc, out, err = in_process(self.r, *self.add_args())
+        self.assertEqual(rc, 0, err)
+        self.assertIn("written by session-doctor", out)
+
+    # -- the real route: myself.py's resolve_caller and the canonical registry ----
+    def real(self, caller, errors=(), agent="session-doctor", command="add"):
+        """One in-process write with no seam: the canonical registry is the room's, and
+        myself.py's resolve_caller answers as given. Nothing else of myself.py is replaced."""
+        resolved = mock.Mock(return_value=(caller, (), list(errors)))
+        args = self.add_args(agent) if command == "add" else ("retire", "--agent", agent, "MIND-2026-10-30-001")
+        with mock.patch.object(mind, "REGISTRY", self.r.registry), \
+                mock.patch.object(self.myself, "resolve_caller", resolved), \
+                mock.patch.object(mind, "sibling", return_value=self.myself):
+            rc, out, err = in_process(self.r, *args, caller=None)
+        self.assertEqual(resolved.call_count, 1)
+        return rc, out, err
+
+    def signal(self, provider, sid):
+        return self.myself.CallerSignal(provider, sid, "/proc/self/environ::FIXTURE")
+
+    def test_real_route_writes_as_the_resolved_resident(self):
+        rc, out, err = self.real(self.signal("claude", DOCTOR_SID))
+        self.assertEqual(rc, 0, err)
+        self.assertIn("written by session-doctor", out)
+
+    def test_real_route_refuses_another_residents_key(self):
+        rc, _, err = self.real(self.signal("claude", ASSISTANT_SID), agent="session-doctor")
+        self.assertEqual(rc, 2)
+        self.assertIn("the caller is 'claudine-colbert', not --agent 'session-doctor'", err)
+        self.nothing_written()
+
+    def test_real_route_retire_refuses_another_residents_key(self):
+        self.ok(self.r.add(agent="session-doctor"))
+        rc, _, err = self.real(self.signal("claude", ASSISTANT_SID), agent="session-doctor", command="retire")
+        self.assertEqual(rc, 2)
+        self.assertIn("a resident writes only as itself", err)
+        self.assertEqual(self.r.ids(), ["MIND-2026-10-30-001"])
+
+    def test_real_route_works_for_a_codex_resident(self):
+        rc, out, err = self.real(self.signal("codex", CODEX_SID), agent="joe-codex")
+        self.assertEqual(rc, 0, err)
+        self.assertIn("written by joe-codex", out)
+
+    def test_real_route_refuses_an_unverified_caller(self):
+        rc, _, err = self.real(None, errors=["no provider-bound native session signal was found"])
+        self.assertEqual(rc, 2)
+        self.assertIn("the caller's identity is unverified (1 signal problems)", err)
+        self.nothing_written()
+
+    def test_real_route_refuses_a_caller_with_any_signal_problem(self):
+        rc, _, err = self.real(self.signal("claude", DOCTOR_SID), errors=["a disagreeing signal"])
+        self.assertEqual(rc, 2)
+        self.assertIn("the caller's identity is unverified", err)
+        self.nothing_written()
+
+    def test_real_route_refuses_an_unregistered_caller(self):
+        rc, _, err = self.real(self.signal("claude", "0000eeee-0000-4000-8000-00000000000e"))
+        self.assertEqual(rc, 2)
+        self.assertIn("the caller matches 0 keyed registry rows", err)
+        self.nothing_written()
+
+    def test_real_route_refuses_a_provider_mismatch(self):
+        rc, _, err = self.real(self.signal("codex", DOCTOR_SID))
+        self.assertEqual(rc, 2)
+        self.assertIn("the caller matches 0 keyed registry rows", err)
+
+    def test_real_route_refuses_an_ambiguous_caller(self):
+        data = json.loads(self.r.registry.read_text())
+        data["identities"].append(dict(data["identities"][0], key="a-second-key"))
+        self.r.registry.write_text(json.dumps(data))
+        rc, _, err = self.real(self.signal("claude", DOCTOR_SID))
+        self.assertEqual(rc, 2)
+        self.assertIn("the caller matches 2 keyed registry rows", err)
+        self.nothing_written()
+
+    def test_real_route_never_prints_a_session_id(self):
+        for caller in (self.signal("claude", ASSISTANT_SID), self.signal("claude", "0000eeee-0000-4000-8000-00000000000e")):
+            _, out, err = self.real(caller)
+            for sid in (DOCTOR_SID, ASSISTANT_SID, "0000eeee-0000-4000-8000-00000000000e"):
+                self.assertNotIn(sid, out + err)
+
+    def test_without_the_seam_another_registry_is_refused(self):
+        self.refused(self.r.add(caller=None), "another registry serves tests only, through the test seam")
+        self.nothing_written()
+
+    def test_a_missing_sibling_refuses_rather_than_guessing(self):
+        with self.assertRaises(mind.Refused) as caught:
+            mind.sibling("no-such-script")
+        self.assertIn("cannot be verified", str(caught.exception))
+
+    def test_resolution_is_myself_resolve_caller_from_the_parent_process(self):
+        resolved = mock.Mock(return_value=(None, (), ["none"]))
+        with mock.patch.object(mind, "REGISTRY", self.r.registry), \
+                mock.patch.object(self.myself, "resolve_caller", resolved), \
+                mock.patch.object(mind, "sibling", return_value=self.myself) as loaded:
+            in_process(self.r, *self.add_args(), caller=None)
+        loaded.assert_called_once_with("myself")
+        environ, proc_root, start_pid, lock_root = resolved.call_args.args
+        live = self.myself.CheckPaths.live()
+        self.assertEqual((proc_root, start_pid, lock_root), (live.proc_root, os.getppid(), live.codex_lock_root))
+        self.assertIs(environ, os.environ)
+
+    def test_the_registry_match_agrees_with_myself_identity_registry_leg(self):
+        """Contract: for the same resolved caller, mind's key is the key myself.py's identity-registry leg
+        passes, and mind refuses wherever that leg does not pass. Roster and bindings are absent, so
+        myself.py has no session root and searches no store."""
+        absent = self.base / "absent"
+        paths = self.myself.CheckPaths(registry=self.r.registry, roster=absent / "roster.json",
+                                       bindings=absent / "bindings.json", codex_lock_root=absent,
+                                       proc_root=absent / "proc")
+        data = json.loads(self.r.registry.read_text())
+        data["identities"].append(dict(data["identities"][1], key="claudine-twin"))
+        self.r.registry.write_text(json.dumps(data))
+        cases = [self.signal("claude", DOCTOR_SID), self.signal("codex", CODEX_SID),
+                 self.signal("claude", ASSISTANT_SID), self.signal("claude", "0000eeee-0000-4000-8000-00000000000e"),
+                 self.signal("codex", DOCTOR_SID)]
+        for caller in cases:
+            with self.subTest(caller=caller.provider + ":" + caller.session_id[:8]):
+                with mock.patch.object(self.myself, "resolve_caller", return_value=(caller, (), [])):
+                    report = self.myself.run_check(paths, environ={}, start_pid=None)
+                legs = {leg.name: leg for leg in report.legs}
+                self.assertEqual(legs["native session body"].status, "undetermined")
+                leg = legs["identity registry"]
+                args = mock.Mock(registry=self.r.registry, room=self.r.room)
+                with mock.patch.object(mind, "REGISTRY", self.r.registry), \
+                        mock.patch.object(self.myself, "resolve_caller", return_value=(caller, (), [])), \
+                        mock.patch.object(mind, "sibling", return_value=self.myself), \
+                        mock.patch.dict(os.environ, {}, clear=True):
+                    try:
+                        key = mind.caller_key(args)
+                    except mind.Refused:
+                        key = None
+                if leg.status == "pass":
+                    self.assertEqual("key=" + str(key), leg.detail.split(";")[0])
+                else:
+                    self.assertIsNone(key)
 
 
 if __name__ == "__main__":

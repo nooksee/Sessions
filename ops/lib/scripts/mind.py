@@ -18,6 +18,14 @@ There is no per-entry approval. A registered resident writes, supersedes and
 retires its own leaves; the limits, the screen and the ledger keep the mind
 bounded and auditable. All of it stays out of Git (PoT 5.1.3).
 
+`add` and `retire` write only as the caller. The caller's identity is resolved
+by `myself.py`'s own `resolve_caller`, from the native session signal, and must
+match exactly one row of the room's canonical registry, whose key must be the
+`--agent` given. Unverified, ambiguous or absent identity refuses. A worker
+carries its parent's signal, so it writes as its parent. Tests reach synthetic
+rooms through one explicit seam, `MIND_TEST_CALLER`, honoured only where no real
+room can be (see `seam_problems`).
+
 Spec: docs/ops/specs/scripts/mind.md. This tool never reads a session body.
 """
 from __future__ import annotations
@@ -51,6 +59,8 @@ INDEX_LIMIT = 200        # live leaves in the index; the index is refused, never
 GIT_TIMEOUT = 30
 HEAD_KEYS = ("id", "agent", "written", "title", "supersedes")
 
+SEAM = "MIND_TEST_CALLER"   # the test-only caller; see seam_problems
+SYNTHETIC_SESSION_RE = re.compile(r"^0000[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 ID_RE = re.compile(r"^MIND-(?P<date>\d{4}-\d{2}-\d{2})-(?P<seq>\d{3})$")
 LEAF_NAME_RE = re.compile(r"^(MIND-\d{4}-\d{2}-\d{2}-\d{3})\.md$")
@@ -302,6 +312,100 @@ def registered(reg: dict, key: str, room: Path | None = None) -> tuple[dict | No
     if room is not None and (not isinstance(entry.get("room"), str) or Path(entry["room"]).resolve() != room):
         return None, [f"{key!r} is registered to another room, not this one"]
     return entry, []
+
+
+# --------------------------------------------------------------------------
+# The caller. A resident writes only as itself: add and retire bind --agent to
+# the caller's own identity, resolved as myself.py resolves it.
+# --------------------------------------------------------------------------
+def identity_rows(path: Path) -> list:
+    """Every identities entry of a registry, keyed or not; refused when unreadable."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        raise Refused(f"the registry is unreadable ({exc.__class__.__name__})") from None
+    rows = data.get("identities") if isinstance(data, dict) else None
+    if not isinstance(rows, list):
+        raise Refused("the registry has no identities list")
+    return rows
+
+
+def same_path(left, right: Path) -> bool:
+    return isinstance(left, str) and Path(left).resolve() == right.resolve()
+
+
+def seam_problems(args) -> list[str]:
+    """Why the test seam stays shut here; empty only when all three conditions hold:
+    the registry is not the room's canonical one; every registry session is a synthetic
+    0000 identifier; and the room is neither this tool's own room nor any room the
+    canonical registry names. A canonical registry that is absent names no room; one
+    present but unreadable keeps the seam shut."""
+    problems = []
+    if args.registry.resolve() == REGISTRY.resolve():
+        problems.append("the registry is the room's canonical one")
+    rows = identity_rows(args.registry)
+    if not rows or not all(isinstance(r, dict) and isinstance(r.get("session_id"), str)
+                           and SYNTHETIC_SESSION_RE.match(r["session_id"]) for r in rows):
+        problems.append("a registry session is not a synthetic 0000 identifier")
+    if args.room == SESSIONS.resolve():
+        problems.append("the room is this tool's own room")
+    try:
+        canonical = identity_rows(REGISTRY) if REGISTRY.exists() or REGISTRY.is_symlink() else []
+    except Refused:
+        problems.append("the canonical registry is unreadable, so its rooms cannot be ruled out")
+    else:
+        if any(isinstance(r, dict) and same_path(r.get("room"), args.room) for r in canonical):
+            problems.append("the room is named by the canonical registry")
+    return problems
+
+
+def sibling(name: str):
+    """A room script beside this one, loaded by path; never a second copy of its logic."""
+    path = Path(__file__).with_name(name + ".py")
+    spec = importlib.util.spec_from_file_location("mind_" + name, path)
+    if spec is None or spec.loader is None:
+        raise Refused(f"{name}.py is unavailable, so the caller cannot be verified")
+    module = importlib.util.module_from_spec(spec)
+    # A dataclass resolves its own module through sys.modules while the module runs.
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        sys.modules.pop(spec.name, None)
+        raise Refused(f"{name}.py cannot run ({exc.__class__.__name__}), so the caller cannot be verified") from None
+    return module
+
+
+def caller_key(args) -> str:
+    """The caller's registry key, or a refusal. Never prints a session id."""
+    declared = os.environ.get(SEAM)
+    if declared is not None:
+        problems = seam_problems(args)
+        if problems:
+            raise Refused(f"{SEAM} is honoured only in a synthetic room: " + "; ".join(problems))
+        if not KEY_RE.match(declared):
+            raise Refused(f"{SEAM} is not a registry key")
+        return declared
+    if args.registry.resolve() != REGISTRY.resolve():
+        raise Refused("add and retire bind the caller through the room's canonical registry; "
+                      "another registry serves tests only, through the test seam")
+    myself = sibling("myself")
+    paths = myself.CheckPaths.live()
+    caller, _, errors = myself.resolve_caller(os.environ, paths.proc_root, os.getppid(), paths.codex_lock_root)
+    if caller is None or errors:
+        raise Refused(f"the caller's identity is unverified ({len(errors)} signal problems), "
+                      f"so nothing is written as any resident")
+    matches = [r for r in identity_rows(args.registry) if isinstance(r, dict)
+               and r.get("session_id") == caller.session_id and r.get("provider") == caller.provider]
+    if len(matches) != 1 or not isinstance(matches[0].get("key"), str) or not matches[0]["key"]:
+        raise Refused(f"the caller matches {len(matches)} keyed registry rows; it must match exactly one")
+    return matches[0]["key"]
+
+
+def bind_caller(args) -> None:
+    key = caller_key(args)
+    if key != args.agent:
+        raise Refused(f"the caller is {key!r}, not --agent {args.agent!r}; a resident writes only as itself")
 
 
 # --------------------------------------------------------------------------
@@ -611,6 +715,7 @@ def owned(lines: list, leaf_id: str, agent: str) -> int:
 
 
 def cmd_add(args):
+    bind_caller(args)
     title = normalize(args.title).strip()
     body = clean_body(normalize(read_text_arg(args.body)))
     problems = limits(title, body) + screen(title, "title") + screen(body, "body", multiline=True)
@@ -643,6 +748,7 @@ def cmd_add(args):
 
 
 def cmd_retire(args):
+    bind_caller(args)
     with room_lock(args.room):
         _, lines = writable(args)
         position = owned(lines, args.id, args.agent)
