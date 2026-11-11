@@ -2563,6 +2563,7 @@ class NativeDisposableTests(unittest.TestCase):
              "sessionId": DESTINATION},
             self.row("user", 11, None, ROTATE.FIRST_PROMPT, sid=DESTINATION),
             self.row("assistant", 12, 11, "READY", sid=DESTINATION)]
+        self.pristine_rows[2]["message"]["id"] = "invented-ready-message"   # a real reply always names its message
         self.put_rows(self.destination, self.pristine_rows)
         self.put(self.store / "unrelated.bin", b"Invented unrelated baseline bytes.\n")
         self.candidate_path = self.case / "candidate.jsonl"
@@ -5411,6 +5412,138 @@ class NativeReaderTests(unittest.TestCase):
 
     def test_rows_rejects_empty_tool_use_id_even_if_paired(self):
         self.refuses(lambda: self.parse(self.tool_rows("")), "native-tool-use")
+
+    # --- Real row shapes (measured 2026-11-11 on provider 2.1.322; every value below is invented) ---
+
+    def boundary_rows(self):
+        rows = self.rows()
+        rows.append({"type": "system", "subtype": "compact_boundary", "sessionId": SID, "cwd": str(self.project),
+                     "uuid": self.uid(0xc103), "parentUuid": None, "logicalParentUuid": self.uid(0xc102)})
+        rows.append({"type": "user", "sessionId": SID, "cwd": str(self.project), "isCompactSummary": True,
+                     "uuid": self.uid(0xc104), "parentUuid": self.uid(0xc103),
+                     "message": {"role": "user", "content": [{"type": "text", "text": "An invented summary."}]}})
+        return rows
+
+    def test_rows_accept_a_boundary_rooted_by_its_logical_parent(self):
+        parsed, seen, _ = self.parse(self.boundary_rows())
+        self.assertEqual(len(parsed), 4)
+        self.assertIn(self.uid(0xc103), seen)
+
+    def test_rows_refuse_a_boundary_whose_logical_parent_is_unseen(self):
+        rows = self.boundary_rows()
+        rows[2]["logicalParentUuid"] = self.uid(0xc199)
+        self.refuses(lambda: self.parse(rows), "native-parent-chain")
+
+    def test_rows_refuse_a_boundary_with_no_logical_parent(self):
+        rows = self.boundary_rows()
+        rows[2].pop("logicalParentUuid")
+        self.refuses(lambda: self.parse(rows), "native-parent-chain")
+
+    def test_rows_refuse_any_other_second_root(self):
+        rows = self.boundary_rows()
+        rows[2]["subtype"] = "local_command"
+        self.refuses(lambda: self.parse(rows), "native-parent-chain")
+
+    def test_rows_do_not_count_tool_pairs_on_housekeeping_rows(self):
+        rows = self.tool_rows()
+        blob = {"type": "api-request-blob", "sessionId": SID, "hash": "invented",
+                "message": {"role": "assistant", "content": copy.deepcopy(rows[0]["message"]["content"])}}
+        echo = {"type": "api-request-blob", "sessionId": SID, "hash": "invented-two",
+                "message": {"role": "user", "content": copy.deepcopy(rows[1]["message"]["content"])}}
+        parsed, _, _ = self.parse([rows[0], blob, rows[1], echo, blob])
+        self.assertEqual(len(parsed), 5)
+
+    def test_rows_still_count_tool_pairs_on_conversation_rows(self):
+        rows = self.tool_rows()
+        self.refuses(lambda: self.parse(rows[:1]), "native-identities-or-tool-pairs")
+
+    def test_user_prompt_passes_over_leading_ide_notices(self):
+        row = self.rows()[0]
+        for content, genuine in (
+                ("<ide_opened_file>An invented notice.</ide_opened_file>\nAn invented question.", True),
+                ("<ide_opened_file>One.</ide_opened_file><ide_selection>Two.</ide_selection>Invented.", True),
+                ("<ide_opened_file>An invented notice.</ide_opened_file>", False),
+                ("<ide_opened_file>One.</ide_opened_file> stray </ide_selection> text", False),
+                ("<ide_opened_file>One.</ide_opened_file><local-command-stdout>x</local-command-stdout>", False),
+                ("<command-name>/compact</command-name>", False),
+                ("An invented question.", True)):
+            with self.subTest(content=content):
+                row["message"]["content"] = content
+                self.assertEqual(ROTATE.user_prompt(row), genuine)
+                row["message"]["content"] = [{"type": "text", "text": content}]
+                self.assertEqual(ROTATE.user_prompt(row), genuine)
+
+    def test_ide_notice_pattern_is_the_identity_tool_s(self):
+        source = (Path(ROTATE.__file__).with_name("myself.py")).read_text(encoding="utf-8")
+        self.assertIn('IDE_NOTICE_RE = re.compile(r"%s", re.DOTALL)' % ROTATE.IDE_NOTICE_RE.pattern, source)
+
+    def pristine(self, reply=None):
+        rows = [{"type": "session-owner", "sessionId": SID},
+                {"type": "queue-operation", "sessionId": SID, "operation": "enqueue"},
+                {"type": "user", "sessionId": SID, "uuid": self.uid(0xc201), "parentUuid": None,
+                 "message": {"role": "user", "content": ROTATE.FIRST_PROMPT}}]
+        for index, kind in enumerate(ROTATE.PRISTINE_ATTACHMENTS):
+            rows.append({"type": "attachment", "sessionId": SID, "uuid": self.uid(0xc210 + index),
+                         "parentUuid": self.uid(0xc201), "attachment": {"type": kind}})
+        for kind in ("file-history-snapshot", "atis-latch", "api-request-shape", "api-request-blob", "api-request",
+                     "last-prompt", "ai-title", "cost-state"):
+            rows.append({"type": kind, "sessionId": SID})
+        for index, blocks in enumerate(reply or [[{"type": "text", "text": "READY"}]]):
+            rows.append({"type": "assistant", "sessionId": SID, "uuid": self.uid(0xc230 + index),
+                         "parentUuid": self.uid(0xc201),
+                         "message": {"role": "assistant", "id": "invented-message", "content": blocks}})
+        return rows
+
+    def test_pristine_accepts_the_measured_fresh_chat(self):
+        ROTATE.native_pristine(self.pristine())
+
+    def test_pristine_accepts_one_reply_written_as_a_row_per_block(self):
+        ROTATE.native_pristine(self.pristine([[{"type": "thinking", "thinking": "Invented."}],
+                                              [{"type": "text", "text": "READY"}]]))
+
+    def test_pristine_accepts_the_prompt_behind_an_ide_notice(self):
+        rows = self.pristine()
+        rows[2]["message"]["content"] = "<ide_opened_file>Invented.</ide_opened_file>\n" + ROTATE.FIRST_PROMPT
+        ROTATE.native_pristine(rows)
+
+    def test_pristine_refuses_a_second_reply(self):
+        rows = self.pristine([[{"type": "text", "text": "READY"}], [{"type": "text", "text": "READY"}]])
+        rows[-1]["message"]["id"] = "invented-second-message"
+        self.refuses(lambda: ROTATE.native_pristine(rows), "native-pristine-first-exchange")
+
+    def test_pristine_refuses_a_reply_without_a_message_id(self):
+        rows = self.pristine()
+        rows[-1]["message"].pop("id")
+        self.refuses(lambda: ROTATE.native_pristine(rows), "native-pristine-first-exchange")
+
+    def test_pristine_refuses_a_second_user_row(self):
+        rows = self.pristine()
+        rows.append({"type": "user", "sessionId": SID, "uuid": self.uid(0xc240), "parentUuid": self.uid(0xc230),
+                     "message": {"role": "user", "content": "Invented."}})
+        self.refuses(lambda: ROTATE.native_pristine(rows), "native-pristine-first-exchange")
+
+    def test_pristine_refuses_a_tool_block_or_a_second_text(self):
+        for blocks in ([[{"type": "tool_use", "id": "invented", "name": "Read", "input": {}}],
+                        [{"type": "text", "text": "READY"}]],
+                       [[{"type": "text", "text": "READY"}], [{"type": "text", "text": "READY"}]],
+                       [[{"type": "thinking", "thinking": "Invented."}]],
+                       [[{"type": "text", "text": "READY."}]]):
+            with self.subTest(blocks=blocks):
+                self.refuses(lambda: ROTATE.native_pristine(self.pristine(blocks)), "native-pristine-inert-exchange")
+
+    def test_pristine_refuses_another_prompt(self):
+        rows = self.pristine()
+        rows[2]["message"]["content"] = "Another invented prompt."
+        self.refuses(lambda: ROTATE.native_pristine(rows), "native-pristine-inert-exchange")
+
+    def test_pristine_refuses_an_unmeasured_row_or_attachment_type(self):
+        for extra in ({"type": "bridge-session", "sessionId": SID},
+                      {"type": "attachment", "sessionId": SID, "attachment": {"type": "invented_kind"}},
+                      {"type": "attachment", "sessionId": SID},
+                      {"type": "system", "subtype": "compact_boundary", "sessionId": SID}):
+            with self.subTest(extra=extra):
+                self.refuses(lambda: ROTATE.native_pristine(self.pristine() + [extra]),
+                             "native-pristine-unknown-envelope")
 
     def test_rows_rejects_duplicate_pending_tool_use(self):
         rows = self.tool_rows()

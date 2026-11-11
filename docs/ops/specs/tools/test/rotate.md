@@ -71,7 +71,20 @@ and 48 Claude adapter preparation tests. Slice 6 adds 246 operation and
 permission run. One operation test was added on 2026-11-11, making 612: a
 load whose append carries no usable usage must refuse a reading carried in
 the installed prefix (`native-load-gauge-not-appended`; the review finding
-on #79). Its operation class mocks the Git
+on #79).
+
+Seventeen reader tests were added on 2026-11-11, making 629, after the
+merged reader was run on real rows and refused them. Each uses invented rows
+in a measured shape (provider 2.1.322, by field and count only):
+- a compaction boundary with no parent is a root by its logical parent, and
+  nothing else is a second root;
+- tool pairs are counted on conversation rows only, since a housekeeping row
+  with no uuid repeats the call's blocks;
+- a prompt behind leading IDE notices is still a prompt, by the identity
+  tool's one notice pattern, which the suite holds equal;
+- a fresh destination's READY reply may be written as one row per block
+  under one message id, and its envelope is the measured list of row and
+  attachment types; anything outside it is refused. Its operation class mocks the Git
 exposure reader and physical-disk map; an independent scratch smoke uses the
 actual Git reader and custody copier behind masked2. No host provider or
 native store is available. Reader tests isolate overlapping predicates

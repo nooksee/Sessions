@@ -59,6 +59,27 @@ NATIVE_GO = {
 NATIVE_PHASE = {6: "custody", 7: "install", 8: "load", 9: "donor-disposition"}
 MIND_HINT = "Open a leaf with mind.py read <id>; the whole index with mind.py show.\n"
 FIRST_PROMPT = "Disposable rotation exercise: reply READY only; no tools, files or network."
+# myself.py's one IDE-notice shape: the plugin puts it before a prompt while a file is open in the editor.
+IDE_NOTICE_RE = re.compile(r"\s*<(ide_opened_file|ide_selection)>.*?</\1>", re.DOTALL)
+IDE_NOTICE_CLOSE_RE = re.compile(r"</(?:ide_opened_file|ide_selection)>")
+# What 2.1.322 writes into a fresh plugin chat after one exchange (measured 2026-11-11, by field only).
+PRISTINE_TYPES = ("custom-title", "user", "assistant", "file-history-snapshot", "queue-operation", "session-owner",
+                  "atis-latch", "last-prompt", "ai-title", "cost-state", "api-request", "api-request-shape",
+                  "api-request-blob", "attachment")
+PRISTINE_ATTACHMENTS = ("environment", "model", "deferred_tools_delta", "agent_listing_delta", "skill_listing",
+                        "session_context", "date", "credential_org", "remote_session_change", "prompt_snapshot")
+
+
+def past_ide_notices(content):
+    """The text after any leading IDE notices, or None when only a notice, or a stray closing tag, remains."""
+    rest, passed = content, False
+    notice = IDE_NOTICE_RE.match(rest)
+    while notice:
+        rest, passed = rest[notice.end():], True
+        notice = IDE_NOTICE_RE.match(rest)
+    if passed and (not rest.strip() or IDE_NOTICE_CLOSE_RE.search(rest)):
+        return None
+    return rest.lstrip() if passed else rest
 
 
 class Refused(Exception):
@@ -440,6 +461,9 @@ def user_prompt(row):
             return False
         content = "\n".join(b.get("text", "") for b in content)
     if not isinstance(content, str) or not content.strip():
+        return False
+    content = past_ide_notices(content)
+    if content is None:
         return False
     return not content.lstrip().startswith(("<", "/", "# Context from my IDE", "Rotate now", "Close out now"))
 
@@ -1084,7 +1108,8 @@ def native_rows(raw, session, project, prefix_ids=()):
                 identities += 1
         message = row.get("message")
         content = message.get("content") if isinstance(message, dict) else None
-        if not isinstance(content, list):
+        # A row with no uuid is the provider's housekeeping (an api-request-blob repeats the call's blocks).
+        if not isinstance(content, list) or "uuid" not in row:
             return
         for value in content:
             require(isinstance(value, dict), "native-message-content-block")
@@ -1106,12 +1131,46 @@ def native_rows(raw, session, project, prefix_ids=()):
             uid = row["uuid"]
             require(isinstance(uid, str) and uid and uid not in seen, "native-message-id")
             parent = row.get("parentUuid")
-            require(parent in seen if seen else parent is None, "native-parent-chain")
+            if (seen and parent is None and row.get("type") == "system"
+                    and row.get("subtype") == "compact_boundary"):
+                # The provider writes a boundary with no parent and names the row it follows.
+                require(row.get("logicalParentUuid") in seen, "native-parent-chain")
+            else:
+                require(parent in seen if seen else parent is None, "native-parent-chain")
             seen.add(uid)
         if row.get("type") == "assistant" and not row.get("isSidechain"):
             assistant += 1
     require(identities > 0 and not pending, "native-identities-or-tool-pairs")
     return rows, seen, assistant
+
+
+def native_pristine(rows):
+    """A fresh destination: one inert exchange inside the measured envelope. Read-only; also the B7 preflight."""
+    dialogue = [row for row in rows if row.get("type") in ("user", "assistant")]
+    replies = dialogue[1:]
+    messages = [row.get("message") for row in replies]
+    require(len(dialogue) >= 2 and dialogue[0].get("type") == "user"
+            and all(row.get("type") == "assistant" and isinstance(message, dict)
+                    for row, message in zip(replies, messages))
+            and isinstance(messages[0].get("id"), str) and bool(messages[0]["id"])
+            and all(message.get("id") == messages[0]["id"] for message in messages),
+            "native-pristine-first-exchange")
+    prompt = dialogue[0].get("message")
+    asked = prompt.get("content") if isinstance(prompt, dict) and prompt.get("role") == "user" else None
+    if isinstance(asked, list) and all(isinstance(b, dict) and b.get("type") == "text" for b in asked):
+        asked = "\n".join(b.get("text", "") for b in asked)
+    asked = past_ide_notices(asked) if isinstance(asked, str) else None
+    blocks = []
+    for message in messages:
+        content = message.get("content")
+        blocks += [{"type": "text", "text": content}] if isinstance(content, str) else list(content or [])
+    texts = [b for b in blocks if isinstance(b, dict) and b.get("type") == "text"]
+    require(asked == FIRST_PROMPT and all(message.get("role") == "assistant" for message in messages)
+            and all(isinstance(b, dict) and b.get("type") in ("text", "thinking", "redacted_thinking") for b in blocks)
+            and len(texts) == 1 and texts[0].get("text") == "READY", "native-pristine-inert-exchange")
+    require(all(row.get("type") in PRISTINE_TYPES and (row.get("type") != "attachment"
+                or (isinstance(row.get("attachment"), dict) and row["attachment"].get("type") in PRISTINE_ATTACHMENTS))
+                for row in rows), "native-pristine-unknown-envelope")
 
 
 class NativeOperation:
@@ -1497,18 +1556,7 @@ class NativeOperation:
         pristine, _ = native_read(self.targets["destination"])
         native_rows(donor_raw, self.plan["donor"]["session_id"], self.project)
         rows, _, _ = native_rows(pristine, self.plan["destination"]["session_id"], self.project)
-        dialogue = [row for row in rows if row.get("type") in ("user", "assistant")]
-        require([row.get("type") for row in dialogue] == ["user", "assistant"], "native-pristine-first-exchange")
-        def inert(row, role, text):
-            message = row.get("message")
-            if not isinstance(message, dict) or message.get("role") != role:
-                return False
-            content = message.get("content")
-            return content == text or content == [{"type": "text", "text": text}]
-        require(inert(dialogue[0], "user", FIRST_PROMPT) and inert(dialogue[1], "assistant", "READY"),
-                "native-pristine-inert-exchange")
-        require(all(row.get("type") in ("custom-title", "user", "assistant", "file-history-snapshot", "queue-operation")
-                    for row in rows), "native-pristine-unknown-envelope")
+        native_pristine(rows)
         candidate_rows, _, _ = native_rows(self.candidate, self.plan["destination"]["session_id"], self.project)
         require(sibling("successor").count_residue(candidate_rows, self.plan["donor"]["session_id"])[0] == 0,
                 "native-candidate-donor-residue")
