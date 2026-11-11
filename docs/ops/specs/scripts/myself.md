@@ -31,3 +31,12 @@ Ported legacy tool. Its own docstring opens: "Measure one resident's native iden
 - Host consumer selection belongs to Control; this source change neither repoints nor restarts a consumer. The module and its sibling gauge reader must remain together in the source layout.
 - The focused regression set covers eleven synthetic agreement/currentness cases plus reader failure, invalid-window and repeated-run checks. Those cases are not a live fleet or provider-version acceptance claim. Claude window resolution follows the gauge's reviewed table; a model the table lacks is an explicit unknown, and the table's rows are reviewed in the gauge's spec, not here.
 - [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+
+## Caller signals (added 2026-11-11)
+
+The caller is resolved from a native session variable only when it is corroborated above the caller in the process tree:
+- **Claude:** `CLAUDE_CODE_SESSION_ID` or `CLAUDE_SESSION_ID`, and the same identifier in a Claude ancestor's arguments.
+- **Codex:** `CODEX_THREAD_ID`, and that thread's writer lock held open by a Codex ancestor.
+- **Copilot:** `COPILOT_AGENT_SESSION_ID`, and that session's own state folder holding an in-use lock named for a Copilot ancestor's process (`inuse.<pid>.lock`). Measured on 2026-11-11 by variable names and a yes or no only: the Orchestrator's session carries the variable, and its value equals the seat's registry row.
+
+A variable alone resolves nobody. A Copilot seat is registry-only, so the roster, binding and body legs stay as they were for it; the two identity legs are what this adds.

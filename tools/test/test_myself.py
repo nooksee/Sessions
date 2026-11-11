@@ -1470,5 +1470,75 @@ class OrientationAfterIdeNoticesTests(unittest.TestCase):
         self.assertIn("identity_rows_seen=2", leg.detail)
 
 
+class CopilotCallerSignal(unittest.TestCase):
+    """A Copilot seat is known by its own session variable, a Copilot process above the caller, and that
+    session's in-use lock naming the process. Every identifier and path here is invented."""
+
+    SESSION = "0000c0f1-0000-4000-8000-00000000c0f1"
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.proc = self.root / "proc"
+        self.state = self.root / "session-state"
+        self.locks = self.root / "codex-locks"
+        self.locks.mkdir()
+        self.process(9001, 1, ["/usr/bin/node", "/invented/github-copilot-cli/node_modules/copilot/index.js", "--acp"])
+        self.process(9002, 9001, ["/bin/bash", "-c", "an invented command"])
+        (self.state / self.SESSION).mkdir(parents=True)
+        (self.state / self.SESSION / "inuse.9001.lock").write_text("9001\n", encoding="utf-8")
+
+    def process(self, pid: int, parent: int, argv: list[str]) -> None:
+        folder = self.proc / str(pid)
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "cmdline").write_bytes(b"\0".join(a.encode() for a in argv) + b"\0")
+        (folder / "status").write_text(f"Name:\tinvented\nPPid:\t{parent}\n", encoding="utf-8")
+
+    def resolve(self, environ=None, start=9002):
+        return check_myself.resolve_caller(
+            {"COPILOT_AGENT_SESSION_ID": self.SESSION} if environ is None else environ,
+            self.proc, start, self.locks, self.state)
+
+    def test_a_held_copilot_session_resolves(self) -> None:
+        caller, _, errors = self.resolve()
+        self.assertEqual([], errors)
+        self.assertEqual(("copilot", self.SESSION), (caller.provider, caller.session_id))
+
+    def test_the_variable_alone_is_not_enough(self) -> None:
+        caller, _, errors = self.resolve(start=None)
+        self.assertIsNone(caller)
+        self.assertTrue(any("no matching copilot process" in e for e in errors))
+
+    def test_a_session_not_held_by_an_ancestor_fails_closed(self) -> None:
+        (self.state / self.SESSION / "inuse.9001.lock").rename(self.state / self.SESSION / "inuse.7777.lock")
+        caller, _, errors = self.resolve()
+        self.assertIsNone(caller)
+        self.assertTrue(any("not held by a caller-ancestor Copilot process" in e for e in errors))
+
+    def test_a_missing_state_folder_fails_closed(self) -> None:
+        other = "0000c0f2-0000-4000-8000-00000000c0f2"
+        caller, _, errors = self.resolve({"COPILOT_AGENT_SESSION_ID": other})
+        self.assertIsNone(caller)
+        self.assertTrue(any("state folder is absent" in e for e in errors))
+
+    def test_a_path_that_merely_mentions_copilot_is_not_a_copilot_process(self) -> None:
+        self.process(9001, 1, ["/usr/bin/node", "/invented/notes-about-copilot/tool.js"])
+        caller, _, errors = self.resolve()
+        self.assertIsNone(caller)
+        self.assertTrue(any("no matching copilot process" in e for e in errors))
+
+    def test_a_malformed_variable_fails_closed(self) -> None:
+        caller, _, errors = self.resolve({"COPILOT_AGENT_SESSION_ID": "not-an-identifier"})
+        self.assertIsNone(caller)
+        self.assertTrue(any("not a native UUID" in e for e in errors))
+
+    def test_a_second_provider_signal_disagrees(self) -> None:
+        caller, _, errors = self.resolve({"COPILOT_AGENT_SESSION_ID": self.SESSION,
+                                          "CLAUDE_CODE_SESSION_ID": "0000c0f3-0000-4000-8000-00000000c0f3"})
+        self.assertTrue(caller is None or caller.provider == "copilot")
+        self.assertTrue(any("claude process" in e for e in errors))
+
+
 if __name__ == "__main__":
     unittest.main()
