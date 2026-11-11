@@ -21,6 +21,7 @@ Slice 6's engine (`rotate.py`, the native disposable route) consumes a phase-5 `
    - the reading before the boundary;
    - exactly one `isCompactSummary` row;
    - the cut at the first genuine user prompt after it, by rotate's `user_prompt`, followed by a non-meta, non-sidechain assistant reply;
+   - leading IDE notices (`<ide_opened_file>`, `<ide_selection>`, myself.py's exact shape) are passed over before that test, so a prompt sent while a file is open in the editor is still genuine. A notice with nothing after it, or with a closing notice tag left after it, is not. The engine's own `user_prompt` takes the same strip in the Apprentice's correction slice (packet 37, item 4a), so the two agree on the cut only when both are merged (claudine.md section 234; bernard.md section 286).
    - tool calls and results paired within the window;
    - `built_at` no earlier than D's last row.
 

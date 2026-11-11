@@ -667,5 +667,49 @@ class Static(unittest.TestCase):
         self.assertEqual(self.src.count("O_WRONLY"), 1)
 
 
+class IdeNotice(unittest.TestCase):
+    """The cut when the plugin led the prompt with an IDE notice (a file open in the editor): claudine.md section 234,
+    the Auditor's section 286. The notice is passed over by myself.py's exact shape; nothing else is."""
+    OPENED = "<ide_opened_file>The user opened the file /x/notes.md in the IDE.</ide_opened_file>"
+    SELECTION = "<ide_selection>The user selected lines 1 to 2.</ide_selection>"
+
+    def prompt(self, content):
+        return load_prepare().user_prompt({"type": "user", "message": {"role": "user", "content": content}})
+
+    def test_a_prompt_led_by_notices_is_genuine(self):
+        for content in (self.OPENED + "Tell me about the old mill.",
+                        self.OPENED + "\n" + self.SELECTION + "\nTell me about the old mill.",
+                        [{"type": "text", "text": self.OPENED}, {"type": "text", "text": "Tell me about the old mill."}]):
+            with self.subTest(content=content):
+                self.assertTrue(self.prompt(content))
+
+    def test_a_notice_alone_or_with_a_stray_close_tag_or_a_command_after_it_is_not(self):
+        for content in (self.OPENED, self.OPENED + "  \n",
+                        self.OPENED + "Tell me.</ide_opened_file>",
+                        self.OPENED + "/compact", self.OPENED + "<command-name>/compact</command-name>",
+                        "<ide_opened_file>never closed. Tell me about the old mill.",
+                        "<other_notice>x</other_notice>Tell me about the old mill."):
+            with self.subTest(content=content):
+                self.assertFalse(self.prompt(content))
+
+    def test_the_shape_is_myself_pys_own(self):
+        spec = importlib.util.spec_from_file_location("prepare_ut_myself", PREPARE.with_name("myself.py"))
+        me = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = me
+        spec.loader.exec_module(me)
+        mod = load_prepare()
+        self.assertEqual((mod.IDE_NOTICE_RE.pattern, mod.IDE_NOTICE_RE.flags),
+                         (me.IDE_NOTICE_RE.pattern, me.IDE_NOTICE_RE.flags))
+        self.assertEqual(mod.IDE_NOTICE_CLOSE_RE.pattern, me.IDE_NOTICE_CLOSE_RE.pattern)
+
+    def test_the_window_cuts_at_a_notice_led_prompt(self):
+        f = Fixture()
+        f.rows[7]["message"]["content"] = self.OPENED + "Tell me about the old mill."
+        f.write()
+        r = f.run("--dry-run")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["window"]["rows"]["cut"], 7)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
