@@ -479,6 +479,8 @@ def phase5(req, w, written):
     raw = b"".join(json.dumps(r, separators=(",", ":")).encode() + b"\n" for r in rows)
     static, media_results = static_checks(req, raw, rows, w["capsule"], w["rows"], media_dir, externalizer, successor,
                                           mind)
+    # The plan names four fixed artifacts and one per media file; counted before any record exists (review finding 1).
+    require(4 + len(externalizer.seen) <= 64, "too-many-artifacts")
     written.append("candidate.jsonl")
     candidate_sha = create(E / "candidate.jsonl", raw)
     written.append("capsule.txt")
@@ -504,7 +506,6 @@ def phase5(req, w, written):
                  {"name": "window-rows", "path": str(window_path), "sha256": digest(w["raw"])}]
     for sha, name in sorted(externalizer.seen.items()):
         artifacts.append({"name": "media-" + sha[:12], "path": str(media_dir / name), "sha256": sha})
-    require(len(artifacts) <= 64, "too-many-artifacts")
     return {"candidate": {"path": str(E / "candidate.jsonl"), "sha256": candidate_sha}, "artifacts": artifacts,
             "gates": gates["gates"], "media_files": externalizer.written, "rows": len(rows)}
 

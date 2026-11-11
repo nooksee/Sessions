@@ -316,6 +316,30 @@ class TinyInline(unittest.TestCase):
         self.assertFalse((f.E / "candidate.jsonl").exists())
 
 
+class ArtifactLimit(unittest.TestCase):
+    def test_over_the_artifact_limit_stops_before_the_candidate_and_the_gates_record(self):
+        """Review finding 1 on #78: 61 media files make 65 artifacts. The count is taken before candidate.jsonl and
+        gates.json exist, so a failed run never leaves a success record. 60 media files, 64 artifacts, still build."""
+        b64 = __import__("base64").b64encode
+        for count, code in ((61, 3), (60, 0)):
+            with self.subTest(media=count):
+                f = Fixture()
+                f.rows[8]["message"]["content"] += [
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/png",
+                                                 "data": b64(i.to_bytes(2, "big") * 384).decode()}}
+                    for i in range(count)]
+                f.write()
+                f.write()
+                r = f.run()
+                self.assertEqual(r.returncode, code, r.stderr + r.stdout)
+                if code:
+                    self.assertEqual(json.loads(r.stdout)["failed"], "too-many-artifacts")
+                    self.assertFalse((f.E / "gates.json").exists())
+                    self.assertFalse((f.E / "candidate.jsonl").exists())
+                else:
+                    self.assertEqual(len(json.loads(r.stdout)["plan"]["artifacts"]), 64)
+
+
 class DryRun(unittest.TestCase):
     def test_writes_nothing_and_reports_the_window(self):
         f = fresh()

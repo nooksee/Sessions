@@ -65,7 +65,7 @@ Slice 6's engine (`rotate.py`, the native disposable route) consumes a phase-5 `
   - no genuine cut, no reply after it, unpaired tool calls, a window over its bound, or an estimate over a fifth;
   - `built_at` before D's end;
   - E exposed to Git.
-- After the build begins, any static or media failure, or a payload left inline under the Externalizer's 256-character floor, stops with exit 3, and no record is written.
+- After the build begins, any static or media failure, a payload left inline under the Externalizer's 256-character floor, or more than 64 artifacts (four fixed and one per media file, counted before `candidate.jsonl` and `gates.json` are created) stops with exit 3, and no record is written.
 - **What it reads:** for the live exercise, it reads the donor's text and writes it into E, under the operation's content authorization, which the run packet's go must carry (the Auditor's N1). Its tests read only synthetic bodies.
 - **What it never does:** write outside E, read another resident's body, change D or T, or touch a production JSONL.
 - **What it is not:** the resident route. The delivered closeout card, the registry, the launcher and the mind (phases 0 to 2 for a resident) are out of its scope, and the band never stands in for the card.
