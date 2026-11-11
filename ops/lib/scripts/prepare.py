@@ -45,6 +45,10 @@ SMALL = 1024 * 1024
 LABEL = "W6 disposable destination"
 DIGEST = re.compile(r"[0-9a-f]{64}")
 SID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")   # the engine's NATIVE_SID
+# myself.py's one IDE-notice shape (lines 33 and 34), which the plugin puts before a prompt while a file is open in
+# the editor; the suite holds these equal to myself.py's own patterns.
+IDE_NOTICE_RE = re.compile(r"\s*<(ide_opened_file|ide_selection)>.*?</\1>", re.DOTALL)
+IDE_NOTICE_CLOSE_RE = re.compile(r"</(?:ide_opened_file|ide_selection)>")
 OPERATION = re.compile(r"[a-z][a-z0-9-]{1,47}")                    # the engine's operation name
 OUTPUTS = ("window.jsonl", "window.json", "capsule.txt", "candidate.jsonl", "gates.json", "builder-output.txt", "media")
 BUILD = ".candidate.build"
@@ -113,7 +117,9 @@ def usage_tokens(row):
 
 
 def user_prompt(row):
-    """rotate.py's user_prompt (e7d926af), written fresh here (O2): a genuine operator prompt."""
+    """rotate.py's user_prompt (e7d926af), written fresh here (O2): a genuine operator prompt. Leading IDE notices
+    are passed over first, by myself.py's exact shape, so a prompt sent while a file is open in the editor is still
+    genuine; a closing notice tag left after them, or nothing after them, is not (claudine.md section 234)."""
     message = row.get("message")
     if (row.get("type") != "user" or not isinstance(message, dict) or message.get("role") != "user"
             or row.get("isMeta") or row.get("isSidechain") or row.get("isCompactSummary")):
@@ -125,7 +131,14 @@ def user_prompt(row):
         content = "\n".join(b.get("text", "") for b in content)
     if not isinstance(content, str) or not content.strip():
         return False
-    return not content.lstrip().startswith(("<", "/", "# Context from my IDE", "Rotate now", "Close out now"))
+    rest, passed = content, False
+    notice = IDE_NOTICE_RE.match(rest)
+    while notice:
+        rest, passed = rest[notice.end():], True
+        notice = IDE_NOTICE_RE.match(rest)
+    if passed and (not rest.strip() or IDE_NOTICE_CLOSE_RE.search(rest)):
+        return False
+    return not rest.lstrip().startswith(("<", "/", "# Context from my IDE", "Rotate now", "Close out now"))
 
 
 def stream_donor(notice, path, sha, session, project):
