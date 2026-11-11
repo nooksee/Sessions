@@ -2663,7 +2663,7 @@ class NativeDisposableTests(unittest.TestCase):
     def prepare(self, action, go_change=None, proof_change=None, reuse_go=False):
         if self.state_path.exists():
             state = json.loads(self.state_path.read_bytes())
-            if state["phase"] in ("rollback-restored", "rolled-back"):
+            if state["phase"] in ("rollback-donor-pending", "rollback-restored", "rolled-back"):
                 delay = 2.05 - (time.time_ns() - state["restored_at_ns"]) / 1e9
                 if delay > 0:
                     time.sleep(delay)
@@ -3176,6 +3176,27 @@ class NativeDisposableTests(unittest.TestCase):
                 os.utime(binding["record"]["path"], ns=(stamp, stamp))
         result = self.refused("rollback", reuse_go=True, proof_change=predates)
         self.assertEqual(result["reason"], "native-i1-before-restore")
+
+    def test_pre_restore_i1_cannot_restore_pending_donor(self):
+        self.preserve()
+        self.install()
+        self.donor.unlink()  # Synthetic donor; its verified fixture custody remains.
+        before_restore = time.time_ns()
+        self.stop("rollback", "rollback-donor-pending",
+                  go_change=lambda go: go.update(restore_absent_donor=True))
+        state = json.loads(self.state_path.read_bytes())
+        self.assertGreaterEqual(state["restored_at_ns"], before_restore)
+        self.assertEqual(self.destination.read_bytes(), self.pristine_bytes)
+        def predates(proof):
+            for index, binding in enumerate(proof["instruments"]["I1"]):
+                stamp = state["restored_at_ns"] - (2 - index) * 1_000_000_000
+                os.utime(binding["record"]["path"], ns=(stamp, stamp))
+        result = self.refused("rollback", reuse_go=True, proof_change=predates)
+        self.assertEqual(result["reason"], "native-i1-before-restore")
+        self.assertFalse(self.donor.exists())
+        self.assertEqual(json.loads(self.state_path.read_bytes()), state)
+        self.stop("rollback", "rollback-restored", reuse_go=True)
+        self.assertTrue(self.donor.exists())
 
     def test_published_inverse_reader_uses_the_new_second_i1_output(self):
         self.preserve()

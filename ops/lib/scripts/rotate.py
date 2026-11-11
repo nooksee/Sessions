@@ -1474,7 +1474,7 @@ class NativeOperation:
             identities.add((node["dev"], node["ino"]))
             witness_times.append(node["mtime_ns"])
             require(0 <= now.timestamp() - node["mtime_ns"] / 1e9 <= 60, "native-i1-record-stale")
-            if (self.state or {}).get("phase") in ("rollback-restored", "rolled-back"):
+            if (self.state or {}).get("phase") in ("rollback-donor-pending", "rollback-restored", "rolled-back"):
                 require(node["mtime_ns"] >= self.state["restored_at_ns"], "native-i1-before-restore")
         require(len(identities) == 2, "native-distinct-i1-records-required")
         require(witness_times[1] - witness_times[0] >= 1_000_000_000, "native-i1-record-interval")
@@ -1843,7 +1843,7 @@ class NativeOperation:
                 if self.state["phase"] != "rollback-donor-pending":
                     # The first rename invalidates the old two-target witness.
                     # Obtain fresh I1 evidence before restoring the other file.
-                    self.state["phase"] = "rollback-donor-pending"
+                    self.state.update(phase="rollback-donor-pending", restored_at_ns=time.time_ns())
                     self.save()
                     return
                 self.restore_target("donor")

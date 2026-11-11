@@ -73,7 +73,9 @@ load whose append carries no usable usage must refuse a reading carried in
 the installed prefix (`native-load-gauge-not-appended`; the review finding
 on #79).
 
-Seventeen reader tests were added on 2026-11-11, making 629, after the
+The suite now has 630 tests, including the after-restore rule in
+`rollback-donor-pending` (the other review finding on #79).
+Seventeen reader tests were added on 2026-11-11 after the
 merged reader was run on real rows and refused them. Each uses invented rows
 in a measured shape (provider 2.1.322, by field and count only):
 - a compaction boundary with no parent is a root by its logical parent, and
