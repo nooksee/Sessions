@@ -187,6 +187,7 @@ def _environment_signals(environ: Mapping[str, str]) -> tuple[list[CallerSignal]
     errors: list[str] = []
     mapping = {
         "CODEX_THREAD_ID": "codex",
+        "COPILOT_AGENT_SESSION_ID": "copilot",
         "CLAUDE_CODE_SESSION_ID": "claude",
         "CLAUDE_SESSION_ID": "claude",
     }
@@ -233,6 +234,8 @@ def _command_provider(tokens: Sequence[str]) -> str | None:
         return "claude"
     if "codex" in marker or "/codex" in joined:
         return "codex"
+    if "copilot" in marker or "/github-copilot-cli/" in joined:
+        return "copilot"
     return None
 
 
@@ -335,11 +338,31 @@ def _codex_writer_lock_evidence(
     )
 
 
+def _copilot_inuse_evidence(
+    state_root: Path,
+    session_id: str,
+    provider_processes: Sequence[tuple[int, str]],
+) -> tuple[list[str], str | None]:
+    """A Copilot session's own state folder names the process that holds it: inuse.<pid>.lock."""
+    folder = state_root / session_id
+    if folder.is_symlink() or not folder.is_dir():
+        return [_surface(folder)], "exact Copilot session state folder is absent"
+    for pid, _ in provider_processes:
+        lock = folder / f"inuse.{pid}.lock"
+        if lock.is_file() and not lock.is_symlink():
+            return [_surface(folder), _surface(lock)], None
+    return (
+        [_surface(folder)],
+        "exact Copilot session is not held by a caller-ancestor Copilot process",
+    )
+
+
 def resolve_caller(
     environ: Mapping[str, str],
     proc_root: Path,
     start_pid: int | None,
     codex_lock_root: Path,
+    copilot_state_root: Path | None = None,
 ) -> tuple[CallerSignal | None, tuple[str, ...], list[str]]:
     env_signals, env_errors = _environment_signals(environ)
     (
@@ -369,6 +392,17 @@ def resolve_caller(
             surfaces.extend(lock_surfaces)
             if lock_error is not None:
                 env_errors.append(f"{signal.surface}: {lock_error}")
+                continue
+        elif signal.provider == "copilot":
+            held_surfaces, held_error = _copilot_inuse_evidence(
+                copilot_state_root if copilot_state_root is not None
+                else Path.home() / ".copilot/session-state",
+                signal.session_id,
+                processes,
+            )
+            surfaces.extend(held_surfaces)
+            if held_error is not None:
+                env_errors.append(f"{signal.surface}: {held_error}")
                 continue
         else:
             exact_process_ids = {
