@@ -294,7 +294,9 @@ def _ancestry_signals(
         if provider is not None:
             surface = _surface(proc_root / str(pid) / "cmdline")
             provider_processes.setdefault(provider, []).append((pid, surface))
-            session_id = _resume_id(tokens, provider)
+            # A Copilot process's arguments are never identity evidence by themselves: that
+            # provider is resolved only through its session variable and in-use lock.
+            session_id = _resume_id(tokens, provider) if provider != "copilot" else None
             if session_id is not None:
                 signals.append(
                     CallerSignal(

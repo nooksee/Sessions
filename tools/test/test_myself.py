@@ -1528,6 +1528,32 @@ class CopilotCallerSignal(unittest.TestCase):
         self.assertIsNone(caller)
         self.assertTrue(any("no matching copilot process" in e for e in errors))
 
+    def test_a_resume_argument_without_the_variable_resolves_nobody(self) -> None:
+        # The review finding on #82: a process-derived Copilot signal must not bypass the lock.
+        self.process(9001, 1, ["/usr/bin/node", "/invented/github-copilot-cli/index.js", "--resume", self.SESSION])
+        (self.state / self.SESSION / "inuse.9001.lock").unlink()
+        for environ in ({}, {"COPILOT_AGENT_SESSION_ID": self.SESSION}):
+            with self.subTest(environ=sorted(environ)):
+                caller, _, errors = self.resolve(environ)
+                self.assertIsNone(caller)
+                self.assertTrue(errors)
+
+    def test_a_resume_argument_cannot_name_another_session(self) -> None:
+        other = "0000c0f4-0000-4000-8000-00000000c0f4"
+        self.process(9001, 1, ["/usr/bin/node", "/invented/github-copilot-cli/index.js", "--resume", other])
+        caller, _, errors = self.resolve()
+        self.assertEqual([], errors)
+        self.assertEqual(self.SESSION, caller.session_id)
+
+    def test_a_symlinked_state_folder_fails_closed(self) -> None:
+        real = self.state / self.SESSION
+        moved = self.root / "elsewhere"
+        real.rename(moved)
+        real.symlink_to(moved, target_is_directory=True)
+        caller, _, errors = self.resolve()
+        self.assertIsNone(caller)
+        self.assertTrue(any("state folder is absent" in e for e in errors))
+
     def test_a_malformed_variable_fails_closed(self) -> None:
         caller, _, errors = self.resolve({"COPILOT_AGENT_SESSION_ID": "not-an-identifier"})
         self.assertIsNone(caller)
