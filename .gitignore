@@ -59,6 +59,11 @@
 !/archives/receipts/history-rewrite-20261104.md
 !/archives/receipts/joe-owned-storage-disposition-20261104.md
 !/archives/receipts/README.md
+# archives/packets/: one kept leaf per landed dispatch packet, written only by packet.py; public by construction
+!/archives/packets/
+/archives/packets/*
+!/archives/packets/README.md
+!/archives/packets/DP-SES-[0-9][0-9][0-9][0-9].md
 !/logs/
 /logs/*
 !/logs/.gitkeep
