@@ -293,6 +293,8 @@ def phase4(req, gauge, closeout):
     selected[2]["parentUuid"] = selected[1]["uuid"]    # only the cut's parent link changes
     pending = set()
     for r in selected:
+        if "uuid" not in r:
+            continue                        # housekeeping: an api-request-blob repeats the call's blocks (break 7)
         content = (r.get("message") or {}).get("content") if isinstance(r.get("message"), dict) else None
         for block in content if isinstance(content, list) else []:
             if isinstance(block, dict) and block.get("type") == "tool_use":
@@ -338,14 +340,15 @@ def static_checks(req, raw, rows, capsule, window_rows, media_dir, externalizer,
     check("parse", [req.notice.decode(line) for line in raw.splitlines()] == rows)
     ids, uuids, seen, orientations, pending, pointers = [], [], set(), [], set(), []
     inline = 0
+    counting = True                         # tool pairs are counted on rows that carry a uuid only (break 7)
 
     def walk(value, key=None):
         nonlocal inline
         if isinstance(value, dict):
-            if value.get("type") == "tool_use":
+            if counting and value.get("type") == "tool_use":
                 check("tool-use-unique", isinstance(value.get("id"), str) and value["id"] not in pending)
                 pending.add(value["id"])
-            if value.get("type") == "tool_result":
+            if counting and value.get("type") == "tool_result":
                 check("tool-result-matched", value.get("tool_use_id") in pending)
                 pending.discard(value.get("tool_use_id"))
             if value.get("type") == "input_image" or (value.get("type") in ("image", "document") and "source" in value):
@@ -366,6 +369,7 @@ def static_checks(req, raw, rows, capsule, window_rows, media_dir, externalizer,
             pointers.append(value)
 
     for row in rows:
+        counting = "uuid" in row
         walk(row)
         if row.get("uuid"):
             check("unique-message-ids", row["uuid"] not in seen)
