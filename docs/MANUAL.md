@@ -127,40 +127,42 @@ pipeline is implied by this source preparation.
 A change reaches `main` only as one dispatch packet: one id, one branch, one pull request and one kept leaf. One packet is active in the room at a time. Each station is one command of `ops/lib/scripts/packet.py`, and each refuses when the station before it is not proved (CONSTRAINTS C17; spec `docs/ops/specs/scripts/packet.md`).
 
 ```
- [draft]   the Manager fills storage/handoff/PACKET.md: title, Writer, Auditor, Orchestrator,
+ [draft]   the Integrator fills storage/handoff/PACKET.md: title, Contractor, Auditor, Orchestrator,
     |      the authority cited, the objective, the exact scope, the gates
     v
- [open]    the Manager, from clean main level with origin -> the id DP-SES-NNNN, the branch,
+ [open]    the Integrator, from clean main level with origin -> the id DP-SES-NNNN, the branch,
     |      the worktree var/tmp/packet/, and the contract in the leaf
     v
- [work]    the Writer edits only in var/tmp/packet/, only in scope
+ [work]    the Contractor edits only in var/tmp/packet/, only in scope
     |
     v
- [close]   the Writer: scope checked, gates run, results and the deviation count in the leaf
+ [close]   the Contractor: scope checked, gates run, results and the deviation count in the leaf
     |
     v
- [audit]   the Auditor, never the Writer: PASS or FAIL, bound to the exact tree
+ [audit]   the Auditor, never the Contractor: PASS or FAIL, bound to the exact tree
     |
     v
  [ship]    the Orchestrator, on the operator's one paste: commit, push, pull request, required
            check, findings answered, merge by rebase, main level with origin, cleanup -> LANDED
 ```
 
-| Seat | Runs | Never |
-| --- | --- | --- |
-| Manager | `draft`, `open`, `amend`, `restore`, `abandon` | commits, pushes or merges |
-| Writer | edits in the worktree, then `close` | edits the room's own checkout, edits outside scope, or audits its own packet |
-| Auditor | reads `diff`, then `audit --verdict pass` or `fail` | writes the work it audits |
-| Orchestrator | `ship`, again until it prints `LANDED`; `abandon` once a branch is on origin | decides content, review or acceptance |
-| Every seat | `status`, `diff` | |
+A packet's leaf names, by registry key, who carries each of the four delivery functions (CONSTRAINTS C16 and C17; the Central Repository's PoT section 5). A function is work in one packet. It is not a seat: the seats of this room are in section 1.
 
-- **Start with status.** `python3 -I -B ops/lib/scripts/packet.py status` shows the room, the active packet, its seats, what has changed and whose station is next. It is the first thing to run after wake, and the only thing a nudge between residents needs to say.
-- **The leaf is the assignment.** The Writer needs no other form for repository work: the objective, the exact scope, the authority and the gates are in the leaf. The resident packet (RUNBOOK-02) remains for work that changes no tracked file.
+| Function | Carried here by | Runs | Never |
+| --- | --- | --- | --- |
+| Integrator | the Manager | `draft`, `open`, `amend`, `restore`, `abandon` | commits, pushes or merges |
+| Contractor | the resident the packet names for its work | edits in the worktree, then `close` | edits the room's own checkout, edits outside scope, or audits its own packet |
+| Auditor | the Auditor | reads `diff`, then `audit --verdict pass` or `fail` | writes the work it audits |
+| Orchestrator | the Orchestrator | `ship`, again until it prints `LANDED`; `abandon` once a branch is on origin | decides content, review or acceptance |
+| Anyone | | `status`, `diff` | |
+
+- **Start with status.** `python3 -I -B ops/lib/scripts/packet.py status` shows the room, the active packet, who carries its functions, what has changed and whose station is next. It is the first thing to run after wake, and the only thing a nudge between residents needs to say.
+- **The leaf is the assignment.** The Contractor needs no other form for repository work: the objective, the exact scope, the authority and the gates are in the leaf. The resident packet (RUNBOOK-02) remains for work that changes no tracked file.
 - **The room stays clean main.** Nobody edits tracked files in the room's own checkout; the work is in `var/tmp/packet/`. A file derived from a private source, such as the public ledger, is rendered into the worktree.
 - **Working files are latest-wins and disposable.** The draft (`storage/handoff/PACKET.md`), the gate log (`storage/handoff/RESULTS.md`) and the worktree have fixed names; the newest replaces the last; none is committed.
 - **The leaf is the one kept record.** `archives/packets/DP-SES-NNNN.md` holds the contract, the measured results and the verdict. It is public: it cites a decision by ledger number or digest and never quotes.
 - **Board and ledger lines ride in the packet that causes them.** `NOW.md` and `RoR.md` are named in its scope; there is no pull request for a line alone.
-- **The operator's part is one paste per packet,** to the Orchestrator: ship. Everything before it reaches a seat as other work does.
+- **The operator's part is one paste per packet,** to the Orchestrator: ship. Everything before it reaches a resident as other work does.
 - **When a station refuses, it says what to do.** Only the tool writes a leaf: one edited by hand is refused, and `restore` puts back the leaf the tool last wrote. `abandon` keeps the work as a patch. The recovery table is in the spec.
 - **The required check judges the same rules on GitHub.** A pull request that is not one valid packet does not merge, whoever opens it.
 
@@ -195,15 +197,15 @@ python3 -I -B ops/lib/scripts/mind.py check
 ### Packet (see section 1B)
 ~~~bash
 python3 -I -B ops/lib/scripts/packet.py status
-python3 -I -B ops/lib/scripts/packet.py draft        # the Manager; then fill storage/handoff/PACKET.md
-python3 -I -B ops/lib/scripts/packet.py open         # the Manager
-python3 -I -B ops/lib/scripts/packet.py amend --add <path> --reason "<why>"                  # the Manager
-python3 -I -B ops/lib/scripts/packet.py close --deviations <count> --narrative <file or ->   # the Writer
-python3 -I -B ops/lib/scripts/packet.py diff [stat or names]                                 # any seat: the exact change the audit binds
+python3 -I -B ops/lib/scripts/packet.py draft        # the Integrator; then fill storage/handoff/PACKET.md
+python3 -I -B ops/lib/scripts/packet.py open         # the Integrator
+python3 -I -B ops/lib/scripts/packet.py amend --add <path> --reason "<why>"                  # the Integrator
+python3 -I -B ops/lib/scripts/packet.py close --deviations <count> --narrative <file or ->   # the Contractor
+python3 -I -B ops/lib/scripts/packet.py diff [stat or names]                                 # anyone: the exact change the audit binds
 python3 -I -B ops/lib/scripts/packet.py audit --verdict <pass or fail> --note <file or ->    # the Auditor
 python3 -I -B ops/lib/scripts/packet.py ship [--wait <seconds>] [--hold]                     # the Orchestrator, until LANDED
-python3 -I -B ops/lib/scripts/packet.py restore                                              # the Manager: put back a leaf edited by hand
-python3 -I -B ops/lib/scripts/packet.py abandon --reason "<why>"                             # the Manager
+python3 -I -B ops/lib/scripts/packet.py restore                                              # the Integrator: put back a leaf edited by hand
+python3 -I -B ops/lib/scripts/packet.py abandon --reason "<why>"                             # the Integrator
 ~~~
 
 ### Tests (synthetic data only; no real body, room or mind is touched)
@@ -576,5 +578,6 @@ Also:
 - **Team:** the Manager, Assistant and Apprentice, identified through the registry.
 - **Dispatch packet:** the one unit in which a change reaches `main`: one id, one branch, one pull request, one kept leaf (section 1B). Not the resident packet, which is a routing form.
 - **Packet leaf:** `archives/packets/DP-SES-NNNN.md`, the kept record of one dispatch packet; a different thing from a leaf of the mind.
-- **Station:** one step of a dispatch packet, run by one seat with one command: draft, open, close, audit, ship.
+- **Delivery function:** one of the four kinds of work in a dispatch packet: Integrator, Contractor, Auditor, Orchestrator (CONSTRAINTS C16 and C17). The leaf names by registry key who carries each; a function is not a seat.
+- **Station:** one step of a dispatch packet, one command run by the resident who carries its function: draft, open, close, audit, ship.
 - **Packet gate:** the rules of a valid dispatch packet read from Git objects alone, run by the required check; a different thing from the single-writer gate.

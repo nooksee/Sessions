@@ -1,6 +1,6 @@
 # Technical Specification: packet
 
-Script: `Sessions/ops/lib/scripts/packet.py`. Tests: `Sessions/tools/test/test_packet.py` (`TEST-55`). Registry: `docs/ops/registry/scripts.md` (`SCRIPT-50`). Contract: CONSTRAINTS C17, with C16 for the Orchestrator. Design: the operator's direction of 2026-11-12, cited and not quoted: STELA's shipping workflow in this room, one dispatch packet per pull request from start to finish, with this room's own seats. Status: built and tested on synthetic rooms with a simulated host, and rehearsed against GitHub without a merge on 2026-11-12; the first real packet is the team's.
+Script: `Sessions/ops/lib/scripts/packet.py`. Tests: `Sessions/tools/test/test_packet.py` (`TEST-55`). Registry: `docs/ops/registry/scripts.md` (`SCRIPT-50`). Contract: CONSTRAINTS C17, with C16 for the Orchestrator. Design: the operator's direction of 2026-11-12, cited and not quoted: STELA's shipping workflow in this room, one dispatch packet per pull request from start to finish, carried by the four delivery functions the team already names (C16). Status: built and tested on synthetic rooms with a simulated host, and rehearsed against GitHub without a merge on 2026-11-12; the first real packet is the team's.
 
 ## First Principles Rationale
 
@@ -8,7 +8,7 @@ The policy opens by saying that the system prevents an action that violates poli
 
 **One packet, one pull request.** A change reaches `main` only as one dispatch packet: one id, one branch, one pull request, one kept record. One packet is active in the room at a time, from open to landing, so there is never a stack to untangle and never a question of what is in flight.
 
-**Each station proves the one before it.** Draft and open are the Manager's, work and close the Writer's, the verdict the Auditor's, the landing the Orchestrator's. Each station is one command. Each command checks who is calling and what the station before it left, and refuses otherwise.
+**Each station proves the one before it.** Draft and open are the Integrator's, work and close the Contractor's, the verdict the Auditor's, the landing the Orchestrator's. Each station is one command. Each command checks who is calling and what the station before it left, and refuses otherwise.
 
 **The audit binds the exact tree.** The Auditor's PASS names the Git tree it read. The ship station commits that tree and no other, and the required check on GitHub compares the pull request's tree with the one the leaf names. No byte changes after the audit.
 
@@ -22,15 +22,15 @@ The policy opens by saying that the system prevents an action that violates poli
 
 ## Mechanics and Sequencing
 
-Run every command from the room, with the room's own copy: `python3 -I -B ops/lib/scripts/packet.py <command>`. `status` is where every seat starts.
+Run every command from the room, with the room's own copy: `python3 -I -B ops/lib/scripts/packet.py <command>`. `status` is where everyone starts.
 
 ### The pieces
 
 | Piece | Path | Kind | Written by |
 | --- | --- | --- | --- |
-| Draft | `storage/handoff/PACKET.md` | handoff; latest-wins; private, 0600 | `draft`, then the Manager by hand; consumed by `open` |
+| Draft | `storage/handoff/PACKET.md` | handoff; latest-wins; private, 0600 | `draft`, then the Integrator by hand; consumed by `open` |
 | Gate log | `storage/handoff/RESULTS.md` | handoff; latest-wins; private, 0600 | `close`: the last 40 lines of each gate's output |
-| Worktree | `var/tmp/packet/` | scratch; the one active packet's Git worktree | `open` makes it; the Writer edits in it; `ship` or `abandon` removes it |
+| Worktree | `var/tmp/packet/` | scratch; the one active packet's Git worktree | `open` makes it; the Contractor edits in it; `ship` or `abandon` removes it |
 | Kept on the way out | `var/tmp/PACKET.md.prev`, `var/tmp/PACKET.abandoned.patch` | scratch; latest-wins; private | `draft` (the draft it replaced); `abandon` (the work, as a patch) |
 | Ledger and lock | `logs/packets/ledger.jsonl`, `logs/packets/lock` | private telemetry and tool state, 0600 in a 0700 folder | every station appends one line, and a station that writes the leaf records its digest and its text; one station runs at a time |
 | Leaf | `archives/packets/DP-SES-NNNN.md` | kept record; in Git; public | the tool only, in the worktree; it lands with the packet |
@@ -46,8 +46,8 @@ The filing authority is PoT 1.1.4, 1.1.12 and 1.1.13. The worktree's fixed name 
 - Branch: agent/dp-ses-0001-<date>
 - Base: commit <the commit of main the packet opened on>
 - Opened: <UTC time>
-- Manager: <registry key>
-- Writer: <registry key>
+- Integrator: <registry key>
+- Contractor: <registry key>
 - Auditor: <registry key>
 - Orchestrator: <registry key>
 - Authority: <one line: a ledger number or a digest, never a quotation>
@@ -64,14 +64,14 @@ The filing authority is PoT 1.1.4, 1.1.12 and 1.1.13. The worktree's fixed name 
 
 - full
 
-## Amendments        (only when the Manager amended the scope)
+## Amendments        (only when the Integrator amended the scope)
 
 - <time> <key> added <path>: <reason>
 
 ## Results           (written by close)
 
 - Closed: <UTC time>
-- Writer: <key>
+- Contractor: <key>
 - Paths changed: <count>
 - Deviations: <count>
 - Tree: tree <the tree of the work, without the leaf>
@@ -79,7 +79,7 @@ The filing authority is PoT 1.1.4, 1.1.12 and 1.1.13. The worktree's fixed name 
 
 ## Narrative
 
-<the Writer's account>
+<the Contractor's account>
 
 ## Audit             (written by audit)
 
@@ -101,29 +101,29 @@ A leaf is valid only in canonical form: these lines in this order, no line endin
 
 ### The stations
 
-| Station | Seat | Command | Refused when |
+| Station | Function | Command | Refused when |
 | --- | --- | --- | --- |
-| Draft | Manager | `draft`, then fill the form | the handoff folder is absent |
-| Open | Manager | `open` | the room is not clean `main` level with origin; a packet is active; the Writer is the Auditor; a seat is not registered once to this room; the scope, gates or text break a rule; a branch for the number exists |
-| Work | Writer | edit only under `var/tmp/packet/`, only in scope | checked at close |
-| Scope change | Manager | `amend --add PATH --reason TEXT` | the caller is not the packet's Manager; the path is in scope already or breaks a rule |
-| Close | Writer | `close --deviations N --narrative FILE` | the caller is not the Writer; the narrative breaks a rule (checked before any gate runs); the room's own checkout is dirty; a changed path is outside scope, before or after the gates; nothing changed; a gate does not exit 0 (exit 1) |
+| Draft | Integrator | `draft`, then fill the form | the handoff folder is absent |
+| Open | Integrator | `open` | the room is not clean `main` level with origin; a packet is active; the Contractor is the Auditor; a named key is not registered once to this room; the scope, gates or text break a rule; a branch for the number exists |
+| Work | Contractor | edit only under `var/tmp/packet/`, only in scope | checked at close |
+| Scope change | Integrator | `amend --add PATH --reason TEXT` | the caller is not the packet's Integrator; the path is in scope already or breaks a rule |
+| Close | Contractor | `close --deviations N --narrative FILE` | the caller is not the Contractor; the narrative breaks a rule (checked before any gate runs); the room's own checkout is dirty; a changed path is outside scope, before or after the gates; nothing changed; a gate does not exit 0 (exit 1) |
 | Audit | Auditor | read `diff`, then `audit --verdict pass or fail --note FILE` | the caller is not the Auditor; the packet is not closed; the worktree changed after close |
 | Ship | Orchestrator | `ship`, again until it prints `LANDED` | see "Ship" below |
-| Repair | Manager | `restore` | the caller is not the packet's Manager; the ledger holds no leaf for the packet |
-| Stop | Manager | `abandon --reason TEXT`; the work is kept as a patch | the caller is not the Manager; or, once the branch is on origin, not the Orchestrator or a recorded fallback; the pull request is already merged |
+| Repair | Integrator | `restore` | the caller is not the packet's Integrator; the ledger holds no leaf for the packet |
+| Stop | Integrator | `abandon --reason TEXT`; the work is kept as a patch | the caller is not the Integrator; or, once the branch is on origin, not the Orchestrator or a recorded fallback; the pull request is already merged |
 
-Every station also refuses a caller it cannot verify, and a leaf that is not, byte for byte, the one the tool last wrote: contract, results and verdict alike. Only the tool writes a leaf. `restore` puts back the leaf the ledger recorded and touches nothing else in the worktree. `amend` voids an earlier close. A new close voids the earlier one from the moment its gates start: if a gate then fails, even on the very tree that passed before, the packet holds no results and no verdict, and nothing ships on the old ones. A FAIL verdict sends the packet back to the Writer. `draft` carries the Auditor and the Orchestrator of the newest landed packet into the form as a convenience; the Manager changes them freely.
+Every station also refuses a caller it cannot verify, and a leaf that is not, byte for byte, the one the tool last wrote: contract, results and verdict alike. Only the tool writes a leaf. `restore` puts back the leaf the ledger recorded and touches nothing else in the worktree. `amend` voids an earlier close. A new close voids the earlier one from the moment its gates start: if a gate then fails, even on the very tree that passed before, the packet holds no results and no verdict, and nothing ships on the old ones. A FAIL verdict sends the packet back to the Contractor. `draft` carries the Auditor and the Orchestrator of the newest landed packet into the form as a convenience; the Integrator changes them freely.
 
-`status` takes no seat. It prints the room's state, the caller's verified key, the active packet, its seats, the count of changed paths and how many are outside scope, and the next station with the key whose turn it is. It writes no ref, no index and no file in a checkout; reading a tree stores a few loose Git objects.
+`status` belongs to no function. It prints the room's state, the caller's verified key, the active packet, who carries its functions, the count of changed paths and how many are outside scope, and the next station with the key whose turn it is. It writes no ref, no index and no file in a checkout; reading a tree stores a few loose Git objects.
 
-`diff` takes no seat either. It prints the exact change the verdict binds: everything since the base, files Git does not track yet included, without the leaf, under a first line that names the tree. `diff stat` and `diff names` give the summary and the paths. It is what the Auditor reads.
+`diff` belongs to no function either. It prints the exact change the verdict binds: everything since the base, files Git does not track yet included, without the leaf, under a first line that names the tree. `diff stat` and `diff names` give the summary and the paths. It is what the Auditor reads.
 
 `sync` brings a clean room level with origin by fast-forward only. It is a repair for a room that fell behind; `ship` already leaves the room level.
 
 ### The caller
 
-A station binds to the caller's own registry key, resolved by `mind.py`'s `caller_key`, which is `myself.py`'s resolution matched against the room's canonical registry. A seat is a key named in the leaf, never a role title. A worker acts as its parent (PoT 3.5). The test seam is `mind.py`'s own and opens only in a synthetic room; the tool never passes it on to a gate.
+A station binds to the caller's own registry key, resolved by `mind.py`'s `caller_key`, which is `myself.py`'s resolution matched against the room's canonical registry. The Integrator, the Contractor, the Auditor and the Orchestrator are the delivery functions of the Central Repository's PoT section 5, borrowed unchanged (C16, C17). A function is carried by the key the leaf names for it, never by a role title or a seat. In this room the Manager carries the Integrator function; the tool binds the key and nothing else. Until 2026-11-09 this room gave the name Integrator to the seat that is now the Orchestrator's (RoR-23); the function named here is not that seat. A worker acts as its parent (PoT 3.5). The test seam is `mind.py`'s own and opens only in a synthetic room; the tool never passes it on to a gate.
 
 ### Ship
 
@@ -137,7 +137,7 @@ A station binds to the caller's own registry key, resolved by `mind.py`'s `calle
 6. Commit everything and the leaf; the commit must hold exactly the audited tree and its leaf.
 7. The PoT authorization gate, as the required check runs it, before anything is pushed.
 8. Push: plain, never forced, with push negotiation switched off for the call. Open the pull request, or use the open one.
-9. The required check `sessions-gates` must have ended in success on that commit; anything else that has ended is exit 1, and the packet returns to the Writer.
+9. The required check `sessions-gates` must have ended in success on that commit; anything else that has ended is exit 1, and the packet returns to the Contractor.
 10. The head must have rested 300 seconds since the check started, so a review can land, and a reviewer that announces its own state must not say it is still running. Every inline review comment from an account other than the pull request's own must have a reply from that account; a refusal names each one by path, line and address. Then merge by rebase, naming the exact head.
 11. Fast-forward the room's `main`; prove it is clean, the same commit as origin's `main`, and the same tree as the packet.
 12. Remove the packet branch on origin and confirm it is gone, then remove the worktree and the branch here; append the ledger line; post the landing proof on the pull request; print `LANDED`. If origin still holds the branch, nothing here is removed and the same command is run again.
@@ -152,12 +152,12 @@ All calls to GitHub go through `gh api`, so `gh` must be installed and signed in
 2. the pull request is level with its base;
 3. it adds exactly one leaf, `archives/packets/DP-SES-NNNN.md` for that number, and changes or removes no other;
 4. the number is one above the highest leaf on the base;
-5. the leaf is canonical and valid: the Writer is not the Auditor, every recorded gate exited 0, the deviations are a count, and the redaction check finds nothing;
+5. the leaf is canonical and valid: the Contractor is not the Auditor, every recorded gate exited 0, the deviations are a count, and the redaction check finds nothing;
 6. the leaf names this branch, and its Base is the commit the branch was cut from;
 7. every other changed path is inside the leaf's scope;
 8. the leaf holds Results and an Audit, the verdict is PASS, and both name the tree of the pull request without its leaf.
 
-A pull request that changes the gate's own law (`packet.py`, `redact.py` or the workflow file) passes or fails by the same rules and is named in the output with a `NOTICE` line. While the base holds no `packet.py`, the gate does not apply: that is true once, for the pull request that introduced it. On a push to `main`, `gate --chain` checks that the leaves are numbered from 0001 without a gap and that each opens with its own id.
+A pull request that changes the gate's own law (`packet.py`, `redact.py` or the workflow file) passes or fails by the same rules and is named in the output with a `NOTICE` line. While the base holds no `packet.py`, the gate does not apply: that is true once, for the pull request that introduced it. It does not apply either while the base holds the first tool exactly as it landed, which this tool names by its Git blob id (`FIRST_TOOL`), and no leaf: that tool named two of the functions otherwise, so the header it writes is not the one this gate reads. That is also true once, for the pull request that corrected the names. With any other tool or any leaf on the base, neither case can occur. On a push to `main`, `gate --chain` checks that the leaves are numbered from 0001 without a gap and that each opens with its own id.
 
 ### Exit codes
 
@@ -167,13 +167,13 @@ A pull request that changes the gate's own law (`packet.py`, `redact.py` or the 
 
 | Situation | What to do |
 | --- | --- |
-| Origin's `main` moved under an open packet | The Manager abandons it and opens it again; the work is in `var/tmp/PACKET.abandoned.patch`, applied with `git apply` in the new worktree. |
-| The scope was drawn too narrow | The Manager amends. To narrow it, abandon and open again. |
-| Open refuses because a branch for the number exists | It names each branch. A branch left behind by an abandoned or rehearsed packet is deleted by the Orchestrator (`git push origin --delete NAME`), and the Manager opens again. Anything else: stop and report. |
+| Origin's `main` moved under an open packet | The Integrator abandons it and opens it again; the work is in `var/tmp/PACKET.abandoned.patch`, applied with `git apply` in the new worktree. |
+| The scope was drawn too narrow | The Integrator amends. To narrow it, abandon and open again. |
+| Open refuses because a branch for the number exists | It names each branch. A branch left behind by an abandoned or rehearsed packet is deleted by the Orchestrator (`git push origin --delete NAME`), and the Integrator opens again. Anything else: stop and report. |
 | A resident edited the room's own checkout by habit | Move the change into `var/tmp/packet/` or discard it; no station runs until the room is clean `main`. |
-| The leaf was edited or damaged by hand, a verdict or a result written into it included | `status` says so (packet hash failure). The Manager runs `restore`, and the station that was skipped is then run properly. |
-| The required check failed | The Writer reworks and closes again, the Auditor audits again, the Orchestrator ships again. The same pull request carries the new commit. |
-| A review finding stands | Answer it on the pull request, fixed or declined with a reason. A fix returns the packet to the Writer. |
+| The leaf was edited or damaged by hand, a verdict or a result written into it included | `status` says so (packet hash failure). The Integrator runs `restore`, and the station that was skipped is then run properly. |
+| The required check failed | The Contractor reworks and closes again, the Auditor audits again, the Orchestrator ships again. The same pull request carries the new commit. |
+| A review finding stands | Answer it on the pull request, fixed or declined with a reason. A fix returns the packet to the Contractor. |
 | The pull request was merged on GitHub's own page | Run `ship`; it finishes from step 11. |
 | The room's `main` is behind origin | `sync`. If it holds commits origin does not, stop and report; the tool never forces. |
 
@@ -181,14 +181,16 @@ A pull request that changes the gate's own law (`packet.py`, `redact.py` or the 
 
 The Orchestrator seat was made on 2026-11-09 (RoR-23) so that one seat would do the team's Git work on handoff. Within three days the room held stacked stages, numbered handoffs to that seat, pull requests that carried a single ledger line, and a standing direction that nothing merges with a review finding open (RoR-24). Every resident was following a rule; no two were following the same route. On 2026-11-12 the operator directed that STELA's workflow, which the room had borrowed in outline, be made the room's own in full: one packet per pull request, from clean main, with the Orchestrator landing it. The station table above is that direction, and each refusal in it stands where a route once forked.
 
+The tool first landed, as pull request #91, calling two of the functions Manager and Writer. Both already had names: the Integrator and the Contractor, in STELA's policy and in the Central Repository's PoT section 5, the same list whose fourth entry C16 had borrowed three days earlier. The operator said so the same day. The names were corrected before any packet was opened, so no leaf carries the first ones.
+
 ## Integrity Filter Warnings
 
 - **The stations are a cooperating-writer guard, not a file permission.** The whole leaf is bound by a digest in the private ledger, so a contract, a result or a verdict written by hand is found by `status` and by the next station. A process that edits both the leaf and the ledger, or a pull request made by hand without the tool, is not stopped by that: the gate on GitHub judges form, scope and tree, and cannot know who wrote the verdict. The tool cannot tell a worker from its parent.
 - **A pull request can change its own gate.** The required check runs the copy of `packet.py` and the workflow file that the pull request carries. Such a change must be in the packet's scope and pass its audit, and the gate names it; it is not prevented. Branch protection and the required check are settings on GitHub, and they are the operator's.
-- **After the first landing, every change needs a packet, a repair to this tool included.** Administrators are held to the required check as well. A fault in the gate is mended by a packet, or by a pull request that edits the gate step on the operator's word.
+- **After the first landing, every change needs a packet, a repair to this tool included.** Administrators are held to the required check as well. A fault in the gate is mended by a packet, or by a pull request that edits the gate step on the operator's word. The correction of the function names was such a pull request: a packet cannot carry a change to its own leaf header, because the room's tool writes the leaf and the pull request's tool reads it.
 - **The leaf's results are a record, not the proof.** The tool ran the gates on the host; the required check runs every suite again on GitHub. A leaf that claims a pass the check does not reproduce does not merge.
 - **The review rule sees inline review comments only.** A general comment, a review summary or a review that arrives after the merge is not seen. Residents share the host's GitHub account, so a resident's own inline comment is not a finding; an auditor's finding belongs in a FAIL verdict. The 300 seconds are a floor. The tool waits for a reviewer only where the reviewer announces its state in a comment marker the tool knows (the Codex connector's `codex-review-state:v1`); only an application's own account is believed, a marker it cannot read counts as none, and one that has said running for over 1,800 seconds is taken as stopped. A reviewer that reads only when a pull request opens does not read a reworked head.
 - **The tool sees what Git sees.** A new file that the room's `.gitignore` does not admit is not part of the packet; admit it in the same packet.
-- **The ledger is tool state.** If `logs/packets/ledger.jsonl` is lost while a packet is open, every station refuses and nothing can be restored; the Manager abandons the packet, the work is kept as a patch, and the packet is opened again.
+- **The ledger is tool state.** If `logs/packets/ledger.jsonl` is lost while a packet is open, every station refuses and nothing can be restored; the Integrator abandons the packet, the work is kept as a patch, and the packet is opened again.
 - **One packet at a time is a property of one checkout.** Two clones can each open the same number; the first to merge keeps it, and the gate fails the second.
 - **PoT 6.1.4 still says Git follows Control's work-session route.** This workflow is the room's route by the operator's direction, as C16 is. The wording of that clause is the operator's to amend under PoT 7.3. PoT 6.1.2 asks an independent review and a named go for a change to automation: this tool landed on the operator's approval of its plan, and its review follows the landing.

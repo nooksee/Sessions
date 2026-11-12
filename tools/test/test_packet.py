@@ -29,7 +29,7 @@ _spec = importlib.util.spec_from_file_location("packet", PACKET)
 packet = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(packet)
 
-KEYS = ("mgr", "wri", "aud", "orc", "out")          # manager, writer, auditor, orchestrator, one more resident
+KEYS = ("itg", "con", "aud", "orc", "out")          # integrator, contractor, auditor, orchestrator, one more resident
 SESSION = "0000f00d-0000-4000-8000-00000000000{}"   # rotate's synthetic convention: the first four are zeros
 T0 = dt.datetime(2026, 11, 12, 10, 0, tzinfo=dt.timezone.utc)
 IDENTITY = {"GIT_AUTHOR_NAME": "Synthetic Room", "GIT_AUTHOR_EMAIL": "synthetic@example.invalid",
@@ -251,9 +251,9 @@ class Room:
         path.write_text(text)
         return str(path)
 
-    def draft(self, title="Say more in the docs", writer="wri", auditor="aud", orchestrator="orc", authority="RoR-25",
+    def draft(self, title="Say more in the docs", contractor="con", auditor="aud", orchestrator="orc", authority="RoR-25",
               scope=("docs/",), gates=("ok",), objective="Make the first page say more than one word.") -> Result:
-        argv = ["draft", "--title", title, "--writer", writer, "--auditor", auditor, "--orchestrator", orchestrator,
+        argv = ["draft", "--title", title, "--contractor", contractor, "--auditor", auditor, "--orchestrator", orchestrator,
                 "--authority", authority, "--objective", "-"]
         for entry in scope:
             argv += ["--scope", entry]
@@ -261,7 +261,7 @@ class Room:
             argv += ["--gate", gate]
         return self.run(*argv, stdin=objective)
 
-    def open(self, who="mgr", **draft) -> Result:
+    def open(self, who="itg", **draft) -> Result:
         self.draft(**draft)
         return self.run("open", who=who)
 
@@ -269,7 +269,7 @@ class Room:
         (self.wt / rel).parent.mkdir(parents=True, exist_ok=True)
         (self.wt / rel).write_text(text)
 
-    def close(self, who="wri", deviations="0", narrative="One page changed. Nothing else was touched.") -> Result:
+    def close(self, who="con", deviations="0", narrative="One page changed. Nothing else was touched.") -> Result:
         return self.run("close", "--deviations", deviations, "--narrative", self.note(narrative), who=who)
 
     def audit(self, verdict="pass", who="aud", note="Read the change against the objective. It does what it says.") -> Result:
@@ -333,14 +333,14 @@ class Case(unittest.TestCase):
 
 def sample_leaf(**head) -> dict:
     base = {"Packet": "DP-SES-0001", "Branch": "agent/dp-ses-0001-2026-11-12", "Base": "commit " + "a" * 40,
-            "Opened": "2026-11-12T10:01:00Z", "Manager": "mgr", "Writer": "wri", "Auditor": "aud", "Orchestrator": "orc",
+            "Opened": "2026-11-12T10:01:00Z", "Integrator": "itg", "Contractor": "con", "Auditor": "aud", "Orchestrator": "orc",
             "Authority": "RoR-25"}
     return {"title": "Say more in the docs", "head": dict(base, **head), "objective": "Make the first page say more.",
             "scope": ["docs/"], "gates": ["ok"], "amendments": [], "results": None, "audit": None}
 
 
 def closed(leaf: dict, **results) -> dict:
-    head = {"Closed": "2026-11-12T10:05:00Z", "Writer": leaf["head"]["Writer"], "Paths changed": "1", "Deviations": "0",
+    head = {"Closed": "2026-11-12T10:05:00Z", "Contractor": leaf["head"]["Contractor"], "Paths changed": "1", "Deviations": "0",
             "Tree": "tree " + "b" * 40}
     return dict(leaf, results={"head": dict(head, **results), "gates": [(0, 1, "tools/test/test_ok.py")],
                                "narrative": "One page changed."})
@@ -356,7 +356,7 @@ def audited(leaf: dict, **audit) -> dict:
 class LeafFormat(unittest.TestCase):
     def test_a_leaf_round_trips_at_every_station(self):
         contract = sample_leaf()
-        full = audited(closed(dict(contract, amendments=["2026-11-12T10:03:00Z mgr added docs/: wider than first drawn"])))
+        full = audited(closed(dict(contract, amendments=["2026-11-12T10:03:00Z itg added docs/: wider than first drawn"])))
         for leaf in (contract, closed(contract), full):
             text = packet.render_leaf(leaf)
             self.assertEqual(leaf, packet.parse_leaf(text))
@@ -369,8 +369,8 @@ class LeafFormat(unittest.TestCase):
 
     def test_anything_but_canonical_form_is_refused(self):
         text = packet.render_leaf(audited(closed(sample_leaf())))
-        broken = {"a trailing space": text.replace("- Writer: wri\n", "- Writer: wri \n", 1),
-                  "header out of order": text.replace("- Manager: mgr\n- Writer: wri\n", "- Writer: wri\n- Manager: mgr\n"),
+        broken = {"a trailing space": text.replace("- Contractor: con\n", "- Contractor: con \n", 1),
+                  "header out of order": text.replace("- Integrator: itg\n- Contractor: con\n", "- Contractor: con\n- Integrator: itg\n"),
                   "an unknown section": text + "## Extra\n\nwords\n",
                   "text before the first section": text.replace("## Objective", "stray\n\n## Objective"),
                   "sections out of order": text.replace("## Scope\n\n- docs/\n\n## Gates\n\n- ok\n", "## Gates\n\n- ok\n\n## Scope\n\n- docs/\n"),
@@ -385,13 +385,13 @@ class LeafFormat(unittest.TestCase):
                 packet.parse_leaf(value)
 
     def test_every_rule_of_a_valid_leaf(self):
-        cases = [(sample_leaf(Auditor="wri"), "no seat audits its own work"),
+        cases = [(sample_leaf(Auditor="con"), "no one audits their own work"),
                  (sample_leaf(Packet="DP-SES-1"), "not DP-SES-NNNN"),
                  (sample_leaf(Branch="agent/dp-ses-0002-2026-11-12"), "Branch:"),
                  (sample_leaf(Branch="feature/x"), "Branch:"),
                  (sample_leaf(Base="commit abc"), "Base:"),
                  (sample_leaf(Opened="yesterday"), "Opened:"),
-                 (sample_leaf(Writer="Wri Ter"), "Writer: not a registry key"),
+                 (sample_leaf(Contractor="Con Tractor"), "Contractor: not a registry key"),
                  (sample_leaf(Authority=""), "Authority: empty"),
                  (dict(sample_leaf(), title="t" * 59), "Title: 59 characters"),
                  (dict(sample_leaf(), objective="x" * 801), "Objective: 801 characters"),
@@ -402,9 +402,9 @@ class LeafFormat(unittest.TestCase):
                  (dict(sample_leaf(), gates=["full", "ok"]), "Gates:"),
                  (dict(sample_leaf(), gates=["Ok"]), "Gates:"),
                  (dict(sample_leaf(), gates=["ok", "ok"]), "Gates:"),
-                 (dict(sample_leaf(), amendments=["sometime mgr added docs/: why"]), "Amendments:"),
-                 (dict(sample_leaf(), amendments=["2026-11-12T10:03:00Z mgr added tools/: why"]), "Amendments:"),
-                 (closed(sample_leaf(), Writer="out"), "Results: Closed"),
+                 (dict(sample_leaf(), amendments=["sometime itg added docs/: why"]), "Amendments:"),
+                 (dict(sample_leaf(), amendments=["2026-11-12T10:03:00Z itg added tools/: why"]), "Amendments:"),
+                 (closed(sample_leaf(), Contractor="out"), "Results: Closed"),
                  (closed(sample_leaf(), **{"Paths changed": "0"}), "count of at least 1"),
                  (closed(sample_leaf(), Deviations="none"), "Deviations is a count"),
                  (closed(sample_leaf(), Tree="tree short"), "Results: Tree"),
@@ -465,13 +465,13 @@ class LeafFormat(unittest.TestCase):
         self.assertEqual("a\n\nb", packet.clean_text("\r\n a\r\n\r\nb  \n\n".replace(" a", "a")))
 
     def test_a_draft_round_trips_and_an_unfilled_one_names_what_is_missing(self):
-        fields = {"Title": "T", "Writer": "wri", "Auditor": "aud", "Orchestrator": "orc", "Authority": "RoR-25"}
+        fields = {"Title": "T", "Contractor": "con", "Auditor": "aud", "Orchestrator": "orc", "Authority": "RoR-25"}
         text = packet.render_draft(fields, "Do the thing.\n\nThen stop.", ["docs/", "README.md"], ["full"])
         self.assertEqual({"fields": fields, "objective": "Do the thing.\n\nThen stop.", "scope": ["docs/", "README.md"],
                           "gates": ["full"]}, packet.parse_draft(text))
         with self.assertRaises(packet.Refused) as caught:
             packet.parse_draft(packet.render_draft({"Title": "T"}, "", [], ["full"]))
-        for missing in ("Writer", "Auditor", "Orchestrator", "Authority", "## Objective", "## Scope"):
+        for missing in ("Contractor", "Auditor", "Orchestrator", "Authority", "## Objective", "## Scope"):
             self.assertIn(missing, str(caught.exception))
         with self.assertRaises(packet.Refused):
             packet.parse_draft(text.replace("- docs/", "docs/"))
@@ -497,7 +497,7 @@ class DraftAndOpen(Case):
         self.assertIn("Title: Second", form.read_text())
         self.assertIn("Title: First", (self.r.room / packet.DRAFT_PREVIOUS).read_text())
         self.assertEqual("", git(self.r.room, "status", "--porcelain"))
-        self.refused(self.r.run("open", who="mgr"), "the draft is not filled", "Writer")
+        self.refused(self.r.run("open", who="itg"), "the draft is not filled", "Contractor")
 
     def test_open_makes_the_one_packet_from_clean_main(self):
         base = self.r.head()
@@ -506,16 +506,16 @@ class DraftAndOpen(Case):
         self.assertIn("DP-SES-0001 is open on agent/dp-ses-0001-2026-11-12", result.out)
         leaf = self.r.leaf()
         self.assertEqual({"Packet": "DP-SES-0001", "Branch": "agent/dp-ses-0001-2026-11-12", "Base": f"commit {base}",
-                          "Manager": "mgr", "Writer": "wri", "Auditor": "aud", "Orchestrator": "orc", "Authority": "RoR-25"},
+                          "Integrator": "itg", "Contractor": "con", "Auditor": "aud", "Orchestrator": "orc", "Authority": "RoR-25"},
                          {k: v for k, v in leaf["head"].items() if k != "Opened"})
         self.assertEqual((["docs/"], ["ok"], None, None), (leaf["scope"], leaf["gates"], leaf["results"], leaf["audit"]))
         self.assertEqual("agent/dp-ses-0001-2026-11-12", git(self.r.wt, "rev-parse", "--abbrev-ref", "HEAD"))
         self.assertEqual(("main", ""), (git(self.r.room, "rev-parse", "--abbrev-ref", "HEAD"), git(self.r.room, "status", "--porcelain")))
         self.assertFalse((self.r.room / packet.DRAFT).exists())
         line = self.r.ledger()[-1]
-        self.assertEqual(("open", "mgr", "DP-SES-0001", base), (line["action"], line["actor"], line["packet"], line["base"]))
+        self.assertEqual(("open", "itg", "DP-SES-0001", base), (line["action"], line["actor"], line["packet"], line["base"]))
         self.assertEqual(packet.contract_digest(leaf), line["contract"])
-        self.assertEqual({"Manager": "mgr", "Writer": "wri", "Auditor": "aud", "Orchestrator": "orc"}, line["seats"])
+        self.assertEqual({"Integrator": "itg", "Contractor": "con", "Auditor": "aud", "Orchestrator": "orc"}, line["functions"])
         ledger = self.r.room / packet.LEDGER
         self.assertEqual((0o600, 0o700), (stat.S_IMODE(ledger.stat().st_mode), stat.S_IMODE(ledger.parent.stat().st_mode)))
         self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
@@ -541,11 +541,11 @@ class DraftAndOpen(Case):
         self.refused(self.r.open(), "holds commits origin/main does not", "never force")
         self.refused(self.r.run("sync", who="out"), "holds commits origin/main does not", "never force")
 
-    def test_open_refuses_bad_seats(self):
-        self.refused(self.r.open(auditor="wri"), "no seat audits its own work")
-        self.refused(self.r.open(writer="ghost"), "Writer:", "'ghost' is registered 0 times")
+    def test_open_refuses_bad_function_keys(self):
+        self.refused(self.r.open(auditor="con"), "no one audits their own work")
+        self.refused(self.r.open(contractor="ghost"), "Contractor:", "'ghost' is registered 0 times")
         self.refused(self.r.open(orchestrator="far"), "Orchestrator:", "registered to another room")
-        self.refused(self.r.open(who="ghost"), "Manager:", "registered 0 times")
+        self.refused(self.r.open(who="ghost"), "Integrator:", "registered 0 times")
         self.assertFalse(self.r.wt.exists())
         self.assertTrue((self.r.room / packet.DRAFT).exists())
 
@@ -561,10 +561,10 @@ class DraftAndOpen(Case):
         self.r.draft()
         self.refused(self.r.run("open"), "canonical registry")
         (self.r.room / packet.DRAFT).unlink()
-        self.refused(self.r.run("open", who="mgr"), "no readable draft")
+        self.refused(self.r.run("open", who="itg"), "no readable draft")
         self.r.draft()
         git(self.r.room, "remote", "set-url", "origin", str(self.r.base / "no-such-origin.git"))
-        self.refused(self.r.run("open", who="mgr"), "git fetch --quiet failed")
+        self.refused(self.r.run("open", who="itg"), "git fetch --quiet failed")
         self.assertFalse(self.r.wt.exists())
         shutil.rmtree(self.r.room / "storage" / "handoff")
         self.refused(self.r.run("draft"), "storage/handoff/ does not exist")
@@ -575,17 +575,17 @@ class DraftAndOpen(Case):
                      "git push origin --delete NAME")
         git(self.r.origin, "update-ref", "-d", "refs/heads/agent/dp-ses-0001-2026-11-01")
         git(self.r.room, "branch", "agent/dp-ses-0001-2026-10-01", "main")
-        self.refused(self.r.run("open", who="mgr"), "a branch for DP-SES-0001 already exists: agent/dp-ses-0001-2026-10-01 here")
+        self.refused(self.r.run("open", who="itg"), "a branch for DP-SES-0001 already exists: agent/dp-ses-0001-2026-10-01 here")
         git(self.r.room, "branch", "-D", "agent/dp-ses-0001-2026-10-01")
-        self.assertEqual(0, self.r.run("open", who="mgr").code, self.r.said[-1])
+        self.assertEqual(0, self.r.run("open", who="itg").code, self.r.said[-1])
 
     def test_a_failed_open_leaves_no_worktree_and_no_branch(self):
         self.r.draft()
         with mock.patch.object(packet, "record", side_effect=OSError(28, "No space left on device")):
-            self.refused(self.r.run("open", who="mgr"), "No space left")
+            self.refused(self.r.run("open", who="itg"), "No space left")
         self.assertFalse(self.r.wt.exists())
         self.assertEqual("", git(self.r.room, "for-each-ref", "refs/heads/agent"))
-        self.assertEqual(0, self.r.run("open", who="mgr").code)
+        self.assertEqual(0, self.r.run("open", who="itg").code)
 
     def test_the_tool_refuses_a_linked_worktree_as_its_room(self):
         other = self.r.base / "other"
@@ -601,29 +601,29 @@ class DraftAndOpen(Case):
 # --------------------------------------------------------------------------
 class Work(Case):
     def test_status_names_each_station_and_whose_turn_it_is(self):
-        first = self.r.run("status", who="mgr")
+        first = self.r.run("status", who="itg")
         self.assertIn("room: main at", first.out)
         self.assertIn("clean, level with origin/main", first.out)
-        self.assertIn("you: mgr", first.out)
+        self.assertIn("you: itg", first.out)
         self.assertIn("packet: none active; the next is DP-SES-0001", first.out)
         self.assertIn("station: draft:", first.out)
         self.assertIn("you: unverified", self.r.run("status").out)
         self.r.draft()
         self.assertIn("station: open: a draft waits", self.r.run("status").out)
-        self.r.run("open", who="mgr")
+        self.r.run("open", who="itg")
         refs = git(self.r.room, "for-each-ref")
-        at_work = self.r.run("status", who="wri")
+        at_work = self.r.run("status", who="con")
         self.assertIn("packet: DP-SES-0001: Say more in the docs", at_work.out)
-        self.assertIn("seats: Manager mgr, Writer wri, Auditor aud, Orchestrator orc", at_work.out)
+        self.assertIn("functions: Integrator itg, Contractor con, Auditor aud, Orchestrator orc", at_work.out)
         self.assertIn("work: 0 path(s) changed, 0 outside scope", at_work.out)
         self.assertIn("station: work:", at_work.out)
-        self.assertIn("(wri, which is you)", at_work.out)
+        self.assertIn("(con, which is you)", at_work.out)
         self.r.edit()
         self.r.edit("tools/extra.py", "x = 1\n")
-        outside = self.r.run("status", who="mgr")
+        outside = self.r.run("status", who="itg")
         self.assertIn("work: 2 path(s) changed, 1 outside scope", outside.out)
         self.assertIn("work: outside scope: tools/extra.py", outside.out)
-        self.assertIn("(wri)", outside.out)
+        self.assertIn("(con)", outside.out)
         (self.r.wt / "tools" / "extra.py").unlink()
         self.r.close()
         self.assertIn("station: audit:", self.r.run("status", who="aud").out)
@@ -666,7 +666,7 @@ class Work(Case):
         self.assertIn("1 path(s), 1 of 1 gates passed, deviations 2", result.out)
         leaf = self.r.leaf()
         results = leaf["results"]
-        self.assertEqual(("wri", "1", "2"), (results["head"]["Writer"], results["head"]["Paths changed"], results["head"]["Deviations"]))
+        self.assertEqual(("con", "1", "2"), (results["head"]["Contractor"], results["head"]["Paths changed"], results["head"]["Deviations"]))
         self.assertEqual([(0, "tools/test/test_ok.py")], [(code, name) for code, _, name in results["gates"]])
         self.assertEqual("One page changed. Nothing else was touched.", results["narrative"])
         independent = derive(self.r.room, self.r.head(), {"docs/a.md": "alpha, and more\n"})
@@ -675,13 +675,13 @@ class Work(Case):
         self.assertEqual(0o600, stat.S_IMODE(log.stat().st_mode))
         self.assertIn("## exit 0", log.read_text())
         line = self.r.ledger()[-1]
-        self.assertEqual(("close", "wri", 1, 1, 2), (line["action"], line["actor"], line["gates"], line["paths"], line["deviations"]))
+        self.assertEqual(("close", "con", 1, 1, 2), (line["action"], line["actor"], line["gates"], line["paths"], line["deviations"]))
         self.assertEqual("", git(self.r.room, "status", "--porcelain"))
 
-    def test_close_is_only_the_writers(self):
+    def test_close_is_only_the_contractors(self):
         self.r.through("edit")
-        for who in ("mgr", "aud", "orc", "out"):
-            self.refused(self.r.close(who=who), "only the packet's Writer (wri)")
+        for who in ("itg", "aud", "orc", "out"):
+            self.refused(self.r.close(who=who), "only the packet's Contractor (con)")
         self.refused(self.r.run("close", "--deviations", "0", "--narrative", self.r.note("x")), "canonical registry")
         self.assertIsNone(self.r.leaf()["results"])
 
@@ -766,9 +766,9 @@ class Work(Case):
             result = self.r.close(narrative=narrative)
             self.refused(result, word)
             self.assertNotIn("gate:", result.out)
-        self.refused(self.r.run("close", "--deviations", "0", "--narrative", str(self.r.base / "absent.md"), who="wri"), "unreadable")
+        self.refused(self.r.run("close", "--deviations", "0", "--narrative", str(self.r.base / "absent.md"), who="con"), "unreadable")
         self.refused(self.r.close(deviations="-1"), "neither can be negative")
-        self.assertEqual(0, self.r.run("close", "--deviations", "0", "--narrative", "-", who="wri", stdin="From standard input.").code)
+        self.assertEqual(0, self.r.run("close", "--deviations", "0", "--narrative", "-", who="con", stdin="From standard input.").code)
         self.assertEqual("From standard input.", self.r.leaf()["results"]["narrative"])
 
     def test_close_refuses_while_the_rooms_own_checkout_is_dirty(self):
@@ -782,7 +782,7 @@ class Work(Case):
         path.write_text(path.read_text().replace("- docs/\n", "- docs/\n- tools/\n"))
         self.assertEqual(["docs/", "tools/"], self.r.leaf()["scope"])
         self.refused(self.r.close(), "packet hash failure")
-        self.refused(self.r.run("amend", "--add", "x", "--reason", "y", who="mgr"), "packet hash failure")
+        self.refused(self.r.run("amend", "--add", "x", "--reason", "y", who="itg"), "packet hash failure")
         path.write_text(path.read_text().replace("- docs/\n- tools/\n", "- docs/\n"))
         self.r.close()
         self.r.audit()
@@ -790,19 +790,19 @@ class Work(Case):
         self.refused(self.r.audit(), "packet hash failure")
         self.refused(self.r.ship(), "packet hash failure")
 
-    def test_amend_is_the_managers_and_voids_an_earlier_close(self):
+    def test_amend_is_the_integrators_and_voids_an_earlier_close(self):
         self.r.through("close")
-        self.refused(self.r.run("amend", "--add", "README.md", "--reason", "needed", who="wri"), "only the packet's Manager (mgr)")
-        self.refused(self.r.run("amend", "--add", "docs/", "--reason", "needed", who="mgr"), "already in scope")
-        self.refused(self.r.run("amend", "--add", "../x", "--reason", "needed", who="mgr"), "not a normal path")
-        self.refused(self.r.run("amend", "--add", "README.md", "--reason", "two\nlines", who="mgr"), "one line")
+        self.refused(self.r.run("amend", "--add", "README.md", "--reason", "needed", who="con"), "only the packet's Integrator (itg)")
+        self.refused(self.r.run("amend", "--add", "docs/", "--reason", "needed", who="itg"), "already in scope")
+        self.refused(self.r.run("amend", "--add", "../x", "--reason", "needed", who="itg"), "not a normal path")
+        self.refused(self.r.run("amend", "--add", "README.md", "--reason", "two\nlines", who="itg"), "one line")
         self.assertIsNotNone(self.r.leaf()["results"])
-        result = self.r.run("amend", "--add", "README.md", "--add", "tools/", "--reason", "the change needs both", who="mgr")
+        result = self.r.run("amend", "--add", "README.md", "--add", "tools/", "--reason", "the change needs both", who="itg")
         self.assertEqual(0, result.code, result.text)
         leaf = self.r.leaf()
         self.assertEqual(["docs/", "README.md", "tools/"], leaf["scope"])
         self.assertEqual(2, len(leaf["amendments"]))
-        self.assertTrue(leaf["amendments"][0].endswith("mgr added README.md: the change needs both"))
+        self.assertTrue(leaf["amendments"][0].endswith("itg added README.md: the change needs both"))
         self.assertIsNone(leaf["results"])
         self.assertEqual(packet.contract_digest(leaf), self.r.ledger()[-1]["contract"])
         self.r.edit("README.md", "now in scope\n")
@@ -813,7 +813,7 @@ class Work(Case):
         self.r.through("edit")
         self.refused(self.r.audit(), "not closed")
         self.r.close()
-        for who in ("mgr", "wri", "orc", "out"):
+        for who in ("itg", "con", "orc", "out"):
             self.refused(self.r.audit(who=who), "only the packet's Auditor (aud)")
         self.refused(self.r.audit(note="He wrote \"fine\" in the margin."), "quotations")
         self.refused(self.r.audit(note="n" * 1501), "1501 characters")
@@ -822,7 +822,7 @@ class Work(Case):
         self.r.close()
         failed = self.r.audit("fail", note="The page still says too little.")
         self.assertEqual(0, failed.code, failed.text)
-        self.assertIn("the Writer (wri) reworks", failed.out)
+        self.assertIn("the Contractor (con) reworks", failed.out)
         self.assertEqual("FAIL", self.r.leaf()["audit"]["head"]["Verdict"])
         self.refused(self.r.ship(), "no PASS from its Auditor")
         self.r.edit(text="alpha, and a good deal more\n")
@@ -836,7 +836,7 @@ class Work(Case):
                          (leaf["audit"]["head"]["Verdict"], leaf["audit"]["head"]["Auditor"], leaf["audit"]["head"]["Tree"]))
         self.assertEqual(("audit", "PASS"), (self.r.ledger()[-1]["action"], self.r.ledger()[-1]["verdict"]))
 
-    def test_a_damaged_leaf_stops_the_stations_until_its_manager_restores_it(self):
+    def test_a_damaged_leaf_stops_the_stations_until_its_integrator_restores_it(self):
         self.r.through("close")
         kept = self.r.leaf_path().read_text()
         self.r.leaf_path().write_text("not a leaf\n")
@@ -844,17 +844,17 @@ class Work(Case):
         self.assertIn("packet.py restore", self.r.said[-1])
         self.refused(self.r.close(), "the leaf is damaged", "packet.py restore")
         self.refused(self.r.audit(), "the leaf is damaged")
-        self.refused(self.r.run("restore", who="wri"), "only the packet's Manager (mgr) restores its leaf")
+        self.refused(self.r.run("restore", who="con"), "only the packet's Integrator (itg) restores its leaf")
         self.refused(self.r.run("restore"), "canonical registry")
-        restored = self.r.run("restore", who="mgr")
+        restored = self.r.run("restore", who="itg")
         self.assertEqual(0, restored.code, restored.text)
         self.assertIn("restored as the close station left it", restored.out)
         self.assertEqual(kept, self.r.leaf_path().read_text())
-        self.assertIn("nothing to restore", self.r.run("restore", who="mgr").out)
+        self.assertIn("nothing to restore", self.r.run("restore", who="itg").out)
         self.assertIn("station: audit:", self.r.run("status").out)
         self.assertEqual("restore", self.r.ledger()[-1]["action"])
         self.r.leaf_path().unlink()
-        self.assertEqual(0, self.r.run("restore", who="mgr").code)
+        self.assertEqual(0, self.r.run("restore", who="itg").code)
         self.assertEqual(0, self.r.audit().code, self.r.said[-1])
         self.assertEqual(0, self.r.ship().code, self.r.said[-1])
 
@@ -871,30 +871,30 @@ class Work(Case):
         self.refused(self.r.ship(), "packet hash failure", "packet.py restore")
         self.refused(self.r.audit(), "packet hash failure")
         self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
-        self.assertEqual(0, self.r.run("restore", who="mgr").code)
+        self.assertEqual(0, self.r.run("restore", who="itg").code)
         self.assertIsNone(self.r.leaf()["audit"])
         path = self.r.leaf_path()
         path.write_text(path.read_text().replace("- Deviations: 0", "- Deviations: 7"))
         self.assertEqual("7", self.r.leaf()["results"]["head"]["Deviations"])
         self.refused(self.r.audit(), "packet hash failure")
-        self.assertEqual(0, self.r.run("restore", who="mgr").code)
+        self.assertEqual(0, self.r.run("restore", who="itg").code)
         self.assertEqual(0, self.r.audit().code, self.r.said[-1])
         self.assertEqual(0, self.r.ship().code, self.r.said[-1])
 
-    def test_with_the_ledger_gone_nothing_is_restored_and_the_manager_abandons_by_hand(self):
+    def test_with_the_ledger_gone_nothing_is_restored_and_the_integrator_abandons_by_hand(self):
         self.r.through("edit")
         (self.r.room / packet.LEDGER).unlink()
         self.assertIn("packet hash failure", self.r.run("status").out)
         self.refused(self.r.close(), "packet hash failure")
-        self.refused(self.r.run("restore", who="mgr"), "the ledger holds no leaf to restore", "abandons the packet")
-        self.assertEqual(0, self.r.run("abandon", "--reason", "the ledger was lost", who="mgr").code, self.r.said[-1])
+        self.refused(self.r.run("restore", who="itg"), "the ledger holds no leaf to restore", "abandons the packet")
+        self.assertEqual(0, self.r.run("abandon", "--reason", "the ledger was lost", who="itg").code, self.r.said[-1])
         self.assertIn("alpha, and more", (self.r.room / packet.ABANDONED).read_text())
 
-    def test_a_damaged_leaf_can_still_be_abandoned_by_its_manager_with_the_work_kept(self):
+    def test_a_damaged_leaf_can_still_be_abandoned_by_its_integrator_with_the_work_kept(self):
         self.r.through("edit")
         self.r.leaf_path().write_text("not a leaf\n")
-        self.refused(self.r.run("abandon", "--reason", "damaged", who="wri"), "only the packet's Manager (mgr)")
-        result = self.r.run("abandon", "--reason", "the leaf was overwritten", who="mgr")
+        self.refused(self.r.run("abandon", "--reason", "damaged", who="con"), "only the packet's Integrator (itg)")
+        result = self.r.run("abandon", "--reason", "the leaf was overwritten", who="itg")
         self.assertEqual(0, result.code, result.text)
         self.assertFalse(self.r.wt.exists())
         self.assertIn("alpha, and more", (self.r.room / packet.ABANDONED).read_text())
@@ -923,7 +923,7 @@ class Ship(Case):
         self.assertEqual("PASS", landed["audit"]["head"]["Verdict"])
         self.assertEqual(tree, packet.tree_of_commit(self.r.room, main, "archives/packets/DP-SES-0001.md"))
         message = git(self.r.room, "log", "-1", "--format=%B", "main")
-        for line in ("DP-SES-0001: Say more in the docs", "Packet: archives/packets/DP-SES-0001.md", "Writer: wri",
+        for line in ("DP-SES-0001: Say more in the docs", "Packet: archives/packets/DP-SES-0001.md", "Contractor: con",
                      f"Auditor: aud (PASS on tree {tree})", "Orchestrator: orc"):
             self.assertIn(line, message)
         self.assertNotIn("Shipped-by", message)
@@ -935,21 +935,21 @@ class Ship(Case):
         pull = state["pulls"][0]
         self.assertEqual(("DP-SES-0001: Say more in the docs", "main", "closed"), (pull["title"], pull["base"]["ref"], pull["state"]))
         for line in ("Dispatch packet DP-SES-0001", "Make the first page say more", "Gates: 1 of 1 exit 0", "Deviations: 0",
-                     "Audit: PASS by aud", "Seats: Manager mgr, Writer wri, Auditor aud, Orchestrator orc"):
+                     "Audit: PASS by aud", "Functions: Integrator itg, Contractor con, Auditor aud, Orchestrator orc"):
             self.assertIn(line, pull["body"])
         self.assertIn(f"main is commit {main}", state["notes"][0]["body"])
         self.assertEqual(["open", "close", "audit", "commit", "pull-request", "merge", "landed"], [l["action"] for l in self.r.ledger()])
         self.assertEqual((main, 7), (self.r.ledger()[-1]["main"], self.r.ledger()[-1]["number"]))
-        self.assertEqual(0, self.r.run("status", who="mgr").code)
+        self.assertEqual(0, self.r.run("status", who="itg").code)
         self.assertIn("the next is DP-SES-0002", self.r.said[-1])
 
-    def test_the_next_packet_takes_the_next_number_and_carries_two_seats_into_the_form(self):
+    def test_the_next_packet_takes_the_next_number_and_carries_two_functions_into_the_form(self):
         self.r.through("ship")
         self.r.run("draft", "--title", "Second")
         form = (self.r.room / packet.DRAFT).read_text()
         self.assertIn("Auditor: aud\n", form)
         self.assertIn("Orchestrator: orc\n", form)
-        self.assertIn("Writer:\n", form)
+        self.assertIn("Contractor:\n", form)
         opened = self.r.open(title="Say more again")
         self.assertIn("DP-SES-0002 is open on agent/dp-ses-0002-2026-11-12", opened.out)
         (self.r.wt / "docs" / "b.md").unlink()
@@ -999,10 +999,10 @@ class Ship(Case):
         self.assertTrue(1 <= naps[0] <= 20)
         self.refused(self.r.run("ship", "--wait", "-1", who="orc"), "neither can be negative")
 
-    def test_a_red_check_fails_the_ship_and_returns_the_packet_to_the_writer(self):
+    def test_a_red_check_fails_the_ship_and_returns_the_packet_to_the_contractor(self):
         self.r.through("audit")
         self.r.gh(checks=[{"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "failure", "started_at": "2026-11-12T09:00:00Z"}])
-        self.refused(self.r.ship(), "FAILED", "ended failure", "returns to the Writer", code=1)
+        self.refused(self.r.ship(), "FAILED", "ended failure", "returns to the Contractor", code=1)
         self.assertTrue(self.r.wt.exists())
         self.r.edit(text="alpha, mended\n")
         self.refused(self.r.ship(), "not the tree the Auditor passed")
@@ -1079,18 +1079,18 @@ class Ship(Case):
 
     def test_ship_is_the_orchestrators_or_a_recorded_fallback(self):
         self.r.through("audit")
-        for who in ("mgr", "wri", "aud", "out"):
+        for who in ("itg", "con", "aud", "out"):
             self.refused(self.r.ship(who=who), "not the packet's Orchestrator (orc)", "--fallback", "CONSTRAINTS C16")
         self.refused(self.r.ship("--fallback", "no reason at all"), "the caller is the packet's Orchestrator; no fallback applies")
-        self.refused(self.r.ship("--fallback", 'he said "go"', who="mgr"), "the fallback reason holds what a public record may not")
-        self.refused(self.r.ship("--fallback", "two\nlines", who="mgr"), "one line")
+        self.refused(self.r.ship("--fallback", 'he said "go"', who="itg"), "the fallback reason holds what a public record may not")
+        self.refused(self.r.ship("--fallback", "two\nlines", who="itg"), "one line")
         self.refused(self.r.ship("--fallback", "the seat is away", who="ghost"), "registered 0 times")
         self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
-        result = self.r.ship("--fallback", "the Orchestrator seat is away today", who="mgr")
+        result = self.r.ship("--fallback", "the Orchestrator seat is away today", who="itg")
         self.assertEqual(0, result.code, result.text)
-        self.assertIn("Shipped-by: mgr (fallback)", git(self.r.room, "log", "-1", "--format=%B", "main"))
-        self.assertIn("Shipped by mgr in place of the Orchestrator: the Orchestrator seat is away today", self.r.gh()["pulls"][0]["body"])
-        self.assertEqual(("landed", "mgr", "the Orchestrator seat is away today"),
+        self.assertIn("Shipped-by: itg (fallback)", git(self.r.room, "log", "-1", "--format=%B", "main"))
+        self.assertIn("Shipped by itg in place of the Orchestrator: the Orchestrator seat is away today", self.r.gh()["pulls"][0]["body"])
+        self.assertEqual(("landed", "itg", "the Orchestrator seat is away today"),
                          tuple(self.r.ledger()[-1][k] for k in ("action", "actor", "fallback")))
 
     def test_ship_refuses_when_origin_main_moved(self):
@@ -1203,7 +1203,7 @@ class Ship(Case):
 
     def test_no_output_ledger_line_or_leaf_carries_a_session_identifier(self):
         self.r.through("ship")
-        self.r.run("status", who="mgr")
+        self.r.run("status", who="itg")
         self.r.run("open")
         everything = "\n".join(self.r.said) + (self.r.room / packet.LEDGER).read_text() \
             + (self.r.room / packet.LEAVES / "DP-SES-0001.md").read_text() + json.dumps(self.r.gh())
@@ -1212,12 +1212,12 @@ class Ship(Case):
 
 # --------------------------------------------------------------------------
 class AbandonAndSync(Case):
-    def test_the_manager_abandons_a_packet_that_never_reached_origin_and_the_work_is_kept(self):
+    def test_the_integrator_abandons_a_packet_that_never_reached_origin_and_the_work_is_kept(self):
         self.r.through("edit")
         self.r.edit("docs/new.md", "a new page\n")
-        for who in ("wri", "aud", "orc", "out"):
-            self.refused(self.r.run("abandon", "--reason", "wrong scope", who=who), "only the packet's Manager (mgr)")
-        result = self.r.run("abandon", "--reason", "the scope was drawn wrong", who="mgr")
+        for who in ("con", "aud", "orc", "out"):
+            self.refused(self.r.run("abandon", "--reason", "wrong scope", who=who), "only the packet's Integrator (itg)")
+        result = self.r.run("abandon", "--reason", "the scope was drawn wrong", who="itg")
         self.assertEqual(0, result.code, result.text)
         self.assertIn("its number is free again", result.out)
         self.assertFalse(self.r.wt.exists())
@@ -1235,7 +1235,7 @@ class AbandonAndSync(Case):
 
     def test_a_packet_on_origin_is_abandoned_by_the_orchestrator_who_closes_its_pull_request(self):
         self.r.through("hold")
-        self.refused(self.r.run("abandon", "--reason", "superseded", who="mgr"), "not the packet's Orchestrator (orc)", "--fallback")
+        self.refused(self.r.run("abandon", "--reason", "superseded", who="itg"), "not the packet's Orchestrator (orc)", "--fallback")
         result = self.r.run("abandon", "--reason", "superseded by a wider packet", who="orc")
         self.assertEqual(0, result.code, result.text)
         self.assertEqual("closed", self.r.gh()["pulls"][0]["state"])
@@ -1251,7 +1251,7 @@ class AbandonAndSync(Case):
         self.assertTrue(self.r.wt.exists())
         self.assertEqual(0, self.r.ship().code)
         self.r.through("hold", text="alpha, a second time\n", title="A second one")
-        result = self.r.run("abandon", "--reason", "not wanted", "--fallback", "the Orchestrator seat is away", who="mgr")
+        result = self.r.run("abandon", "--reason", "not wanted", "--fallback", "the Orchestrator seat is away", who="itg")
         self.assertEqual(0, result.code, result.text)
         self.assertEqual("the Orchestrator seat is away", self.r.ledger()[-1]["fallback"])
 
@@ -1322,6 +1322,21 @@ class Gate(unittest.TestCase):
         self.assertEqual(1, after.code)
         self.assertIn("FAIL the branch 'agent/any-name' is not agent/dp-ses-NNNN-YYYY-MM-DD", after.out)
 
+    def test_the_gate_does_not_apply_on_the_first_tool_while_the_base_holds_no_leaf(self):
+        first = git(self.repo, "rev-parse", f"{self.base}:{packet.TOOL}")
+        corrected = derive(self.repo, self.base, {"README.md": "no packet at all\n", packet.TOOL: "the tool, corrected\n"})
+        argv = ("--base", self.base, "--head", corrected, "--branch", "agent/any-name")
+        self.assertEqual(1, self.command(*argv).code)                       # this base's tool is not the first one
+        with mock.patch.object(packet, "FIRST_TOOL", first):
+            result = self.command(*argv)
+            self.assertEqual(0, result.code, result.text)
+            self.assertIn("bootstrap: the base holds the first packet tool", result.out)
+            for base in (corrected, self.head):                             # another tool on the base; a leaf on the base
+                after = self.command("--base", base, "--head", derive(self.repo, base, {"README.md": "next\n"}),
+                                     "--branch", "agent/any-name")
+                self.assertEqual(1, after.code, after.text)
+                self.assertIn("FAIL the branch 'agent/any-name' is not agent/dp-ses-NNNN-YYYY-MM-DD", after.out)
+
     def test_broken_a_path_outside_scope(self):
         self.assertIn("1 changed path(s) are outside the packet's scope: other.txt", self.judge(derive(self.repo, self.head, {"other.txt": "x\n"})))
 
@@ -1339,10 +1354,10 @@ class Gate(unittest.TestCase):
         said = self.judge(derive(self.repo, self.head, {"docs/a.md": "alpha, changed after the audit\n"}))
         self.assertEqual("the tree the Auditor passed is not the tree of this pull request without its leaf; content changed after the audit", said)
 
-    def test_broken_the_writer_is_the_auditor(self):
-        leaf = dict(self.leaf, head=dict(self.leaf["head"], Writer="aud"))
-        leaf["results"] = dict(leaf["results"], head=dict(leaf["results"]["head"], Writer="aud"))
-        self.assertEqual(f"{self.rel}: Writer and Auditor are the same key; no seat audits its own work (PoT 4.2.2)",
+    def test_broken_the_contractor_is_the_auditor(self):
+        leaf = dict(self.leaf, head=dict(self.leaf["head"], Contractor="aud"))
+        leaf["results"] = dict(leaf["results"], head=dict(leaf["results"]["head"], Contractor="aud"))
+        self.assertEqual(f"{self.rel}: Contractor and Auditor are the same key; no one audits their own work (PoT 4.2.2)",
                          self.judge(self.with_leaf(leaf)))
 
     def test_broken_an_earlier_leaf_is_edited(self):
@@ -1374,7 +1389,7 @@ class Gate(unittest.TestCase):
     def test_broken_a_leaf_out_of_canonical_form(self):
         head = derive(self.repo, self.head, {self.rel: self.text + "\n"})
         self.assertEqual(f"{self.rel}: the leaf's Audit note section is not set between two single blank lines", self.judge(head))
-        spaced = derive(self.repo, self.head, {self.rel: self.text.replace("- Writer: wri\n", "- Writer: wri \n", 1)})
+        spaced = derive(self.repo, self.head, {self.rel: self.text.replace("- Contractor: con\n", "- Contractor: con \n", 1)})
         self.assertEqual(f"{self.rel}: the leaf is not in canonical form: a line ends in a space", self.judge(spaced))
 
     def test_broken_a_leaf_that_records_a_failed_gate_no_audit_or_a_fail(self):
