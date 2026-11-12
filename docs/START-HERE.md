@@ -47,6 +47,15 @@ Everything else is recoverable. These are the ones that cost real damage.
    change gets one in `archives/receipts/`. Quantitative, including what failed and
    what you decided not to do.
 
+## How a change ships
+
+A change reaches `main` only as one dispatch packet, and one packet is open at a
+time. Run `python3 -I -B ops/lib/scripts/packet.py status`: it says which packet
+is open, what has changed, and whose turn it is. Work happens in the packet
+worktree, `var/tmp/packet/`, never in the room's own checkout, and nobody runs
+Git by hand for a change. The field guide is
+`docs/ops/specs/runbook/shipping.md`; read it before your first packet.
+
 ## The measurements that are load-bearing
 
 - **Tokens, not bytes.** A 49 MB session can be healthier than a 4 MB one.
