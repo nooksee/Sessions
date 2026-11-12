@@ -133,3 +133,5 @@ Stop and ask. Every irreversible operation in this house has a gate in front of
 it, and the gates exist because someone once found out the hard way. If a gate
 refuses you, it is probably right. Do not route around it — understand it
 first.
+
+This line is a rehearsal and is never merged.
