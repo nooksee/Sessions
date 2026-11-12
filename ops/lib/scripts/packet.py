@@ -184,6 +184,13 @@ def git(cwd: Path, *args: str, env: dict | None = None, timeout: int = GIT_TIMEO
     return result.stdout.strip() if strip else result.stdout
 
 
+def push(cwd: Path, *args: str) -> str | None:
+    """A plain push, never forced; returns why it failed, or None. Push negotiation is only an optimization, and
+    where a host has switched it on it breaks a push that only deletes, so it is switched off for this call."""
+    done = git_try(cwd, "-c", "push.negotiate=false", "push", "--quiet", "origin", *args, timeout=NET_TIMEOUT)
+    return f"git push failed (exit {done.returncode}): {telling_line(done.stderr)}" if done.returncode else None
+
+
 def name_status(cwd: Path, *args: str, env: dict | None = None) -> list[tuple[str, str]]:
     """Changed paths as (status, path), exact for any path: no quoting and no rename guessing."""
     parts = git(cwd, "diff", "--name-status", "--no-renames", "-z", *args, env=env, strip=False).split("\0")
@@ -872,8 +879,15 @@ def cmd_open(args):
             raise Refused("; ".join(problems))
         pattern = f"agent/dp-ses-{number:04d}-*"
         remote = git_try(room, "ls-remote", "--heads", "origin", pattern, timeout=NET_TIMEOUT)
-        if remote.returncode or remote.stdout.strip() or git(room, "for-each-ref", "--format=%(refname)", f"refs/heads/{pattern}"):
-            raise Refused(f"a branch for {packet} already exists here or on origin, or origin did not answer; stop and report")
+        if remote.returncode:
+            raise Refused("origin did not answer, so the tool cannot tell whether the number is free; run it again")
+        taken = [line.split("refs/heads/", 1)[1] + " on origin" for line in remote.stdout.splitlines() if "refs/heads/" in line]
+        taken += [ref[len("refs/heads/"):] + " here" for ref in
+                  git(room, "for-each-ref", "--format=%(refname)", f"refs/heads/{pattern}").splitlines()]
+        if taken:
+            raise Refused(f"a branch for {packet} already exists: " + ", ".join(taken) + "; if it is what an abandoned or "
+                          "rehearsed packet left behind, the Orchestrator deletes it (`git push origin --delete NAME`, or "
+                          "`git branch -D NAME` here) and the Manager opens again; otherwise stop and report")
         try:
             git(room, "worktree", "add", "--quiet", "-b", branch, str(wt), "main")
             (wt / LEAVES).mkdir(parents=True, exist_ok=True)
@@ -941,7 +955,8 @@ def cmd_close(args):
             raise Failed(f"{len(failed)} of {len(rows)} gate(s) did not exit 0, the first {failed[0]}; "
                          f"the log is {RESULTS.as_posix()}; the packet stays at the work station")
         tree, changes = scoped_tree(active, "after the gates")
-        results = {"head": {"Closed": iso(args.now), "Writer": me, "Paths changed": str(len(changes)),
+        closed = args.now if args.fixed_now else clock()          # when the gates had finished, not when they began
+        results = {"head": {"Closed": iso(closed), "Writer": me, "Paths changed": str(len(changes)),
                             "Deviations": str(args.deviations), "Tree": f"tree {tree}"}, "gates": rows, "narrative": narrative}
         active.write(dict(active.leaf, results=results, audit=None))
         record(args, active.id, "close", me, tree=tree, gates=len(rows), paths=len(changes), deviations=args.deviations)
@@ -1127,7 +1142,9 @@ def publish(args, active: Active, me: str, fallback: str | None, slug: str, pull
     authorized(wt, active.base, commit)
     on_origin = git(room, "ls-remote", "--heads", "origin", active.branch, timeout=NET_TIMEOUT).split("\t")[0]
     if on_origin != commit:
-        git(wt, "push", "--quiet", "-u", "origin", active.branch, timeout=NET_TIMEOUT)     # never forced
+        failed = push(wt, "-u", active.branch)
+        if failed:
+            raise Refused(failed)
     print(f"push: origin/{active.branch}", flush=True)
     if pull is None or pull.get("state") != "open":
         with tempfile.TemporaryDirectory(prefix="packet-body-") as tmp:
@@ -1187,12 +1204,16 @@ def keep_work(room: Path, active: Active) -> bool:
 
 
 def remove_packet(room: Path, active: Active, on_origin: bool) -> None:
-    """Remove the worktree and the packet branch, here and on origin."""
+    """Remove the packet branch on origin, then the worktree and the branch here. Origin first: if the branch cannot
+    be removed there, nothing here is thrown away and the same command is simply run again."""
+    if on_origin:
+        failed = push(room, "--delete", active.branch)       # the host may have removed it already; what counts is below
+        if git(room, "ls-remote", "--heads", "origin", active.branch, timeout=NET_TIMEOUT):
+            raise Refused(f"origin still holds {active.branch} ({failed or 'the push reported no error'}); "
+                          "run the same command again, or stop and report")
     git(room, "worktree", "remove", "--force", str(active.wt))
     git_try(room, "worktree", "prune")
     git_try(room, "branch", "-D", active.branch)
-    if on_origin:
-        git_try(room, "push", "--quiet", "origin", "--delete", active.branch, timeout=NET_TIMEOUT)
     git_try(room, "branch", "-dr", f"origin/{active.branch}")
 
 
@@ -1249,11 +1270,9 @@ def cmd_abandon(args):
         elif me != seats["Manager"]:
             raise Refused(f"the caller is {me!r}; only the packet's Manager ({seats['Manager']}) abandons it")
         kept = keep_work(room, active)
-        if on_origin:
-            if pull and pull.get("state") == "open":
-                gh(room, "PATCH", f"repos/{slug}/pulls/{pull['number']}", {"state": "closed"})
-            git(room, "push", "--quiet", "origin", "--delete", active.branch, timeout=NET_TIMEOUT)
-        remove_packet(room, active, on_origin=False)
+        if on_origin and pull and pull.get("state") == "open":
+            gh(room, "PATCH", f"repos/{slug}/pulls/{pull['number']}", {"state": "closed"})
+        remove_packet(room, active, on_origin)
         record(args, active.id, "abandon", me, reason=reason, fallback=fallback, kept=kept)
     print(f"packet: {active.id} is abandoned; its number is free again; the room holds no active packet")
     if kept:
