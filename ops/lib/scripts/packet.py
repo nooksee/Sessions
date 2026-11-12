@@ -72,6 +72,7 @@ GIT_TIMEOUT = 60           # seconds for one local Git answer
 NET_TIMEOUT = 300          # seconds for one answer from origin or GitHub
 GATE_TIMEOUT = 3600        # seconds for one gate
 REVIEW_SETTLE = 300        # seconds a pull request's head rests before it may merge, so a review can land
+REVIEW_STALE = 1800        # seconds after which a reviewer that still says it is running is taken to have stopped
 REQUIRED_CHECK = "sessions-gates"
 SEAM = "MIND_TEST_CALLER"  # mind.py's test seam; never passed on to a gate
 
@@ -86,6 +87,8 @@ GATE_LINE_RE = re.compile(r"^exit (-?\d+) in (\d+) s: (\S.*)$")
 AMENDMENT_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) ([a-z0-9][a-z0-9-]*) added (\S+): (\S.*)$")
 DRAFT_FIELD_RE = re.compile(r"^(Title|Writer|Auditor|Orchestrator|Authority):[ \t]*(.*?)\s*$")
 CREDENTIAL_RE = re.compile(r"(\w+://)[^/@\s]+@")
+# A reviewer that announces its own state does so in a comment marker of this form (the Codex connector's).
+REVIEW_STATE_RE = re.compile(r"<!-- codex-review-state:v1 (\{.*?\}) -->")
 
 HEAD_KEYS = ("Packet", "Branch", "Base", "Opened", "Manager", "Writer", "Auditor", "Orchestrator", "Authority")
 RESULT_KEYS = ("Closed", "Writer", "Paths changed", "Deviations", "Tree")
@@ -671,28 +674,38 @@ class Active:
         self.leaf_rel = f"{LEAVES}/{self.id}.md"
         self.leaf_path = self.wt / self.leaf_rel
         opened = ledger_last(self.room, self.id, "seats") or {}
-        self.leaf, self.damage = None, None
+        self.leaf, self.text, self.damage = None, None, None
         try:
             try:
-                leaf = parse_leaf(self.leaf_path.read_text(encoding="utf-8"))
+                self.text = self.leaf_path.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError):
                 raise Refused(f"the worktree holds no readable leaf at {self.leaf_rel}") from None
+            leaf = parse_leaf(self.text)
             if leaf["head"]["Packet"] != self.id or leaf["head"]["Branch"] != self.branch:
                 raise Refused("the leaf names another packet or branch than the worktree it is in")
             self.leaf = leaf
         except Refused as exc:
             if not lenient:
-                raise Refused(f"{exc}; the packet is damaged: its Manager abandons it (the work is kept as a patch) "
-                              "and opens it again") from None
+                raise Refused(f"{exc}; the leaf is damaged: its Manager runs `packet.py restore`, which puts back the "
+                              "leaf the tool last wrote") from None
             self.damage = str(exc)
         self.head = self.leaf["head"] if self.leaf else (opened.get("seats") if isinstance(opened.get("seats"), dict) else None)
         self.base = self.leaf["head"]["Base"][7:] if self.leaf else opened.get("base")
 
-    def require_contract(self) -> None:
-        opened = ledger_last(self.room, self.id, "contract")
-        if opened is None or opened["contract"] != contract_digest(self.leaf):
-            raise Refused("the packet's contract is not the one the ledger recorded at open or amend; only `amend` "
-                          "changes a contract (packet hash failure: stop and report)")
+    def intact(self) -> bool:
+        """Whether the leaf is, byte for byte, the one the tool last wrote: contract, results and verdict alike."""
+        last = ledger_last(self.room, self.id, "leaf")
+        return last is not None and self.text is not None and last["leaf"] == sha256(self.text.encode("utf-8"))
+
+    def require_intact(self) -> None:
+        if not self.intact():
+            raise Refused("the leaf is not the one the tool last wrote; only the tool writes a leaf, and only `amend` "
+                          "changes a contract (packet hash failure): its Manager runs `packet.py restore`, which puts "
+                          "back the leaf the ledger recorded")
+
+    def log(self, args, action: str, actor: str, **facts) -> None:
+        """The ledger line of a station that wrote the leaf: the digest binds the next station; the text can restore it."""
+        record(args, self.id, action, actor, leaf=sha256(self.text.encode("utf-8")), text=self.text, **facts)
 
     def tree(self) -> tuple[str, list[tuple[str, str]]]:
         tree, changes = tree_of_worktree(self.wt, self.leaf_rel, self.base)
@@ -708,7 +721,7 @@ class Active:
         tmp.write_text(text, encoding="utf-8")
         os.chmod(tmp, 0o644)
         os.replace(tmp, self.leaf_path)
-        self.leaf = leaf
+        self.leaf, self.text = leaf, text
 
 
 def gate_plan(wt: Path, gates: list[str]) -> list[tuple[str, list[str]]]:
@@ -811,6 +824,25 @@ def unanswered_findings(room: Path, slug: str, pull: dict) -> list[str]:
             if c.get("in_reply_to_id") is None and (c.get("user") or {}).get("login") != author and c.get("id") not in answered]
 
 
+def review_running(args, room: Path, slug: str, pull: dict) -> bool:
+    """Whether a reviewer that announces its state says it is still reading. Only an application's own account is
+    believed, so a passer-by cannot hold a merge with a comment. A marker that cannot be read counts as no marker,
+    and one that has said running for longer than REVIEW_STALE is taken to have stopped."""
+    for comment in gh(room, "GET", f"repos/{slug}/issues/{pull['number']}/comments?per_page=100") or []:
+        if (comment.get("user") or {}).get("type") != "Bot":
+            continue
+        marker = REVIEW_STATE_RE.search(comment.get("body") or "")
+        try:
+            reviews = json.loads(marker.group(1)).values() if marker else []
+        except (ValueError, AttributeError):
+            continue
+        if any(isinstance(r, dict) and r.get("status") == "running" for r in reviews):
+            if seconds_since(args, comment.get("updated_at")) < REVIEW_STALE:
+                return True
+            print(f"findings: a reviewer has said it is running for over {REVIEW_STALE} seconds; taken as stopped", flush=True)
+    return False
+
+
 def seconds_since(args, when: str | None) -> float:
     """Seconds from a GitHub time to now; a time that cannot be read counts as long ago."""
     try:
@@ -892,8 +924,8 @@ def cmd_open(args):
             git(room, "worktree", "add", "--quiet", "-b", branch, str(wt), "main")
             (wt / LEAVES).mkdir(parents=True, exist_ok=True)
             (wt / LEAVES / f"{packet}.md").write_text(text, encoding="utf-8")
-            record(args, packet, "open", me, contract=contract_digest(leaf), base=base, branch=branch,
-                   seats={seat: head[seat] for seat in SEATS})
+            record(args, packet, "open", me, leaf=sha256(text.encode("utf-8")), text=text, contract=contract_digest(leaf),
+                   base=base, branch=branch, seats={seat: head[seat] for seat in SEATS})
         except BaseException:
             git_try(room, "worktree", "remove", "--force", str(wt))
             git_try(room, "branch", "-D", branch)
@@ -912,7 +944,7 @@ def cmd_amend(args):
         active = Active(args)
         if me != active.head["Manager"]:
             raise Refused(f"the caller is {me!r}; only the packet's Manager ({active.head['Manager']}) changes its scope")
-        active.require_contract()
+        active.require_intact()
         leaf = dict(active.leaf, scope=list(active.leaf["scope"]), amendments=list(active.leaf["amendments"]),
                     results=None, audit=None)
         for path in args.add:
@@ -921,7 +953,7 @@ def cmd_amend(args):
             leaf["scope"].append(path)
             leaf["amendments"].append(f"{iso(args.now)} {me} added {path}: {reason}")
         active.write(leaf)
-        record(args, active.id, "amend", me, contract=contract_digest(leaf), added=args.add)
+        active.log(args, "amend", me, contract=contract_digest(leaf), added=args.add)
     print(f"packet: {active.id} scope now holds {len(leaf['scope'])} entries ({len(args.add)} added); any earlier close is void")
     print(f"next: the Writer ({active.head['Writer']}) runs `packet.py close`")
     return 0
@@ -945,13 +977,20 @@ def cmd_close(args):
         active = Active(args)
         if me != active.head["Writer"]:
             raise Refused(f"the caller is {me!r}; only the packet's Writer ({active.head['Writer']}) closes it")
-        active.require_contract()
+        active.require_intact()
         clean_main(args.room)
         scoped_tree(active, "before the gates")
-        rows, log = run_gates(active.wt, gate_plan(active.wt, active.leaf["gates"]))
+        plan = gate_plan(active.wt, active.leaf["gates"])
+        if active.leaf["results"] is not None:
+            # A new close voids the earlier one from the moment its gates start. If a gate then fails on the very
+            # tree that passed before, the packet holds no results and no verdict, and nothing ships on the old ones.
+            active.write(dict(active.leaf, results=None, audit=None))
+            active.log(args, "close-start", me)
+        rows, log = run_gates(active.wt, plan)
         write_private(args.room, RESULTS, f"# {active.id} gate log (latest-wins, private)\n\nClose attempt: {iso(args.now)} by {me}\n\n{log}")
         failed = [name for code, _, name in rows if code != 0]
         if failed:
+            record(args, active.id, "close-failed", me, gates=len(rows), failed=len(failed))
             raise Failed(f"{len(failed)} of {len(rows)} gate(s) did not exit 0, the first {failed[0]}; "
                          f"the log is {RESULTS.as_posix()}; the packet stays at the work station")
         tree, changes = scoped_tree(active, "after the gates")
@@ -959,7 +998,7 @@ def cmd_close(args):
         results = {"head": {"Closed": iso(closed), "Writer": me, "Paths changed": str(len(changes)),
                             "Deviations": str(args.deviations), "Tree": f"tree {tree}"}, "gates": rows, "narrative": narrative}
         active.write(dict(active.leaf, results=results, audit=None))
-        record(args, active.id, "close", me, tree=tree, gates=len(rows), paths=len(changes), deviations=args.deviations)
+        active.log(args, "close", me, tree=tree, gates=len(rows), paths=len(changes), deviations=args.deviations)
     print(f"packet: {active.id} closed: {len(changes)} path(s), {len(rows)} of {len(rows)} gates passed, "
           f"deviations {args.deviations}, tree {tree[:12]}")
     print(f"next: the Auditor ({active.head['Auditor']}) reads `packet.py diff`, then runs `packet.py audit --verdict pass|fail --note FILE`")
@@ -973,7 +1012,7 @@ def cmd_audit(args):
         active = Active(args)
         if me != active.head["Auditor"]:
             raise Refused(f"the caller is {me!r}; only the packet's Auditor ({active.head['Auditor']}) records its verdict")
-        active.require_contract()
+        active.require_intact()
         results = active.leaf["results"]
         if results is None:
             raise Refused("the packet is not closed; there is nothing to audit")
@@ -983,7 +1022,7 @@ def cmd_audit(args):
         verdict = args.verdict.upper()
         audit = {"head": {"Verdict": verdict, "Auditor": me, "Audited": iso(args.now), "Tree": f"tree {tree}"}, "note": note}
         active.write(dict(active.leaf, audit=audit))
-        record(args, active.id, "audit", me, verdict=verdict, tree=tree)
+        active.log(args, "audit", me, verdict=verdict, tree=tree)
     print(f"packet: {active.id} audit {verdict} on tree {tree[:12]}")
     print(f"next: the Orchestrator ({active.head['Orchestrator']}) runs `packet.py ship`" if verdict == "PASS" else
           f"next: the Writer ({active.head['Writer']}) reworks and runs `packet.py close` again")
@@ -1028,8 +1067,7 @@ def cmd_status(args):
     active = Active(args, lenient=True)
     if active.leaf is None:
         print(f"packet: {active.id} on {active.branch}")
-        print(f"station: STOP: {active.damage}; the packet is damaged: its Manager runs `packet.py abandon` "
-              "(the work is kept as a patch) and opens it again")
+        print(f"station: STOP: {active.damage}; the leaf is damaged: its Manager runs `packet.py restore`")
         return 0
     head = active.head
     tree, changes = active.tree()
@@ -1040,8 +1078,37 @@ def cmd_status(args):
     print(f"work: {len(changes)} path(s) changed, {len(outside)} outside scope, tree {tree[:12]}")
     for path in outside[:10]:
         print(f"work: outside scope: {path}")
+    if not active.intact():
+        print("station: STOP: the leaf is not the one the tool last wrote (packet hash failure); "
+              f"its Manager ({head['Manager']}) runs `packet.py restore`")
+        return 0
     text, whose = station(active.leaf, tree)
     print(f"station: {text} ({whose}{', which is you' if whose == me else ''})")
+    return 0
+
+
+def cmd_restore(args):
+    """Put back the leaf the tool last wrote. The ledger holds its text; nothing else in the worktree is touched."""
+    me = caller(args)
+    with room_lock(args.room):
+        active = Active(args, lenient=True)
+        last = ledger_last(args.room, active.id, "text")
+        seats = active.head if active.leaf is None else (ledger_last(args.room, active.id, "seats") or {}).get("seats")
+        if last is None or not isinstance(seats, dict) or sha256(last["text"].encode("utf-8")) != last.get("leaf"):
+            raise Refused(f"the ledger holds no leaf to restore for {active.id}; its Manager abandons the packet (the work "
+                          "is kept as a patch) and opens it again")
+        if me != seats["Manager"]:
+            raise Refused(f"the caller is {me!r}; only the packet's Manager ({seats['Manager']}) restores its leaf")
+        if active.text == last["text"]:
+            print(f"packet: the leaf of {active.id} is already the one the tool last wrote; nothing to restore")
+            return 0
+        active.leaf_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = active.leaf_path.with_name("." + active.leaf_path.name + ".tmp")
+        tmp.write_text(last["text"], encoding="utf-8")
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, active.leaf_path)
+        record(args, active.id, "restore", me, leaf=last["leaf"], from_action=last.get("action"))
+    print(f"packet: the leaf of {active.id} is restored as the {last.get('action')} station left it; run `packet.py status`")
     return 0
 
 
@@ -1167,12 +1234,17 @@ def publish(args, active: Active, me: str, fallback: str | None, slug: str, pull
         raise Failed(f"the required check {REQUIRED_CHECK} ended {check.get('conclusion')} on pull request #{pull['number']}; "
                      "the packet returns to the Writer, who reworks and closes again")
     print(f"gates: {REQUIRED_CHECK} success", flush=True)
-    rest = REVIEW_SETTLE - seconds_since(args, check.get("started_at"))
-    if rest > 0:
-        if args.fixed_now or time.monotonic() + rest > deadline:
-            raise Pending(f"the pull request's head rests {REVIEW_SETTLE} seconds before it merges, so a review can land; "
-                          f"{int(rest) + 1} remain; run `packet.py ship` again")
-        time.sleep(rest)
+    while True:
+        rest = REVIEW_SETTLE - seconds_since(args, check.get("started_at"))
+        reading = rest <= 0 and review_running(args, room, slug, pull)        # asked only once the floor has passed
+        if rest <= 0 and not reading:
+            break
+        why = "a review is still running" if reading else \
+            f"the head rests {REVIEW_SETTLE} seconds before it merges, so a review can land, and {int(rest) + 1} remain"
+        pause = rest if rest > 0 else 20.0
+        if args.fixed_now or time.monotonic() + pause > deadline:
+            raise Pending(f"{why} on pull request #{pull['number']}; run `packet.py ship` again")
+        time.sleep(pause)
     findings = unanswered_findings(room, slug, pull)
     if findings:
         raise Refused(f"{len(findings)} review finding(s) are unanswered on pull request #{pull['number']} ("
@@ -1224,7 +1296,7 @@ def cmd_ship(args):
         active = Active(args)
         room, wt, leaf = args.room, active.wt, active.leaf
         require_shipper(args, active.head["Orchestrator"], me, fallback, "ships")
-        active.require_contract()
+        active.require_intact()
         if leaf["results"] is None or leaf["audit"] is None or leaf["audit"]["head"]["Verdict"] != "PASS":
             raise Refused("the packet has no PASS from its Auditor; nothing ships")
         slug = repo_slug(room)
@@ -1390,6 +1462,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--add", action="append", required=True, help="one path to add; repeat for more")
     p.add_argument("--reason", required=True)
     p.set_defaults(run=cmd_amend)
+    p = sub.add_parser("restore", help="the Manager: put back the leaf the tool last wrote, after a hand edit or damage")
+    p.set_defaults(run=cmd_restore)
     p = sub.add_parser("close", help="the Writer: check scope, run the gates, write the results")
     p.add_argument("--deviations", type=int, required=True, help="protocol deviations, as a count")
     p.add_argument("--narrative", required=True, help=f"a file of at most {NARRATIVE_LIMIT} characters, or - for standard input")

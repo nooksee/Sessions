@@ -148,7 +148,7 @@ A change reaches `main` only as one dispatch packet: one id, one branch, one pul
 
 | Seat | Runs | Never |
 | --- | --- | --- |
-| Manager | `draft`, `open`, `amend`, `abandon` | commits, pushes or merges |
+| Manager | `draft`, `open`, `amend`, `restore`, `abandon` | commits, pushes or merges |
 | Writer | edits in the worktree, then `close` | edits the room's own checkout, edits outside scope, or audits its own packet |
 | Auditor | reads `diff`, then `audit --verdict pass` or `fail` | writes the work it audits |
 | Orchestrator | `ship`, again until it prints `LANDED`; `abandon` once a branch is on origin | decides content, review or acceptance |
@@ -161,7 +161,7 @@ A change reaches `main` only as one dispatch packet: one id, one branch, one pul
 - **The leaf is the one kept record.** `archives/packets/DP-SES-NNNN.md` holds the contract, the measured results and the verdict. It is public: it cites a decision by ledger number or digest and never quotes.
 - **Board and ledger lines ride in the packet that causes them.** `NOW.md` and `RoR.md` are named in its scope; there is no pull request for a line alone.
 - **The operator's part is one paste per packet,** to the Orchestrator: ship. Everything before it reaches a seat as other work does.
-- **When a station refuses, it says what to do.** `abandon` keeps the work as a patch; the recovery table is in the spec.
+- **When a station refuses, it says what to do.** Only the tool writes a leaf: one edited by hand is refused, and `restore` puts back the leaf the tool last wrote. `abandon` keeps the work as a patch. The recovery table is in the spec.
 - **The required check judges the same rules on GitHub.** A pull request that is not one valid packet does not merge, whoever opens it.
 
 ---
@@ -202,6 +202,7 @@ python3 -I -B ops/lib/scripts/packet.py close --deviations <count> --narrative <
 python3 -I -B ops/lib/scripts/packet.py diff [stat or names]                                 # any seat: the exact change the audit binds
 python3 -I -B ops/lib/scripts/packet.py audit --verdict <pass or fail> --note <file or ->    # the Auditor
 python3 -I -B ops/lib/scripts/packet.py ship [--wait <seconds>] [--hold]                     # the Orchestrator, until LANDED
+python3 -I -B ops/lib/scripts/packet.py restore                                              # the Manager: put back a leaf edited by hand
 python3 -I -B ops/lib/scripts/packet.py abandon --reason "<why>"                             # the Manager
 ~~~
 
