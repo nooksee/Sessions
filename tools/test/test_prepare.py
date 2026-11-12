@@ -340,6 +340,39 @@ class ArtifactLimit(unittest.TestCase):
                     self.assertEqual(len(json.loads(r.stdout)["plan"]["artifacts"]), 64)
 
 
+class HousekeepingPairs(unittest.TestCase):
+    """Break 7 (the Manager's read of phase 4): the provider's api-request-blob rows carry no uuid and repeat the call's
+    tool_use and tool_result blocks. Tool pairs are counted on rows that carry a uuid only, in the window (phase 4) and
+    in the static list (phase 5), as the engine's reader counts them since #81. Invented rows in the real shape."""
+
+    def fixture(self, finished=True):
+        f = Fixture()
+        W = str(f.W)
+        use = {"type": "tool_use", "id": "toolu_fixture_1", "name": "Read", "input": {"file_path": W + "/notes.md"}}
+        result = {"type": "tool_result", "tool_use_id": "toolu_fixture_1", "content": "a river and a stone"}
+        f.rows[8]["message"]["content"].append(use)
+        # As the engine's test orders them: the request's blob repeats the call while it is pending, the result's echo
+        # repeats the result, and the next request's blob repeats the call again.
+        blob = {"type": "api-request-blob", "sessionId": DONOR, "hash": "invented",
+                "message": {"role": "assistant", "content": copy.deepcopy(f.rows[8]["message"]["content"])}}
+        echo = {"type": "api-request-blob", "sessionId": DONOR, "hash": "invented-two",
+                "message": {"role": "user", "content": [result]}}
+        answer = {"type": "user", "uuid": mid(10), "parentUuid": mid(9), "sessionId": DONOR, "cwd": W,
+                  "timestamp": "2026-11-09T11:20:20Z", "message": {"role": "user", "content": [result]}}
+        f.rows += [blob, answer, echo, blob] if finished else [blob]
+        f.write()
+        return f
+
+    def test_a_blob_repeating_a_pair_after_the_cut_is_accepted_and_an_unfinished_pair_is_not(self):
+        f = self.fixture()
+        r = f.run()
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertTrue(json.loads((f.E / "gates.json").read_bytes())["detail"]["static"]["tool-pairs"])
+        r = self.fixture(finished=False).run("--dry-run")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("prepare: refused: window-tool-pairs", r.stderr)
+
+
 class DryRun(unittest.TestCase):
     def test_writes_nothing_and_reports_the_window(self):
         f = fresh()
