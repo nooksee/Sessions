@@ -183,7 +183,7 @@ A good narrative is three to six sentences: what changed, why it satisfies the o
 
 **A reviewer commented on the pull request.** Every such comment is answered on its thread before the merge, by a fix or by a reason for declining. The tool waits while the reviewer says it is still reading.
 
-**I want to stop a packet.** The Integrator runs `abandon` with a reason. The work is kept as a patch, and the number is used by the next packet.
+**I want to stop a packet.** Before its branch is on origin, the Integrator runs `abandon` with a reason. Once the Orchestrator has pushed it, the Orchestrator runs `abandon`, or another resident does with `--fallback` and a one-line reason. Either way the work is kept as a patch, and the number is used by the next packet.
 
 ## 11. The first week
 

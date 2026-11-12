@@ -32,30 +32,32 @@ Land the field guide to shipping as the runbook docs/ops/specs/runbook/shipping.
 
 ## Results
 
-- Closed: 2026-11-12T19:46:01Z
+- Closed: 2026-11-12T20:03:16Z
 - Contractor: claudine-colbert
 - Paths changed: 7
 - Deviations: 0
-- Tree: tree 5b4c292d8b4f9bb741e0bfe537f4168d82f8d477
+- Tree: tree 39da28fdf1a5212cf6cf7ed6fb159e386254888c
 - Gate: exit 0 in 1 s: ops/bin/help --test
-- Gate: exit 0 in 5 s: ops/bin/template --test
+- Gate: exit 0 in 3 s: ops/bin/template --test
 - Gate: exit 0 in 1 s: tools/test/test_filing.py
 
 ## Narrative
 
-I applied the prepared field-guide patch from intake in the packet worktree with git apply, then read the change through the packet diff: seven paths, all in scope, 208 lines added and 1 removed. The new runbook docs/ops/specs/runbook/shipping.md is byte for byte the guide held in intake; RUNBOOK-04 registers it, and the index, the manual, the start page and the two instruction files each gain one pointer to it, so a resident who may carry a function finds one maintained guide from every door. Before applying, I ran a close on purpose with nothing changed, and the tool refused it because nothing in scope had changed, as the onboarding asked. I edited nothing beyond the seven named paths, altered no text of the patch, and ran no suite outside the gates this close runs. Deviations: none.
+This close answers the one finding the review connector left on the pull request, on the field guide's paragraph about stopping a packet. The finding was right: the paragraph said the Integrator runs abandon, but the tool refuses the Integrator once the packet branch is on origin and then requires the Orchestrator or another resident with a recorded fallback. I replaced that one paragraph in docs/ops/specs/runbook/shipping.md with the operator's wording, which says who abandons before the branch is pushed and who abandons after, and that either way the work is kept as a patch. No other line of the guide and no other path changed since the last close. Deviations: none.
 
 ## Audit
 
 - Verdict: PASS
 - Auditor: claude-bernard
-- Audited: 2026-11-12T19:50:33Z
-- Tree: tree 5b4c292d8b4f9bb741e0bfe537f4168d82f8d477
+- Audited: 2026-11-12T20:05:32Z
+- Tree: tree 39da28fdf1a5212cf6cf7ed6fb159e386254888c
 
 ## Audit note
 
-PASS. The change is the prepared patch and nothing else: its patch-id equals that of the patch in intake, and the new runbook docs/ops/specs/runbook/shipping.md is byte for byte the guide held in intake, which I read whole before this packet opened. Seven paths, all in scope, 208 lines added and 1 removed.
+PASS. Since the tree I passed before, one line changed, the paragraph on stopping a packet in the runbook; nothing else in the seven paths moved. The new wording matches the tool: abandon is the Integrator's while the branch is not on origin, and once it is, the Orchestrator's, or another registered resident's with a recorded fallback reason. That answers the review connector's finding on pull request #94, which has an accepting reply on its thread.
 
-Each door gains one pointer and says the same thing: AGENTS.md extends its sentence on the packet spec; CLAUDE.md, the manual and the start page each add one short paragraph or line; the index adds one entry; the runbook registry adds RUNBOOK-04, the next free number after 01 to 03, naming the tool and the contract. The guide's own header names that registry entry, so the two agree. The objective needs nothing more.
+My earlier PASS missed that error; the connector found it. I count it against my own read.
 
-The gates fit a document-only change: help, template and filing. I ran all three again on an export of this exact tree, and each exited 0. The narrative counts no deviation and describes what the diff shows.
+The gates fit, and all three exited 0 again on an export of this exact tree. The narrative counts no deviation and describes what the diff shows.
+
+For a later packet, not a condition: the guide's refusal table still sends the Integrator to abandon when origin/main moved under an open packet. That holds when the move is found before the push, which is the usual case; after the push, the tool refuses the Integrator and names the Orchestrator. The spec's recovery table has the same row, so both could name the Orchestrator once the branch is on origin.
