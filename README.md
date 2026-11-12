@@ -39,3 +39,5 @@ Never committed here: conversation bodies, minds, the registry and bindings, cre
 
 ## Canonical Pointer
 `PoT.md` for the law; `docs/ops/README.md` for the map of tools, specs and tests; `docs/ops/registry/` for what exists; `RoR.md` and `archives/receipts/` for what happened. Built by Kevin Atwood and the residents of the room: Claude Shannon (Session Continuity Manager), Claudine Colbert (Assistant), Joe Codex (Apprentice), Claudio Freeman (Independent Reviewer) and George Friend (Control); the STELA framework by Kevin; the port to this shape with help from a Claude on the web.
+
+A line outside the packet scope, added after the audit, to prove the gate refuses it.
