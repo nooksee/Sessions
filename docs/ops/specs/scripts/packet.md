@@ -18,7 +18,7 @@ The policy opens by saying that the system prevents an action that violates poli
 
 **The same law twice.** The tool refuses at each station on the host. The required check refuses again on GitHub, from Git objects alone, so a pull request made any other way does not merge.
 
-**Public by construction.** The leaf lands in a public repository. It is bounded, plain ASCII, and must pass the room's own redaction check with nothing to redact: it cites and never quotes, and it names no host path and no session identifier.
+**Public by construction.** The leaf lands in a public repository. It is bounded, plain ASCII, and must pass the room's own redaction check with nothing to redact: it cites and never quotes, and it names no host path and no session identifier. One name with a short hash may stand in it: the path of a policy snapshot or of its authority leaf under `archives/`, because the authorization check requires those names and a policy amendment must name them in its scope.
 
 ## Mechanics and Sequencing
 

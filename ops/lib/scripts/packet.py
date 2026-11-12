@@ -94,6 +94,9 @@ DRAFT_FIELD_RE = re.compile(r"^(Title|Contractor|Auditor|Orchestrator|Authority)
 CREDENTIAL_RE = re.compile(r"(\w+://)[^/@\s]+@")
 # A reviewer that announces its own state does so in a comment marker of this form (the Codex connector's).
 REVIEW_STATE_RE = re.compile(r"<!-- codex-review-state:v1 (\{.*?\}) -->")
+# A policy snapshot and its authority leaf are named by the first eight characters of the policy's SHA-256, and the
+# authorization check requires those names. Such a path is public by construction; it is read with the hash left out.
+LAW_SNAPSHOT_RE = re.compile(r"(?<![\w./-])archives/PoT-(authority-)?[0-9a-f]{8}\.md(?![\w.-])")
 
 HEAD_KEYS = ("Packet", "Branch", "Base", "Opened", "Integrator", "Contractor", "Auditor", "Orchestrator", "Authority")
 RESULT_KEYS = ("Closed", "Contractor", "Paths changed", "Deviations", "Tree")
@@ -413,7 +416,7 @@ def public_problems(text: str, what: str = "the leaf") -> list[str]:
     """A leaf is published. It must pass the room's own redaction check with nothing to redact."""
     redact = sibling("redact")
     try:
-        spans, _ = redact.classify(text, {})
+        spans, _ = redact.classify(LAW_SNAPSHOT_RE.sub(r"archives/PoT-\1snapshot.md", text), {})
         found = redact.counts(spans)
     except Exception as exc:
         return [f"the redaction check could not read {what} ({exc.__class__.__name__})"]

@@ -454,6 +454,10 @@ class LeafFormat(unittest.TestCase):
             with self.subTest(name):
                 self.assertTrue(packet.public_problems(clean.replace("One page changed.", sentence)))
         self.assertEqual([], packet.public_problems(clean.replace("One page changed.", "It is commit 5468ce4b42 on main.")))
+        for path in ("archives/PoT-0a1b2c3d.md", "archives/PoT-authority-0a1b2c3d.md"):      # the policy's own snapshots
+            self.assertEqual([], packet.public_problems(clean.replace("One page changed.", f"The snapshot is {path} now.")), path)
+        for near in ("archives/PoT-0a1b2c3d.txt", "archives/PoT-0a1b2c3d4.md", "storage/archives/PoT-0a1b2c3d.md", "PoT-0a1b2c3d.md"):
+            self.assertTrue(packet.public_problems(clean.replace("One page changed.", f"The file is {near} now.")), near)
 
     def test_text_rules(self):
         self.assertEqual([], packet.text_problems("A plain line.", "x", 50, one_line=True))
@@ -540,6 +544,11 @@ class DraftAndOpen(Case):
         git(self.r.room, "commit", "-q", "-am", "a commit made on main by hand")
         self.refused(self.r.open(), "holds commits origin/main does not", "never force")
         self.refused(self.r.run("sync", who="out"), "holds commits origin/main does not", "never force")
+
+    def test_open_accepts_the_paths_of_a_policy_snapshot_in_scope(self):
+        scope = ("PoT.md", "archives/PoT-0a1b2c3d.md", "archives/PoT-authority-0a1b2c3d.md")
+        self.assertEqual(0, self.r.open(scope=scope).code, self.r.said[-1])
+        self.assertEqual(list(scope), self.r.leaf()["scope"])
 
     def test_open_refuses_bad_function_keys(self):
         self.refused(self.r.open(auditor="con"), "no one audits their own work")
