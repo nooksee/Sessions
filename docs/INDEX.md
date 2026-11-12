@@ -101,7 +101,7 @@ Tests:
 * [ops/specs/tools/test/myself.md](ops/specs/tools/test/myself.md): the self-check's suite.
 * [ops/specs/tools/test/notice.md](ops/specs/tools/test/notice.md): the notice's suite.
 * [ops/specs/tools/test/rotate.md](ops/specs/tools/test/rotate.md): the rotate runner's suite, synthetic dry-run phases 0 to 9.
-* [ops/specs/tools/test/packet.md](ops/specs/tools/test/packet.md): what `tools/test/test_packet.py` proves, by group (90).
+* [ops/specs/tools/test/packet.md](ops/specs/tools/test/packet.md): what `tools/test/test_packet.py` proves, by group (91).
 
 ## 4. Contracts and Guides (earlier clinic work)
 * [clinic-aggregate-contract.md](clinic-aggregate-contract.md): the public clinic health file (`logs/clinic-aggregate.json`) for consumers outside Sessions. (private: not in the repository; on the host only.)
