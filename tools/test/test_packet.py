@@ -130,6 +130,8 @@ if method == "PUT" and rest[0] == "pulls" and rest[2:] == ["merge"]:
 if method == "PATCH" and rest[0] == "pulls":
     pull(rest[1])["state"] = fields["state"]
     out(pull(rest[1]))
+if method == "GET" and rest[0] == "issues" and rest[2:] == ["comments"]:
+    out(state["talk"])
 if method == "POST" and rest[0] == "issues" and rest[2:] == ["comments"]:
     state["notes"].append({"number": int(rest[1]), "body": fields["body"]})
     out({"id": len(state["notes"])})
@@ -214,7 +216,7 @@ class Room:
         self.registry = self.base / "registry.json"
         self.registry.write_text(json.dumps({"identities": rows}))
         self.state = self.base / "gh.json"
-        self.gh(origin=str(self.origin), pulls=[], next=7, comments=[], notes=[], calls=[], fail={}, raw="",
+        self.gh(origin=str(self.origin), pulls=[], next=7, comments=[], notes=[], talk=[], calls=[], fail={}, raw="",
                 checks=[{"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "success",
                          "started_at": "2026-11-12T09:00:00Z"}])
         self.tick, self.said = 0, []
@@ -709,6 +711,26 @@ class Work(Case):
         (self.r.wt / "var" / "tmp" / "fail").unlink()
         self.assertEqual(0, self.r.close().code)
 
+    def test_a_close_that_fails_voids_the_earlier_close_and_its_verdict(self):
+        self.r.through("audit", gates=("ok", "flag"))
+        tree = self.r.leaf()["audit"]["head"]["Tree"]
+        self.assertIn("station: ship:", self.r.run("status").out)
+        (self.r.wt / "var" / "tmp" / "fail").write_text("")            # ignored by Git: the tree is the one that passed
+        self.refused(self.r.close(), "FAILED", "1 of 2 gate(s) did not exit 0", code=1)
+        leaf = self.r.leaf()
+        self.assertEqual((None, None), (leaf["results"], leaf["audit"]))
+        self.assertEqual(tree, "tree " + packet.tree_of_worktree(self.r.wt, "archives/packets/DP-SES-0001.md", self.r.head())[0])
+        self.assertIn("station: work:", self.r.run("status").out)
+        self.refused(self.r.ship(), "no PASS from its Auditor; nothing ships")
+        self.refused(self.r.audit(), "not closed")
+        self.assertEqual(("close-failed", 2, 1), tuple(self.r.ledger()[-1][k] for k in ("action", "gates", "failed")))
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+        (self.r.wt / "var" / "tmp" / "fail").unlink()
+        self.r.close()
+        self.assertIsNone(self.r.leaf()["audit"])
+        self.r.audit()
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+
     def test_a_gate_that_writes_outside_scope_is_caught_after_the_gates(self):
         self.r.through("edit", gates=("flag",))
         (self.r.wt / "var" / "tmp" / "stray").write_text("")
@@ -814,11 +836,63 @@ class Work(Case):
                          (leaf["audit"]["head"]["Verdict"], leaf["audit"]["head"]["Auditor"], leaf["audit"]["head"]["Tree"]))
         self.assertEqual(("audit", "PASS"), (self.r.ledger()[-1]["action"], self.r.ledger()[-1]["verdict"]))
 
-    def test_a_damaged_leaf_stops_the_stations_and_its_manager_can_still_abandon(self):
-        self.r.through("edit")
+    def test_a_damaged_leaf_stops_the_stations_until_its_manager_restores_it(self):
+        self.r.through("close")
+        kept = self.r.leaf_path().read_text()
         self.r.leaf_path().write_text("not a leaf\n")
         self.assertIn("station: STOP", self.r.run("status").out)
-        self.refused(self.r.close(), "the packet is damaged", "abandons it")
+        self.assertIn("packet.py restore", self.r.said[-1])
+        self.refused(self.r.close(), "the leaf is damaged", "packet.py restore")
+        self.refused(self.r.audit(), "the leaf is damaged")
+        self.refused(self.r.run("restore", who="wri"), "only the packet's Manager (mgr) restores its leaf")
+        self.refused(self.r.run("restore"), "canonical registry")
+        restored = self.r.run("restore", who="mgr")
+        self.assertEqual(0, restored.code, restored.text)
+        self.assertIn("restored as the close station left it", restored.out)
+        self.assertEqual(kept, self.r.leaf_path().read_text())
+        self.assertIn("nothing to restore", self.r.run("restore", who="mgr").out)
+        self.assertIn("station: audit:", self.r.run("status").out)
+        self.assertEqual("restore", self.r.ledger()[-1]["action"])
+        self.r.leaf_path().unlink()
+        self.assertEqual(0, self.r.run("restore", who="mgr").code)
+        self.assertEqual(0, self.r.audit().code, self.r.said[-1])
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+
+    def test_a_verdict_or_a_result_written_by_hand_is_refused(self):
+        self.r.through("close")
+        leaf = self.r.leaf()
+        forged = dict(leaf, audit={"head": {"Verdict": "PASS", "Auditor": "aud", "Audited": "2026-11-12T10:30:00Z",
+                                            "Tree": leaf["results"]["head"]["Tree"]}, "note": "Looks fine to me."})
+        self.assertEqual([], packet.leaf_problems(forged))
+        self.r.leaf_path().write_text(packet.render_leaf(forged))
+        said = self.r.run("status", who="orc").out
+        self.assertIn("station: STOP: the leaf is not the one the tool last wrote (packet hash failure)", said)
+        self.assertNotIn("station: ship", said)
+        self.refused(self.r.ship(), "packet hash failure", "packet.py restore")
+        self.refused(self.r.audit(), "packet hash failure")
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+        self.assertEqual(0, self.r.run("restore", who="mgr").code)
+        self.assertIsNone(self.r.leaf()["audit"])
+        path = self.r.leaf_path()
+        path.write_text(path.read_text().replace("- Deviations: 0", "- Deviations: 7"))
+        self.assertEqual("7", self.r.leaf()["results"]["head"]["Deviations"])
+        self.refused(self.r.audit(), "packet hash failure")
+        self.assertEqual(0, self.r.run("restore", who="mgr").code)
+        self.assertEqual(0, self.r.audit().code, self.r.said[-1])
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+
+    def test_with_the_ledger_gone_nothing_is_restored_and_the_manager_abandons_by_hand(self):
+        self.r.through("edit")
+        (self.r.room / packet.LEDGER).unlink()
+        self.assertIn("packet hash failure", self.r.run("status").out)
+        self.refused(self.r.close(), "packet hash failure")
+        self.refused(self.r.run("restore", who="mgr"), "the ledger holds no leaf to restore", "abandons the packet")
+        self.assertEqual(0, self.r.run("abandon", "--reason", "the ledger was lost", who="mgr").code, self.r.said[-1])
+        self.assertIn("alpha, and more", (self.r.room / packet.ABANDONED).read_text())
+
+    def test_a_damaged_leaf_can_still_be_abandoned_by_its_manager_with_the_work_kept(self):
+        self.r.through("edit")
+        self.r.leaf_path().write_text("not a leaf\n")
         self.refused(self.r.run("abandon", "--reason", "damaged", who="wri"), "only the packet's Manager (mgr)")
         result = self.r.run("abandon", "--reason", "the leaf was overwritten", who="mgr")
         self.assertEqual(0, result.code, result.text)
@@ -944,6 +1018,29 @@ class Ship(Case):
         self.r.gh(checks=[{"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "success", "started_at": "2026-11-12T10:58:00Z"}])
         self.refused(self.r.ship(now="2026-11-12T11:00:00Z"), "PENDING", "rests 300 seconds", "181 remain", code=3)
         self.assertEqual(0, self.r.ship(now="2026-11-12T11:03:00Z").code, self.r.said[-1])
+
+    def test_a_review_that_says_it_is_running_holds_the_merge(self):
+        def says(status, when="2026-11-12T10:50:00Z"):
+            state = {"code_review": {"commit_sha": None, "has_any_findings": None, "status": status},
+                     "security_review": {"commit_sha": None, "status": None}}
+            return {"user": {"login": "review-bot", "type": "Bot"}, "updated_at": when,
+                    "body": f"<!-- a summary -->\n<!-- codex-review-state:v1 {json.dumps(state)} -->\n\nwords"}
+
+        self.r.through("audit")
+        self.r.gh(talk=[{"user": {"login": "someone"}, "body": "an ordinary comment", "updated_at": "2026-11-12T10:00:00Z"},
+                        says("running")])
+        held = self.r.ship(now="2026-11-12T11:00:00Z")
+        self.refused(held, "PENDING", "a review is still running on pull request #7", code=3)
+        self.assertEqual([], [call for call in self.r.gh()["calls"] if call[2] == "PUT"])
+        passer_by = dict(says("running"), user={"login": "someone", "type": "User"})
+        self.r.gh(talk=[{"user": {"login": "review-bot", "type": "Bot"}, "body": "<!-- codex-review-state:v1 {not json} -->"},
+                        passer_by, says("completed")])
+        self.assertEqual(0, self.r.ship(now="2026-11-12T11:01:00Z").code, self.r.said[-1])
+        self.r.through("audit", text="alpha, a second time\n", title="A second one")
+        self.r.gh(talk=[says("running", when="2026-11-12T10:00:00Z")])
+        stale = self.r.ship(now="2026-11-12T11:00:00Z")
+        self.assertEqual(0, stale.code, stale.text)
+        self.assertIn("taken as stopped", stale.out)
 
     def test_an_unanswered_review_finding_stops_the_merge(self):
         self.r.through("audit")
