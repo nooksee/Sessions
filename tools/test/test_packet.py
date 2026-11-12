@@ -569,10 +569,13 @@ class DraftAndOpen(Case):
 
     def test_open_refuses_a_number_whose_branch_already_exists(self):
         git(self.r.origin, "update-ref", "refs/heads/agent/dp-ses-0001-2026-11-01", self.r.head())
-        self.refused(self.r.open(), "a branch for DP-SES-0001 already exists")
+        self.refused(self.r.open(), "a branch for DP-SES-0001 already exists: agent/dp-ses-0001-2026-11-01 on origin",
+                     "git push origin --delete NAME")
         git(self.r.origin, "update-ref", "-d", "refs/heads/agent/dp-ses-0001-2026-11-01")
         git(self.r.room, "branch", "agent/dp-ses-0001-2026-10-01", "main")
-        self.refused(self.r.run("open", who="mgr"), "a branch for DP-SES-0001 already exists")
+        self.refused(self.r.run("open", who="mgr"), "a branch for DP-SES-0001 already exists: agent/dp-ses-0001-2026-10-01 here")
+        git(self.r.room, "branch", "-D", "agent/dp-ses-0001-2026-10-01")
+        self.assertEqual(0, self.r.run("open", who="mgr").code, self.r.said[-1])
 
     def test_a_failed_open_leaves_no_worktree_and_no_branch(self):
         self.r.draft()
@@ -1033,8 +1036,35 @@ class Ship(Case):
         self.r.edit(text="alpha, reworked\n")
         self.r.close()
         self.r.audit()
-        self.refused(self.r.ship(), "git push --quiet failed")
+        self.refused(self.r.ship(), "git push failed")
         self.assertEqual(stranger, self.r.head(branch, self.r.origin))
+
+    def test_a_push_is_plain_and_switches_push_negotiation_off(self):
+        calls = []
+
+        def answer(cwd, *args, **more):
+            calls.append(args)
+            return subprocess.CompletedProcess(args, 1, "", "fatal: --negotiate-only needs one or more --negotiation-tip=*\n")
+
+        with mock.patch.object(packet, "git_try", answer):
+            told = packet.push(self.r.room, "--delete", "agent/x")
+        self.assertEqual([("-c", "push.negotiate=false", "push", "--quiet", "origin", "--delete", "agent/x")], calls)
+        self.assertEqual("git push failed (exit 1): fatal: --negotiate-only needs one or more --negotiation-tip=*", told)
+        git(self.r.room, "config", "push.negotiate", "true")
+        self.r.through("ship")
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+        self.assertNotIn("force", " ".join(" ".join(call) for call in calls))
+
+    def test_a_branch_that_cannot_be_removed_from_origin_keeps_the_packet_until_it_can(self):
+        self.r.through("hold")
+        self.r.merge_outside()
+        with mock.patch.object(packet, "push", return_value="git push failed (exit 1): remote: refusing to delete"):
+            self.refused(self.r.ship(), "origin still holds agent/dp-ses-0001-2026-11-12", "refusing to delete", "run the same command again")
+        self.assertTrue(self.r.wt.exists())
+        self.assertEqual(self.r.head(), self.r.head("refs/heads/main", self.r.origin))
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+        self.assertFalse(self.r.wt.exists())
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
 
     def test_the_leaf_ships_even_where_an_ignore_rule_hides_it(self):
         (self.r.room / ".git" / "info").mkdir(exist_ok=True)

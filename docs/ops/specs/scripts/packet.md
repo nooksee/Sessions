@@ -110,7 +110,7 @@ A leaf is valid only in canonical form: these lines in this order, no line endin
 | Close | Writer | `close --deviations N --narrative FILE` | the caller is not the Writer; the narrative breaks a rule (checked before any gate runs); the room's own checkout is dirty; a changed path is outside scope, before or after the gates; nothing changed; a gate does not exit 0 (exit 1) |
 | Audit | Auditor | read `diff`, then `audit --verdict pass or fail --note FILE` | the caller is not the Auditor; the packet is not closed; the worktree changed after close |
 | Ship | Orchestrator | `ship`, again until it prints `LANDED` | see "Ship" below |
-| Stop | Manager | `abandon --reason TEXT` | the caller is not the Manager; or, once the branch is on origin, not the Orchestrator |
+| Stop | Manager | `abandon --reason TEXT`; the work is kept as a patch | the caller is not the Manager; or, once the branch is on origin, not the Orchestrator or a recorded fallback; the pull request is already merged |
 
 Every station also refuses a caller it cannot verify and a contract that is not the one the ledger recorded. `amend` voids an earlier close. A FAIL verdict sends the packet back to the Writer, and the next close clears the verdict. `draft` carries the Auditor and the Orchestrator of the newest landed packet into the form as a convenience; the Manager changes them freely.
 
@@ -135,11 +135,11 @@ A station binds to the caller's own registry key, resolved by `mind.py`'s `calle
 5. The worktree's tree is the tree the Auditor passed, and every changed path is in scope.
 6. Commit everything and the leaf; the commit must hold exactly the audited tree and its leaf.
 7. The PoT authorization gate, as the required check runs it, before anything is pushed.
-8. Push, never forced. Open the pull request, or use the open one.
+8. Push: plain, never forced, with push negotiation switched off for the call. Open the pull request, or use the open one.
 9. The required check `sessions-gates` must have ended in success on that commit; anything else that has ended is exit 1, and the packet returns to the Writer.
 10. The head must have rested 300 seconds since the check started, so a review can land. Every inline review comment from an account other than the pull request's own must have a reply from that account; a refusal names each one by path, line and address. Then merge by rebase, naming the exact head.
 11. Fast-forward the room's `main`; prove it is clean, the same commit as origin's `main`, and the same tree as the packet.
-12. Remove the worktree and the packet branch, here and on origin; append the ledger line; post the landing proof on the pull request; print `LANDED`.
+12. Remove the packet branch on origin and confirm it is gone, then remove the worktree and the branch here; append the ledger line; post the landing proof on the pull request; print `LANDED`. If origin still holds the branch, nothing here is removed and the same command is run again.
 
 All calls to GitHub go through `gh api`, so `gh` must be installed and signed in on the host; `status` says whether it is found.
 
@@ -168,6 +168,7 @@ A pull request that changes the gate's own law (`packet.py`, `redact.py` or the 
 | --- | --- |
 | Origin's `main` moved under an open packet | The Manager abandons it and opens it again; the work is in `var/tmp/PACKET.abandoned.patch`, applied with `git apply` in the new worktree. |
 | The scope was drawn too narrow | The Manager amends. To narrow it, abandon and open again. |
+| Open refuses because a branch for the number exists | It names each branch. A branch left behind by an abandoned or rehearsed packet is deleted by the Orchestrator (`git push origin --delete NAME`), and the Manager opens again. Anything else: stop and report. |
 | A resident edited the room's own checkout by habit | Move the change into `var/tmp/packet/` or discard it; no station runs until the room is clean `main`. |
 | The leaf was damaged by hand | `status` says so. The Manager abandons; the seats come from the ledger; the work is kept as a patch. |
 | The required check failed | The Writer reworks and closes again, the Auditor audits again, the Orchestrator ships again. The same pull request carries the new commit. |
@@ -185,7 +186,7 @@ The Orchestrator seat was made on 2026-11-09 (RoR-23) so that one seat would do 
 - **A pull request can change its own gate.** The required check runs the copy of `packet.py` and the workflow file that the pull request carries. Such a change must be in the packet's scope and pass its audit, and the gate names it; it is not prevented. Branch protection and the required check are settings on GitHub, and they are the operator's.
 - **After the first landing, every change needs a packet, a repair to this tool included.** Administrators are held to the required check as well. A fault in the gate is mended by a packet, or by a pull request that edits the gate step on the operator's word.
 - **The leaf's results are a record, not the proof.** The tool ran the gates on the host; the required check runs every suite again on GitHub. A leaf that claims a pass the check does not reproduce does not merge.
-- **The review rule sees inline review comments only.** A general comment, a review summary or a review that arrives after the merge is not seen. Residents share the host's GitHub account, so a resident's own inline comment is not a finding; an auditor's finding belongs in a FAIL verdict. The 300 seconds are a floor, not a promise that a reviewer has finished.
+- **The review rule sees inline review comments only.** A general comment, a review summary or a review that arrives after the merge is not seen. Residents share the host's GitHub account, so a resident's own inline comment is not a finding; an auditor's finding belongs in a FAIL verdict. The 300 seconds are a floor, not a promise that a reviewer has finished, and a reviewer that reads only when a pull request opens does not read a reworked head.
 - **The tool sees what Git sees.** A new file that the room's `.gitignore` does not admit is not part of the packet; admit it in the same packet.
 - **The ledger is tool state.** If `logs/packets/ledger.jsonl` is lost while a packet is open, every station refuses, and the packet is abandoned by hand and reported.
 - **One packet at a time is a property of one checkout.** Two clones can each open the same number; the first to merge keeps it, and the gate fails the second.
