@@ -90,6 +90,7 @@ Binaries:
 Runbook:
 * [ops/specs/runbook/agent-input.md](ops/specs/runbook/agent-input.md): how a packet for a resident is written; to, from, owner, scope, authority, inputs, rules, stop condition, report.
 * [ops/specs/runbook/port.md](ops/specs/runbook/port.md): the port of the room's legacy lanes to the STELA base, every lane, with the path map and what Control must still repoint.
+* [ops/specs/runbook/shipping.md](ops/specs/runbook/shipping.md): the field guide to shipping: how the team works a dispatch packet, function by function, with the working agreements and what each refusal means.
 * [ops/specs/runbook/repository.md](ops/specs/runbook/repository.md): the repository's boundary, Git lifecycle, recovery and hosted checks.
 
 Tests:

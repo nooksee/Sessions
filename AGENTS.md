@@ -74,7 +74,8 @@ the Orchestrator ships (C16). Do not edit tracked files in the room's own
 checkout, and do not commit, push, merge or pull by hand: the room stays on
 clean `main`, and the required check on GitHub refuses a pull request that is
 not one valid packet. The procedure is in `docs/MANUAL.md` section 1B and
-`docs/ops/specs/scripts/packet.md`.
+`docs/ops/specs/scripts/packet.md`; how the team works with it, function by
+function, is in `docs/ops/specs/runbook/shipping.md`.
 
 ## Hard Safety Boundary
 

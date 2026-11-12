@@ -73,6 +73,8 @@ and only in scope, the Auditor records the verdict, and the Orchestrator
 ships. Leave the room's own checkout on clean `main`, and do not commit, push,
 merge or pull by hand. The status line names your station only when you are
 verified; it changes nothing about waiting for the operator when you are not.
+The field guide, `docs/ops/specs/runbook/shipping.md`, says how the team works
+a packet; read it before your first one and again after a rotation.
 
 **Do not look for a session identifier in this file.** One used to be written
 here as a literal, and between 2026-07-16 and 2026-09-08 it went two rotations

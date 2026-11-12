@@ -165,6 +165,7 @@ A packet's leaf names, by registry key, who carries each of the four delivery fu
 - **The operator's part is one paste per packet,** to the Orchestrator: ship. Everything before it reaches a resident as other work does.
 - **When a station refuses, it says what to do.** Only the tool writes a leaf: one edited by hand is refused, and `restore` puts back the leaf the tool last wrote. `abandon` keeps the work as a patch. The recovery table is in the spec.
 - **The required check judges the same rules on GitHub.** A pull request that is not one valid packet does not merge, whoever opens it.
+- **The field guide** is `docs/ops/specs/runbook/shipping.md`: the four functions and who carries them here, one packet from start to finish, the working agreements, and what each refusal means. Every resident who may carry a function reads it once, and again after a rotation.
 
 ---
 
