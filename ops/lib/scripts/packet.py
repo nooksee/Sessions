@@ -2,9 +2,11 @@
 """packet: one dispatch packet per pull request, end to end. Standard library only.
 
 A change reaches `main` only as a packet: one id, one branch, one pull request
-and one kept record. The stations are draft and open (the Manager), work and
-close (the Writer), audit (the Auditor) and ship (the Orchestrator). Each
-station is one command, and each refuses when the one before it is not proved.
+and one kept record. A packet names, by registry key, who carries each of the
+four delivery functions (CONSTRAINTS C16 and C17): draft and open are the
+Integrator's, work and close the Contractor's, audit the Auditor's and ship the
+Orchestrator's. Each station is one command, and each refuses when the one
+before it is not proved.
 
 Working files are latest-wins and disposable: the draft at
 `storage/handoff/PACKET.md`, the gate log at `storage/handoff/RESULTS.md`, and
@@ -74,6 +76,9 @@ GATE_TIMEOUT = 3600        # seconds for one gate
 REVIEW_SETTLE = 300        # seconds a pull request's head rests before it may merge, so a review can land
 REVIEW_STALE = 1800        # seconds after which a reviewer that still says it is running is taken to have stopped
 REQUIRED_CHECK = "sessions-gates"
+# The tool as it first landed (pull request #91), by its Git blob id. It named two of the delivery functions
+# otherwise, so the leaf header it writes is not the one this gate reads. No leaf it wrote reached main.
+FIRST_TOOL = "e8c01b5f546edd4248a82f19915733936c26af80"
 SEAM = "MIND_TEST_CALLER"  # mind.py's test seam; never passed on to a gate
 
 ID_RE = re.compile(r"^DP-SES-(\d{4})$")
@@ -85,17 +90,17 @@ TIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 WORD_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 GATE_LINE_RE = re.compile(r"^exit (-?\d+) in (\d+) s: (\S.*)$")
 AMENDMENT_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z) ([a-z0-9][a-z0-9-]*) added (\S+): (\S.*)$")
-DRAFT_FIELD_RE = re.compile(r"^(Title|Writer|Auditor|Orchestrator|Authority):[ \t]*(.*?)\s*$")
+DRAFT_FIELD_RE = re.compile(r"^(Title|Contractor|Auditor|Orchestrator|Authority):[ \t]*(.*?)\s*$")
 CREDENTIAL_RE = re.compile(r"(\w+://)[^/@\s]+@")
 # A reviewer that announces its own state does so in a comment marker of this form (the Codex connector's).
 REVIEW_STATE_RE = re.compile(r"<!-- codex-review-state:v1 (\{.*?\}) -->")
 
-HEAD_KEYS = ("Packet", "Branch", "Base", "Opened", "Manager", "Writer", "Auditor", "Orchestrator", "Authority")
-RESULT_KEYS = ("Closed", "Writer", "Paths changed", "Deviations", "Tree")
+HEAD_KEYS = ("Packet", "Branch", "Base", "Opened", "Integrator", "Contractor", "Auditor", "Orchestrator", "Authority")
+RESULT_KEYS = ("Closed", "Contractor", "Paths changed", "Deviations", "Tree")
 AUDIT_KEYS = ("Verdict", "Auditor", "Audited", "Tree")
 SECTIONS = ("Objective", "Scope", "Gates", "Amendments", "Results", "Narrative", "Audit", "Audit note")
-SEATS = ("Manager", "Writer", "Auditor", "Orchestrator")
-DRAFT_FIELDS = ("Title", "Writer", "Auditor", "Orchestrator", "Authority")
+FUNCTIONS = ("Integrator", "Contractor", "Auditor", "Orchestrator")       # the delivery functions; a key carries each
+DRAFT_FIELDS = ("Title", "Contractor", "Auditor", "Orchestrator", "Authority")
 SELF_TESTS = ("help", "template")              # gate words that name ops/bin/<word> --test
 # Variables that tell Git where a repository is. A caller's own must never redirect this tool.
 GIT_PLACE = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_COMMON_DIR",
@@ -359,9 +364,9 @@ def leaf_problems(leaf: dict) -> list[str]:
         problems.append("Base: not the word commit and a full commit id")
     if not TIME_RE.match(head["Opened"]):
         problems.append("Opened: not a UTC time")
-    problems += [f"{seat}: not a registry key" for seat in SEATS if not KEY_RE.match(head[seat])]
-    if head["Writer"] == head["Auditor"]:
-        problems.append("Writer and Auditor are the same key; no seat audits its own work (PoT 4.2.2)")
+    problems += [f"{name}: not a registry key" for name in FUNCTIONS if not KEY_RE.match(head[name])]
+    if head["Contractor"] == head["Auditor"]:
+        problems.append("Contractor and Auditor are the same key; no one audits their own work (PoT 4.2.2)")
     problems += text_problems(leaf["title"], "Title", TITLE_LIMIT, one_line=True)
     problems += text_problems(head["Authority"], "Authority", LINE_LIMIT, one_line=True)
     problems += text_problems(leaf["objective"], "Objective", OBJECTIVE_LIMIT)
@@ -380,8 +385,8 @@ def leaf_problems(leaf: dict) -> list[str]:
     results = leaf["results"]
     if results is not None:
         r = results["head"]
-        if not TIME_RE.match(r["Closed"]) or r["Writer"] != head["Writer"]:
-            problems.append("Results: Closed is not a UTC time, or its Writer is not the packet's Writer")
+        if not TIME_RE.match(r["Closed"]) or r["Contractor"] != head["Contractor"]:
+            problems.append("Results: Closed is not a UTC time, or its Contractor is not the packet's Contractor")
         if not r["Paths changed"].isdigit() or int(r["Paths changed"]) < 1 or not r["Deviations"].isdigit():
             problems.append("Results: Paths changed is a count of at least 1 and Deviations is a count")
         if not (r["Tree"].startswith("tree ") and OID_RE.match(r["Tree"][5:])):
@@ -662,7 +667,7 @@ class Active:
     def __init__(self, args, lenient: bool = False):
         self.room, self.wt = args.room, args.room / WORKTREE
         if not self.wt.is_dir():
-            raise Refused("no packet is active; the Manager drafts and opens one")
+            raise Refused("no packet is active; the Integrator drafts and opens one")
         top = git_try(self.wt, "rev-parse", "--show-toplevel")
         if top.returncode or Path(top.stdout.strip()).resolve() != self.wt.resolve():
             raise Refused(f"{WORKTREE.as_posix()}/ exists but is not this room's packet worktree; stop and report")
@@ -673,7 +678,7 @@ class Active:
         self.id = f"DP-SES-{m.group(1)}"
         self.leaf_rel = f"{LEAVES}/{self.id}.md"
         self.leaf_path = self.wt / self.leaf_rel
-        opened = ledger_last(self.room, self.id, "seats") or {}
+        opened = ledger_last(self.room, self.id, "functions") or {}
         self.leaf, self.text, self.damage = None, None, None
         try:
             try:
@@ -686,10 +691,10 @@ class Active:
             self.leaf = leaf
         except Refused as exc:
             if not lenient:
-                raise Refused(f"{exc}; the leaf is damaged: its Manager runs `packet.py restore`, which puts back the "
+                raise Refused(f"{exc}; the leaf is damaged: its Integrator runs `packet.py restore`, which puts back the "
                               "leaf the tool last wrote") from None
             self.damage = str(exc)
-        self.head = self.leaf["head"] if self.leaf else (opened.get("seats") if isinstance(opened.get("seats"), dict) else None)
+        self.head = self.leaf["head"] if self.leaf else (opened.get("functions") if isinstance(opened.get("functions"), dict) else None)
         self.base = self.leaf["head"]["Base"][7:] if self.leaf else opened.get("base")
 
     def intact(self) -> bool:
@@ -700,7 +705,7 @@ class Active:
     def require_intact(self) -> None:
         if not self.intact():
             raise Refused("the leaf is not the one the tool last wrote; only the tool writes a leaf, and only `amend` "
-                          "changes a contract (packet hash failure): its Manager runs `packet.py restore`, which puts "
+                          "changes a contract (packet hash failure): its Integrator runs `packet.py restore`, which puts "
                           "back the leaf the ledger recorded")
 
     def log(self, args, action: str, actor: str, **facts) -> None:
@@ -855,7 +860,7 @@ def seconds_since(args, when: str | None) -> float:
 # --------------------------------------------------------------------------
 # Stations.
 # --------------------------------------------------------------------------
-def previous_seats(room: Path) -> dict:
+def previous_functions(room: Path) -> dict:
     """The Auditor and the Orchestrator of the newest landed packet: a prefill for the form, nothing more."""
     with contextlib.suppress(Refused, ValueError):
         number = max(leaf_numbers(room, "main"))
@@ -868,8 +873,8 @@ def cmd_draft(args):
     path = args.room / DRAFT
     if not path.parent.is_dir():
         raise Refused(f"{DRAFT.parent.as_posix()}/ does not exist in this room")
-    carried = previous_seats(args.room)
-    fields = {"Title": args.title or "", "Writer": args.writer or "", "Authority": args.authority or "",
+    carried = previous_functions(args.room)
+    fields = {"Title": args.title or "", "Contractor": args.contractor or "", "Authority": args.authority or "",
               "Auditor": args.auditor or carried.get("Auditor", ""),
               "Orchestrator": args.orchestrator or carried.get("Orchestrator", "")}
     objective = ""
@@ -881,7 +886,7 @@ def cmd_draft(args):
         note = f"; the draft it replaced is at {DRAFT_PREVIOUS.as_posix()} until the next one"
     write_private(args.room, DRAFT, render_draft(fields, objective, args.scope or [], args.gate or ["full"]))
     print(f"packet: draft written to {DRAFT.as_posix()} (latest-wins{note})")
-    print("next: the Manager fills it, then runs `packet.py open`")
+    print("next: the Integrator fills it, then runs `packet.py open`")
     return 0
 
 
@@ -901,12 +906,12 @@ def cmd_open(args):
             raise Refused("the packet numbers are used up")
         packet, branch = f"DP-SES-{number:04d}", f"agent/dp-ses-{number:04d}-{args.now:%Y-%m-%d}"
         f = draft["fields"]
-        head = {"Packet": packet, "Branch": branch, "Base": f"commit {base}", "Opened": iso(args.now), "Manager": me,
-                "Writer": f["Writer"], "Auditor": f["Auditor"], "Orchestrator": f["Orchestrator"], "Authority": f["Authority"]}
+        head = {"Packet": packet, "Branch": branch, "Base": f"commit {base}", "Opened": iso(args.now), "Integrator": me,
+                "Contractor": f["Contractor"], "Auditor": f["Auditor"], "Orchestrator": f["Orchestrator"], "Authority": f["Authority"]}
         leaf = {"title": f["Title"], "head": head, "objective": draft["objective"], "scope": draft["scope"],
                 "gates": draft["gates"], "amendments": [], "results": None, "audit": None}
         text = render_leaf(leaf)
-        problems = leaf_problems(leaf) or registry_problems(args, {seat: head[seat] for seat in SEATS}) or public_problems(text)
+        problems = leaf_problems(leaf) or registry_problems(args, {name: head[name] for name in FUNCTIONS}) or public_problems(text)
         if problems:
             raise Refused("; ".join(problems))
         pattern = f"agent/dp-ses-{number:04d}-*"
@@ -919,13 +924,13 @@ def cmd_open(args):
         if taken:
             raise Refused(f"a branch for {packet} already exists: " + ", ".join(taken) + "; if it is what an abandoned or "
                           "rehearsed packet left behind, the Orchestrator deletes it (`git push origin --delete NAME`, or "
-                          "`git branch -D NAME` here) and the Manager opens again; otherwise stop and report")
+                          "`git branch -D NAME` here) and the Integrator opens again; otherwise stop and report")
         try:
             git(room, "worktree", "add", "--quiet", "-b", branch, str(wt), "main")
             (wt / LEAVES).mkdir(parents=True, exist_ok=True)
             (wt / LEAVES / f"{packet}.md").write_text(text, encoding="utf-8")
             record(args, packet, "open", me, leaf=sha256(text.encode("utf-8")), text=text, contract=contract_digest(leaf),
-                   base=base, branch=branch, seats={seat: head[seat] for seat in SEATS})
+                   base=base, branch=branch, functions={name: head[name] for name in FUNCTIONS})
         except BaseException:
             git_try(room, "worktree", "remove", "--force", str(wt))
             git_try(room, "branch", "-D", branch)
@@ -933,7 +938,7 @@ def cmd_open(args):
         with contextlib.suppress(OSError):
             (room / DRAFT).unlink()
     print(f"packet: {packet} is open on {branch}, base {base[:12]}")
-    print(f"next: the Writer ({head['Writer']}) edits only under {WORKTREE.as_posix()}/, only in scope, then runs `packet.py close`")
+    print(f"next: the Contractor ({head['Contractor']}) edits only under {WORKTREE.as_posix()}/, only in scope, then runs `packet.py close`")
     return 0
 
 
@@ -942,8 +947,8 @@ def cmd_amend(args):
     reason = one_line(args.reason, "reason")
     with room_lock(args.room):
         active = Active(args)
-        if me != active.head["Manager"]:
-            raise Refused(f"the caller is {me!r}; only the packet's Manager ({active.head['Manager']}) changes its scope")
+        if me != active.head["Integrator"]:
+            raise Refused(f"the caller is {me!r}; only the packet's Integrator ({active.head['Integrator']}) changes its scope")
         active.require_intact()
         leaf = dict(active.leaf, scope=list(active.leaf["scope"]), amendments=list(active.leaf["amendments"]),
                     results=None, audit=None)
@@ -955,7 +960,7 @@ def cmd_amend(args):
         active.write(leaf)
         active.log(args, "amend", me, contract=contract_digest(leaf), added=args.add)
     print(f"packet: {active.id} scope now holds {len(leaf['scope'])} entries ({len(args.add)} added); any earlier close is void")
-    print(f"next: the Writer ({active.head['Writer']}) runs `packet.py close`")
+    print(f"next: the Contractor ({active.head['Contractor']}) runs `packet.py close`")
     return 0
 
 
@@ -964,7 +969,7 @@ def scoped_tree(active: Active, moment: str) -> tuple[str, list[tuple[str, str]]
     outside = outside_scope(changes, active.leaf["scope"])
     if outside:
         raise Refused(f"{len(outside)} changed path(s) are outside the packet's scope {moment}: " + ", ".join(outside[:10])
-                      + "; the Manager amends the scope, or the change is undone")
+                      + "; the Integrator amends the scope, or the change is undone")
     if not changes:
         raise Refused("nothing in scope has changed; there is nothing to close")
     return tree, changes
@@ -975,8 +980,8 @@ def cmd_close(args):
     narrative = read_text_arg(args.narrative, "narrative", NARRATIVE_LIMIT)
     with room_lock(args.room):
         active = Active(args)
-        if me != active.head["Writer"]:
-            raise Refused(f"the caller is {me!r}; only the packet's Writer ({active.head['Writer']}) closes it")
+        if me != active.head["Contractor"]:
+            raise Refused(f"the caller is {me!r}; only the packet's Contractor ({active.head['Contractor']}) closes it")
         active.require_intact()
         clean_main(args.room)
         scoped_tree(active, "before the gates")
@@ -995,7 +1000,7 @@ def cmd_close(args):
                          f"the log is {RESULTS.as_posix()}; the packet stays at the work station")
         tree, changes = scoped_tree(active, "after the gates")
         closed = args.now if args.fixed_now else clock()          # when the gates had finished, not when they began
-        results = {"head": {"Closed": iso(closed), "Writer": me, "Paths changed": str(len(changes)),
+        results = {"head": {"Closed": iso(closed), "Contractor": me, "Paths changed": str(len(changes)),
                             "Deviations": str(args.deviations), "Tree": f"tree {tree}"}, "gates": rows, "narrative": narrative}
         active.write(dict(active.leaf, results=results, audit=None))
         active.log(args, "close", me, tree=tree, gates=len(rows), paths=len(changes), deviations=args.deviations)
@@ -1018,14 +1023,14 @@ def cmd_audit(args):
             raise Refused("the packet is not closed; there is nothing to audit")
         tree, _ = active.tree()
         if f"tree {tree}" != results["head"]["Tree"]:
-            raise Refused("the worktree changed after close; the Writer closes again before any verdict")
+            raise Refused("the worktree changed after close; the Contractor closes again before any verdict")
         verdict = args.verdict.upper()
         audit = {"head": {"Verdict": verdict, "Auditor": me, "Audited": iso(args.now), "Tree": f"tree {tree}"}, "note": note}
         active.write(dict(active.leaf, audit=audit))
         active.log(args, "audit", me, verdict=verdict, tree=tree)
     print(f"packet: {active.id} audit {verdict} on tree {tree[:12]}")
     print(f"next: the Orchestrator ({active.head['Orchestrator']}) runs `packet.py ship`" if verdict == "PASS" else
-          f"next: the Writer ({active.head['Writer']}) reworks and runs `packet.py close` again")
+          f"next: the Contractor ({active.head['Contractor']}) reworks and runs `packet.py close` again")
     return 0
 
 
@@ -1033,13 +1038,13 @@ def station(leaf: dict, tree: str) -> tuple[str, str]:
     """The next station and the key whose turn it is."""
     head, results, audit = leaf["head"], leaf["results"], leaf["audit"]
     if results is None:
-        return "work: the Writer edits in scope, then runs `packet.py close`", head["Writer"]
+        return "work: the Contractor edits in scope, then runs `packet.py close`", head["Contractor"]
     if results["head"]["Tree"] != f"tree {tree}":
-        return "work: the worktree changed after close; the Writer runs `packet.py close` again", head["Writer"]
+        return "work: the worktree changed after close; the Contractor runs `packet.py close` again", head["Contractor"]
     if audit is None:
         return "audit: the Auditor reads `packet.py diff`, then runs `packet.py audit --verdict pass|fail --note FILE`", head["Auditor"]
     if audit["head"]["Verdict"] != "PASS":
-        return "rework: the audit is FAIL; the Writer reworks and runs `packet.py close` again", head["Writer"]
+        return "rework: the audit is FAIL; the Contractor reworks and runs `packet.py close` again", head["Contractor"]
     return "ship: the Orchestrator runs `packet.py ship` until it prints LANDED", head["Orchestrator"]
 
 
@@ -1061,26 +1066,26 @@ def cmd_status(args):
         print(f"you: unverified ({exc})")
     if not (room / WORKTREE).is_dir():
         print(f"packet: none active; the next is DP-SES-{max(leaf_numbers(room, 'main'), default=0) + 1:04d}")
-        print("station: " + (f"open: a draft waits at {DRAFT.as_posix()}; the Manager runs `packet.py open`"
-                             if (room / DRAFT).is_file() else "draft: the Manager runs `packet.py draft`"))
+        print("station: " + (f"open: a draft waits at {DRAFT.as_posix()}; the Integrator runs `packet.py open`"
+                             if (room / DRAFT).is_file() else "draft: the Integrator runs `packet.py draft`"))
         return 0
     active = Active(args, lenient=True)
     if active.leaf is None:
         print(f"packet: {active.id} on {active.branch}")
-        print(f"station: STOP: {active.damage}; the leaf is damaged: its Manager runs `packet.py restore`")
+        print(f"station: STOP: {active.damage}; the leaf is damaged: its Integrator runs `packet.py restore`")
         return 0
     head = active.head
     tree, changes = active.tree()
     outside = outside_scope(changes, active.leaf["scope"])
     print(f"packet: {active.id}: {active.leaf['title']}")
     print(f"branch: {active.branch}, base {active.base[:12]}, worktree {WORKTREE.as_posix()}/")
-    print("seats: " + ", ".join(f"{seat} {head[seat]}" for seat in SEATS))
+    print("functions: " + ", ".join(f"{name} {head[name]}" for name in FUNCTIONS))
     print(f"work: {len(changes)} path(s) changed, {len(outside)} outside scope, tree {tree[:12]}")
     for path in outside[:10]:
         print(f"work: outside scope: {path}")
     if not active.intact():
         print("station: STOP: the leaf is not the one the tool last wrote (packet hash failure); "
-              f"its Manager ({head['Manager']}) runs `packet.py restore`")
+              f"its Integrator ({head['Integrator']}) runs `packet.py restore`")
         return 0
     text, whose = station(active.leaf, tree)
     print(f"station: {text} ({whose}{', which is you' if whose == me else ''})")
@@ -1093,12 +1098,12 @@ def cmd_restore(args):
     with room_lock(args.room):
         active = Active(args, lenient=True)
         last = ledger_last(args.room, active.id, "text")
-        seats = active.head if active.leaf is None else (ledger_last(args.room, active.id, "seats") or {}).get("seats")
-        if last is None or not isinstance(seats, dict) or sha256(last["text"].encode("utf-8")) != last.get("leaf"):
-            raise Refused(f"the ledger holds no leaf to restore for {active.id}; its Manager abandons the packet (the work "
+        functions = active.head if active.leaf is None else (ledger_last(args.room, active.id, "functions") or {}).get("functions")
+        if last is None or not isinstance(functions, dict) or sha256(last["text"].encode("utf-8")) != last.get("leaf"):
+            raise Refused(f"the ledger holds no leaf to restore for {active.id}; its Integrator abandons the packet (the work "
                           "is kept as a patch) and opens it again")
-        if me != seats["Manager"]:
-            raise Refused(f"the caller is {me!r}; only the packet's Manager ({seats['Manager']}) restores its leaf")
+        if me != functions["Integrator"]:
+            raise Refused(f"the caller is {me!r}; only the packet's Integrator ({functions['Integrator']}) restores its leaf")
         if active.text == last["text"]:
             print(f"packet: the leaf of {active.id} is already the one the tool last wrote; nothing to restore")
             return 0
@@ -1158,7 +1163,7 @@ def pull_body(active: Active, shipper: str, fallback: str | None) -> str:
              f"- Gates: {len(results['gates'])} of {len(results['gates'])} exit 0, run by the packet tool",
              f"- Deviations: {results['head']['Deviations']}",
              f"- Audit: {audit['head']['Verdict']} by {audit['head']['Auditor']} on {audit['head']['Tree']}",
-             "- Seats: " + ", ".join(f"{seat} {head[seat]}" for seat in SEATS)]
+             "- Functions: " + ", ".join(f"{name} {head[name]}" for name in FUNCTIONS)]
     if fallback:
         lines.append(f"- Shipped by {shipper} in place of the Orchestrator: {fallback}")
     return "\n".join(lines) + "\n"
@@ -1186,17 +1191,17 @@ def publish(args, active: Active, me: str, fallback: str | None, slug: str, pull
     git(room, "fetch", "--quiet", "origin", "main", timeout=NET_TIMEOUT)
     if git(room, "rev-parse", "refs/remotes/origin/main") != active.base:
         raise Refused("origin/main moved since this packet opened; a packet lands on the main it started from: "
-                      "its Manager abandons it (the work is kept as a patch) and opens it again on the new main")
+                      "its Integrator abandons it (the work is kept as a patch) and opens it again on the new main")
     tree, changes = active.tree()
     if not f"tree {tree}" == leaf["audit"]["head"]["Tree"] == leaf["results"]["head"]["Tree"]:
-        raise Refused("the content is not the tree the Auditor passed; the Writer closes again and the Auditor audits again")
+        raise Refused("the content is not the tree the Auditor passed; the Contractor closes again and the Auditor audits again")
     outside = outside_scope(changes, leaf["scope"])
     if outside:
         raise Refused(f"{len(outside)} changed path(s) are outside scope: " + ", ".join(outside[:10]))
     git(wt, "add", "-A", "--", ".")
     git(wt, "add", "-f", "--", active.leaf_rel)      # the leaf ships even where an ignore rule would hide it
     if git_try(wt, "diff", "--cached", "--quiet", "HEAD").returncode:
-        message = (f"{active.id}: {leaf['title']}\n\nPacket: {active.leaf_rel}\nWriter: {head['Writer']}\n"
+        message = (f"{active.id}: {leaf['title']}\n\nPacket: {active.leaf_rel}\nContractor: {head['Contractor']}\n"
                    f"Auditor: {head['Auditor']} (PASS on tree {tree})\nOrchestrator: {head['Orchestrator']}\n"
                    + (f"Shipped-by: {me} (fallback)\n" if fallback else ""))
         git(wt, "commit", "--quiet", "-m", message)
@@ -1232,7 +1237,7 @@ def publish(args, active: Active, me: str, fallback: str | None, slug: str, pull
         time.sleep(min(20.0, max(1.0, deadline - time.monotonic())))
     if check.get("conclusion") != "success":
         raise Failed(f"the required check {REQUIRED_CHECK} ended {check.get('conclusion')} on pull request #{pull['number']}; "
-                     "the packet returns to the Writer, who reworks and closes again")
+                     "the packet returns to the Contractor, who reworks and closes again")
     print(f"gates: {REQUIRED_CHECK} success", flush=True)
     while True:
         rest = REVIEW_SETTLE - seconds_since(args, check.get("started_at"))
@@ -1325,8 +1330,8 @@ def cmd_abandon(args):
     fallback = one_line(args.fallback, "fallback reason") if args.fallback else None
     with room_lock(args.room):
         active = Active(args, lenient=True)
-        room, seats = args.room, active.head
-        if seats is None:
+        room, functions = args.room, active.head
+        if functions is None:
             raise Refused(f"the leaf is damaged ({active.damage}) and the ledger holds no open line for {active.id}, so the "
                           "tool cannot tell whose packet it is; stop and report")
         listed = git_try(room, "ls-remote", "--heads", "origin", active.branch, timeout=NET_TIMEOUT)
@@ -1334,13 +1339,13 @@ def cmd_abandon(args):
             raise Refused("origin did not answer, so the tool cannot tell whether the branch is there; run it again")
         on_origin = bool(listed.stdout.strip())
         if on_origin:
-            require_shipper(args, seats["Orchestrator"], me, fallback, "abandons a packet whose branch is on origin")
+            require_shipper(args, functions["Orchestrator"], me, fallback, "abandons a packet whose branch is on origin")
             slug = repo_slug(room)
             pull = find_pull(room, slug, active.branch)
             if pull and pull.get("merged_at"):
                 raise Refused("the pull request is merged; run `packet.py ship` to finish, not abandon")
-        elif me != seats["Manager"]:
-            raise Refused(f"the caller is {me!r}; only the packet's Manager ({seats['Manager']}) abandons it")
+        elif me != functions["Integrator"]:
+            raise Refused(f"the caller is {me!r}; only the packet's Integrator ({functions['Integrator']}) abandons it")
         kept = keep_work(room, active)
         if on_origin and pull and pull.get("state") == "open":
             gh(room, "PATCH", f"repos/{slug}/pulls/{pull['number']}", {"state": "closed"})
@@ -1422,8 +1427,13 @@ def cmd_gate(args):
         failures, label = chain_failures(root, head), f"leaf chain at {head[:12]}"
     else:
         base = git(root, "rev-parse", "--verify", "--quiet", f"{args.base}^{{commit}}")
-        if git_try(root, "cat-file", "-e", f"{base}:{TOOL}").returncode:
+        held = git_try(root, "rev-parse", "--verify", "--quiet", f"{base}:{TOOL}")
+        if held.returncode:
             print("packet gate: bootstrap: the base holds no packet tool, so the gate does not apply to this pull request")
+            return 0
+        if held.stdout.strip() == FIRST_TOOL and not leaf_numbers(root, base):
+            print("packet gate: bootstrap: the base holds the first packet tool, whose leaf header this gate does not read, "
+                  "and no leaf, so the gate does not apply to this pull request")
             return 0
         failures, notices = gate_failures(root, base, head, args.branch)
         label = f"{args.branch} at {head[:12]}"
@@ -1450,21 +1460,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("form", nargs="?", choices=("full", "stat", "names"), default="full", help="the whole diff, a summary, or the paths")
     p.set_defaults(run=cmd_diff)
     p = sub.add_parser("draft", help=f"write the fill-in form to {DRAFT.as_posix()} (latest-wins)")
-    for flag in ("title", "writer", "auditor", "orchestrator", "authority"):
+    for flag in ("title", "contractor", "auditor", "orchestrator", "authority"):
         p.add_argument(f"--{flag}")
     p.add_argument("--objective", help="a file holding the objective, or - for standard input")
     p.add_argument("--scope", action="append", help="one scope entry; repeat for more")
     p.add_argument("--gate", action="append", help="one gate word; repeat for more; the default is full")
     p.set_defaults(run=cmd_draft)
-    p = sub.add_parser("open", help="the Manager: make the draft the one active packet, from clean main")
+    p = sub.add_parser("open", help="the Integrator: make the draft the one active packet, from clean main")
     p.set_defaults(run=cmd_open)
-    p = sub.add_parser("amend", help="the Manager: add paths to the active packet's scope")
+    p = sub.add_parser("amend", help="the Integrator: add paths to the active packet's scope")
     p.add_argument("--add", action="append", required=True, help="one path to add; repeat for more")
     p.add_argument("--reason", required=True)
     p.set_defaults(run=cmd_amend)
-    p = sub.add_parser("restore", help="the Manager: put back the leaf the tool last wrote, after a hand edit or damage")
+    p = sub.add_parser("restore", help="the Integrator: put back the leaf the tool last wrote, after a hand edit or damage")
     p.set_defaults(run=cmd_restore)
-    p = sub.add_parser("close", help="the Writer: check scope, run the gates, write the results")
+    p = sub.add_parser("close", help="the Contractor: check scope, run the gates, write the results")
     p.add_argument("--deviations", type=int, required=True, help="protocol deviations, as a count")
     p.add_argument("--narrative", required=True, help=f"a file of at most {NARRATIVE_LIMIT} characters, or - for standard input")
     p.set_defaults(run=cmd_close)

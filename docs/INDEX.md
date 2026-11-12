@@ -42,7 +42,7 @@ Scripts (STELA's sections: rationale, mechanics, anchor, warnings):
 * [ops/specs/scripts/constitution.md](ops/specs/scripts/constitution.md): the PoT authorization gate; a changed law needs its coupled ledger entry, snapshot and authority leaf.
 * [ops/specs/scripts/redact.md](ops/specs/scripts/redact.md): the public-copy renderer; digests the operator's words, placeholders host paths and session identifiers, fails closed on the unclassified.
 * [ops/specs/scripts/notice.md](ops/specs/scripts/notice.md): the operator-only closeout notice from one gauge row; dry run writes no state.
-* [ops/specs/scripts/packet.md](ops/specs/scripts/packet.md): how a change ships: one dispatch packet per pull request, the stations and their seats, the leaf, the ship steps, the gate the required check runs, and recovery.
+* [ops/specs/scripts/packet.md](ops/specs/scripts/packet.md): how a change ships: one dispatch packet per pull request, the stations and the delivery functions that carry them, the leaf, the ship steps, the gate the required check runs, and recovery.
 
 Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each spec opening with the script's own first line:
 * [ops/specs/scripts/pressure.md](ops/specs/scripts/pressure.md): ported from `Scripts/analyze_codex_compact_context_pressure.py`; Gate copied Codex JSONL candidates for compact/context pressure.
@@ -100,7 +100,7 @@ Tests:
 * [ops/specs/tools/test/myself.md](ops/specs/tools/test/myself.md): the self-check's suite.
 * [ops/specs/tools/test/notice.md](ops/specs/tools/test/notice.md): the notice's suite.
 * [ops/specs/tools/test/rotate.md](ops/specs/tools/test/rotate.md): the rotate runner's suite, synthetic dry-run phases 0 to 9.
-* [ops/specs/tools/test/packet.md](ops/specs/tools/test/packet.md): what `tools/test/test_packet.py` proves, by group (89).
+* [ops/specs/tools/test/packet.md](ops/specs/tools/test/packet.md): what `tools/test/test_packet.py` proves, by group (90).
 
 ## 4. Contracts and Guides (earlier clinic work)
 * [clinic-aggregate-contract.md](clinic-aggregate-contract.md): the public clinic health file (`logs/clinic-aggregate.json`) for consumers outside Sessions. (private: not in the repository; on the host only.)

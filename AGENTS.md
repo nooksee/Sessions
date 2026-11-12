@@ -66,13 +66,15 @@ existing content as a side effect. Other products keep their own repositories.
 A change to this repository reaches `main` only as one dispatch packet
 (CONSTRAINTS C17). After the read-in, run
 `python3 -I -B ops/lib/scripts/packet.py status`: it prints the room's state,
-the one active packet and whose station is next. The Manager drafts and opens;
-the Writer edits only in the packet worktree `var/tmp/packet/`, only in scope,
-and closes; the Auditor records the verdict; the Orchestrator ships (C16). Do
-not edit tracked files in the room's own checkout, and do not commit, push,
-merge or pull by hand: the room stays on clean `main`, and the required check
-on GitHub refuses a pull request that is not one valid packet. The procedure
-is in `docs/MANUAL.md` section 1B and `docs/ops/specs/scripts/packet.md`.
+the one active packet and whose station is next. The packet's leaf names by
+registry key who carries each of the four delivery functions: the Integrator
+drafts and opens; the Contractor edits only in the packet worktree
+`var/tmp/packet/`, only in scope, and closes; the Auditor records the verdict;
+the Orchestrator ships (C16). Do not edit tracked files in the room's own
+checkout, and do not commit, push, merge or pull by hand: the room stays on
+clean `main`, and the required check on GitHub refuses a pull request that is
+not one valid packet. The procedure is in `docs/MANUAL.md` section 1B and
+`docs/ops/specs/scripts/packet.md`.
 
 ## Hard Safety Boundary
 

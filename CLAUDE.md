@@ -66,12 +66,13 @@ you carry.
 
 Then look at the work. `python3 -I -B ops/lib/scripts/packet.py status` prints
 the room's state, the one active dispatch packet and whose station is next. A
-change reaches `main` only as a packet (CONSTRAINTS C17): the Manager opens it,
-the Writer edits only in the packet worktree `var/tmp/packet/` and only in
-scope, the Auditor records the verdict, and the Orchestrator ships. Leave the
-room's own checkout on clean `main`, and do not commit, push, merge or pull by
-hand. The status line names your station only when you are verified; it
-changes nothing about waiting for the operator when you are not.
+change reaches `main` only as a packet (CONSTRAINTS C17), whose leaf names by
+registry key who carries each of the four delivery functions: the Integrator
+opens it, the Contractor edits only in the packet worktree `var/tmp/packet/`
+and only in scope, the Auditor records the verdict, and the Orchestrator
+ships. Leave the room's own checkout on clean `main`, and do not commit, push,
+merge or pull by hand. The status line names your station only when you are
+verified; it changes nothing about waiting for the operator when you are not.
 
 **Do not look for a session identifier in this file.** One used to be written
 here as a literal, and between 2026-07-16 and 2026-09-08 it went two rotations

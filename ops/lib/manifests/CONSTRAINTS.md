@@ -213,7 +213,7 @@ commit of exactly the audited tree, the push, the pull request, the required
 check, the merge by rebase of that exact head, the proof that the room's
 `main` equals origin's, and the removal of the packet branch and worktree.
 Git work is a workflow handoff, not an authority. The Manager, the writers and
-the Auditor do not commit, push, merge or pull as a routine; the Manager's
+the Auditor do not commit, push, merge or pull as a routine; the Integrator's
 `open` makes the local branch and worktree through the tool and touches
 neither origin nor `main`. The Orchestrator decides nothing about content,
 review or acceptance, writes no source, document or record but its own
@@ -231,22 +231,27 @@ no other office's adoption.
 Dispatch packets. A change reaches `main` only as one dispatch packet: one id
 (`DP-SES-NNNN`), one branch (`agent/dp-ses-NNNN-YYYY-MM-DD`), one pull request
 and one kept leaf (`archives/packets/DP-SES-NNNN.md`). One packet is active in
-the room at a time, from open to landing. Each station is one command of
-`ops/lib/scripts/packet.py`, bound to the caller's own registry key. The
-Manager drafts and opens from clean `main` level with origin, naming the
-Writer, the Auditor, the Orchestrator, the authority by ledger number or
-digest, the exact scope and the gates. The Writer edits only in the packet
-worktree `var/tmp/packet/`, only in scope, and closes, which runs the gates
-and records a count of deviations. The Auditor, never the Writer, records PASS
-or FAIL bound to the exact tree. The Orchestrator ships (C16). Only the
-Manager's amend changes a contract, and it voids an earlier close. No station
-is skipped and no content changes after the audit: the required check on
-GitHub judges every pull request by the same rules from Git objects alone, and
-an unanswered review finding stops the merge. The room's own checkout stays on
-clean `main`. The draft, the gate log and the worktree are latest-wins
-disposable working files; the leaf is the one kept record and is public by
-construction: it cites and never quotes. Board and ledger lines ride inside
-the packet that causes them. Mechanics, limits and recovery are in
+the room at a time, from open to landing. The leaf names, by registry key, who
+carries each of the four delivery functions of the Central Repository's PoT
+section 5, borrowed here unchanged (C16): the Integrator, the Contractor, the
+Auditor and the Orchestrator. A function is work in one packet; it is not a
+seat, an identity or a grant of authority. In this room the Manager
+integrates. Each station is one command of `ops/lib/scripts/packet.py`, bound
+to the caller's own registry key. The Integrator drafts and opens from clean
+`main` level with origin, naming the Contractor, the Auditor, the
+Orchestrator, the authority by ledger number or digest, the exact scope and
+the gates. The Contractor edits only in the packet worktree `var/tmp/packet/`,
+only in scope, and closes, which runs the gates and records a count of
+deviations. The Auditor, never the Contractor, records PASS or FAIL bound to
+the exact tree. The Orchestrator ships (C16). Only the Integrator's amend
+changes a contract, and it voids an earlier close. No station is skipped and
+no content changes after the audit: the required check on GitHub judges every
+pull request by the same rules from Git objects alone, and an unanswered
+review finding stops the merge. The room's own checkout stays on clean `main`.
+The draft, the gate log and the worktree are latest-wins disposable working
+files; the leaf is the one kept record and is public by construction: it cites
+and never quotes. Board and ledger lines ride inside the packet that causes
+them. Mechanics, limits and recovery are in
 `docs/ops/specs/scripts/packet.md`. This clause changes no other obligation of
 review, authority or custody. The workflow is active from the landing of the
 tool, by the operator's direction of 2026-11-12.

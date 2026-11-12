@@ -21,7 +21,7 @@ A packet has to stand alone. The resident receiving it may have been rotated, co
    - **Report:** where the result goes (for the Sessions team, the owner's own file in `storage/handoff/`), and what it contains: files written with sizes, what is real versus placeholder, tests run, deviations counted, and the release of the writer claim.
 3. **Delivery.** the operator pastes the packet into the resident's own chat. A packet written to a file is a draft until he does.
 4. **Close.** The owner reports by the stop condition. Results that last are promoted from the team room to `archives/receipts/` or the office handoff.
-5. **Repository work travels as a dispatch packet.** Since 2026-11-12 a change to tracked files is not assigned on this form. It is one dispatch packet, and its leaf is the assignment: the Writer is the owner, the scope is exact, the authority is cited, and the gates are the stop condition (`docs/ops/specs/scripts/packet.md`; CONSTRAINTS C17). This form remains for work that changes no tracked file.
+5. **Repository work travels as a dispatch packet.** Since 2026-11-12 a change to tracked files is not assigned on this form. It is one dispatch packet, and its leaf is the assignment: the Contractor is the owner, the scope is exact, the authority is cited, and the gates are the stop condition (`docs/ops/specs/scripts/packet.md`; CONSTRAINTS C17). This form remains for work that changes no tracked file.
 
 The fill-in fields are in `ops/src/runbook/agents/agent-input.yaml`. No
 automated packet validator is provided; the owner checks the required fields
