@@ -64,6 +64,15 @@ retire your own leaves as they change; no one approves a leaf. Auto memory is
 off in this room (`.claude/settings.json`): the mind and your handoff are what
 you carry.
 
+Then look at the work. `python3 -I -B ops/lib/scripts/packet.py status` prints
+the room's state, the one active dispatch packet and whose station is next. A
+change reaches `main` only as a packet (CONSTRAINTS C17): the Manager opens it,
+the Writer edits only in the packet worktree `var/tmp/packet/` and only in
+scope, the Auditor records the verdict, and the Orchestrator ships. Leave the
+room's own checkout on clean `main`, and do not commit, push, merge or pull by
+hand. The status line names your station only when you are verified; it
+changes nothing about waiting for the operator when you are not.
+
 **Do not look for a session identifier in this file.** One used to be written
 here as a literal, and between 2026-07-16 and 2026-09-08 it went two rotations
 stale while still reading as fact: the first file a waking resident opens,

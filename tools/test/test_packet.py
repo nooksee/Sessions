@@ -1,0 +1,1304 @@
+#!/usr/bin/env python3
+"""Tests for ops/lib/scripts/packet.py, in synthetic rooms only. Standard library only.
+
+Every case builds its own room, bare origin and registry in a temporary
+directory. GitHub is a small program named gh that the test puts first on
+PATH; it keeps its state in a file and merges by rewriting commits in the bare
+origin, as a rebase merge does. No real room, registry, remote or account is
+read or written. Run:
+
+    python3 -I -B tools/test/test_packet.py
+"""
+import contextlib
+import datetime as dt
+import importlib.util
+import io
+import json
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+PACKET = Path(__file__).resolve().parents[2] / "ops" / "lib" / "scripts" / "packet.py"
+_spec = importlib.util.spec_from_file_location("packet", PACKET)
+packet = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(packet)
+
+KEYS = ("mgr", "wri", "aud", "orc", "out")          # manager, writer, auditor, orchestrator, one more resident
+SESSION = "0000f00d-0000-4000-8000-00000000000{}"   # rotate's synthetic convention: the first four are zeros
+T0 = dt.datetime(2026, 11, 12, 10, 0, tzinfo=dt.timezone.utc)
+IDENTITY = {"GIT_AUTHOR_NAME": "Synthetic Room", "GIT_AUTHOR_EMAIL": "synthetic@example.invalid",
+            "GIT_COMMITTER_NAME": "Synthetic Room", "GIT_COMMITTER_EMAIL": "synthetic@example.invalid"}
+TEMPLATE = None                                     # built once by setUpModule: origin.git, room, bin/gh
+
+IGNORE = "/var/tmp/*\n!/var/tmp/.gitkeep\n/logs/\n/storage/handoff/*\n!/storage/handoff/.gitkeep\n__pycache__/\n"
+SUITE_OK = "print('ok')\n"
+SUITE_ENV = ("import os, sys\n"
+             "mask = os.umask(0)\n"
+             "print('umask=' + oct(mask))\n"
+             "sys.exit(1 if 'MIND_TEST_CALLER' in os.environ else 0)\n")
+SUITE_FLAG = ("import pathlib, sys\n"
+              "if pathlib.Path('var/tmp/stray').exists():\n"
+              "    pathlib.Path('stray.txt').write_text('made by a gate')\n"
+              "sys.exit(1 if pathlib.Path('var/tmp/fail').exists() else 0)\n")
+SELF_TEST = "#!/usr/bin/env bash\n[ \"$1\" = \"--test\" ] && echo ok\n"
+
+FAKE_GH = r'''
+import json, os, subprocess, sys, urllib.parse
+
+path = os.environ["FAKE_GH_STATE"]
+state = json.load(open(path))
+argv = sys.argv[1:]
+state["calls"].append(argv)
+
+
+def finish(code, text, stream):
+    json.dump(state, open(path, "w"))
+    print(text, file=stream)
+    sys.exit(code)
+
+
+def out(value):
+    finish(0, json.dumps(value), sys.stdout)
+
+
+def fail(message):
+    finish(1, message, sys.stderr)
+
+
+def git(*args, env=None):
+    done = subprocess.run(["git", "-C", state["origin"], *args], capture_output=True, text=True, env=env)
+    if done.returncode:
+        fail("fake gh: git " + args[0] + ": " + done.stderr.strip())
+    return done.stdout.strip()
+
+
+if argv[:2] != ["api", "-X"]:
+    fail("fake gh: only `gh api -X METHOD ENDPOINT` is known")
+method, endpoint = argv[2], argv[3]
+fields = {}
+for flag, pair in zip(argv[4::2], argv[5::2]):
+    key, _, value = pair.partition("=")
+    fields[key] = open(value[1:]).read() if flag == "-F" and value.startswith("@") else value
+if method in state["fail"]:
+    fail(state["fail"][method])
+if state.get("raw"):
+    finish(0, state["raw"], sys.stdout)
+route, _, query = endpoint.partition("?")
+query = dict(urllib.parse.parse_qsl(query))
+rest = route.split("/")[3:]
+pulls = state["pulls"]
+
+
+def pull(number):
+    return next(p for p in pulls if p["number"] == int(number))
+
+
+if method == "GET" and rest == ["pulls"]:
+    out([p for p in pulls if p["head"]["ref"] == query["head"].split(":", 1)[1]])
+if method == "POST" and rest == ["pulls"]:
+    made = {"number": state["next"], "state": "open", "merged_at": None, "title": fields["title"], "body": fields["body"],
+            "base": {"ref": fields["base"]}, "user": {"login": "room-account"},
+            "head": {"ref": fields["head"], "sha": git("rev-parse", "refs/heads/" + fields["head"])}}
+    state["next"] += 1
+    pulls.append(made)
+    out(made)
+if method == "GET" and rest[0] == "commits" and rest[2:] == ["check-runs"]:
+    out({"check_runs": state["checks"]})
+if method == "GET" and rest[0] == "pulls" and rest[2:] == ["comments"]:
+    page, per = int(query.get("page", 1)), int(query.get("per_page", 30))
+    out(state["comments"][(page - 1) * per:page * per])
+if method == "PUT" and rest[0] == "pulls" and rest[2:] == ["merge"]:
+    found = pull(rest[1])
+    head, base = git("rev-parse", "refs/heads/" + found["head"]["ref"]), git("rev-parse", "refs/heads/main")
+    if fields.get("sha") != head or fields.get("merge_method") != "rebase":
+        fail("Head branch was modified. Review and try the merge again.")
+    env = dict(os.environ, GIT_AUTHOR_NAME="Synthetic Room", GIT_AUTHOR_EMAIL="synthetic@example.invalid",
+               GIT_COMMITTER_NAME="Fake Host", GIT_COMMITTER_EMAIL="host@example.invalid")
+    parent = base
+    for commit in git("rev-list", "--reverse", base + ".." + head).split():
+        parent = git("commit-tree", git("rev-parse", commit + "^{tree}"), "-p", parent,
+                     "-m", git("log", "-1", "--format=%B", commit), env=env)
+    git("update-ref", "refs/heads/main", parent)
+    found.update(state="closed", merged_at="2026-11-12T12:00:00Z")
+    out({"merged": True, "sha": parent})
+if method == "PATCH" and rest[0] == "pulls":
+    pull(rest[1])["state"] = fields["state"]
+    out(pull(rest[1]))
+if method == "POST" and rest[0] == "issues" and rest[2:] == ["comments"]:
+    state["notes"].append({"number": int(rest[1]), "body": fields["body"]})
+    out({"id": len(state["notes"])})
+fail("fake gh: unexpected call " + method + " " + route)
+'''
+
+
+def git(cwd, *args, env=None, check=True) -> str:
+    done = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True,
+                          env=dict(os.environ, **IDENTITY, **(env or {})))
+    if check and done.returncode:
+        raise AssertionError(f"git {' '.join(args)} failed: {done.stderr}")
+    return done.stdout.strip()
+
+
+def derive(repo, parent: str, changes: dict, message: str = "derived") -> str:
+    """A new commit on parent with files written (text) or removed (None), by plumbing; no ref or checkout moves."""
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {"GIT_INDEX_FILE": str(Path(tmp) / "index")}
+        git(repo, "read-tree", parent, env=env)
+        for path, content in changes.items():
+            if content is None:
+                git(repo, "update-index", "--force-remove", "--", path, env=env)
+            else:
+                blob = subprocess.run(["git", "-C", str(repo), "hash-object", "-w", "--stdin"], input=content,
+                                      capture_output=True, text=True, check=True).stdout.strip()
+                git(repo, "update-index", "--add", "--cacheinfo", f"100644,{blob},{path}", env=env)
+        return git(repo, "commit-tree", git(repo, "write-tree", env=env), "-p", parent, "-m", message)
+
+
+def build_template(root: Path) -> None:
+    origin, room = root / "origin.git", root / "room"
+    git(root, "-c", "init.templateDir=", "init", "-q", "--bare", "-b", "main", str(origin))
+    git(root, "-c", "init.templateDir=", "init", "-q", "-b", "main", str(room))
+    for key, value in (("user.name", "Synthetic Room"), ("user.email", "synthetic@example.invalid"),
+                       ("commit.gpgsign", "false"), ("push.negotiate", "false")):
+        git(room, "config", key, value)
+    files = {".gitignore": IGNORE, "PoT.md": "The law of a synthetic room.\n", "docs/a.md": "alpha\n", "docs/b.md": "beta\n",
+             "tools/test/test_ok.py": SUITE_OK, "tools/test/test_env.py": SUITE_ENV, "tools/test/test_flag.py": SUITE_FLAG,
+             "ops/bin/help": SELF_TEST, "ops/bin/template": SELF_TEST, "storage/handoff/.gitkeep": "", "var/tmp/.gitkeep": "",
+             packet.TOOL: "# a stand-in, so the gate's bootstrap rule sees a base that holds the packet tool\n"}
+    for rel, text in files.items():
+        (room / rel).parent.mkdir(parents=True, exist_ok=True)
+        (room / rel).write_text(text)
+    for word in ("help", "template"):
+        (room / "ops" / "bin" / word).chmod(0o755)
+    git(room, "add", "-A")
+    git(room, "commit", "-q", "-m", "synthetic main")
+    git(room, "remote", "add", "origin", str(origin))
+    git(room, "push", "-q", "-u", "origin", "main")
+    (root / "bin").mkdir()
+    (root / "bin" / "gh").write_text(f"#!{sys.executable}\n{FAKE_GH}")
+    (root / "bin" / "gh").chmod(0o755)
+
+
+def setUpModule():
+    global TEMPLATE
+    TEMPLATE = Path(tempfile.mkdtemp(prefix="packet-template-")).resolve()
+    build_template(TEMPLATE)
+
+
+def tearDownModule():
+    shutil.rmtree(TEMPLATE, ignore_errors=True)
+
+
+class Result:
+    def __init__(self, code, out, err):
+        self.code, self.out, self.err, self.text = code, out, err, out + err
+
+
+class Room:
+    """One synthetic room: a clone on main, its bare origin, a registry of invented residents, and a fake gh."""
+
+    def __init__(self, base: Path):
+        self.base = base.resolve()
+        shutil.copytree(TEMPLATE, self.base, dirs_exist_ok=True)
+        self.room, self.origin, self.wt = self.base / "room", self.base / "origin.git", self.base / "room" / packet.WORKTREE
+        git(self.room, "remote", "set-url", "origin", str(self.origin))
+        rows = [{"key": key, "person": f"Person {key}", "role": "Role", "provider": "claude", "room": str(self.room),
+                 "session_id": SESSION.format(n)} for n, key in enumerate(KEYS)]
+        rows.append(dict(rows[0], key="far", room=str(self.base / "elsewhere"), session_id=SESSION.format(9)))
+        self.registry = self.base / "registry.json"
+        self.registry.write_text(json.dumps({"identities": rows}))
+        self.state = self.base / "gh.json"
+        self.gh(origin=str(self.origin), pulls=[], next=7, comments=[], notes=[], calls=[], fail={}, raw="",
+                checks=[{"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "success",
+                         "started_at": "2026-11-12T09:00:00Z"}])
+        self.tick, self.said = 0, []
+
+    def gh(self, **change) -> dict:
+        state = json.loads(self.state.read_text()) if self.state.exists() else {}
+        if change:
+            state.update(change)
+            self.state.write_text(json.dumps(state))
+        return state
+
+    def run(self, *argv, who=None, stdin="", env=None, now=None) -> Result:
+        self.tick += 1
+        when = now or packet.iso(T0 + dt.timedelta(minutes=self.tick))
+        full = ["--room", str(self.room), "--registry", str(self.registry), "--now", when, *argv]
+        environ = {k: v for k, v in os.environ.items() if k != packet.SEAM}
+        environ.update(PATH=f"{self.base / 'bin'}{os.pathsep}{os.environ['PATH']}", FAKE_GH_STATE=str(self.state))
+        if who:
+            environ[packet.SEAM] = who
+        environ.update(env or {})
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.dict(os.environ, environ, clear=True), mock.patch.object(sys, "stdin", io.StringIO(stdin)), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = packet.main(full)
+        result = Result(code, out.getvalue(), err.getvalue())
+        self.said.append(result.text)
+        return result
+
+    def note(self, text: str) -> str:
+        self.tick += 1
+        path = self.base / f"text-{self.tick}.md"
+        path.write_text(text)
+        return str(path)
+
+    def draft(self, title="Say more in the docs", writer="wri", auditor="aud", orchestrator="orc", authority="RoR-25",
+              scope=("docs/",), gates=("ok",), objective="Make the first page say more than one word.") -> Result:
+        argv = ["draft", "--title", title, "--writer", writer, "--auditor", auditor, "--orchestrator", orchestrator,
+                "--authority", authority, "--objective", "-"]
+        for entry in scope:
+            argv += ["--scope", entry]
+        for gate in gates:
+            argv += ["--gate", gate]
+        return self.run(*argv, stdin=objective)
+
+    def open(self, who="mgr", **draft) -> Result:
+        self.draft(**draft)
+        return self.run("open", who=who)
+
+    def edit(self, rel="docs/a.md", text="alpha, and more\n") -> None:
+        (self.wt / rel).parent.mkdir(parents=True, exist_ok=True)
+        (self.wt / rel).write_text(text)
+
+    def close(self, who="wri", deviations="0", narrative="One page changed. Nothing else was touched.") -> Result:
+        return self.run("close", "--deviations", deviations, "--narrative", self.note(narrative), who=who)
+
+    def audit(self, verdict="pass", who="aud", note="Read the change against the objective. It does what it says.") -> Result:
+        return self.run("audit", "--verdict", verdict, "--note", self.note(note), who=who)
+
+    def ship(self, *flags, who="orc", **more) -> Result:
+        return self.run("ship", *flags, who=who, **more)
+
+    def through(self, station: str, text="alpha, and more\n", **draft) -> "Room":
+        """Run the stations up to and including the one named; each must succeed."""
+        steps = [("open", lambda: self.open(**draft)), ("edit", lambda: self.edit(text=text)), ("close", self.close),
+                 ("audit", self.audit), ("hold", lambda: self.ship("--hold")), ("ship", self.ship)]
+        for name, step in steps:
+            result = step()
+            want = 3 if name == "hold" else 0
+            if result is not None and result.code != want:
+                raise AssertionError(f"{name} ended {result.code}: {result.text}")
+            if name == station:
+                return self
+        raise AssertionError(f"no station named {station}")
+
+    def leaf_path(self, number=1) -> Path:
+        return self.wt / packet.LEAVES / f"DP-SES-{number:04d}.md"
+
+    def leaf(self, number=1) -> dict:
+        return packet.parse_leaf(self.leaf_path(number).read_text())
+
+    def ledger(self) -> list[dict]:
+        path = self.room / packet.LEDGER
+        return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+    def head(self, ref="main", where=None) -> str:
+        return git(where or self.room, "rev-parse", ref)
+
+    def advance_origin(self, text="moved\n") -> str:
+        """Another landing on origin's main, made behind the room's back."""
+        commit = derive(self.origin, self.head("refs/heads/main", self.origin), {"docs/b.md": text}, "another landing")
+        git(self.origin, "update-ref", "refs/heads/main", commit)
+        return commit
+
+    def merge_outside(self) -> None:
+        """The pull request is merged on the host's own page, not by the tool."""
+        number = self.gh()["pulls"][-1]["number"]
+        env = dict(os.environ, PATH=f"{self.base / 'bin'}{os.pathsep}{os.environ['PATH']}", FAKE_GH_STATE=str(self.state))
+        branch = git(self.wt, "rev-parse", "--abbrev-ref", "HEAD")
+        subprocess.run(["gh", "api", "-X", "PUT", f"repos/o/r/pulls/{number}/merge", "-f", "merge_method=rebase",
+                        "-f", f"sha={self.head(branch, self.origin)}"], env=env, check=True, capture_output=True)
+
+
+class Case(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory(prefix="packet-test-")
+        self.addCleanup(self._tmp.cleanup)
+        self.r = Room(Path(self._tmp.name))
+
+    def refused(self, result: Result, *words: str, code: int = 2) -> None:
+        self.assertEqual(code, result.code, result.text)
+        for word in words:
+            self.assertIn(word, result.text)
+
+
+def sample_leaf(**head) -> dict:
+    base = {"Packet": "DP-SES-0001", "Branch": "agent/dp-ses-0001-2026-11-12", "Base": "commit " + "a" * 40,
+            "Opened": "2026-11-12T10:01:00Z", "Manager": "mgr", "Writer": "wri", "Auditor": "aud", "Orchestrator": "orc",
+            "Authority": "RoR-25"}
+    return {"title": "Say more in the docs", "head": dict(base, **head), "objective": "Make the first page say more.",
+            "scope": ["docs/"], "gates": ["ok"], "amendments": [], "results": None, "audit": None}
+
+
+def closed(leaf: dict, **results) -> dict:
+    head = {"Closed": "2026-11-12T10:05:00Z", "Writer": leaf["head"]["Writer"], "Paths changed": "1", "Deviations": "0",
+            "Tree": "tree " + "b" * 40}
+    return dict(leaf, results={"head": dict(head, **results), "gates": [(0, 1, "tools/test/test_ok.py")],
+                               "narrative": "One page changed."})
+
+
+def audited(leaf: dict, **audit) -> dict:
+    head = {"Verdict": "PASS", "Auditor": leaf["head"]["Auditor"], "Audited": "2026-11-12T10:06:00Z",
+            "Tree": leaf["results"]["head"]["Tree"]}
+    return dict(leaf, audit={"head": dict(head, **audit), "note": "Read against the objective."})
+
+
+# --------------------------------------------------------------------------
+class LeafFormat(unittest.TestCase):
+    def test_a_leaf_round_trips_at_every_station(self):
+        contract = sample_leaf()
+        full = audited(closed(dict(contract, amendments=["2026-11-12T10:03:00Z mgr added docs/: wider than first drawn"])))
+        for leaf in (contract, closed(contract), full):
+            text = packet.render_leaf(leaf)
+            self.assertEqual(leaf, packet.parse_leaf(text))
+            self.assertEqual([], packet.leaf_problems(leaf))
+            self.assertTrue(text.endswith("\n") and not text.endswith("\n\n"))
+
+    def test_an_objective_of_several_paragraphs_round_trips(self):
+        leaf = dict(sample_leaf(), objective="First paragraph.\n\nSecond paragraph.\n- a list line")
+        self.assertEqual(leaf, packet.parse_leaf(packet.render_leaf(leaf)))
+
+    def test_anything_but_canonical_form_is_refused(self):
+        text = packet.render_leaf(audited(closed(sample_leaf())))
+        broken = {"a trailing space": text.replace("- Writer: wri\n", "- Writer: wri \n", 1),
+                  "header out of order": text.replace("- Manager: mgr\n- Writer: wri\n", "- Writer: wri\n- Manager: mgr\n"),
+                  "an unknown section": text + "## Extra\n\nwords\n",
+                  "text before the first section": text.replace("## Objective", "stray\n\n## Objective"),
+                  "sections out of order": text.replace("## Scope\n\n- docs/\n\n## Gates\n\n- ok\n", "## Gates\n\n- ok\n\n## Scope\n\n- docs/\n"),
+                  "no blank line after a heading": text.replace("## Scope\n\n", "## Scope\n"),
+                  "a results line that is no gate": text.replace("- Gate: exit 0", "- Note: exit 0"),
+                  "an audit of five lines": text.replace("- Verdict: PASS\n", "- Verdict: PASS\n- Verdict: PASS\n"),
+                  "an audit without results": packet.render_leaf(dict(audited(closed(sample_leaf())), results=None)),
+                  "another id in the title": text.replace("# DP-SES-0001:", "# DP-SES-0002:"),
+                  "no final newline": text.rstrip("\n"), "empty": ""}
+        for name, value in broken.items():
+            with self.subTest(name), self.assertRaises(packet.Refused):
+                packet.parse_leaf(value)
+
+    def test_every_rule_of_a_valid_leaf(self):
+        cases = [(sample_leaf(Auditor="wri"), "no seat audits its own work"),
+                 (sample_leaf(Packet="DP-SES-1"), "not DP-SES-NNNN"),
+                 (sample_leaf(Branch="agent/dp-ses-0002-2026-11-12"), "Branch:"),
+                 (sample_leaf(Branch="feature/x"), "Branch:"),
+                 (sample_leaf(Base="commit abc"), "Base:"),
+                 (sample_leaf(Opened="yesterday"), "Opened:"),
+                 (sample_leaf(Writer="Wri Ter"), "Writer: not a registry key"),
+                 (sample_leaf(Authority=""), "Authority: empty"),
+                 (dict(sample_leaf(), title="t" * 59), "Title: 59 characters"),
+                 (dict(sample_leaf(), objective="x" * 801), "Objective: 801 characters"),
+                 (dict(sample_leaf(), objective="fine\n# a heading"), "would read as a heading"),
+                 (dict(sample_leaf(), objective="an em dash \u2014 here"), "EM DASH"),
+                 (dict(sample_leaf(), scope=["docs/", "docs/"]), "each once"),
+                 (dict(sample_leaf(), scope=[f"p{n}" for n in range(61)]), "at most 60"),
+                 (dict(sample_leaf(), gates=["full", "ok"]), "Gates:"),
+                 (dict(sample_leaf(), gates=["Ok"]), "Gates:"),
+                 (dict(sample_leaf(), gates=["ok", "ok"]), "Gates:"),
+                 (dict(sample_leaf(), amendments=["sometime mgr added docs/: why"]), "Amendments:"),
+                 (dict(sample_leaf(), amendments=["2026-11-12T10:03:00Z mgr added tools/: why"]), "Amendments:"),
+                 (closed(sample_leaf(), Writer="out"), "Results: Closed"),
+                 (closed(sample_leaf(), **{"Paths changed": "0"}), "count of at least 1"),
+                 (closed(sample_leaf(), Deviations="none"), "Deviations is a count"),
+                 (closed(sample_leaf(), Tree="tree short"), "Results: Tree"),
+                 (audited(closed(sample_leaf()), Verdict="MAYBE"), "PASS or FAIL"),
+                 (audited(closed(sample_leaf()), Auditor="out"), "by the packet's Auditor"),
+                 (audited(closed(sample_leaf()), Tree="b" * 40), "Audit: Tree")]
+        for leaf, expected in cases:
+            with self.subTest(expected):
+                self.assertIn(expected, "; ".join(packet.leaf_problems(leaf)))
+
+    def test_results_must_hold_passing_gates_that_the_contract_names(self):
+        leaf = closed(sample_leaf())
+        failing = dict(leaf, results=dict(leaf["results"], gates=[(1, 2, "tools/test/test_ok.py")]))
+        self.assertIn("1 gate(s) did not exit 0", "; ".join(packet.leaf_problems(failing)))
+        none = dict(leaf, results=dict(leaf["results"], gates=[]))
+        self.assertIn("no gate was run", "; ".join(packet.leaf_problems(none)))
+        other = dict(leaf, results=dict(leaf["results"], gates=[(0, 1, "tools/test/test_env.py")]))
+        self.assertIn("not the gates the contract names", "; ".join(packet.leaf_problems(other)))
+        full = dict(leaf, gates=["full"], results=dict(leaf["results"], gates=[(0, 1, "tools/test/test_env.py")]))
+        self.assertEqual([], packet.leaf_problems(full))
+        self.assertEqual(["tools/test/test_ok.py", "ops/bin/help --test"], packet.gate_names(["ok", "help"]))
+
+    def test_scope_entries_are_plain_paths_and_never_a_leaf(self):
+        good = ["docs/", "docs/a.md", ".github/workflows/sessions-gates.yml", "archives/packets/README.md", "RoR.md"]
+        bad = ["", "/", "/etc/passwd", "~/x", "../x", "..", ".", "./docs", "docs//a.md", "docs/../x", ".git/config", "a b",
+               "docs/*.md", "docs/[a].md", "-rf", "a\"b", "caf\u00e9/", "archives/", "archives/packets/",
+               "archives/packets/DP-SES-0001.md", "archives/packets/DP-SES-9999.md"]
+        for entry in good:
+            self.assertIsNone(packet.scope_problem(entry), entry)
+        for entry in bad:
+            self.assertIsNotNone(packet.scope_problem(entry), entry)
+
+    def test_scope_matches_an_exact_path_or_a_folder_prefix_only(self):
+        scope = ["docs/", "README.md"]
+        self.assertTrue(packet.in_scope("docs/a.md", scope) and packet.in_scope("README.md", scope))
+        for path in ("docs", "docsx/a.md", "README.md.bak", "x/README.md", "tools/docs/a.md"):
+            self.assertFalse(packet.in_scope(path, scope), path)
+
+    def test_a_leaf_holds_nothing_a_public_record_may_not(self):
+        clean = packet.render_leaf(audited(closed(sample_leaf())))
+        self.assertEqual([], packet.public_problems(clean))
+        held = {"a quotation": 'He said "do it now" and so it was done.',
+                "a host path": "The file is at /home/someone/Sessions/RoR.md today.",
+                "a session identifier": "The session 0b9e4d1c-52aa-4c1f-9d2e-3f6a7b8c9d0e was rotated.",
+                "a bare short hash": "It was fixed in 5468ce4b42 last week."}
+        for name, sentence in held.items():
+            with self.subTest(name):
+                self.assertTrue(packet.public_problems(clean.replace("One page changed.", sentence)))
+        self.assertEqual([], packet.public_problems(clean.replace("One page changed.", "It is commit 5468ce4b42 on main.")))
+
+    def test_text_rules(self):
+        self.assertEqual([], packet.text_problems("A plain line.", "x", 50, one_line=True))
+        self.assertTrue(packet.text_problems(" padded", "x", 50, one_line=True))
+        self.assertTrue(packet.text_problems("two\nlines", "x", 50, one_line=True))
+        self.assertTrue(packet.text_problems("a tab\there", "x", 50))
+        self.assertTrue(packet.text_problems("trailing \nspace", "x", 50))
+        self.assertEqual(["x: empty"], packet.text_problems("  \n", "x", 50))
+        self.assertEqual("a\n\nb", packet.clean_text("\r\n a\r\n\r\nb  \n\n".replace(" a", "a")))
+
+    def test_a_draft_round_trips_and_an_unfilled_one_names_what_is_missing(self):
+        fields = {"Title": "T", "Writer": "wri", "Auditor": "aud", "Orchestrator": "orc", "Authority": "RoR-25"}
+        text = packet.render_draft(fields, "Do the thing.\n\nThen stop.", ["docs/", "README.md"], ["full"])
+        self.assertEqual({"fields": fields, "objective": "Do the thing.\n\nThen stop.", "scope": ["docs/", "README.md"],
+                          "gates": ["full"]}, packet.parse_draft(text))
+        with self.assertRaises(packet.Refused) as caught:
+            packet.parse_draft(packet.render_draft({"Title": "T"}, "", [], ["full"]))
+        for missing in ("Writer", "Auditor", "Orchestrator", "Authority", "## Objective", "## Scope"):
+            self.assertIn(missing, str(caught.exception))
+        with self.assertRaises(packet.Refused):
+            packet.parse_draft(text.replace("- docs/", "docs/"))
+
+    def test_small_helpers(self):
+        self.assertEqual(packet.SEAM, packet.sibling("mind").SEAM)
+        told = packet.telling_line("To https://someone:secret-token@host.example/o/r\n ! [rejected]\nerror: failed to push\n")
+        self.assertEqual("error: failed to push", told)
+        self.assertNotIn("secret-token", packet.telling_line("fatal: unable to access 'https://someone:secret-token@host.example/o/r'"))
+        self.assertEqual("no message", packet.telling_line("\n"))
+
+
+# --------------------------------------------------------------------------
+class DraftAndOpen(Case):
+    def test_draft_writes_a_private_form_and_keeps_the_one_it_replaces(self):
+        first = self.r.run("draft", "--title", "First")
+        self.assertEqual(0, first.code, first.text)
+        form = self.r.room / packet.DRAFT
+        self.assertEqual(0o600, stat.S_IMODE(form.stat().st_mode))
+        self.assertIn("Title: First", form.read_text())
+        self.assertIn("- full", form.read_text())
+        self.r.run("draft", "--title", "Second")
+        self.assertIn("Title: Second", form.read_text())
+        self.assertIn("Title: First", (self.r.room / packet.DRAFT_PREVIOUS).read_text())
+        self.assertEqual("", git(self.r.room, "status", "--porcelain"))
+        self.refused(self.r.run("open", who="mgr"), "the draft is not filled", "Writer")
+
+    def test_open_makes_the_one_packet_from_clean_main(self):
+        base = self.r.head()
+        result = self.r.open()
+        self.assertEqual(0, result.code, result.text)
+        self.assertIn("DP-SES-0001 is open on agent/dp-ses-0001-2026-11-12", result.out)
+        leaf = self.r.leaf()
+        self.assertEqual({"Packet": "DP-SES-0001", "Branch": "agent/dp-ses-0001-2026-11-12", "Base": f"commit {base}",
+                          "Manager": "mgr", "Writer": "wri", "Auditor": "aud", "Orchestrator": "orc", "Authority": "RoR-25"},
+                         {k: v for k, v in leaf["head"].items() if k != "Opened"})
+        self.assertEqual((["docs/"], ["ok"], None, None), (leaf["scope"], leaf["gates"], leaf["results"], leaf["audit"]))
+        self.assertEqual("agent/dp-ses-0001-2026-11-12", git(self.r.wt, "rev-parse", "--abbrev-ref", "HEAD"))
+        self.assertEqual(("main", ""), (git(self.r.room, "rev-parse", "--abbrev-ref", "HEAD"), git(self.r.room, "status", "--porcelain")))
+        self.assertFalse((self.r.room / packet.DRAFT).exists())
+        line = self.r.ledger()[-1]
+        self.assertEqual(("open", "mgr", "DP-SES-0001", base), (line["action"], line["actor"], line["packet"], line["base"]))
+        self.assertEqual(packet.contract_digest(leaf), line["contract"])
+        self.assertEqual({"Manager": "mgr", "Writer": "wri", "Auditor": "aud", "Orchestrator": "orc"}, line["seats"])
+        ledger = self.r.room / packet.LEDGER
+        self.assertEqual((0o600, 0o700), (stat.S_IMODE(ledger.stat().st_mode), stat.S_IMODE(ledger.parent.stat().st_mode)))
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+
+    def test_only_one_packet_is_active_at_a_time(self):
+        self.r.through("open")
+        self.refused(self.r.open(), "already active", "one packet at a time")
+
+    def test_open_refuses_a_room_that_is_not_clean_main_level_with_origin(self):
+        git(self.r.room, "checkout", "-q", "-b", "side")
+        self.refused(self.r.open(), "the room is on side, not main")
+        git(self.r.room, "checkout", "-q", "main")
+        (self.r.room / "docs" / "a.md").write_text("edited in the room\n")
+        self.refused(self.r.open(), "1 uncommitted path(s)", "docs/a.md")
+        git(self.r.room, "checkout", "-q", "--", "docs/a.md")
+        self.r.advance_origin()
+        self.refused(self.r.open(), "behind origin/main", "packet.py sync")
+        self.assertFalse(self.r.wt.exists())
+
+    def test_open_refuses_a_main_that_holds_commits_origin_does_not(self):
+        (self.r.room / "docs" / "a.md").write_text("committed in the room\n")
+        git(self.r.room, "commit", "-q", "-am", "a commit made on main by hand")
+        self.refused(self.r.open(), "holds commits origin/main does not", "never force")
+        self.refused(self.r.run("sync", who="out"), "holds commits origin/main does not", "never force")
+
+    def test_open_refuses_bad_seats(self):
+        self.refused(self.r.open(auditor="wri"), "no seat audits its own work")
+        self.refused(self.r.open(writer="ghost"), "Writer:", "'ghost' is registered 0 times")
+        self.refused(self.r.open(orchestrator="far"), "Orchestrator:", "registered to another room")
+        self.refused(self.r.open(who="ghost"), "Manager:", "registered 0 times")
+        self.assertFalse(self.r.wt.exists())
+        self.assertTrue((self.r.room / packet.DRAFT).exists())
+
+    def test_open_refuses_a_malformed_or_unpublishable_contract(self):
+        self.refused(self.r.open(scope=("/etc/",)), "not a plain path relative to the room")
+        self.refused(self.r.open(scope=("archives/packets/",)), "packet leaves are never in scope")
+        self.refused(self.r.open(gates=("full", "ok")), "Gates:")
+        self.refused(self.r.open(objective='Do what he said: "ship it".'), "holds what a public record may not", "quotations")
+        self.refused(self.r.open(authority="The note at /home/someone/notes.md"), "host paths")
+        self.assertEqual([], self.r.ledger())
+
+    def test_open_needs_a_verified_caller_and_a_draft(self):
+        self.r.draft()
+        self.refused(self.r.run("open"), "canonical registry")
+        (self.r.room / packet.DRAFT).unlink()
+        self.refused(self.r.run("open", who="mgr"), "no readable draft")
+        self.r.draft()
+        git(self.r.room, "remote", "set-url", "origin", str(self.r.base / "no-such-origin.git"))
+        self.refused(self.r.run("open", who="mgr"), "git fetch --quiet failed")
+        self.assertFalse(self.r.wt.exists())
+        shutil.rmtree(self.r.room / "storage" / "handoff")
+        self.refused(self.r.run("draft"), "storage/handoff/ does not exist")
+
+    def test_open_refuses_a_number_whose_branch_already_exists(self):
+        git(self.r.origin, "update-ref", "refs/heads/agent/dp-ses-0001-2026-11-01", self.r.head())
+        self.refused(self.r.open(), "a branch for DP-SES-0001 already exists")
+        git(self.r.origin, "update-ref", "-d", "refs/heads/agent/dp-ses-0001-2026-11-01")
+        git(self.r.room, "branch", "agent/dp-ses-0001-2026-10-01", "main")
+        self.refused(self.r.run("open", who="mgr"), "a branch for DP-SES-0001 already exists")
+
+    def test_a_failed_open_leaves_no_worktree_and_no_branch(self):
+        self.r.draft()
+        with mock.patch.object(packet, "record", side_effect=OSError(28, "No space left on device")):
+            self.refused(self.r.run("open", who="mgr"), "No space left")
+        self.assertFalse(self.r.wt.exists())
+        self.assertEqual("", git(self.r.room, "for-each-ref", "refs/heads/agent"))
+        self.assertEqual(0, self.r.run("open", who="mgr").code)
+
+    def test_the_tool_refuses_a_linked_worktree_as_its_room(self):
+        other = self.r.base / "other"
+        git(self.r.room, "worktree", "add", "-q", "-b", "other", str(other), "main")
+        result = self.r.run("status")
+        self.assertEqual(0, result.code)
+        with mock.patch.object(self.r, "room", other):
+            self.refused(self.r.run("status"), "linked Git worktree")
+        with mock.patch.object(self.r, "room", self.r.base):
+            self.refused(self.r.run("status"), "not the root of a Git checkout")
+
+
+# --------------------------------------------------------------------------
+class Work(Case):
+    def test_status_names_each_station_and_whose_turn_it_is(self):
+        first = self.r.run("status", who="mgr")
+        self.assertIn("room: main at", first.out)
+        self.assertIn("clean, level with origin/main", first.out)
+        self.assertIn("you: mgr", first.out)
+        self.assertIn("packet: none active; the next is DP-SES-0001", first.out)
+        self.assertIn("station: draft:", first.out)
+        self.assertIn("you: unverified", self.r.run("status").out)
+        self.r.draft()
+        self.assertIn("station: open: a draft waits", self.r.run("status").out)
+        self.r.run("open", who="mgr")
+        refs = git(self.r.room, "for-each-ref")
+        at_work = self.r.run("status", who="wri")
+        self.assertIn("packet: DP-SES-0001: Say more in the docs", at_work.out)
+        self.assertIn("seats: Manager mgr, Writer wri, Auditor aud, Orchestrator orc", at_work.out)
+        self.assertIn("work: 0 path(s) changed, 0 outside scope", at_work.out)
+        self.assertIn("station: work:", at_work.out)
+        self.assertIn("(wri, which is you)", at_work.out)
+        self.r.edit()
+        self.r.edit("tools/extra.py", "x = 1\n")
+        outside = self.r.run("status", who="mgr")
+        self.assertIn("work: 2 path(s) changed, 1 outside scope", outside.out)
+        self.assertIn("work: outside scope: tools/extra.py", outside.out)
+        self.assertIn("(wri)", outside.out)
+        (self.r.wt / "tools" / "extra.py").unlink()
+        self.r.close()
+        self.assertIn("station: audit:", self.r.run("status", who="aud").out)
+        self.r.edit(text="alpha, changed after close\n")
+        self.assertIn("changed after close", self.r.run("status").out)
+        self.r.close()
+        self.r.audit("fail")
+        self.assertIn("station: rework:", self.r.run("status").out)
+        self.r.audit("pass")
+        self.assertIn("station: ship:", self.r.run("status", who="orc").out)
+        self.assertEqual(refs, git(self.r.room, "for-each-ref"))
+        self.assertEqual("", git(self.r.wt, "diff", "--cached", "--name-only"))
+
+    def test_diff_shows_the_exact_change_the_audit_binds(self):
+        self.refused(self.r.run("diff"), "no packet is active")
+        self.r.through("edit")
+        self.r.edit("docs/new page.md", "a page Git does not track yet\n")
+        (self.r.wt / "docs" / "b.md").unlink()
+        self.r.close()
+        tree = self.r.leaf()["results"]["head"]["Tree"]
+        whole = self.r.run("diff")
+        self.assertEqual(0, whole.code, whole.text)
+        self.assertIn(f"# DP-SES-0001: the change since base {self.r.head()[:12]}, without the leaf; {tree}", whole.out)
+        for line in ("+alpha, and more", "+a page Git does not track yet", "-beta", "+++ b/docs/new page.md", "deleted file mode"):
+            self.assertIn(line, whole.out)
+        self.assertNotIn("archives/packets", whole.out)
+        self.assertEqual(["M\tdocs/a.md", "D\tdocs/b.md", "A\tdocs/new page.md"], self.r.run("diff", "names").out.splitlines()[1:])
+        self.assertIn("3 files changed", self.r.run("diff", "stat").out)
+        self.assertEqual("", git(self.r.wt, "diff", "--cached", "--name-only"))
+
+    def test_status_says_stop_when_the_room_is_not_clean_main(self):
+        (self.r.room / "loose.txt").write_text("x")
+        self.assertIn("room: STOP", self.r.run("status").out)
+
+    def test_close_measures_the_work_and_writes_the_results(self):
+        self.r.through("edit")
+        result = self.r.close(deviations="2")
+        self.assertEqual(0, result.code, result.text)
+        self.assertIn("gate: exit 0 in", result.out)
+        self.assertIn("1 path(s), 1 of 1 gates passed, deviations 2", result.out)
+        leaf = self.r.leaf()
+        results = leaf["results"]
+        self.assertEqual(("wri", "1", "2"), (results["head"]["Writer"], results["head"]["Paths changed"], results["head"]["Deviations"]))
+        self.assertEqual([(0, "tools/test/test_ok.py")], [(code, name) for code, _, name in results["gates"]])
+        self.assertEqual("One page changed. Nothing else was touched.", results["narrative"])
+        independent = derive(self.r.room, self.r.head(), {"docs/a.md": "alpha, and more\n"})
+        self.assertEqual("tree " + git(self.r.room, "rev-parse", independent + "^{tree}"), results["head"]["Tree"])
+        log = self.r.room / packet.RESULTS
+        self.assertEqual(0o600, stat.S_IMODE(log.stat().st_mode))
+        self.assertIn("## exit 0", log.read_text())
+        line = self.r.ledger()[-1]
+        self.assertEqual(("close", "wri", 1, 1, 2), (line["action"], line["actor"], line["gates"], line["paths"], line["deviations"]))
+        self.assertEqual("", git(self.r.room, "status", "--porcelain"))
+
+    def test_close_is_only_the_writers(self):
+        self.r.through("edit")
+        for who in ("mgr", "aud", "orc", "out"):
+            self.refused(self.r.close(who=who), "only the packet's Writer (wri)")
+        self.refused(self.r.run("close", "--deviations", "0", "--narrative", self.r.note("x")), "canonical registry")
+        self.assertIsNone(self.r.leaf()["results"])
+
+    def test_close_refuses_a_path_outside_scope_and_names_it(self):
+        self.r.through("edit")
+        self.r.edit("tools/test/test_ok.py", "print('changed')\n")
+        self.r.edit("odd name \u00e9.txt", "new\n")
+        self.r.edit("docs/also odd \u00e9.md", "in scope, whatever its name\n")
+        result = self.r.close()
+        self.refused(result, "2 changed path(s) are outside the packet's scope before the gates", "odd name \u00e9.txt", "tools/test/test_ok.py")
+        self.assertNotIn("also odd", result.text)
+        self.assertNotIn("gate:", result.out)
+        self.assertIsNone(self.r.leaf()["results"])
+
+    def test_close_refuses_when_nothing_in_scope_changed(self):
+        self.r.through("open")
+        self.refused(self.r.close(), "nothing in scope has changed")
+
+    def test_a_failing_gate_fails_the_close_and_keeps_the_log(self):
+        self.r.through("edit", gates=("ok", "flag"))
+        (self.r.wt / "var" / "tmp" / "fail").write_text("")
+        result = self.r.close()
+        self.refused(result, "FAILED", "1 of 2 gate(s) did not exit 0", "tools/test/test_flag.py", code=1)
+        self.assertIn("gate: exit 1 in", result.out)
+        self.assertIsNone(self.r.leaf()["results"])
+        self.assertIn("## exit 1", (self.r.room / packet.RESULTS).read_text())
+        (self.r.wt / "var" / "tmp" / "fail").unlink()
+        self.assertEqual(0, self.r.close().code)
+
+    def test_a_gate_that_writes_outside_scope_is_caught_after_the_gates(self):
+        self.r.through("edit", gates=("flag",))
+        (self.r.wt / "var" / "tmp" / "stray").write_text("")
+        self.refused(self.r.close(), "outside the packet's scope after the gates", "stray.txt")
+        self.assertIsNone(self.r.leaf()["results"])
+
+    def test_gates_run_at_umask_0002_without_the_test_seam(self):
+        self.r.through("edit", gates=("env",))
+        previous = os.umask(0o077)
+        try:
+            result = self.r.close()
+        finally:
+            os.umask(previous)
+        self.assertEqual(0, result.code, result.text)
+        self.assertIn("umask=0o2", (self.r.room / packet.RESULTS).read_text())
+
+    def test_full_runs_every_suite_and_both_self_tests(self):
+        self.r.through("edit", gates=("full",))
+        result = self.r.close()
+        self.assertEqual(0, result.code, result.text)
+        self.assertEqual(["tools/test/test_env.py", "tools/test/test_flag.py", "tools/test/test_ok.py", "ops/bin/help --test",
+                          "ops/bin/template --test"], [name for _, _, name in self.r.leaf()["results"]["gates"]])
+
+    def test_close_refuses_a_gate_that_names_nothing(self):
+        self.r.through("edit", gates=("nosuch",))
+        self.refused(self.r.close(), "tools/test/test_nosuch.py, which is not in the worktree")
+
+    def test_the_narrative_is_checked_before_any_gate_runs(self):
+        self.r.through("edit")
+        for narrative, word in (('The operator said "go".', "quoted words"), ('Someone wrote "go".', "quotations"),
+                                ("x" * 2001, "2001 characters"),
+                                ("See /home/someone/log.txt", "host paths"), ("", "empty")):
+            result = self.r.close(narrative=narrative)
+            self.refused(result, word)
+            self.assertNotIn("gate:", result.out)
+        self.refused(self.r.run("close", "--deviations", "0", "--narrative", str(self.r.base / "absent.md"), who="wri"), "unreadable")
+        self.refused(self.r.close(deviations="-1"), "neither can be negative")
+        self.assertEqual(0, self.r.run("close", "--deviations", "0", "--narrative", "-", who="wri", stdin="From standard input.").code)
+        self.assertEqual("From standard input.", self.r.leaf()["results"]["narrative"])
+
+    def test_close_refuses_while_the_rooms_own_checkout_is_dirty(self):
+        self.r.through("edit")
+        (self.r.room / "docs" / "a.md").write_text("edited in the room by habit\n")
+        self.refused(self.r.close(), "the room's own checkout has 1 uncommitted path(s)", "var/tmp/packet/")
+
+    def test_a_contract_edited_by_hand_stops_every_station(self):
+        self.r.through("edit")
+        path = self.r.leaf_path()
+        path.write_text(path.read_text().replace("- docs/\n", "- docs/\n- tools/\n"))
+        self.assertEqual(["docs/", "tools/"], self.r.leaf()["scope"])
+        self.refused(self.r.close(), "packet hash failure")
+        self.refused(self.r.run("amend", "--add", "x", "--reason", "y", who="mgr"), "packet hash failure")
+        path.write_text(path.read_text().replace("- docs/\n- tools/\n", "- docs/\n"))
+        self.r.close()
+        self.r.audit()
+        path.write_text(path.read_text().replace("- Authority: RoR-25", "- Authority: RoR-26"))
+        self.refused(self.r.audit(), "packet hash failure")
+        self.refused(self.r.ship(), "packet hash failure")
+
+    def test_amend_is_the_managers_and_voids_an_earlier_close(self):
+        self.r.through("close")
+        self.refused(self.r.run("amend", "--add", "README.md", "--reason", "needed", who="wri"), "only the packet's Manager (mgr)")
+        self.refused(self.r.run("amend", "--add", "docs/", "--reason", "needed", who="mgr"), "already in scope")
+        self.refused(self.r.run("amend", "--add", "../x", "--reason", "needed", who="mgr"), "not a normal path")
+        self.refused(self.r.run("amend", "--add", "README.md", "--reason", "two\nlines", who="mgr"), "one line")
+        self.assertIsNotNone(self.r.leaf()["results"])
+        result = self.r.run("amend", "--add", "README.md", "--add", "tools/", "--reason", "the change needs both", who="mgr")
+        self.assertEqual(0, result.code, result.text)
+        leaf = self.r.leaf()
+        self.assertEqual(["docs/", "README.md", "tools/"], leaf["scope"])
+        self.assertEqual(2, len(leaf["amendments"]))
+        self.assertTrue(leaf["amendments"][0].endswith("mgr added README.md: the change needs both"))
+        self.assertIsNone(leaf["results"])
+        self.assertEqual(packet.contract_digest(leaf), self.r.ledger()[-1]["contract"])
+        self.r.edit("README.md", "now in scope\n")
+        self.assertEqual(0, self.r.close().code)
+        self.assertEqual("2", self.r.leaf()["results"]["head"]["Paths changed"])
+
+    def test_audit_is_only_the_auditors_and_binds_the_exact_tree(self):
+        self.r.through("edit")
+        self.refused(self.r.audit(), "not closed")
+        self.r.close()
+        for who in ("mgr", "wri", "orc", "out"):
+            self.refused(self.r.audit(who=who), "only the packet's Auditor (aud)")
+        self.refused(self.r.audit(note="He wrote \"fine\" in the margin."), "quotations")
+        self.refused(self.r.audit(note="n" * 1501), "1501 characters")
+        self.r.edit(text="alpha, changed after close\n")
+        self.refused(self.r.audit(), "the worktree changed after close")
+        self.r.close()
+        failed = self.r.audit("fail", note="The page still says too little.")
+        self.assertEqual(0, failed.code, failed.text)
+        self.assertIn("the Writer (wri) reworks", failed.out)
+        self.assertEqual("FAIL", self.r.leaf()["audit"]["head"]["Verdict"])
+        self.refused(self.r.ship(), "no PASS from its Auditor")
+        self.r.edit(text="alpha, and a good deal more\n")
+        self.r.close()
+        self.assertIsNone(self.r.leaf()["audit"])
+        self.refused(self.r.ship(), "no PASS from its Auditor")
+        passed = self.r.audit("PASS")
+        self.assertEqual(0, passed.code, passed.text)
+        leaf = self.r.leaf()
+        self.assertEqual(("PASS", "aud", leaf["results"]["head"]["Tree"]),
+                         (leaf["audit"]["head"]["Verdict"], leaf["audit"]["head"]["Auditor"], leaf["audit"]["head"]["Tree"]))
+        self.assertEqual(("audit", "PASS"), (self.r.ledger()[-1]["action"], self.r.ledger()[-1]["verdict"]))
+
+    def test_a_damaged_leaf_stops_the_stations_and_its_manager_can_still_abandon(self):
+        self.r.through("edit")
+        self.r.leaf_path().write_text("not a leaf\n")
+        self.assertIn("station: STOP", self.r.run("status").out)
+        self.refused(self.r.close(), "the packet is damaged", "abandons it")
+        self.refused(self.r.run("abandon", "--reason", "damaged", who="wri"), "only the packet's Manager (mgr)")
+        result = self.r.run("abandon", "--reason", "the leaf was overwritten", who="mgr")
+        self.assertEqual(0, result.code, result.text)
+        self.assertFalse(self.r.wt.exists())
+        self.assertIn("alpha, and more", (self.r.room / packet.ABANDONED).read_text())
+
+
+# --------------------------------------------------------------------------
+class Ship(Case):
+    def test_ship_lands_the_packet_end_to_end(self):
+        self.r.through("audit")
+        base, tree = self.r.head(), self.r.leaf()["audit"]["head"]["Tree"][5:]
+        (self.r.wt / "var" / "tmp" / "scratch.txt").write_text("ignored scratch inside the worktree")
+        result = self.r.ship()
+        self.assertEqual(0, result.code, result.text)
+        for line in ("commit: ", "push: origin/agent/dp-ses-0001-2026-11-12", "pull request: #7", "gates: sessions-gates success",
+                     "findings: none unanswered", "merge: #7 by rebase", "sync: main ", "LANDED: DP-SES-0001"):
+            self.assertIn(line, result.out)
+        main, origin_main = self.r.head(), self.r.head("refs/heads/main", self.r.origin)
+        self.assertEqual(main, origin_main)
+        self.assertNotEqual(base, main)
+        self.assertEqual(base, self.r.head("main~1"))
+        self.assertEqual(("main", ""), (git(self.r.room, "rev-parse", "--abbrev-ref", "HEAD"), git(self.r.room, "status", "--porcelain")))
+        self.assertEqual(["A\tarchives/packets/DP-SES-0001.md", "M\tdocs/a.md"],
+                         git(self.r.room, "diff", "--name-status", base, main).splitlines())
+        self.assertEqual("alpha, and more\n", (self.r.room / "docs" / "a.md").read_text())
+        landed = packet.parse_leaf((self.r.room / packet.LEAVES / "DP-SES-0001.md").read_text())
+        self.assertEqual("PASS", landed["audit"]["head"]["Verdict"])
+        self.assertEqual(tree, packet.tree_of_commit(self.r.room, main, "archives/packets/DP-SES-0001.md"))
+        message = git(self.r.room, "log", "-1", "--format=%B", "main")
+        for line in ("DP-SES-0001: Say more in the docs", "Packet: archives/packets/DP-SES-0001.md", "Writer: wri",
+                     f"Auditor: aud (PASS on tree {tree})", "Orchestrator: orc"):
+            self.assertIn(line, message)
+        self.assertNotIn("Shipped-by", message)
+        self.assertFalse(self.r.wt.exists())
+        self.assertEqual("", git(self.r.room, "for-each-ref", "refs/heads/agent", "refs/remotes/origin/agent"))
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+        self.assertEqual(1, git(self.r.room, "worktree", "list", "--porcelain").count("worktree "))
+        state = self.r.gh()
+        pull = state["pulls"][0]
+        self.assertEqual(("DP-SES-0001: Say more in the docs", "main", "closed"), (pull["title"], pull["base"]["ref"], pull["state"]))
+        for line in ("Dispatch packet DP-SES-0001", "Make the first page say more", "Gates: 1 of 1 exit 0", "Deviations: 0",
+                     "Audit: PASS by aud", "Seats: Manager mgr, Writer wri, Auditor aud, Orchestrator orc"):
+            self.assertIn(line, pull["body"])
+        self.assertIn(f"main is commit {main}", state["notes"][0]["body"])
+        self.assertEqual(["open", "close", "audit", "commit", "pull-request", "merge", "landed"], [l["action"] for l in self.r.ledger()])
+        self.assertEqual((main, 7), (self.r.ledger()[-1]["main"], self.r.ledger()[-1]["number"]))
+        self.assertEqual(0, self.r.run("status", who="mgr").code)
+        self.assertIn("the next is DP-SES-0002", self.r.said[-1])
+
+    def test_the_next_packet_takes_the_next_number_and_carries_two_seats_into_the_form(self):
+        self.r.through("ship")
+        self.r.run("draft", "--title", "Second")
+        form = (self.r.room / packet.DRAFT).read_text()
+        self.assertIn("Auditor: aud\n", form)
+        self.assertIn("Orchestrator: orc\n", form)
+        self.assertIn("Writer:\n", form)
+        opened = self.r.open(title="Say more again")
+        self.assertIn("DP-SES-0002 is open on agent/dp-ses-0002-2026-11-12", opened.out)
+        (self.r.wt / "docs" / "b.md").unlink()
+        self.r.edit("docs/c.md", "gamma\n")
+        self.r.close()
+        self.assertEqual("2", self.r.leaf(2)["results"]["head"]["Paths changed"])
+        self.r.audit()
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+        self.assertEqual(["A\tarchives/packets/DP-SES-0002.md", "D\tdocs/b.md", "A\tdocs/c.md"],
+                         git(self.r.room, "diff", "--name-status", "main~1", "main").splitlines())
+        self.assertEqual([1, 2], packet.leaf_numbers(self.r.room, "main"))
+        self.assertEqual([], packet.chain_failures(self.r.room, self.r.head()))
+
+    def test_ship_is_pending_while_the_check_runs_and_resumes_without_repeating_a_step(self):
+        self.r.through("audit")
+        self.r.gh(checks=[])
+        first = self.r.ship()
+        self.refused(first, "PENDING", "has not started", "run `packet.py ship` again", code=3)
+        commit = self.r.head("HEAD", self.r.wt)
+        self.r.gh(checks=[{"name": packet.REQUIRED_CHECK, "status": "in_progress", "conclusion": None, "started_at": "2026-11-12T09:00:00Z"}])
+        self.refused(self.r.ship(), "PENDING", "is running", code=3)
+        self.assertEqual(commit, self.r.head("HEAD", self.r.wt))
+        self.assertEqual(1, len(self.r.gh()["pulls"]))
+        self.assertEqual(["open", "close", "audit", "commit", "pull-request"], [l["action"] for l in self.r.ledger()])
+        self.r.gh(checks=[{"name": "another-check", "status": "completed", "conclusion": "failure", "started_at": "2026-11-12T09:30:00Z"},
+                          {"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "success", "started_at": "2026-11-12T09:00:00Z"}])
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+        self.assertEqual(1, len([call for call in self.r.gh()["calls"] if call[2] == "POST" and call[3].endswith("/pulls")]))
+        self.assertEqual(1, int(git(self.r.room, "rev-list", "--count", "main~1..main")))
+
+    def test_wait_polls_the_check_until_it_completes(self):
+        self.r.through("audit")
+        self.r.gh(checks=[])
+        naps, real = [], packet.time.sleep
+
+        def nap(seconds):
+            if seconds < 1:                 # the standard library's own short polls while a child runs
+                return real(seconds)
+            naps.append(seconds)
+            self.r.gh(checks=[{"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "success",
+                               "started_at": "2026-11-12T09:00:00Z"}])
+
+        with mock.patch.object(packet.time, "sleep", nap):
+            result = self.r.ship("--wait", "30")
+        self.assertEqual(0, result.code, result.text)
+        self.assertEqual(1, len(naps))
+        self.assertTrue(1 <= naps[0] <= 20)
+        self.refused(self.r.run("ship", "--wait", "-1", who="orc"), "neither can be negative")
+
+    def test_a_red_check_fails_the_ship_and_returns_the_packet_to_the_writer(self):
+        self.r.through("audit")
+        self.r.gh(checks=[{"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "failure", "started_at": "2026-11-12T09:00:00Z"}])
+        self.refused(self.r.ship(), "FAILED", "ended failure", "returns to the Writer", code=1)
+        self.assertTrue(self.r.wt.exists())
+        self.r.edit(text="alpha, mended\n")
+        self.refused(self.r.ship(), "not the tree the Auditor passed")
+        self.r.close()
+        self.r.audit()
+        self.r.gh(checks=[{"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "success", "started_at": "2026-11-12T09:00:00Z"}])
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+        self.assertEqual(2, int(git(self.r.room, "rev-list", "--count", "main~2..main")))
+        self.assertEqual("alpha, mended\n", (self.r.room / "docs" / "a.md").read_text())
+
+    def test_the_head_rests_before_it_merges(self):
+        self.r.through("audit")
+        self.r.gh(checks=[{"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "success", "started_at": "2026-11-12T10:58:00Z"}])
+        self.refused(self.r.ship(now="2026-11-12T11:00:00Z"), "PENDING", "rests 300 seconds", "181 remain", code=3)
+        self.assertEqual(0, self.r.ship(now="2026-11-12T11:03:00Z").code, self.r.said[-1])
+
+    def test_an_unanswered_review_finding_stops_the_merge(self):
+        self.r.through("audit")
+        finding = {"id": 11, "user": {"login": "reviewer"}, "path": "docs/a.md", "line": 1, "body": "This is wrong.",
+                   "html_url": "https://host.example/o/r/pull/7#discussion_r11"}
+        own = {"id": 12, "user": {"login": "room-account"}, "path": "docs/a.md", "line": 1, "body": "A note to self."}
+        self.r.gh(comments=[finding, own])
+        self.refused(self.r.ship(), "1 review finding(s) are unanswered on pull request #7",
+                     "docs/a.md:1 https://host.example/o/r/pull/7#discussion_r11")
+        self.assertIsNone(self.r.gh()["pulls"][0]["merged_at"])
+        other = {"id": 13, "in_reply_to_id": 11, "user": {"login": "bystander"}, "path": "docs/a.md", "line": 1, "body": "Agreed."}
+        self.r.gh(comments=[finding, own, other])
+        self.refused(self.r.ship(), "1 review finding(s) are unanswered")
+        answer = {"id": 14, "in_reply_to_id": 11, "user": {"login": "room-account"}, "path": "docs/a.md", "line": 1, "body": "Declined: out of scope."}
+        self.r.gh(comments=[finding, own, other, answer])
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+
+    def test_findings_are_read_across_every_page(self):
+        self.r.through("audit")
+        filler = [{"id": n, "user": {"login": "room-account"}, "path": "docs/a.md", "line": 1} for n in range(100, 200)]
+        late = {"id": 300, "user": {"login": "reviewer"}, "path": "docs/b.md", "original_line": 4}
+        self.r.gh(comments=filler + [late])
+        self.refused(self.r.ship(), "1 review finding(s) are unanswered", "docs/b.md:4")
+
+    def test_hold_stops_before_the_merge(self):
+        self.r.through("audit")
+        held = self.r.ship("--hold")
+        self.refused(held, "PENDING", "held before the merge", "pull request #7 is ready", code=3)
+        self.assertIn("findings: none unanswered", held.out)
+        state = self.r.gh()
+        self.assertEqual([], [call for call in state["calls"] if call[2] == "PUT"])
+        self.assertEqual("open", state["pulls"][0]["state"])
+        self.assertEqual(self.r.head("HEAD", self.r.wt), self.r.head("refs/heads/agent/dp-ses-0001-2026-11-12", self.r.origin))
+        self.assertEqual(self.r.head(), self.r.head("refs/heads/main", self.r.origin))
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+
+    def test_ship_is_the_orchestrators_or_a_recorded_fallback(self):
+        self.r.through("audit")
+        for who in ("mgr", "wri", "aud", "out"):
+            self.refused(self.r.ship(who=who), "not the packet's Orchestrator (orc)", "--fallback", "CONSTRAINTS C16")
+        self.refused(self.r.ship("--fallback", "no reason at all"), "the caller is the packet's Orchestrator; no fallback applies")
+        self.refused(self.r.ship("--fallback", 'he said "go"', who="mgr"), "the fallback reason holds what a public record may not")
+        self.refused(self.r.ship("--fallback", "two\nlines", who="mgr"), "one line")
+        self.refused(self.r.ship("--fallback", "the seat is away", who="ghost"), "registered 0 times")
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+        result = self.r.ship("--fallback", "the Orchestrator seat is away today", who="mgr")
+        self.assertEqual(0, result.code, result.text)
+        self.assertIn("Shipped-by: mgr (fallback)", git(self.r.room, "log", "-1", "--format=%B", "main"))
+        self.assertIn("Shipped by mgr in place of the Orchestrator: the Orchestrator seat is away today", self.r.gh()["pulls"][0]["body"])
+        self.assertEqual(("landed", "mgr", "the Orchestrator seat is away today"),
+                         tuple(self.r.ledger()[-1][k] for k in ("action", "actor", "fallback")))
+
+    def test_ship_refuses_when_origin_main_moved(self):
+        self.r.through("audit")
+        self.r.advance_origin()
+        self.refused(self.r.ship(), "origin/main moved since this packet opened", "abandons it")
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+
+    def test_ship_refuses_content_the_auditor_did_not_pass(self):
+        self.r.through("audit")
+        self.r.edit("docs/b.md", "beta, slipped in after the audit\n")
+        self.refused(self.r.ship(), "not the tree the Auditor passed")
+        git(self.r.wt, "checkout", "-q", "--", "docs/b.md")
+        (self.r.room / "loose.txt").write_text("x")
+        self.refused(self.r.ship(), "the room's own checkout has 1 uncommitted path(s)")
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+
+    def test_ship_finishes_a_merge_made_outside_the_tool(self):
+        self.r.through("hold")
+        self.r.merge_outside()
+        result = self.r.ship()
+        self.assertEqual(0, result.code, result.text)
+        self.assertNotIn("commit:", result.out)
+        self.assertIn("LANDED", result.out)
+        self.assertEqual(self.r.head(), self.r.head("refs/heads/main", self.r.origin))
+        self.assertFalse(self.r.wt.exists())
+
+    def test_ship_stops_when_the_worktree_changed_after_the_merge(self):
+        self.r.through("hold")
+        self.r.merge_outside()
+        self.r.edit(text="alpha, edited after the merge\n")
+        self.refused(self.r.ship(), "uncommitted paths after the merge", "stop and report")
+        self.assertTrue(self.r.wt.exists())
+
+    def test_ship_never_forces_a_push(self):
+        self.r.through("hold")
+        branch = "refs/heads/agent/dp-ses-0001-2026-11-12"
+        stranger = derive(self.r.origin, self.r.head(branch, self.r.origin), {"docs/b.md": "pushed by another hand\n"})
+        git(self.r.origin, "update-ref", branch, stranger)
+        self.r.edit(text="alpha, reworked\n")
+        self.r.close()
+        self.r.audit()
+        self.refused(self.r.ship(), "git push --quiet failed")
+        self.assertEqual(stranger, self.r.head(branch, self.r.origin))
+
+    def test_the_leaf_ships_even_where_an_ignore_rule_hides_it(self):
+        (self.r.room / ".git" / "info").mkdir(exist_ok=True)
+        (self.r.room / ".git" / "info" / "exclude").write_text("/archives/\n")
+        self.r.through("ship")
+        self.assertEqual([1], packet.leaf_numbers(self.r.room, "main"))
+        self.assertEqual("", git(self.r.room, "status", "--porcelain"))
+
+    def test_the_authorization_gate_runs_before_anything_is_pushed(self):
+        self.r.through("open", scope=("docs/", "PoT.md"))
+        self.r.edit("PoT.md", "A law changed with no decision recorded.\n")
+        self.r.close()
+        self.r.audit()
+        self.refused(self.r.ship(), "the PoT authorization gate refuses this commit")
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+        self.assertEqual([], self.r.gh()["pulls"])
+
+    def test_what_the_host_says_is_relayed_and_nothing_is_guessed(self):
+        self.r.through("audit")
+        self.r.gh(fail={"POST": "gh: Validation Failed (HTTP 422)"})
+        self.refused(self.r.ship(), "GitHub refused POST repos/", "Validation Failed")
+        self.r.gh(fail={"PUT": "gh: Required status check is expected (HTTP 405)"})
+        self.refused(self.r.ship(), "GitHub refused PUT", "Required status check")
+        self.assertEqual(self.r.head(), self.r.head("refs/heads/main", self.r.origin))
+        self.r.gh(fail={}, raw="<html>not json</html>")
+        self.refused(self.r.ship(), "is not JSON")
+        self.r.gh(raw="")
+        with tempfile.TemporaryDirectory() as empty, mock.patch.dict(os.environ, {"PATH": empty}):
+            with self.assertRaises(packet.Refused) as caught:
+                packet.gh(self.r.room, "GET", "repos/o/r/pulls")
+        self.assertIn("gh is not installed", str(caught.exception))
+        self.assertEqual(0, self.r.ship().code, self.r.said[-1])
+
+    def test_the_owner_and_repository_come_from_the_origin_address(self):
+        for address, slug in (("https://host.example/owner/name", "owner/name"), ("https://host.example/owner/Name.git", "owner/Name"),
+                              ("git@host.example:owner/name.git", "owner/name"), ("https://user@host.example/owner/name/", "owner/name")):
+            git(self.r.room, "remote", "set-url", "origin", address)
+            self.assertEqual(slug, packet.repo_slug(self.r.room))
+
+    def test_no_output_ledger_line_or_leaf_carries_a_session_identifier(self):
+        self.r.through("ship")
+        self.r.run("status", who="mgr")
+        self.r.run("open")
+        everything = "\n".join(self.r.said) + (self.r.room / packet.LEDGER).read_text() \
+            + (self.r.room / packet.LEAVES / "DP-SES-0001.md").read_text() + json.dumps(self.r.gh())
+        self.assertNotIn("0000f00d", everything)
+
+
+# --------------------------------------------------------------------------
+class AbandonAndSync(Case):
+    def test_the_manager_abandons_a_packet_that_never_reached_origin_and_the_work_is_kept(self):
+        self.r.through("edit")
+        self.r.edit("docs/new.md", "a new page\n")
+        for who in ("wri", "aud", "orc", "out"):
+            self.refused(self.r.run("abandon", "--reason", "wrong scope", who=who), "only the packet's Manager (mgr)")
+        result = self.r.run("abandon", "--reason", "the scope was drawn wrong", who="mgr")
+        self.assertEqual(0, result.code, result.text)
+        self.assertIn("its number is free again", result.out)
+        self.assertFalse(self.r.wt.exists())
+        self.assertEqual("", git(self.r.room, "for-each-ref", "refs/heads/agent"))
+        patch = self.r.room / packet.ABANDONED
+        self.assertEqual(0o600, stat.S_IMODE(patch.stat().st_mode))
+        self.assertIn("alpha, and more", patch.read_text())
+        self.assertIn("docs/new.md", patch.read_text())
+        self.assertNotIn("DP-SES-0001", patch.read_text())
+        self.assertEqual(("abandon", "the scope was drawn wrong", True), tuple(self.r.ledger()[-1][k] for k in ("action", "reason", "kept")))
+        self.assertIn("DP-SES-0001 is open", self.r.open(scope=("docs/",)).out)
+        git(self.r.wt, "apply", str(patch))
+        self.assertEqual("a new page\n", (self.r.wt / "docs" / "new.md").read_text())
+        self.assertEqual(0, self.r.close().code)
+
+    def test_a_packet_on_origin_is_abandoned_by_the_orchestrator_who_closes_its_pull_request(self):
+        self.r.through("hold")
+        self.refused(self.r.run("abandon", "--reason", "superseded", who="mgr"), "not the packet's Orchestrator (orc)", "--fallback")
+        result = self.r.run("abandon", "--reason", "superseded by a wider packet", who="orc")
+        self.assertEqual(0, result.code, result.text)
+        self.assertEqual("closed", self.r.gh()["pulls"][0]["state"])
+        self.assertIsNone(self.r.gh()["pulls"][0]["merged_at"])
+        self.assertEqual("", git(self.r.origin, "for-each-ref", "refs/heads/agent"))
+        self.assertFalse(self.r.wt.exists())
+        self.assertEqual(self.r.head(), self.r.head("refs/heads/main", self.r.origin))
+
+    def test_a_fallback_may_abandon_on_origin_and_a_merged_packet_is_never_abandoned(self):
+        self.r.through("hold")
+        self.r.merge_outside()
+        self.refused(self.r.run("abandon", "--reason", "too late", who="orc"), "the pull request is merged", "packet.py ship")
+        self.assertTrue(self.r.wt.exists())
+        self.assertEqual(0, self.r.ship().code)
+        self.r.through("hold", text="alpha, a second time\n", title="A second one")
+        result = self.r.run("abandon", "--reason", "not wanted", "--fallback", "the Orchestrator seat is away", who="mgr")
+        self.assertEqual(0, result.code, result.text)
+        self.assertEqual("the Orchestrator seat is away", self.r.ledger()[-1]["fallback"])
+
+    def test_sync_brings_a_clean_room_level_and_nothing_else(self):
+        moved = self.r.advance_origin()
+        self.refused(self.r.run("sync"), "canonical registry")
+        result = self.r.run("sync", who="out")
+        self.assertEqual(0, result.code, result.text)
+        self.assertEqual(moved, self.r.head())
+        self.assertEqual(("sync", "out", moved), tuple(self.r.ledger()[-1][k] for k in ("action", "actor", "main")))
+        (self.r.room / "loose.txt").write_text("x")
+        self.refused(self.r.run("sync", who="out"), "uncommitted path(s)")
+
+    def test_a_folder_that_is_not_the_packet_worktree_stops_everything(self):
+        self.r.wt.mkdir(parents=True)
+        self.refused(self.r.run("status"), "is not this room's packet worktree", "stop and report")
+        self.refused(self.r.open(), "already active")
+
+
+# --------------------------------------------------------------------------
+class Gate(unittest.TestCase):
+    """The required check, on real Git objects. One valid packet is built once; each case derives a commit from it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = tempfile.TemporaryDirectory(prefix="packet-gate-")
+        cls.r = Room(Path(cls._tmp.name)).through("hold")
+        cls.repo, cls.branch = cls.r.room, "agent/dp-ses-0001-2026-11-12"
+        cls.base, cls.head = cls.r.head(), cls.r.head("HEAD", cls.r.wt)
+        cls.rel = "archives/packets/DP-SES-0001.md"
+        cls.text = git(cls.repo, "show", f"{cls.head}:{cls.rel}") + "\n"
+        cls.leaf = packet.parse_leaf(cls.text)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def judge(self, head=None, base=None, branch=None) -> str:
+        failures, notices = packet.gate_failures(self.repo, base or self.base, head or self.head,
+                                                 self.branch if branch is None else branch)
+        return "\n".join(failures + [f"NOTICE {n}" for n in notices])
+
+    def with_leaf(self, leaf: dict) -> str:
+        return derive(self.repo, self.head, {self.rel: packet.render_leaf(leaf)})
+
+    def command(self, *argv) -> Result:
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = packet.main(["gate", "--root", str(self.repo), *argv])
+        return Result(code, out.getvalue(), err.getvalue())
+
+    def test_a_valid_packet_passes_and_the_gate_moves_nothing(self):
+        before = (git(self.repo, "for-each-ref"), git(self.repo, "status", "--porcelain"), git(self.r.wt, "status", "--porcelain"))
+        self.assertEqual("", self.judge())
+        result = self.command("--base", self.base, "--head", self.head, "--branch", self.branch)
+        self.assertEqual(0, result.code, result.text)
+        self.assertIn(f"packet gate: {self.branch} at {self.head[:12]}: PASS", result.out)
+        self.assertEqual(before, (git(self.repo, "for-each-ref"), git(self.repo, "status", "--porcelain"),
+                                  git(self.r.wt, "status", "--porcelain")))
+
+    def test_the_gate_does_not_apply_while_the_base_holds_no_packet_tool(self):
+        old_base = derive(self.repo, self.base, {packet.TOOL: None})
+        anything = derive(self.repo, old_base, {"README.md": "no packet at all\n", packet.TOOL: "the tool arrives\n"})
+        result = self.command("--base", old_base, "--head", anything, "--branch", "agent/any-name")
+        self.assertEqual(0, result.code, result.text)
+        self.assertIn("bootstrap", result.out)
+        after = self.command("--base", anything, "--head", derive(self.repo, anything, {"README.md": "next\n"}), "--branch", "agent/any-name")
+        self.assertEqual(1, after.code)
+        self.assertIn("FAIL the branch 'agent/any-name' is not agent/dp-ses-NNNN-YYYY-MM-DD", after.out)
+
+    def test_broken_a_path_outside_scope(self):
+        self.assertIn("1 changed path(s) are outside the packet's scope: other.txt", self.judge(derive(self.repo, self.head, {"other.txt": "x\n"})))
+
+    def test_broken_no_leaf(self):
+        said = self.judge(derive(self.repo, self.head, {self.rel: None}))
+        self.assertIn("must add exactly one leaf, archives/packets/DP-SES-0001.md, and change no other; it has none", said)
+
+    def test_broken_the_wrong_number(self):
+        leaf = dict(self.leaf, head=dict(self.leaf["head"], Packet="DP-SES-0003", Branch="agent/dp-ses-0003-2026-11-12"))
+        head = derive(self.repo, self.head, {self.rel: None, "archives/packets/DP-SES-0003.md": packet.render_leaf(leaf)})
+        said = self.judge(head, branch="agent/dp-ses-0003-2026-11-12")
+        self.assertEqual("DP-SES-0003 is not the next number; main holds up to 0000, so the next packet is 0001", said)
+
+    def test_broken_content_changed_after_the_audit(self):
+        said = self.judge(derive(self.repo, self.head, {"docs/a.md": "alpha, changed after the audit\n"}))
+        self.assertEqual("the tree the Auditor passed is not the tree of this pull request without its leaf; content changed after the audit", said)
+
+    def test_broken_the_writer_is_the_auditor(self):
+        leaf = dict(self.leaf, head=dict(self.leaf["head"], Writer="aud"))
+        leaf["results"] = dict(leaf["results"], head=dict(leaf["results"]["head"], Writer="aud"))
+        self.assertEqual(f"{self.rel}: Writer and Auditor are the same key; no seat audits its own work (PoT 4.2.2)",
+                         self.judge(self.with_leaf(leaf)))
+
+    def test_broken_an_earlier_leaf_is_edited(self):
+        landed = self.head                                    # as if the first packet had landed: main holds leaf 0001
+        second = dict(self.leaf, head=dict(self.leaf["head"], Packet="DP-SES-0002", Branch="agent/dp-ses-0002-2026-11-13",
+                                           Base=f"commit {landed}"))
+        tree = packet.tree_of_commit(self.repo, derive(self.repo, landed, {"docs/b.md": "beta, more\n"}), self.rel)
+        fair = derive(self.repo, landed, {"docs/b.md": "beta, more\n", "archives/packets/DP-SES-0002.md": "placeholder\n"})
+        tree = "tree " + packet.tree_of_commit(self.repo, fair, "archives/packets/DP-SES-0002.md")
+        second["results"] = dict(second["results"], head=dict(second["results"]["head"], Tree=tree))
+        second["audit"] = dict(second["audit"], head=dict(second["audit"]["head"], Tree=tree))
+        changes = {"docs/b.md": "beta, more\n", "archives/packets/DP-SES-0002.md": packet.render_leaf(second)}
+        self.assertEqual("", self.judge(derive(self.repo, landed, changes), base=landed, branch="agent/dp-ses-0002-2026-11-13"))
+        edited = derive(self.repo, landed, dict(changes, **{self.rel: self.text.replace("PASS", "FAIL")}))
+        said = self.judge(edited, base=landed, branch="agent/dp-ses-0002-2026-11-13")
+        self.assertIn("and change no other; it has M archives/packets/DP-SES-0001.md, A archives/packets/DP-SES-0002.md", said)
+        removed = derive(self.repo, landed, dict(changes, **{self.rel: None}))
+        self.assertIn("it has D archives/packets/DP-SES-0001.md", self.judge(removed, base=landed, branch="agent/dp-ses-0002-2026-11-13"))
+
+    def test_broken_two_leaves(self):
+        head = derive(self.repo, self.head, {"archives/packets/DP-SES-0002.md": self.text})
+        self.assertIn("it has A archives/packets/DP-SES-0001.md, A archives/packets/DP-SES-0002.md", self.judge(head))
+
+    def test_broken_a_branch_that_is_not_a_packet_branch(self):
+        for branch in ("agent/packet-workflow-20261112", "main", "agent/dp-ses-1-2026-11-12", "agent/DP-SES-0001-2026-11-12", ""):
+            self.assertIn("a change reaches main only as a packet", self.judge(branch=branch))
+        self.assertIn("names another packet or branch", self.judge(branch="agent/dp-ses-0001-2026-11-13"))
+
+    def test_broken_a_leaf_out_of_canonical_form(self):
+        head = derive(self.repo, self.head, {self.rel: self.text + "\n"})
+        self.assertEqual(f"{self.rel}: the leaf's Audit note section is not set between two single blank lines", self.judge(head))
+        spaced = derive(self.repo, self.head, {self.rel: self.text.replace("- Writer: wri\n", "- Writer: wri \n", 1)})
+        self.assertEqual(f"{self.rel}: the leaf is not in canonical form: a line ends in a space", self.judge(spaced))
+
+    def test_broken_a_leaf_that_records_a_failed_gate_no_audit_or_a_fail(self):
+        results = self.leaf["results"]
+        red = dict(self.leaf, results=dict(results, gates=[(1, 3, "tools/test/test_ok.py")]))
+        self.assertIn("1 gate(s) did not exit 0", self.judge(self.with_leaf(red)))
+        self.assertIn("holds no Results or no Audit", self.judge(self.with_leaf(dict(self.leaf, audit=None))))
+        self.assertIn("holds no Results or no Audit", self.judge(self.with_leaf(dict(self.leaf, audit=None, results=None))))
+        failed = dict(self.leaf, audit=dict(self.leaf["audit"], head=dict(self.leaf["audit"]["head"], Verdict="FAIL")))
+        self.assertEqual("the audit verdict is not PASS", self.judge(self.with_leaf(failed)))
+        counted = dict(self.leaf, results=dict(results, head=dict(results["head"], Deviations="a few")))
+        self.assertIn("Deviations is a count", self.judge(self.with_leaf(counted)))
+
+    def test_broken_a_leaf_that_quotes_or_names_a_host_path(self):
+        quoted = dict(self.leaf, results=dict(self.leaf["results"], narrative='He said "ship it" and so it shipped.'))
+        self.assertIn("holds what a public record may not: 1 quotations", self.judge(self.with_leaf(quoted)))
+        pathed = dict(self.leaf, audit=dict(self.leaf["audit"], note="Compared with /home/someone/copy.md by eye."))
+        self.assertIn("1 host paths", self.judge(self.with_leaf(pathed)))
+
+    def test_broken_main_moved_or_the_leaf_names_another_base(self):
+        moved = derive(self.repo, self.base, {"docs/b.md": "another landing\n"})
+        self.assertIn("main moved since this packet opened", self.judge(base=moved))
+        other = dict(self.leaf, head=dict(self.leaf["head"], Base="commit " + "c" * 40))
+        self.assertEqual("the leaf's Base is not the commit this branch was cut from", self.judge(self.with_leaf(other)))
+
+    def test_a_pull_request_that_changes_the_gate_itself_is_named(self):
+        said = self.judge(derive(self.repo, self.head, {packet.TOOL: "print('always pass')\n"}))
+        self.assertIn("NOTICE this pull request changes the gate that judges it: ops/lib/scripts/packet.py", said)
+        self.assertIn("outside the packet's scope", said)
+        result = self.command("--base", self.base, "--head", derive(self.repo, self.head, {packet.TOOL: "x\n"}), "--branch", self.branch)
+        self.assertEqual(1, result.code)
+        self.assertIn("NOTICE this pull request changes the gate", result.out)
+        self.assertIn("failure(s)", result.out)
+
+    def test_the_leaf_chain_is_numbered_without_a_gap(self):
+        self.assertEqual([], packet.chain_failures(self.repo, self.base))
+        self.assertEqual([], packet.chain_failures(self.repo, self.head))
+        gap = derive(self.repo, self.head, {"archives/packets/DP-SES-0003.md": self.text.replace("0001", "0003")})
+        self.assertIn("not numbered 0001 upward without a gap: 0001, 0003", "\n".join(packet.chain_failures(self.repo, gap)))
+        wrong = derive(self.repo, self.head, {"archives/packets/DP-SES-0002.md": self.text})
+        self.assertEqual(["archives/packets/DP-SES-0002.md does not open with its own packet id"], packet.chain_failures(self.repo, wrong))
+        self.assertEqual(0, self.command("--head", self.head, "--chain").code)
+        failed = self.command("--head", gap, "--chain")
+        self.assertEqual(1, failed.code)
+        self.assertIn("packet gate: leaf chain at", failed.out)
+
+    def test_the_gate_command_needs_its_arguments(self):
+        self.assertEqual(2, self.command("--head", self.head).code)
+        self.assertEqual(2, self.command("--head", self.head, "--base", self.base).code)
+        self.assertEqual(2, self.command("--head", "no-such-commit", "--chain").code)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=1)

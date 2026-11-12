@@ -50,8 +50,10 @@ requirement. No reader acquires a resident identity merely by entering the room.
 | Derived decisions | RoR.md | Read-in and exact base/head constitution gate |
 | Present state | NOW.md | Orientation only; domain source wins |
 | Work in flight | Mapped resident handoffs | Own writer; other readers receive information, not authority |
+| Repository work in flight | The one active dispatch packet: `ops/lib/scripts/packet.py status`; its worktree `var/tmp/packet/` | Every seat; the leaf's contract is the assignment (CONSTRAINTS C17) |
 | Body fullness | Body metadata under gauge specification | Gauge and authorized metadata-only checks |
 | Kept proof | archives/receipts/ and mapped custody | Authorized verification; a path alone proves no execution |
+| Landed packets | archives/packets/ | One leaf per landed packet: contract, measured results, audit verdict; written only by the packet tool; public |
 | Mind index / leaves | MIND.md (pointers only); archives/mind/ | Mind tool and authorized continuity operations; private |
 | Tool behavior / parameters | docs/ops/specs/ | Its writer, reviewer and implementation; do not duplicate formulas here |
 | Inventory | docs/ops/registry/ | Help/manual discovery, not state or permissions |

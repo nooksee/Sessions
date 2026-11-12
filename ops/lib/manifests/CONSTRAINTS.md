@@ -207,19 +207,46 @@ The Orchestrator (registry key `jo-hamming`, provider copilot, a clone of the
 Central Repository office seated in this room) is the fourth delivery function
 of the team, defined in the Central Repository's PoT section 5 and borrowed
 here unchanged: it stays in the loop from dispatch through closeout and
-performs the team's Git mechanics on handoff. That is the branch, the commit
-of exactly the paths the writer names, the push, the pull request, the merge
-by rebase of the exact head the room's rules have cleared, the proof that
-`main` equals that head, the deletion of the merged branch and, on the
-writer's word, the removal of the writer's worktree.
+performs the team's Git mechanics on handoff. In this room those mechanics are
+the ship station of C17, one command run until it reports the landing: the
+commit of exactly the audited tree, the push, the pull request, the required
+check, the merge by rebase of that exact head, the proof that the room's
+`main` equals origin's, and the removal of the packet branch and worktree.
 Git work is a workflow handoff, not an authority. The Manager, the writers and
-the Auditor hand their Git work to the Orchestrator and do not perform it as a
-routine. The Orchestrator decides nothing about content, review or acceptance,
-writes no source, document or record but its own handoff, and creates no
-authority. When the Orchestrator is not seated, not reachable or not yet
-prompted, any resident of the team performs the same mechanics under the same
-rules, and says so in its handoff. The same holds for any other handed-off
-step: who performs it is workflow; what may be done stays with the assignment.
-A Copilot resident is prompted only by the operator's paste, so a handoff
-reaches the Orchestrator that way. The function is active from 2026-11-09 by
-the operator's decision; it waits on no other office's adoption.
+the Auditor do not commit, push, merge or pull as a routine; the Manager's
+`open` makes the local branch and worktree through the tool and touches
+neither origin nor `main`. The Orchestrator decides nothing about content,
+review or acceptance, writes no source, document or record but its own
+handoff, and creates no authority. When the Orchestrator is not seated, not
+reachable or not yet prompted, any resident of the team runs the same station
+with its recorded fallback reason, under the same rules. The same holds for
+any other handed-off step: who performs it is workflow; what may be done stays
+with the assignment. A Copilot resident is prompted only by the operator's
+paste, so a handoff reaches the Orchestrator that way: one paste per packet.
+The function is active from 2026-11-09 by the operator's decision; it waits on
+no other office's adoption.
+
+## C17
+
+Dispatch packets. A change reaches `main` only as one dispatch packet: one id
+(`DP-SES-NNNN`), one branch (`agent/dp-ses-NNNN-YYYY-MM-DD`), one pull request
+and one kept leaf (`archives/packets/DP-SES-NNNN.md`). One packet is active in
+the room at a time, from open to landing. Each station is one command of
+`ops/lib/scripts/packet.py`, bound to the caller's own registry key. The
+Manager drafts and opens from clean `main` level with origin, naming the
+Writer, the Auditor, the Orchestrator, the authority by ledger number or
+digest, the exact scope and the gates. The Writer edits only in the packet
+worktree `var/tmp/packet/`, only in scope, and closes, which runs the gates
+and records a count of deviations. The Auditor, never the Writer, records PASS
+or FAIL bound to the exact tree. The Orchestrator ships (C16). Only the
+Manager's amend changes a contract, and it voids an earlier close. No station
+is skipped and no content changes after the audit: the required check on
+GitHub judges every pull request by the same rules from Git objects alone, and
+an unanswered review finding stops the merge. The room's own checkout stays on
+clean `main`. The draft, the gate log and the worktree are latest-wins
+disposable working files; the leaf is the one kept record and is public by
+construction: it cites and never quotes. Board and ledger lines ride inside
+the packet that causes them. Mechanics, limits and recovery are in
+`docs/ops/specs/scripts/packet.md`. This clause changes no other obligation of
+review, authority or custody. The workflow is active from the landing of the
+tool, by the operator's direction of 2026-11-12.
