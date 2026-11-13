@@ -65,6 +65,16 @@ idea, never a rule of the room: where it touches policy, cite the clause and
 let the policy say the rule (PoT 4.2.4). Auto memory is off in this room
 (`.claude/settings.json`): the mind and your handoff are what you carry.
 
+Then make your read-in. `python3 -I -B ops/bin/open --intent "<what this
+shift is for>"` prints the law on your own screen, with the clauses for each
+delivery function the open packet's leaf gives you, and `--next` prints each
+further part until the closing line says complete; only then is your OPEN
+recorded (PoT 1.3.18). Make one after every wake and at the start of every
+shift; `--check` says whether yours is still good. A landed amendment ends
+every OPEN, and a packet that gives you a function your OPEN did not show ends
+yours. If you are unverified the tool shows the common clauses and records
+nothing, and you wait for the operator as above.
+
 Then look at the work. `python3 -I -B ops/lib/scripts/packet.py status` prints
 the room's state, the one active dispatch packet and whose station is next. A
 change reaches `main` only as a packet (CONSTRAINTS C17), whose leaf names by

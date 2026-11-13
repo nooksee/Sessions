@@ -28,7 +28,7 @@ STELA's help solved the same problem for STELA: deterministic wayfinding, specs 
      10. `docs/MANUAL.md`
    - The loop: gauge, closeout, mind, rotate on the operator's go, gauge.
    - One row per tool, from the union of `docs/ops/specs/scripts/*.md` and `ops/lib/scripts/*.py`, with the same columns as `specs` below.
-   - the two binaries, the help modes, and where things live (`storage/` working payload with only its declared skeleton admitted; `var/tmp/` task scratch under PoT 1.1.13; archives and custody kept; identity in `ops/etc/resident-identities.json`).
+   - the three binaries, the help modes, and where things live (`storage/` working payload with only its declared skeleton admitted; `var/tmp/` task scratch under PoT 1.1.13; archives and custody kept; identity in `ops/etc/resident-identities.json`).
 4. **`read`.** Checks the ten read-in files in order. For each: present or `MISSING`, its line count, and how many lines carry `[PLACEHOLDER`. Any missing file fails the command after the full list is printed.
 5. **`specs`.** First the tool rows. For each word: spec yes or no, script yes or no, tests yes or no, and the first sentence after `Status:` in the spec's header (the text before its first `## ` section). A spec with no such line prints `[no Status: line before the first section]`. A script with no spec prints `[no spec: convention break]`. Then every other spec under `docs/ops/specs/`, grouped by folder, with its own status the same way.
 6. **`doctrine`.** Prints each level-two heading of `DOCTRINE.md` with its line number. It is an index, never a summary. It fails when the file is missing or has no such heading.
@@ -49,7 +49,7 @@ STELA's help solved the same problem for STELA: deterministic wayfinding, specs 
 
 Dropped from STELA, each because its subject does not exist here:
 - the `doctrine` index of `DOCTRINE.md`, which is historical and not current law;
-- the curriculum of STELA commands (`open`, `dump`, `certify`, `bundle`, `prune`);
+- the curriculum of STELA commands (`open`, `dump`, `certify`, `bundle`, `prune`); `open` came back on 2026-11-12 as this room's own binary (`docs/ops/specs/binaries/open.md`), and the menu lists it;
 - the STELA command index;
 - the telemetry leaves STELA's `common.sh` writes to `logs/` at the Git top level, which here would land in the Control root.
 

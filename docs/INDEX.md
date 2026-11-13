@@ -86,6 +86,7 @@ Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each sp
 Binaries:
 * [ops/specs/binaries/help.md](ops/specs/binaries/help.md): spec for `ops/bin/help`, the command-line wayfinding entry point.
 * [ops/specs/binaries/template.md](ops/specs/binaries/template.md): spec for `ops/bin/template`, the template rendering router.
+* [ops/specs/binaries/open.md](ops/specs/binaries/open.md): spec for `ops/bin/open`, the read-in a resident runs before it works.
 
 Runbook:
 * [ops/specs/runbook/agent-input.md](ops/specs/runbook/agent-input.md): how a packet for a resident is written; to, from, owner, scope, authority, inputs, rules, stop condition, report.
@@ -102,6 +103,7 @@ Tests:
 * [ops/specs/tools/test/notice.md](ops/specs/tools/test/notice.md): the notice's suite.
 * [ops/specs/tools/test/rotate.md](ops/specs/tools/test/rotate.md): the rotate runner's suite, synthetic dry-run phases 0 to 9.
 * [ops/specs/tools/test/packet.md](ops/specs/tools/test/packet.md): what `tools/test/test_packet.py` proves, by group (91).
+* [ops/specs/tools/test/open.md](ops/specs/tools/test/open.md): what `tools/test/test_open.py` proves, by group (76).
 
 ## 4. Contracts and Guides (earlier clinic work)
 * [clinic-aggregate-contract.md](clinic-aggregate-contract.md): the public clinic health file (`logs/clinic-aggregate.json`) for consumers outside Sessions. (private: not in the repository; on the host only.)

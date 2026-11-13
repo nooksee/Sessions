@@ -167,6 +167,21 @@ A packet's leaf names, by registry key, who carries each of the four delivery fu
 - **The required check judges the same rules on GitHub.** A pull request that is not one valid packet does not merge, whoever opens it.
 - **The field guide** is `docs/ops/specs/runbook/shipping.md`: the four functions and who carries them here, one packet from start to finish, the working agreements, and what each refusal means. Every resident who may carry a function reads it once, and again after a rotation.
 
+## 1C. The Read-in: OPEN
+
+Before a resident works, it runs `ops/bin/open`. The tool finds who is calling, prints the law on that caller's own screen, and records that it did (PoT 1.3.18). It is this room's form of STELA's `open`, changed for residents: it prints the text and not a pointer, and it prints a whole file of the law only when the caller's body has not been shown it as it now stands.
+
+- **When.** After a wake, at the start of each shift, and again whenever `--check` says the OPEN is no longer good. An OPEN is good for one body, one text of the law and twelve hours, and only while it has shown the clauses of every function the open packet gives its holder. A landed amendment ends every OPEN. A packet that gives a resident a function its OPEN did not show ends that resident's OPEN; the next one shows that function.
+- **What it shows.** The clauses that `CONTEXT.md` X04 lists for every reader, each under its heading of the law; the clauses for each delivery function the open packet's leaf gives the caller, or for all four when no open packet names the caller; what `packet.py status` says now; the newest ledger entry; the caller's fullness; two sections of the board; and five report lines to give the operator as they stand.
+- **Who is shown which function.** The open packet's leaf decides, and nothing else does: not the registry, and not what a caller says of itself. Nobody types an identity or a function.
+- **Parts.** A first OPEN is several parts, and an ordinary one is one or two. Run `--next` until the closing line says complete; only then is the OPEN recorded. A part that does not end with its own closing line was cut by the shell tool: stop and report it.
+- **The intent** is one line saying what the shift is for. It is kept in the private record beside the trace.
+- **The record** is one private line under `logs/open/`: who, when, which law by hash, which packet and functions, which clauses, the intent. `--roster` shows the operator who holds a good OPEN.
+- **What it does not do yet.** No other tool requires an OPEN. That lock is a later packet, after every resident has made a first OPEN.
+- **An unverified reader** is shown the common clauses and nothing is recorded; it says so and waits for the operator, as before.
+
+The specification is `docs/ops/specs/binaries/open.md`.
+
 ---
 
 ## 2. Top Commands
@@ -193,6 +208,14 @@ python3 -I -B ops/lib/scripts/mind.py add --agent <key> --title "<title>" --body
 python3 -I -B ops/lib/scripts/mind.py add --agent <key> --title "<title>" --body <file> --supersedes <id>
 python3 -I -B ops/lib/scripts/mind.py retire --agent <key> <id>
 python3 -I -B ops/lib/scripts/mind.py check
+~~~
+
+### Open (see section 1C)
+~~~bash
+python3 -I -B ops/bin/open --intent "<what this shift is for>"   # begin the read-in; prints part 1
+python3 -I -B ops/bin/open --next                                # the next part, until the closing line says complete
+python3 -I -B ops/bin/open --check                               # is my OPEN still good
+python3 -I -B ops/bin/open --roster                              # who in the room holds a good OPEN
 ~~~
 
 ### Packet (see section 1B)
@@ -540,6 +563,7 @@ Also:
 | `storage/handoff/PACKET.md`, `storage/handoff/RESULTS.md` | the packet's draft and gate log; latest-wins, private, never committed |
 | `archives/packets/` | one kept leaf per landed dispatch packet; public; written only by `packet.py` |
 | `logs/packets/ledger.jsonl` | the packet tool's private ledger: one line per station, with each contract's digest |
+| `logs/open/ledger.jsonl` | the read-in's private ledger: one line per complete OPEN, with the hashes of the law it showed |
 | `MIND.md`, `archives/mind/`, `logs/mind/ledger.jsonl` | the mind: index, leaves and ledger (out of Git) |
 | `archives/receipts/` | durable receipts; only explicitly admitted redacted copies are tracked |
 | `Backup/Codex-Session-Preservation/<batch>/` (under `<control>`) | tier-1 custody |
@@ -588,3 +612,4 @@ Also:
 - **Delivery function:** one of the four kinds of work in a dispatch packet: Integrator, Contractor, Auditor, Orchestrator (PoT 4.1.11; CONSTRAINTS C16 and C17). The leaf names by registry key who carries each; a function is not a seat.
 - **Station:** one step of a dispatch packet, one command run by the resident who carries its function: draft, open, close, audit, ship.
 - **Packet gate:** the rules of a valid dispatch packet read from Git objects alone, run by the required check; a different thing from the single-writer gate.
+- **OPEN:** a resident's read-in, made by `ops/bin/open`: the law shown on its own screen, with the clauses of the functions the open packet gives it, and recorded; good for one body, one text of the law, one shift and the functions it showed (section 1C). A different thing from the `open` station of a dispatch packet.

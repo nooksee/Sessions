@@ -36,6 +36,15 @@ specification before acting. The context manifest distinguishes resident,
 worker and human readers; it does not grant access to body, mind or record
 content.
 
+A resident makes this read-in with `python3 -I -B ops/bin/open --intent
+"<what this shift is for>"`, and `--next` until it says complete: the tool
+finds the caller, prints the law on the caller's own screen with the clauses
+for each delivery function the open packet's leaf gives that caller, and
+records that it did (PoT 1.3.18; `docs/MANUAL.md` section 1C). It is made
+after every wake, at the start of every shift, and again when `--check` says
+it is no longer good: after a landed amendment, or when a packet gives the
+caller a function its OPEN did not show.
+
 `NOW.md` is orientation; a domain's canonical source wins over its summary.
 Repository canon wins over session memory. Read the owning Control authority
 before crossing into Control-governed surfaces.
