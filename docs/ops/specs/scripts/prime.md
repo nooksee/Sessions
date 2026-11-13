@@ -23,4 +23,4 @@ No receipt names `build_prime_session_candidate_packet.py`. Its history before t
 
 - Refusal and read-only statements in the docstring: "Build a prime session candidate packet without copying raw sessions."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/build_prime_session_candidate_packet.py` until Control repoints them; this room's own documents name `ops/lib/scripts/prime.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

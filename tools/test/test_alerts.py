@@ -63,9 +63,9 @@ class NamingTests(unittest.TestCase):
         registry.write_text(json.dumps({"identities": [
             {"key": "alan-codex", "role": "Desktop Software and Maintenance",
              "person": "Alan Codex", "session_id": ALAN},
-            {"key": "george-x", "role": "Desktop Continuity Manager",
+            {"key": "george-x", "role": "Control",
              "person": "George Friend", "session_id": GEORGE},
-            {"key": "session-doctor", "role": "Session Continuity Manager",
+            {"key": "session-doctor", "role": "Integrator",
              "person": "Claude Shannon", "session_id": SHANNON},
         ]}))
         self.names = diff.load_names(registry)
@@ -74,12 +74,12 @@ class NamingTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_registry_names_are_role_and_person(self):
-        self.assertEqual(self.names[GEORGE], "Desktop Continuity Manager (George Friend)")
+        self.assertEqual(self.names[GEORGE], "Control (George Friend)")
 
     def test_a_registered_codex_body_is_named(self):
         pid = rollout(self.home, GEORGE, None, None)
         self.assertEqual(diff.describe(pid, self.names, self.home),
-                         ("Desktop Continuity Manager (George Friend)", None))
+                         ("Control (George Friend)", None))
 
     def test_a_helper_names_its_resident_and_itself(self):
         pid = rollout(self.home, HELPER, ALAN, "Maxwell")
@@ -90,7 +90,7 @@ class NamingTests(unittest.TestCase):
         rollout(self.home, CHILD, GEORGE, "Einstein")
         pid = rollout(self.home, GRANDCHILD, CHILD, "Poincare")
         self.assertEqual(diff.describe(pid, self.names, self.home),
-                         ("Desktop Continuity Manager (George Friend)", "Poincare"))
+                         ("Control (George Friend)", "Poincare"))
 
     def test_a_helper_with_only_the_nested_spawn_record_is_named(self):
         day = self.home / "sessions/2026/10/17"
@@ -108,12 +108,12 @@ class NamingTests(unittest.TestCase):
         rollout(workbench, HELPER, GEORGE, "Galileo")
         pid = f"codex:rollout-2026-10-17T23-54-21-{HELPER}.jsonl"
         self.assertEqual(diff.describe(pid, self.names, self.home, [workbench]),
-                         ("Desktop Continuity Manager (George Friend)", "Galileo"))
+                         ("Control (George Friend)", "Galileo"))
 
     def test_a_claude_label_resolves_by_its_session_prefix(self):
         pid = "claude:Sessions (me) / 0000e1e1-0000-4000-8"
         self.assertEqual(diff.describe(pid, self.names, self.home),
-                         ("Session Continuity Manager (Claude Shannon)", None))
+                         ("Integrator (Claude Shannon)", None))
 
     def test_an_unknown_patient_keeps_its_raw_label(self):
         pid = "claude:Projects-STELA / 0000abc2"
@@ -127,8 +127,8 @@ class PopupTests(NamingTests):
     def test_one_critical_resident_is_the_headline(self):
         pid = rollout(self.home, GEORGE, None, None)
         a = diff.build_alert([(pid, "CRITICAL")], self.names, self.home)
-        self.assertEqual(a["headline"], "Critical: Desktop Continuity Manager (George Friend)")
-        self.assertEqual(a["lines"], ["Desktop Continuity Manager (George Friend): critical"])
+        self.assertEqual(a["headline"], "Critical: Control (George Friend)")
+        self.assertEqual(a["lines"], ["Control (George Friend): critical"])
         self.assertTrue(a["alert"] and a["critical"])
 
     def test_helpers_below_critical_stay_quiet(self):
@@ -229,9 +229,9 @@ class WrapperPopupTests(unittest.TestCase):
             (scripts / "alerts.py").write_text(
                 "print('chronic_flagged=1 new=1 worsened=0 resolved=0')\n"
                 "print('  NEW: codex:rollout-x.jsonl -> CRITICAL')\n"
-                "print('  SAY: Desktop Continuity Manager (George Friend): critical')\n"
+                "print('  SAY: Control (George Friend): critical')\n"
                 "print('QUIET_HELPERS=0')\n"
-                "print('HEADLINE=Critical: Desktop Continuity Manager (George Friend)')\n"
+                "print('HEADLINE=Critical: Control (George Friend)')\n"
                 "print('SHOULD_ALERT=1 ANY_CRITICAL=1')\n")
             ran = root / "fixture-detector-ran"
             (scripts / "drift.py").write_text(
@@ -258,8 +258,8 @@ class WrapperPopupTests(unittest.TestCase):
             self.assertTrue(ran.exists(), "the wrapper did not run the fixture's detector")
         self.assertIn("ARG:-u", calls)
         self.assertIn("ARG:critical", calls)
-        self.assertIn("ARG:🩺 Critical: Desktop Continuity Manager (George Friend)", calls)
-        self.assertIn("ARG:Desktop Continuity Manager (George Friend): critical", calls)
+        self.assertIn("ARG:🩺 Critical: Control (George Friend)", calls)
+        self.assertIn("ARG:Control (George Friend): critical", calls)
         self.assertNotIn("rollout-x", calls)
 
 

@@ -304,7 +304,7 @@ class ClaudeSide(Base):
             row.update({"content": "Conversation compacted", "timestamp": "2026-10-30T15:05:00Z",
                         "compactMetadata": {"trigger": "auto", "preTokens": 900000}})
             return j(row, spaced=spaced) + "\n"
-        team = {"teamName": "sessions-continuity-team", "agentName": "continuity-manager-two", "agentId": cid(98)}
+        team = {"teamName": "sessions-continuity-team", "agentName": "continuity-integrator-two", "agentId": cid(98)}
         many = {f"field{i}": "x" * 40 for i in range(12)}
         cases = (("writer base, 3 fields", boundary({})),
                  ("team variant, 6 fields", boundary(team)),

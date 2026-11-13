@@ -151,7 +151,7 @@ pending, not failed. Opening a plan file is not execution or delivery.
 
 ## C11
 
-Blocks. The operator opens a block. The Session Continuity Manager coordinates
+Blocks. The operator opens a block. The Integrator coordinates
 within Control's working-round practice. Its existing team record names exact
 writers, sources, stop condition and end time, including standing surfaces.
 The operator delivers each assignment; an undelivered one assigns nothing. Members
@@ -215,7 +215,7 @@ reports the landing: the commit of exactly the audited tree, the push, the
 pull request, the required check, the merge by rebase of that exact head, the
 proof that the room's `main` equals origin's, and the removal of the packet
 branch and worktree. Git work is a workflow handoff, not an authority. The
-Manager, the writers and the Auditor do not commit, push, merge or pull as a
+Integrator, the writers and the Auditor do not commit, push, merge or pull as a
 routine; the Integrator's `open` makes the local branch and worktree through
 the tool and touches neither origin nor `main`. The Orchestrator decides
 nothing about content, review or acceptance, writes no source, document or
@@ -237,8 +237,8 @@ packet is active in the room at a time, from open to landing. The leaf names,
 by registry key, who carries each of the four delivery functions of the
 Central Repository's PoT section 5, borrowed here unchanged (C16): the
 Integrator, the Contractor, the Auditor and the Orchestrator. A function is
-work in one packet; it is not a seat, an identity or a grant of authority. In
-this room the Manager integrates. Each station is one command of
+work in one packet; it is not a seat, an identity or a grant of authority.
+PoT 4.1.11 says who carries each. Each station is one command of
 `ops/lib/scripts/packet.py`, bound to the caller's own registry key. The
 Integrator drafts and opens from clean `main` level with origin, naming the
 Contractor, the Auditor, the Orchestrator, the authority by ledger number or

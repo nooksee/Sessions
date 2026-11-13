@@ -26,4 +26,4 @@ Ported legacy tool. Its own docstring opens: "Inspect Codex compacted-history ro
 
 - Refusal and read-only statements in the docstring: "Inspect Codex compacted-history rows without modifying session files."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/inspect_compacted_history.py` until Control repoints them; this room's own documents name `ops/lib/scripts/history.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

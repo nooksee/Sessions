@@ -121,15 +121,15 @@ The registry identifies holders. An operator-named acting assignment is recorded
 with its scope; it does not confer unrelated authority.
 - **4.1.1 Operator:** objectives, approvals, secrets, reserved decisions and final acceptance.
 - **4.1.2 Control:** cross-room routing and ownership of Control surfaces.
-- **4.1.3 Session Continuity Manager:** room integrity, coordination and authorized continuity work for others.
-- **4.1.4 Assistant:** assigned implementation and the Manager's rotation.
-- **4.1.5 Apprentice:** assigned measurement, cross-checks and bounded writing.
+- **4.1.3 Integrator:** room integrity, coordination and authorized continuity work for others.
+- **4.1.4 Contractor:** assigned implementation, measurement, cross-checks and bounded writing, each holder within the scope the operator assigns to it; the Contractor the operator assigns to it performs the Integrator's rotation.
+- **4.1.5** [Retired]
 - **4.1.6 Independent Reviewer:** Control-defined independent review; a substitute requires the operator's appointment.
 - **4.1.7 Resident:** follows the applicable closeout contract and writes its own mind leaves under the mind contract.
 - **4.1.8** Role is authority, person is identity. A temporary role does not replace the person or confer another resident's lineage.
 - **4.1.9 Auditor:** the operator's appointed independent reviewer and post-change auditor for this room's material work (4.1.6, 6.1.3); Control surfaces keep Control's review.
 - **4.1.10 Orchestrator:** stays in the loop from dispatch through closeout and performs the team's Git mechanics on handoff. The Orchestrator decides nothing about content, review or acceptance and creates no authority; when it is unavailable, another resident of the team performs the same mechanics under the same rules, with the reason recorded.
-- **4.1.11 Delivery functions.** A change to the repository is carried by four functions, named as the Central Repository names them: Integrator, Contractor, Auditor and Orchestrator. A function is work in one dispatch packet, not a role, an identity or a grant of authority (4.1.8). The Session Continuity Manager integrates; the Assistant, the Apprentice or the Manager contracts; the Auditor audits (4.1.9); the Orchestrator ships (4.1.10). No one audits work it contracted (4.2.2).
+- **4.1.11 Delivery functions.** A change to the repository is carried by four functions, named as the Central Repository names them: Integrator, Contractor, Auditor and Orchestrator. A function is work in one dispatch packet, not a role, an identity or a grant of authority (4.1.8). The Integrator (4.1.3) integrates; a Contractor (4.1.4) or the Integrator contracts; the Auditor (4.1.9) audits; the Orchestrator (4.1.10) ships. No one audits work it contracted (4.2.2).
 
 ### 4.2 Separation
 - **4.2.1** One named writer per exact surface; standing own-handoff and tool-output scopes follow the operational contract.

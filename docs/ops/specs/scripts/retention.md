@@ -23,4 +23,4 @@ Ported legacy tool. Its own docstring opens: "Report, and on explicit request en
 
 - Refusal and read-only statements in the docstring: "Retention is measured, never guessed, and "in use" has two independent meanings." "The second clause was learned by breaking it: the first sweep moved bodies the registry did not list but PyCharm chats still pointed at, and the Remote Device chat came back with `failed to resolve rollout path ...: file does not exist`." "Two hard refusals, because this tool moves real session bodies: * a registered active or editor-bound body is never moved, under any flag; * `--sweep` refuses to run unless the writer gate is clean, because relocating a body an editor or provider currently holds open risks a torn write."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/check_session_retention.py` until Control repoints them; this room's own documents name `ops/lib/scripts/retention.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

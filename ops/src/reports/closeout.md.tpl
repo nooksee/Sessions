@@ -12,7 +12,7 @@ slot_notes:
   PERCENT: the measured figure, in percent, from the resident's own body
   WINDOW: the model's context window, in tokens
   READING_TIME: the time of the reading the figure comes from
-  ROTATION_WRITER: who runs the rotation; Shannon's desk, and for Shannon himself, Claudine
+  ROTATION_WRITER: who runs the rotation; the Integrator's desk, and for the Integrator itself, the Contractor the operator assigns
 ---
 CLOSEOUT. Your context is {{PERCENT}} percent of {{WINDOW}}, measured from your own body at {{READING_TIME}}. It is time to close out, in this order:
 1. Tell the operator plainly that your closeout has begun, with the figure.

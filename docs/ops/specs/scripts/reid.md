@@ -27,4 +27,4 @@ Ported legacy tool. Its own docstring opens: "Build a derivative Codex JSONL wit
 
 - Refusal and read-only statements in the docstring: "It does not edit production sessions, copy auth material, update SQLite state, update the session index, launch Codex, or promote a candidate."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/build_codex_session_reid_candidate.py` until Control repoints them; this room's own documents name `ops/lib/scripts/reid.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

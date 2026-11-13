@@ -26,4 +26,4 @@ No receipt names `build_codex_vm_loadtest_env.py`. Its history before this port 
 
 - Refusal and read-only statements in the docstring: "It does not edit production session files, copy auth material, promote JSONL candidates, or launch Codex."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/build_codex_vm_loadtest_env.py` until Control repoints them; this room's own documents name `ops/lib/scripts/chamber.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

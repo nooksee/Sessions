@@ -104,11 +104,11 @@ Tests:
 * [ops/specs/tools/test/rotate.md](ops/specs/tools/test/rotate.md): the rotate runner's suite, synthetic dry-run phases 0 to 9.
 * [ops/specs/tools/test/packet.md](ops/specs/tools/test/packet.md): what `tools/test/test_packet.py` proves, by group (91).
 * [ops/specs/tools/test/open.md](ops/specs/tools/test/open.md): what `tools/test/test_open.py` proves, by group (79).
+* [ops/specs/tools/test/role_names.md](ops/specs/tools/test/role_names.md): what `tools/test/test_role_names.py` proves, by group (10).
 
 ## 4. Contracts and Guides (earlier clinic work)
 * [clinic-aggregate-contract.md](clinic-aggregate-contract.md): the public clinic health file (`logs/clinic-aggregate.json`) for consumers outside Sessions. (private: not in the repository; on the host only.)
 * [resource-state-contract.md](resource-state-contract.md): the Resource Governor state file (`logs/resource-state.json`) written by the status-line collector; gauge's last-resort window source. (private: not in the repository; on the host only.)
-* [session-continuity-apprentice-field-guide.md](session-continuity-apprentice-field-guide.md): historical orientation for apprentices and reviewers; its legacy authority wording is not current policy. (private: not in the repository; on the host only.)
 * [session-clinic-integration-review-response.md](session-clinic-integration-review-response.md): the clinic's 2026-07-24 answer to OSAI's integration review request; ownership split and adapter contract. (private: not in the repository; on the host only.)
 * [tray-session-clinic-watchdog-20260724.patch](tray-session-clinic-watchdog-20260724.patch): a 2026-07-24 diff adding clinic status to the Control remote-control tray script; a record, not a document to apply. (private: not in the repository; on the host only.)
 

@@ -548,7 +548,7 @@ automatic launches, permanent deletes — all `0` unless explicitly approved.
   native resume; Desktop Codex IV = real transplant).
 
 Open spec work George requested: turn this recipe into a non-mutating
-**Session Continuity Manager** validator (data model in §1, state machine in
+**session-continuity** validator (data model in §1, state machine in
 §7, gates in §4.9). Not yet built; do not over-automate before the boundary
 tests below are run on disposable sessions.
 

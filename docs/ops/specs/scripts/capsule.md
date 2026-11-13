@@ -22,4 +22,4 @@ No receipt names `build_codex_succession_capsule.py`. Its history before this po
 
 - The docstring states no refusal condition; the port added none.
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/build_codex_succession_capsule.py` until Control repoints them; this room's own documents name `ops/lib/scripts/capsule.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

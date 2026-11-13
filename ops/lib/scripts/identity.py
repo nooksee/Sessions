@@ -563,7 +563,7 @@ def labels_elsewhere(identities: list[dict], titles: dict[str, str]) -> list[tup
 def phone_names() -> dict[str, str] | None:
     """Thread to name from Codex's own index; the last row of a thread stands.
 
-    That the phone shows this index was stated by the Manager on 2026-11-06 and has
+    That the phone shows this index was stated by the Integrator on 2026-11-06 and has
     not been measured. Reads the id and the thread name of each row and nothing else.
     None when the index cannot be read.
     """

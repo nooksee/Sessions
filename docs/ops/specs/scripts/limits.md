@@ -24,4 +24,4 @@ Ported legacy tool. Its own docstring opens: "Validate copied Codex JSONL candid
 
 - Refusal and read-only statements in the docstring: "This script is read-only with respect to the session being inspected." "It does not edit live sessions, promote derivatives, copy auth files, or launch Codex."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/validate_codex_session_loader_limits.py` until Control repoints them; this room's own documents name `ops/lib/scripts/limits.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

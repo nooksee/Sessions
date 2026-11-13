@@ -86,12 +86,12 @@ class TestClaudioFreemanRegression(unittest.TestCase):
     """Whole-text replacement bound one resident's identity to another's id.
 
     Claudio Freeman's body, row 2, was rewritten to read "I am Claude Shannon,
-    Session Continuity Manager, session 0000f6f6" -- a sentence true of the
+    Integrator, session 0000f6f6" -- a sentence true of the
     donor with the donor's identifier, and false of Claudio with his.
     """
 
     def test_identity_sentence_in_prose_is_not_rebound(self):
-        sentence = (f"I am **Claude Shannon, Session Continuity Manager**, "
+        sentence = (f"I am **Claude Shannon, Integrator**, "
                     f"session `{DONOR}`.")
         rows = [{"sessionId": DONOR,
                  "type": "user",

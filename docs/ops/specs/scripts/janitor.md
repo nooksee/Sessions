@@ -20,5 +20,5 @@ Ported legacy tool. Its own docstring opens: "Release writer claims the remote d
 
 - Refusal and read-only statements in the docstring: "Editor and terminal claims mean a human is (or recently was) present, and this tool does not outrank humans."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/codex_claim_janitor.py` until Control repoints them; this room's own documents name `ops/lib/scripts/janitor.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]
 - Runs its action when invoked with any arguments, `--help` included; it is never run by a test.

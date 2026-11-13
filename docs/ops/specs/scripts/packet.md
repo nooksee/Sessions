@@ -123,7 +123,7 @@ Every station also refuses a caller it cannot verify, and a leaf that is not, by
 
 ### The caller
 
-A station binds to the caller's own registry key, resolved by `mind.py`'s `caller_key`, which is `myself.py`'s resolution matched against the room's canonical registry. The Integrator, the Contractor, the Auditor and the Orchestrator are the delivery functions of the Central Repository's PoT section 5, borrowed unchanged (C16, C17). A function is carried by the key the leaf names for it, never by a role title or a seat. In this room the Manager carries the Integrator function; the tool binds the key and nothing else. Until 2026-11-09 this room gave the name Integrator to the seat that is now the Orchestrator's (RoR-23); the function named here is not that seat. A worker acts as its parent (PoT 3.5). The test seam is `mind.py`'s own and opens only in a synthetic room; the tool never passes it on to a gate.
+A station binds to the caller's own registry key, resolved by `mind.py`'s `caller_key`, which is `myself.py`'s resolution matched against the room's canonical registry. The Integrator, the Contractor, the Auditor and the Orchestrator are the delivery functions of the Central Repository's PoT section 5, borrowed unchanged (C16, C17). A function is carried by the key the leaf names for it, never by a role title or a seat. PoT 4.1.11 says which role carries each function; the tool binds the key and nothing else. Until 2026-11-09 this room gave the name Integrator to the seat that is now the Orchestrator's (RoR-23); the function named here is not that seat. A worker acts as its parent (PoT 3.5). The test seam is `mind.py`'s own and opens only in a synthetic room; the tool never passes it on to a gate.
 
 ### Ship
 
@@ -181,7 +181,7 @@ A pull request that changes the gate's own law (`packet.py`, `redact.py` or the 
 
 The Orchestrator seat was made on 2026-11-09 (RoR-23) so that one seat would do the team's Git work on handoff. Within three days the room held stacked stages, numbered handoffs to that seat, pull requests that carried a single ledger line, and a standing direction that nothing merges with a review finding open (RoR-24). Every resident was following a rule; no two were following the same route. On 2026-11-12 the operator directed that STELA's workflow, which the room had borrowed in outline, be made the room's own in full: one packet per pull request, from clean main, with the Orchestrator landing it. The station table above is that direction, and each refusal in it stands where a route once forked.
 
-The tool first landed, as pull request #91, calling two of the functions Manager and Writer. Both already had names: the Integrator and the Contractor, in STELA's policy and in the Central Repository's PoT section 5, the same list whose fourth entry C16 had borrowed three days earlier. The operator said so the same day. The names were corrected before any packet was opened, so no leaf carries the first ones.
+The tool first landed, as pull request #91, calling two of the functions by names of its writer's own. Both already had names: the Integrator and the Contractor, in STELA's policy and in the Central Repository's PoT section 5, the same list whose fourth entry C16 had borrowed three days earlier. The operator said so the same day. The names were corrected before any packet was opened, so no leaf carries the first ones.
 
 ## Integrity Filter Warnings
 

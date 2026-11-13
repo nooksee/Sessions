@@ -29,4 +29,4 @@ Ported legacy tool. Its own docstring opens: "Condense old Codex tool transcript
 
 - Refusal and read-only statements in the docstring: "It does not edit production sessions, rewrite source sessions, copy auth files, launch Codex, or promote derivatives."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/condense_codex_tool_transcripts.py` until Control repoints them; this room's own documents name `ops/lib/scripts/transcripts.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

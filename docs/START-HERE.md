@@ -116,8 +116,8 @@ All of that is read-only; nothing above writes. Steps 3 and 4 need the operator'
 
 - **The operator** owns objectives, priorities, and final acceptance. Nothing lands
   without him.
-- **Control's desktop continuity manager** owns cross-project reconciliation.
-- **The Session Continuity Manager** owns session-health method and this repository (PoT 4.1).
+- **Control** owns cross-project reconciliation.
+- **The Integrator** owns session-health method and this repository (PoT 4.1).
 - **Residents** own their own project scope and nothing else.
 - The **repository** outranks any session's memory of what happened.
 

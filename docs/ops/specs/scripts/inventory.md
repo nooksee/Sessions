@@ -26,4 +26,4 @@ No receipt names `inventory_codex_sessions.py`. Its history before this port is 
 
 - Refusal and read-only statements in the docstring: "Inventory local Codex session assets without modifying them." "It does not prune, rewrite, move, delete, or archive sessions."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/inventory_codex_sessions.py` until Control repoints them; this room's own documents name `ops/lib/scripts/inventory.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

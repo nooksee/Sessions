@@ -11,6 +11,7 @@ is wired. Run:
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -39,10 +40,11 @@ slot_notes:
 ---
 """
 BODY = "TEST CARD {{PERCENT}} of {{WINDOW}} at {{READING_TIME}}.\nStep five: {{ROTATION_WRITER}} runs it.\n"
-MANAGER = {"key": "session-doctor", "provider": "claude", "session_id": "00000384-0000-4000-8000-000000000384",
-           "person": "Claude Shannon", "role": "Session Continuity Manager"}
-ASSISTANT = {"key": "claudine-colbert", "provider": "claude", "session_id": "00000385-0000-4000-8000-000000000385",
-             "person": "Claudine Colbert", "role": "Assistant Session Continuity Manager"}
+ROOM = "/synthetic/room"
+INTEGRATOR = {"key": "session-doctor", "provider": "claude", "session_id": "00000384-0000-4000-8000-000000000384",
+              "person": "Claude Shannon", "role": "Integrator", "room": ROOM}
+CONTRACTOR = {"key": "claudine-colbert", "provider": "claude", "session_id": "00000385-0000-4000-8000-000000000385",
+              "person": "Claudine Colbert", "role": "Contractor", "room": ROOM}
 
 
 def cid(n):
@@ -73,7 +75,7 @@ class World:
         self.state = base / "state"
         self.template = base / "closeout.md.tpl"
         self.template.write_text(FRONT + BODY)
-        self.identities = [dict(MANAGER), dict(ASSISTANT)]
+        self.identities = [dict(INTEGRATOR), dict(CONTRACTOR)]
         self.write_registry()
 
     def write_registry(self):
@@ -268,10 +270,10 @@ class Closeout(unittest.TestCase):
         self.assertNotIn("CLOSEOUT. Your context is", source)               # no second copy in the script
         self.assertNotIn("Tell the operator plainly", source)
 
-    def test_the_managers_own_rotation_is_run_by_the_assistant(self):
-        sid = MANAGER["session_id"]
+    def test_the_integrators_own_rotation_is_run_by_the_contractor_the_operator_assigns(self):
+        sid = INTEGRATOR["session_id"]
         text = self.card(self.w.hook(sid, self.at(sid, 700_000)))
-        self.assertTrue(text.endswith("Step five: Claudine Colbert runs it."))
+        self.assertTrue(text.endswith("Step five: The Contractor the operator assigns runs it."))
 
     def test_the_rooms_template_renders_six_lines(self):
         """Contract with the shipped template: read only, copied into the temporary room first."""
@@ -338,11 +340,11 @@ class Closeout(unittest.TestCase):
         self.silent(self.w.hook(sid, self.at(sid, 900_000)))
         self.assertEqual(self.w.log()[-1]["why"], "a {{...}} marker would remain in the card")
 
-    def test_no_continuity_manager_in_the_registry_is_unknown(self):
-        self.w.identities = [i for i in self.w.identities if i["role"] != "Session Continuity Manager"]
+    def test_no_integrator_in_the_registry_is_unknown(self):
+        self.w.identities = [i for i in self.w.identities if i["role"] != "Integrator"]
         sid = self.w.resident("shannon-like", 31)
         self.silent(self.w.hook(sid, self.at(sid, 900_000)))
-        self.assertIn("exactly one continuity manager", self.w.log()[-1]["why"])
+        self.assertIn("exactly one Integrator", self.w.log()[-1]["why"])
 
     def test_a_template_defect_uses_up_no_band(self):
         sid = self.w.resident("shannon-like", 32)
@@ -379,36 +381,48 @@ class Closeout(unittest.TestCase):
                 self.assertIn(why, self.w.log()[-1]["why"])
 
     def test_who_runs_the_rotation(self):
-        assistant = ASSISTANT["session_id"]
-        text = self.card(self.w.hook(assistant, self.at(assistant, 700_000)))
-        self.assertTrue(text.endswith("Step five: Claude Shannon's desk runs it."))    # the assistant's own closeout
-        manager = MANAGER["session_id"]
+        contractor = CONTRACTOR["session_id"]
+        text = self.card(self.w.hook(contractor, self.at(contractor, 700_000)))
+        self.assertTrue(text.endswith("Step five: Claude Shannon's desk runs it."))    # the Contractor's own closeout
+        integrator = INTEGRATOR["session_id"]
         cases = {
-            "the assistant holds the manager's key": ({"key": "session-doctor"}, "holds the manager's own key"),
-            "the assistant has a blank name": ({"person": " "}, "has no key or no name"),
-            "two assistants": (None, "exactly one assistant"),
+            "the only Contractor holds the Integrator's key": [dict(CONTRACTOR, key="session-doctor")],
+            "no Contractor at all": [],
+            "a resident of another role": [{"key": "plain", "provider": "claude", "session_id": cid(59), "person": "Plain", "role": "r"}],
+            "a Contractor that is not an entry": ["Contractor", None, 7],
         }
-        for label, (change, why) in cases.items():
+        for label, others in cases.items():
             with self.subTest(label):
-                self.w.identities[1] = dict(ASSISTANT, **(change or {}))
-                if change is None:
-                    self.w.identities.append(dict(ASSISTANT, key="second", session_id=cid(60)))
+                self.w.identities = [dict(INTEGRATOR), *others]
                 self.w.write_registry()
-                self.silent(self.w.hook(manager, self.at(manager, 750_000 + len(self.w.log()))))
-                self.assertIn(why, [e for e in self.w.log() if e["event"] == "unknown"][-1]["why"])
-                self.w.identities = [i for i in self.w.identities if i.get("key") != "second"]
+                self.silent(self.w.hook(integrator, self.at(integrator, 750_000 + len(self.w.log()))))
+                self.assertIn("names no Contractor", [e for e in self.w.log() if e["event"] == "unknown"][-1]["why"])
 
-    def test_the_manager_must_have_a_key_and_be_one(self):
-        for label, change in (("no key", {"key": None}), ("two managers", "two")):
+    def test_the_integrator_must_have_a_key_and_be_one(self):
+        for label, change in (("no key", {"key": None}), ("two Integrators", "two")):
             with self.subTest(label):
-                self.w.identities = [dict(MANAGER), dict(ASSISTANT)]
+                self.w.identities = [dict(INTEGRATOR), dict(CONTRACTOR)]
                 if change == "two":
-                    self.w.identities.append(dict(MANAGER, key="other-manager", session_id=cid(61)))
+                    self.w.identities.append(dict(INTEGRATOR, key="other-integrator", session_id=cid(61)))
                 else:
                     self.w.identities[0].update(change)
                 sid = self.w.resident(f"m-{len(self.w.log())}", 62 + len(self.w.log()))
                 self.silent(self.w.hook(sid, self.at(sid, 900_000)))
-                self.assertIn("continuity manager", self.w.log()[-1]["why"])
+                self.assertIn("Integrator", self.w.log()[-1]["why"])
+
+    def test_the_integrators_card_names_nobody_the_registry_cannot_know(self):
+        integrator = INTEGRATOR["session_id"]
+        others = [dict(CONTRACTOR, key="on-codex", person="On Codex", provider="codex", session_id=cid(63)),
+                  dict(CONTRACTOR, key="elsewhere", person="Else Where", room="/synthetic/other", session_id=cid(64)),
+                  dict(CONTRACTOR, key="nameless", person=" ", session_id=cid(65))]
+        for n, contractors in enumerate(([dict(CONTRACTOR)], [dict(CONTRACTOR), *others], others, others[2:])):
+            with self.subTest(contractors=len(contractors), first=contractors[0]["key"]):
+                self.w.identities = [dict(INTEGRATOR), *contractors]
+                self.w.write_registry()
+                text = self.card(self.w.hook(integrator, self.at(integrator, 700_000 + 50_000 * n, f"m{n}")))
+                self.assertTrue(text.endswith("Step five: The Contractor the operator assigns runs it."))
+                for row in contractors:                                                # whoever they are, none is named
+                    self.assertNotIn(row["person"].strip() or "nameless", text)
 
     def test_a_resident_entry_without_a_key_is_unknown(self):
         self.w.identities.append({"provider": "claude", "session_id": cid(70), "person": "x", "role": "r"})
@@ -530,29 +544,28 @@ class Closeout(unittest.TestCase):
     def test_a_registry_defect_inside_a_told_band_is_still_counted(self):
         sid = self.w.resident("shannon-like", 86)
         self.card(self.w.hook(sid, self.at(sid, 660_000)))
-        self.w.identities = [i for i in self.w.identities if i["role"] != "Session Continuity Manager"]
+        self.w.identities = [i for i in self.w.identities if i["role"] != "Integrator"]
         self.w.write_registry()
         self.silent(self.w.hook(sid, self.at(sid, 661_000, "m2")))
-        self.assertIn("exactly one continuity manager", self.w.log()[-1]["why"])
+        self.assertIn("exactly one Integrator", self.w.log()[-1]["why"])
 
     def test_registry_names_and_keys_are_checked_exactly(self):
-        manager = MANAGER["session_id"]
+        integrator = INTEGRATOR["session_id"]
         cases = {
-            "manager key empty": (0, {"key": ""}, "continuity manager has no key or no name"),
-            "manager key blank": (0, {"key": "   "}, "continuity manager has no key or no name"),
-            "manager key a number": (0, {"key": 7}, "continuity manager has no key or no name"),
-            "assistant name missing": (1, {"person": None}, "assistant has no key or no name"),
-            "no assistant at all": (1, None, "exactly one assistant"),
+            "Integrator key empty": (0, {"key": ""}, "Integrator has no key or no name"),
+            "Integrator key blank": (0, {"key": "   "}, "Integrator has no key or no name"),
+            "Integrator key a number": (0, {"key": 7}, "Integrator has no key or no name"),
+            "no Contractor at all": (1, None, "names no Contractor"),
         }
         for n, (label, (index, change, why)) in enumerate(cases.items(), 90):
             with self.subTest(label):
-                self.w.identities = [dict(MANAGER), dict(ASSISTANT)]
+                self.w.identities = [dict(INTEGRATOR), dict(CONTRACTOR)]
                 if change is None:
                     self.w.identities.pop(index)
                 else:
                     self.w.identities[index].update(change)
                 self.w.write_registry()
-                closer = manager if index == 1 else self.w.resident(f"c{n}", n)
+                closer = integrator if index == 1 else self.w.resident(f"c{n}", n)
                 self.silent(self.w.hook(closer, self.at(closer, 900_000 + n)))
                 self.assertIn(why, [e for e in self.w.log() if e["event"] == "unknown"][-1]["why"])
 
@@ -852,6 +865,27 @@ class SharedPressureDecision(unittest.TestCase):
         self.assertIsNone(self.tool.pressure_band(229999, 400000))
         self.assertEqual(self.tool.pressure_band(230000, 400000), 0)
         self.assertEqual(self.tool.pressure_band(250000, 400000), 1)
+
+
+class RoleNames(unittest.TestCase):
+    """The roles the tool looks for, and its words for the one it cannot name, are those of the policy of this tree."""
+
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location("closeout_role_names", CLOSEOUT)
+        cls.tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.tool)
+        cls.policy = (CLOSEOUT.parents[3] / "PoT.md").read_text(encoding="utf-8")
+
+    def test_the_names_are_those_of_clauses_4_1_3_and_4_1_4(self):
+        named = dict(re.findall(r"(?m)^- \*\*(4\.1\.[34]) ([^:*]+):\*\* ", self.policy))
+        self.assertEqual(named, {"4.1.3": self.tool.INTEGRATOR_ROLE, "4.1.4": self.tool.CONTRACTOR_ROLE})
+
+    def test_the_cards_words_for_the_integrators_rotation_are_the_clauses_own(self):
+        clause = re.search(r"(?m)^- \*\*4\.1\.4 [^\n]*$", self.policy).group(0)
+        words = self.tool.ASSIGNED_CONTRACTOR
+        self.assertEqual(words[:1], "T")
+        self.assertIn(f"; t{words[1:]} to it performs the Integrator's rotation.", clause)
 
 
 if __name__ == "__main__":

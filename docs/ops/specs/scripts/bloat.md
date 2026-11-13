@@ -8,7 +8,7 @@ Ported legacy tool. Its own docstring opens: "Analyze Codex session JSONL pressu
 
 ## Mechanics and Sequencing
 
-1. Behavior is the legacy script's, unchanged: `Scripts/analyze_codex_session_bloat.py` (sha256 `440d24606d610858eb8c2ce2682678d0f983a4d71eac9b7822de869e71bf1a7f`) was copied to `ops/lib/scripts/bloat.py` on 2026-11-01 with 1 edit(s): parents[2] -> parents[4] (1).
+1. Behavior is the legacy script's, unchanged: `Scripts/analyze_codex_session_bloat.py` (sha256 `440d24606d610858eb8c2ce2682678d0f983a4d71eac9b7822de869e71bf1a7f`) was copied to `ops/lib/scripts/bloat.py` on 2026-11-01 with 1 edit(s): parents[2] -> parents[4] (1). On 2026-11-13 one description string was reworded; no behavior changed.
 2. Command line: `python3 -I -B ops/lib/scripts/bloat.py`. Options as the script declares them:
    - `--session`: Explicit session JSONL or JSONL backup to analyze.
    - `--latest`: Analyze the largest newest session under CODEX_HOME sessions.
@@ -27,4 +27,4 @@ Ported legacy tool. Its own docstring opens: "Analyze Codex session JSONL pressu
 
 - Refusal and read-only statements in the docstring: "Analyze Codex session JSONL pressure without modifying session files."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/analyze_codex_session_bloat.py` until Control repoints them; this room's own documents name `ops/lib/scripts/bloat.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

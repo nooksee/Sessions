@@ -56,8 +56,9 @@ UNKNOWN_NOTICE = 3                 # consecutive unknowns before Kevin is told
 SID_RE = re.compile(r"[0-9A-Za-z-]{8,64}")
 
 CARD_SLOTS = ("PERCENT", "WINDOW", "READING_TIME", "ROTATION_WRITER")   # what this hook fills, no more and no less
-MANAGER_ROLE = "Session Continuity Manager"                             # runs every rotation but its own
-ASSISTANT_ROLE = "Assistant Session Continuity Manager"                 # runs the manager's
+INTEGRATOR_ROLE = "Integrator"                                          # runs every rotation but its own (PoT 4.1.3)
+CONTRACTOR_ROLE = "Contractor"                                          # the one the operator assigns runs the Integrator's (PoT 4.1.4)
+ASSIGNED_CONTRACTOR = "The Contractor the operator assigns"             # the card's words for it: the registry holds no assignment
 MARKER_RE = re.compile(r"\{\{([^{}\n]*)\}\}")          # as grep -oE '\{\{[^{}]*\}\}', line by line
 LEFTOVER_RE = re.compile(r"\{\{.*\}\}")                  # as check_rendered: any {{...}} on one line
 WS = r"[ \t\r\f\v]"                    # [[:space:]] inside one line, in the C locale
@@ -241,20 +242,21 @@ def named(entry: dict, what: str) -> tuple[str, str]:
 
 
 def rotation_writer(identities: list, key: str) -> str:
-    """Who runs this resident's rotation, from the registry's roles. A writer is never the resident being moved."""
-    managers = [i for i in identities if isinstance(i, dict) and i.get("role") == MANAGER_ROLE]
-    assistants = [i for i in identities if isinstance(i, dict) and i.get("role") == ASSISTANT_ROLE]
-    if len(managers) != 1:
-        raise Unknown("the registry does not name exactly one continuity manager")
-    manager_key, manager = named(managers[0], "continuity manager")
-    if manager_key != key:
-        return f"{manager}'s desk"
-    if len(assistants) != 1:
-        raise Unknown("the registry does not name exactly one assistant to run the manager's rotation")
-    assistant_key, assistant = named(assistants[0], "assistant")
-    if assistant_key == key:
-        raise Unknown("the manager's assistant holds the manager's own key")
-    return assistant
+    """Who runs this resident's rotation, from the registry's roles. A writer is never the resident being moved.
+
+    The Integrator runs every rotation but its own. Its own is run by the Contractor the operator assigns to it
+    (PoT 4.1.4). The registry holds no such assignment, so the card says so and names nobody. With no Contractor
+    in the registry but the Integrator itself there is no one to assign, and that is unknown.
+    """
+    integrators = [i for i in identities if isinstance(i, dict) and i.get("role") == INTEGRATOR_ROLE]
+    if len(integrators) != 1:
+        raise Unknown("the registry does not name exactly one Integrator")
+    integrator_key, integrator = named(integrators[0], "Integrator")
+    if integrator_key != key:
+        return f"{integrator}'s desk"
+    if not any(isinstance(i, dict) and i.get("role") == CONTRACTOR_ROLE and i.get("key") != key for i in identities):
+        raise Unknown("the registry names no Contractor to run the Integrator's rotation")
+    return ASSIGNED_CONTRACTOR
 
 
 # --------------------------------------------------------------------------

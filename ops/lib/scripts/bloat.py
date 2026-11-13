@@ -172,7 +172,7 @@ def reducer_status_for_category(category: str) -> tuple[str, str, str]:
         ),
         "conversation_assistant": (
             "semantically_reducible",
-            "Assistant prose often contains repeated reasoning, status reports, and summaries.",
+            "Prose from the assistant often contains repeated reasoning, status reports, and summaries.",
             "Reduce to outcomes, commands, files changed, validation, and next state.",
         ),
         "tool_call": (

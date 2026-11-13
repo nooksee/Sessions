@@ -124,7 +124,7 @@ def reduction_lane(row_class: str) -> tuple[str, str, str]:
         ),
         "message:assistant": (
             "semantic_reducer_candidate",
-            "Assistant prose can be summarized into receipts, current state, files changed, and validation.",
+            "Prose from the assistant can be summarized into receipts, current state, files changed, and validation.",
             "Preserve recent visible continuity and repo-canonical summaries.",
         ),
         "message:user": (

@@ -24,4 +24,4 @@ Ported legacy tool. Its own docstring opens: "Classify Codex sessions into resid
 
 - Refusal and read-only statements in the docstring: "Read-only." "Reports; archives only with --archive-idle and an explicit hours threshold, and never touches a file another process holds."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/inventory_worker_threads.py` until Control repoints them; this room's own documents name `ops/lib/scripts/workers.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

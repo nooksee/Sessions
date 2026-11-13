@@ -44,6 +44,8 @@
 !/archives/PoT-authority-457fe859.md
 !/archives/PoT-db1586ff.md
 !/archives/PoT-authority-db1586ff.md
+!/archives/PoT-744238f2.md
+!/archives/PoT-authority-744238f2.md
 !/archives/board-history-20261105.md
 !/archives/board-history-20261107.md
 !/archives/receipts/
@@ -82,7 +84,7 @@
 #   logs/*               telemetry: output, not a record
 #   storage/             only its declared skeleton is versioned; payload stays private by default
 #   var/tmp/             task-local scratch; only the skeleton is admitted
-#   HANDOFF.md           the manager's own handoff
+#   HANDOFF.md           the Integrator's own handoff
 # Storage admission is defined once, in storage/.gitignore.
 /MIND.md
 /archives/legacy/

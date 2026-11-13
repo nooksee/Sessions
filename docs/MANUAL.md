@@ -1,6 +1,6 @@
 # Sessions Operations Manual (Command Console)
 
-Owner: Claude Shannon, Session Continuity Manager. Written 2026-10-30 at the operator's request for a help system and a manual, both taken from the STELA framework, by a workflow agent under Shannon's assignment. Framework: STELA's manual, the house convention, kept in the operator's Control tree and not in this repository; filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
+Owner: Claude Shannon, Integrator. Written 2026-10-30 at the operator's request for a help system and a manual, both taken from the STELA framework, by a workflow agent under Shannon's assignment. Framework: STELA's manual, the house convention, kept in the operator's Control tree and not in this repository; filled for this house. Map: `docs/ops/README.md`. Index: `docs/INDEX.md`.
 
 Authority order:
 - **Law:** `PoT.md` is the single Sessions constitution, below Control policy.
@@ -61,9 +61,9 @@ with auto memory off and wakes from the mind and its own handoff (CONTEXT X01).
 | Who | Seat | Owns | Does not own |
 | --- | --- | --- | --- |
 | **The operator** | operator | objectives, priorities, authority, every yes and every go, final acceptance | implementation chores |
-| **Claude Shannon** | Session Continuity Manager (registry key `session-doctor`) | continuity, the Sessions room, the specs, coordination of the team, running rotations for other residents | his own rotation (Claudine runs it) |
-| **Claudine Colbert** | Assistant Session Continuity Manager | the tools she is assigned as sole writer (`gauge.py`, `mind.py`), and Shannon's rotation | a surface another writer holds |
-| **Joe Codex** | Session Continuity Apprentice | read-only measurement and the Codex side (methods, runway figures, Codex hooks) | any write without the operator's named go |
+| **Claude Shannon** | Integrator (registry key `session-doctor`) | continuity, the Sessions room, the specs, coordination of the team, running rotations for other residents | his own rotation (Claudine runs it) |
+| **Claudine Colbert** | Contractor | the tools she is assigned as sole writer (`gauge.py`, `mind.py`), and Shannon's rotation | a surface another writer holds |
+| **Joe Codex** | Contractor | read-only measurement and the Codex side (methods, runway figures, Codex hooks) | any write without the operator's named go |
 | **Jo Hamming** | Orchestrator (registry key `jo-hamming`; a Copilot resident, prompted only by the operator's paste; CONSTRAINTS C16) | staying in the loop from dispatch through closeout, and the ship station of every dispatch packet (section 1B): the commit of the audited tree, the push, the pull request, the required check, the exact-head merge, the proof that `main` equals origin, and the cleanup | content, review, acceptance, source, documents and records other than its own handoff; Git work is workflow, not authority, and any resident runs the station with a recorded fallback reason when the Orchestrator is not available |
 | **Claudio Freeman** | independent reviewer and auditor (Control surfaces) | review before reliance, audit after change | implementation, repair or rollout writing on work he reviews |
 | **The Auditor** (the operator's appointed seat; the registry names the holder) | independent reviewer and post-change auditor for this room's material work (PoT 4.1.9) | review before reliance, audit after change | implementation, repair or rollout writing on work it reviews |
@@ -71,9 +71,9 @@ with auto memory off and wakes from the mind and its own handoff (CONTEXT X01).
 
 Rules that hold for every seat:
 - **One writer per surface.** Each file, live session and rollout has exactly one named writer at a time.
-- **Git work is handed off.** A change reaches `main` only as one dispatch packet (section 1B). The Orchestrator runs its ship station; the Manager, the writers and the Auditor do not commit, push, merge or pull as a routine. Any resident runs the station with a recorded fallback reason when the Orchestrator is not available. This is workflow, not authority (CONSTRAINTS C16 and C17).
+- **Git work is handed off.** A change reaches `main` only as one dispatch packet (section 1B). The Orchestrator runs its ship station; the Integrator, the writers and the Auditor do not commit, push, merge or pull as a routine. Any resident runs the station with a recorded fallback reason when the Orchestrator is not available. This is workflow, not authority (CONSTRAINTS C16 and C17).
 - **The team room.** `storage/handoff/{shannon,claudine,joe}.md`. Each member writes only their own file. Results are promoted to `archives/receipts/` or the office handoff; the room itself is working notes.
-- **A file proves no delivery.** A routing decision or a note in the team room is not delivery. The operator's paste is the fallback between chats, and the only route to a closed Claude chat or a Copilot resident. Between separately governed rooms it stays the route until an acceptance names who may send, to whom and in what form. Claude residents of this room also reach one another by session message: such a message is information, grants nothing, and proves reading only by the receiver's own reply or record. On 2026-11-07 the operator accepted `codex queue` as a relay to the Apprentice alone, with the Manager and the Assistant as senders, by one line naming a path and a hash, through a tool at a reviewed hash. It was proved by one no-op send to one open chat, audited; what the chat displayed is not observed. A queued line starts a turn at that chat's settings whether or not anyone is watching, cannot be withdrawn, names a session and not a person as its sender, and is not the operator's word. The contract for these routes is an open item of the Central port, and this line gives way to it.
+- **A file proves no delivery.** A routing decision or a note in the team room is not delivery. The operator's paste is the fallback between chats, and the only route to a closed Claude chat or a Copilot resident. Between separately governed rooms it stays the route until an acceptance names who may send, to whom and in what form. Claude residents of this room also reach one another by session message: such a message is information, grants nothing, and proves reading only by the receiver's own reply or record. On 2026-11-07 the operator accepted `codex queue` as a relay to the Contractor on Codex (Joe Codex) alone, with the Integrator and the Contractor on Claude (Claudine Colbert) as senders, by one line naming a path and a hash, through a tool at a reviewed hash. It was proved by one no-op send to one open chat, audited; what the chat displayed is not observed. A queued line starts a turn at that chat's settings whether or not anyone is watching, cannot be withdrawn, names a session and not a person as its sender, and is not the operator's word. The contract for these routes is an open item of the Central port, and this line gives way to it.
 - **Attribution.** Relayed text is attributed to its real author; "verbatim" only for the author's own words.
 - **House style.** No contractions. Deviations reported as counts.
 
@@ -150,7 +150,7 @@ A packet's leaf names, by registry key, who carries each of the four delivery fu
 
 | Function | Carried here by | Runs | Never |
 | --- | --- | --- | --- |
-| Integrator | the Manager | `draft`, `open`, `amend`, `restore`, `abandon` | commits, pushes or merges |
+| Integrator | the Integrator (PoT 4.1.3) | `draft`, `open`, `amend`, `restore`, `abandon` | commits, pushes or merges |
 | Contractor | the resident the packet names for its work | edits in the worktree, then `close` | edits the room's own checkout, edits outside scope, or audits its own packet |
 | Auditor | the Auditor | reads `diff`, then `audit --verdict pass` or `fail` | writes the work it audits |
 | Orchestrator | the Orchestrator | `ship`, again until it prints `LANDED`; `abandon` once a branch is on origin | decides content, review or acceptance |
@@ -606,7 +606,7 @@ Also:
 - **Record:** a kept event account. **Maintained surface:** a surface deliberately kept current by its writer.
 - **Rebuildable tool state:** not a kept record merely because it is called a ledger.
 - **Block:** an operator-opened bounded work unit; the closeout card comes from its template.
-- **Team:** the Manager, Assistant and Apprentice, identified through the registry.
+- **Team:** the Integrator and the Contractors, identified through the registry.
 - **Dispatch packet:** the one unit in which a change reaches `main`: one id, one branch, one pull request, one kept leaf (section 1B). Not the resident packet, which is a routing form.
 - **Packet leaf:** `archives/packets/DP-SES-NNNN.md`, the kept record of one dispatch packet; a different thing from a leaf of the mind.
 - **Delivery function:** one of the four kinds of work in a dispatch packet: Integrator, Contractor, Auditor, Orchestrator (PoT 4.1.11; CONSTRAINTS C16 and C17). The leaf names by registry key who carries each; a function is not a seat.

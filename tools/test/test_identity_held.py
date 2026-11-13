@@ -29,7 +29,7 @@ LIVE = os.environ.get("LIVE")
 GRACE_SID = "0000e3e3-0000-4000-8000-00000000e3e3"
 GORDON_SID = "0000e4e4-0000-4000-8000-00000000e4e4"
 GRACE_LABEL = "GitHub Reviewer (Grace Hopper)"
-GORDON_LABEL = "GitHub Assistant (Gordon Bell)"
+GORDON_LABEL = "GitHub Contractor (Gordon Bell)"
 HELD_NOTE = "although the registry holds it from the launcher"
 
 
@@ -57,7 +57,7 @@ def grace(**over) -> dict:
 
 
 def gordon(**over) -> dict:
-    row = {"key": "gordon-bell", "role": "GitHub Assistant", "person": "Gordon Bell",
+    row = {"key": "gordon-bell", "role": "GitHub Contractor", "person": "Gordon Bell",
            "provider": "codex", "session_id": GORDON_SID, "room": "/office",
            "verified": "operator", "launcher": "held"}
     row.update(over)
@@ -257,7 +257,7 @@ class HeldMismatches(HeldTest):
 
     def test_held_label_still_compared(self):
         h = self.house()
-        h.labels[GRACE_SID] = "Session Continuity Manager (Claude Shannon)"
+        h.labels[GRACE_SID] = "Integrator (Claude Shannon)"
         code, out = h.run(served(), grace())
         self.assertIn("MISMATCH  grace-hopper: PyCharm label", out)
         self.assertEqual(code, 1)

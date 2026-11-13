@@ -26,4 +26,4 @@ Ported legacy tool. Its own docstring opens: "Build an analysis-only Codex JSONL
 
 - Refusal and read-only statements in the docstring: "It does not edit live sessions, rewrite source sessions, copy auth files, launch Codex, or promote derivatives."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/externalize_codex_image_payloads.py` until Control repoints them; this room's own documents name `ops/lib/scripts/images.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

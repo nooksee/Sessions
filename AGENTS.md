@@ -18,7 +18,7 @@ at this same path.
 ## Ownership
 
 - The operator owns objectives, authority, priorities, and final acceptance.
-- The active Control desktop continuity manager is the cross-project
+- Control is the cross-project
   coordinator; current assignments come from Control canon and the registry.
 - The resident Session Continuity Claude owns bounded session diagnosis,
   monitoring, candidate preparation, receipts, and explicitly approved

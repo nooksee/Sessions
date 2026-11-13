@@ -8,7 +8,7 @@ The first source snapshot contains the root canon and instructions, modern ops/,
 
 ## Control transition
 
-This establishes Sessions Git and does not complete removal of Sessions paths from Control. Control currently tracks 1,084 Sessions paths. Some bootstrap paths overlap that legacy index; the bootstrap snapshot does not grant two independent writers authority over a shared file. George owns the present bootstrap and the Session Continuity Manager retains the existing room assignments outside its exact edits.
+This establishes Sessions Git and does not complete removal of Sessions paths from Control. Control currently tracks 1,084 Sessions paths. Some bootstrap paths overlap that legacy index; the bootstrap snapshot does not grant two independent writers authority over a shared file. George owns the present bootstrap and the Integrator retains the existing room assignments outside its exact edits.
 
 The parent has one active Process branch/PR #117 at f462451c8ec7ebcf2cf4ab7797a53606392558ff. It is preserved. Full separation requires its normal disposition and a separate Control branch/PR that reconciles the parent index and pointers, CI ownership and the frozen Resident Center custody contract. In particular, Control CI still runs Sessions/Scripts/tests, and the drift checker binds Sessions/Config/resident-center-relationship.json to accepted Control history. Removing every Sessions path from Control now would break those contracts.
 
@@ -45,4 +45,4 @@ were still open. The accepted local join therefore remained unpublished to
 hosted `main`; this readback does not claim a hosted merge, CI result or
 remote synchronization.
 
-**Correction, by the Session Continuity Manager (Claude Shannon), 2026-11-05 00:20:20 EST:** the GitHub home named above as private, nooksee/sessions, has been public since 2026-11-04 as nooksee/Sessions, rebuilt from the rewritten history under RoR-15; the bootstrap it describes is event-time history. Receipt: `archives/receipts/history-rewrite-20261104.md`.
+**Correction, by the Integrator (Claude Shannon), 2026-11-05 00:20:20 EST:** the GitHub home named above as private, nooksee/sessions, has been public since 2026-11-04 as nooksee/Sessions, rebuilt from the rewritten history under RoR-15; the bootstrap it describes is event-time history. Receipt: `archives/receipts/history-rewrite-20261104.md`.

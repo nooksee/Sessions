@@ -7,7 +7,7 @@ E = <room>/storage/active/<operation>/. The design is `w6-slice7-producer-design
 serves `w6-adapter-design.md` (e937ebb3), phases 4 and 5. It joins the engine only through those files.
 
 Disposable variant only. A donor or destination that is any registered resident's session is refused before
-anything but the registry and the request is read (the Manager's O1 ruling, condition 3).
+anything but the registry and the request is read (the Integrator's O1 ruling, condition 3).
 
 Reads: the request, the registry, the phase-0 record and the cut reason (small, private, hash-bound); the gauge's
 reviewed window table; the donor D in one streaming pass, hashed whole and bracketed by two lstat readings, keeping

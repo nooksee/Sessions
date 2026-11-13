@@ -1,6 +1,6 @@
 # Shipping: how a change reaches main (the field guide)
 
-Registry entry: `docs/ops/registry/runbook.md` (`RUNBOOK-04`). Tool: `ops/lib/scripts/packet.py` (`SCRIPT-50`), specified in `docs/ops/specs/scripts/packet.md`. Contract: CONSTRAINTS C16 and C17. Written 2026-11-12 by the port's writer, on the operator's direction, as the team's onboarding to the packet workflow. The specification says what the tool does. This guide says how the team works with it. Status: maintained by the Session Continuity Manager; read once by every resident who may carry a function in a packet, and again after a rotation.
+Registry entry: `docs/ops/registry/runbook.md` (`RUNBOOK-04`). Tool: `ops/lib/scripts/packet.py` (`SCRIPT-50`), specified in `docs/ops/specs/scripts/packet.md`. Contract: CONSTRAINTS C16 and C17. Written 2026-11-12 by the port's writer, on the operator's direction, as the team's onboarding to the packet workflow. The specification says what the tool does. This guide says how the team works with it. Status: maintained by the Integrator; read once by every resident who may carry a function in a packet, and again after a rotation.
 
 ## 1. Why this exists
 
@@ -24,12 +24,12 @@ A packet is carried by the four delivery functions the team already works by: th
 
 | Function | Carried here by | What it does in a packet |
 | --- | --- | --- |
-| Integrator | the Session Continuity Manager | drafts and opens the packet; changes its scope; restores or abandons it |
-| Contractor | whoever does this packet's work: the Assistant, the Apprentice (a write still needs the operator's named go), or the Manager himself | edits in the worktree, then closes |
+| Integrator | the Integrator (PoT 4.1.3) | drafts and opens the packet; changes its scope; restores or abandons it |
+| Contractor | whoever does this packet's work: a Contractor, within the scope the operator assigns to it (PoT 4.1.4), or the Integrator himself | edits in the worktree, then closes |
 | Auditor | the Auditor (PoT 4.1.9); never the packet's Contractor | reads the exact change and records PASS or FAIL |
 | Orchestrator | the Orchestrator (CONSTRAINTS C16); any resident on a recorded fallback | ships: everything that touches origin or `main` |
 
-Until 2026-11-09 this room gave the name Integrator to the seat that is now the Orchestrator's (RoR-23). The Integrator of a packet is not that seat: it is the function the Manager carries.
+Until 2026-11-09 this room gave the name Integrator to the seat that is now the Orchestrator's (RoR-23). The Integrator of PoT 4.1.3, and of a packet, is not that seat.
 
 STELA's packets call the Contractor's session the Worker. This room does not use that word for it: here a worker is what a resident starts to help with its own work, such as a subagent or a background task; it acts as its parent and carries no function of its own (PoT 3.5).
 
@@ -159,7 +159,7 @@ A good narrative is three to six sentences: what changed, why it satisfies the o
 | `FAILED: the required check ... ended failure` | GitHub disagrees with the gates run here | the Contractor reworks; then close, audit and ship again |
 | `origin/main moved since this packet opened` | something else landed | the Integrator abandons and opens again; the work is kept as a patch |
 | `a branch for DP-SES-NNNN already exists` | a leftover branch | the Orchestrator deletes the branch it names |
-| `the caller is not verified` | the tool cannot tell who you are | stop; report the line to the Manager and the operator |
+| `the caller is not verified` | the tool cannot tell who you are | stop; report the line to the Integrator and the operator |
 
 ## 10. Questions
 
@@ -189,4 +189,4 @@ A good narrative is three to six sentences: what changed, why it satisfies the o
 
 - Each resident, once: read this guide; run `status`; cut from your own handoff what described the old route, and add how you ship now in a few lines; write the idea, in your own words, as a leaf of the mind.
 - Each resident who carries a function, once: one packet through your station, and one refusal met on purpose.
-- The Manager, after ten landed packets: read what the refusals taught, and open packets for what should change.
+- The Integrator, after ten landed packets: read what the refusals taught, and open packets for what should change.
