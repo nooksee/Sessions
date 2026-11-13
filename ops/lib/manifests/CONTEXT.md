@@ -51,6 +51,7 @@ requirement. No reader acquires a resident identity merely by entering the room.
 | Present state | NOW.md | Orientation only; domain source wins |
 | Work in flight | Mapped resident handoffs | Own writer; other readers receive information, not authority |
 | Repository work in flight | The one active dispatch packet: `ops/lib/scripts/packet.py status`; its worktree `var/tmp/packet/` | Every resident; the leaf's contract is the assignment (CONSTRAINTS C17) |
+| Read-in | `ops/bin/open`; its private ledger under `logs/open/` | Every reader before work; a resident's OPEN records who was shown which law, by hash (X04) |
 | Body fullness | Body metadata under gauge specification | Gauge and authorized metadata-only checks |
 | Kept proof | archives/receipts/ and mapped custody | Authorized verification; a path alone proves no execution |
 | Landed packets | archives/packets/ | One leaf per landed packet: contract, measured results, audit verdict; written only by the packet tool; public |
@@ -73,3 +74,29 @@ is updated by its owning source writer after W2a freezes. A required context
 path is verified at integration; no global eager read of all private data.
 The custody manifest's exact current path and Control-governed surfaces stay
 in the map, not frozen into this list. Host-local identities are not copied.
+
+## X04
+
+What an OPEN shows. `ops/bin/open` reads this table from `main`, and is the
+one program that reads this manifest. A row names clauses by number only.
+Their text is read from PoT.md and CONSTRAINTS.md at the time of the OPEN and
+is never copied here, so a row cannot say something the law does not; it can
+only cite a clause that is gone, which the tool refuses and its suite catches
+before a change lands. The first row is shown to every reader. The other rows
+are the four delivery functions of PoT 6.1.4, by the names the packet tool
+gives them, each once and no other: the tool refuses any other row. A
+function's row is shown to the resident to whom the open packet's leaf gives
+that function, and a function is read from that leaf and from nowhere else.
+When no open packet names the caller, all four rows are shown. An OPEN that
+has not shown the row of a function the open packet gives its holder is no
+longer good. A file of the law is printed whole when the caller's body has not
+been shown it as it now stands; this table chooses only what every OPEN
+repeats. Keep it short: it is read at the start of every shift.
+
+| Reader | Policy clauses | Constraints |
+| --- | --- | --- |
+| every reader | Preamble, 1.2.1, 1.2.8, 1.3.18, 2.1.3, 2.2.2, 2.2.4, 2.2.6, 2.2.8, 2.3.2, 4.2.1, 4.2.2, 4.2.3, 4.2.4, 4.3.2, 4.4.4, 5.1.2, 5.1.4, 5.2.1, 5.3.1, 6.1.1, 6.1.4, 6.4.5 | |
+| Integrator | 1.2.7, 1.2.10, 6.1.2, 6.1.6, 6.3.3, 7.2 | |
+| Contractor | 1.2.5, 2.1.4, 2.2.3, 5.1.3, 6.1.5 | |
+| Auditor | 4.1.9, 4.4.1, 4.4.6, 4.4.7, 6.1.3 | |
+| Orchestrator | 1.2.7, 2.3.3, 4.1.10 | |

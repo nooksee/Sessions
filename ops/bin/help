@@ -348,6 +348,7 @@ show_menu() {
   printf '\n'
 
   printf '%sBinaries%s (ops/bin)\n' "$bold" "$reset"
+  printf '  %sopen%s       the read-in: the law on your own screen, by function, and a record that it was shown\n' "$cyan" "$reset"
   printf '  %shelp%s       this page; read-in check, spec status, doctrine index, search\n' "$cyan" "$reset"
   printf '  %stemplate%s   new tool skeleton: script, spec, test, and a registry row printed for its writer\n\n' "$cyan" "$reset"
 
@@ -523,11 +524,12 @@ run_self_test() {
   fi
   passed=$((passed + 1))
 
-  # 14. Menu: read-in order, loop, and both binaries are present.
+  # 14. Menu: read-in order, loop, and the binaries are present.
   out="$(cd "$ROOM_ROOT" && show_menu)"
   expect "menu lists 10 read-in entries" test "$(count_lines_matching "$out" '^  [1-9][0-9]*[.] ')" = "10"
   expect "menu shows the loop" contains "$out" "$LOOP_LINE"
   expect "menu lists template" contains "$out" "template"
+  expect "menu lists open" contains "$out" "the read-in: the law on your own screen"
   expect "menu distinguishes tracked storage skeleton from private payload" contains "$out" "only the declared skeleton is versioned"
   passed=$((passed + 1))
 

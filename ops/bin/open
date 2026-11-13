@@ -1,0 +1,911 @@
+#!/usr/bin/env python3
+"""open: the read-in a resident runs before it works. Standard library only.
+
+PoT 1.3.18 asks that required contracts are read before work that depends on
+them, and 2.1.1 calls a safeguard held only in memory a defect. This is the
+tool for both. An OPEN puts the law on the caller's own screen and records
+that it did: who, when, which law by hash, which clauses, and what the caller
+said the shift is for.
+
+The caller is found, never typed: the registry key is resolved exactly as the
+mind tool resolves it. Every reader is shown the clauses the context manifest
+lists for every reader (CONTEXT X04). A resident is shown, besides, the
+clauses listed for each delivery function the open packet's leaf gives it:
+Integrator, Contractor, Auditor or Orchestrator. A function is read from that
+leaf and from nowhere else; when no open packet names the caller, all four are
+shown. The text of a clause is read from `main` at the time of the OPEN and is
+never copied into this tool or into the manifest.
+
+A file of the law is printed whole when this body has not been shown it as it
+now stands: on a body's first OPEN, and after every change to that file. An
+OPEN is printed in parts, each small enough that a provider's shell tool does
+not cut it; it is complete, and recorded, only when its last part has been
+printed.
+
+An OPEN is good for one body, one text of the law and one shift, and only
+while it has shown the clauses for every function the open packet gives the
+caller. `--check` says whether the caller holds one; `--roster` says who in
+the room does. This tool locks nothing: whether another tool requires an OPEN
+is that tool's own contract.
+
+Filing authority: PoT 1.1.12. The ledger, each caller's unfinished OPEN and
+the lock are telemetry under logs/open/. Nothing here is committed.
+
+Spec: docs/ops/specs/binaries/open.md. This tool reads no session body, and it
+prints no session identifier.
+"""
+from __future__ import annotations
+
+import argparse
+import contextlib
+import datetime as dt
+import fcntl
+import hashlib
+import importlib.util
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import types
+from pathlib import Path
+
+SESSIONS = Path(__file__).resolve().parents[2]
+REGISTRY = SESSIONS / "ops" / "etc" / "resident-identities.json"
+SCRIPTS = SESSIONS / "ops" / "lib" / "scripts"
+TOOL = "ops/bin/open"
+POLICY = "PoT.md"
+CONTEXT = "ops/lib/manifests/CONTEXT.md"
+CONSTRAINTS = "ops/lib/manifests/CONSTRAINTS.md"
+LAW = (POLICY, CONTEXT, CONSTRAINTS)           # the files an OPEN binds by hash, in the order they are printed whole
+BOARD = "NOW.md"
+DECISIONS = "RoR.md"
+LEAVES = "archives/packets"
+LEDGER = Path("logs") / "open" / "ledger.jsonl"
+PENDING = Path("logs") / "open" / "pending"
+LOCK = Path("logs") / "open" / "lock"
+
+TABLE = "X04"              # the section of the context manifest that lists what an OPEN shows
+EVERY = "every reader"     # the row shown to everyone
+PREAMBLE = "Preamble"
+BOARD_SECTIONS = ("Now", "Open")
+SHIFT = 12 * 3600          # seconds an OPEN stays good
+PENDING_LIFE = 3600        # seconds an unfinished OPEN may wait for its next part
+PART_BYTES = 9000          # a part stays under the smallest output a provider's shell tool is known to pass whole
+PART_LINES = 200
+INTENT_LIMIT = 200
+GIT_TIMEOUT = 60
+SIDE_TIMEOUT = 90          # seconds for the packet tool's status or the gauge's one reading
+SEAM = "MIND_TEST_CALLER"  # mind.py's test seam
+NEXT = f"python3 -I -B {TOOL} --next"
+
+KEY_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+CLAUSE_LINE_RE = re.compile(r"^- \*\*(\d+(?:\.\d+){1,2})(?![\d.])[^*]*\*\*\s*(.*)$")
+NUMBER_RE = re.compile(r"^\d+(?:\.\d+){1,2}$")
+SECTION_RE = re.compile(r"^C\d\d$")
+ENTRY_RE = re.compile(r"^### (RoR-\d+): *(.*)$")
+LEAF_RE = re.compile(r"^archives/packets/(DP-SES-\d{4})\.md$")
+# Variables that tell Git where a repository is. A caller's own must never redirect this tool.
+GIT_PLACE = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_COMMON_DIR",
+             "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE", "GIT_PREFIX", "GIT_CEILING_DIRECTORIES")
+
+
+class Refused(Exception):
+    """Fail closed: no OPEN was made. Exit 2."""
+
+
+class Unverified(Exception):
+    """The caller is not a verified resident of this room. The common read-in is shown; nothing is recorded."""
+
+
+# --------------------------------------------------------------------------
+# Small helpers.
+# --------------------------------------------------------------------------
+def iso(t: dt.datetime) -> str:
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def parse_time(text) -> dt.datetime | None:
+    try:
+        return dt.datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def clock() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+
+
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+_SIBLINGS: dict = {}
+
+
+def sibling(name: str):
+    """A room script, loaded once by path; never a second copy of its logic."""
+    if name not in _SIBLINGS:
+        path = SCRIPTS / (name + ".py")
+        spec = importlib.util.spec_from_file_location("open_" + name, path)
+        if spec is None or spec.loader is None or not path.is_file():
+            raise Refused(f"{name}.py is not in this room, so this command cannot run")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module         # a dataclass resolves its own module while the module runs
+        try:
+            spec.loader.exec_module(module)
+        except Exception as exc:
+            sys.modules.pop(spec.name, None)
+            raise Refused(f"{name}.py cannot run ({exc.__class__.__name__}), so this command cannot run") from None
+        _SIBLINGS[name] = module
+    return _SIBLINGS[name]
+
+
+def function_names() -> tuple:
+    """The delivery functions, by the names the packet tool gives them. One source, so the two tools cannot differ."""
+    names = getattr(sibling("packet"), "FUNCTIONS", None)
+    if not isinstance(names, tuple) or not names or not all(isinstance(name, str) and name for name in names):
+        raise Refused("packet.py names no delivery functions, so the read-in table cannot be checked")
+    return names
+
+
+def git_env() -> dict:
+    return {k: v for k, v in os.environ.items() if k not in GIT_PLACE}
+
+
+def git_bytes(room: Path, *args: str) -> bytes | None:
+    """One Git answer as bytes, or None when Git says no."""
+    try:
+        done = subprocess.run(["git", "-C", str(room), *args], capture_output=True, stdin=subprocess.DEVNULL,
+                              timeout=GIT_TIMEOUT, env=git_env())
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise Refused(f"Git did not answer ({exc.__class__.__name__})") from None
+    return done.stdout if done.returncode == 0 else None
+
+
+def git_text(room: Path, *args: str) -> str | None:
+    answer = git_bytes(room, *args)
+    return None if answer is None else answer.decode("utf-8", "replace").strip()
+
+
+def room_main(room: Path) -> str:
+    """The commit of the room's own `main`; the law in force is what that commit holds."""
+    rows = (git_text(room, "rev-parse", "--show-toplevel", "--git-dir", "--git-common-dir") or "").splitlines()
+    if len(rows) != 3 or Path(rows[0]).resolve() != room:
+        raise Refused("the room is not the root of a Git checkout, so there is no law on main to show")
+    if (room / rows[1]).resolve() != (room / rows[2]).resolve():
+        raise Refused("this is a linked Git worktree, not the room's own checkout; run the room's own copy of the tool")
+    commit = git_text(room, "rev-parse", "--verify", "--quiet", "refs/heads/main^{commit}")
+    if not commit:
+        raise Refused("the room has no branch main, so there is no law on main to show")
+    return commit
+
+
+def on_main(room: Path, commit: str, path: str) -> bytes | None:
+    return git_bytes(room, "cat-file", "blob", f"{commit}:{path}")
+
+
+def read_law(room: Path, commit: str) -> dict[str, bytes]:
+    law = {}
+    for path in LAW:
+        data = on_main(room, commit, path)
+        if data is None:
+            raise Refused(f"{path} is not on main, so the law cannot be shown; nothing is opened")
+        law[path] = data
+    return law
+
+
+def lines_of(data: bytes) -> list[str]:
+    return data.decode("utf-8", "replace").splitlines()
+
+
+# --------------------------------------------------------------------------
+# Reading the law: clauses by number, sections by name, and the table that
+# says who is shown which.
+# --------------------------------------------------------------------------
+def policy_clauses(text: list[str]) -> dict[str, str]:
+    """Clause number to its whole line, as written. The preamble is the text under its own heading."""
+    found: dict[str, str] = {}
+    preamble, inside = [], False
+    for line in text:
+        if line.startswith("## "):
+            inside = line.strip() == "## " + PREAMBLE
+            continue
+        if inside and line.strip():
+            preamble.append(line)
+        m = CLAUSE_LINE_RE.match(line)
+        if m and m.group(1) not in found:
+            found[m.group(1)] = line
+    if preamble:
+        found[PREAMBLE] = "\n".join(preamble)
+    return found
+
+
+def clause_heads(text: list[str]) -> dict[str, tuple[str, ...]]:
+    """Clause number to the heading it stands under, with the words the law sets between that heading and its first
+    clause. A clause is read under its heading: `Writing an unowned surface` is law only as one of the stops."""
+    found: dict[str, tuple[str, ...]] = {}
+    head: list[str] = []
+    lead = False
+    for line in text:
+        if line.startswith(("## ", "### ")):
+            head, lead = [line], True
+            if line.strip() == "## " + PREAMBLE:
+                found[PREAMBLE], lead = (line,), False
+            continue
+        m = CLAUSE_LINE_RE.match(line)
+        if m:
+            lead = False
+            found.setdefault(m.group(1), tuple(head))
+        elif lead and line.strip():
+            head.append(line)
+    return found
+
+
+def retired(line: str) -> bool:
+    m = CLAUSE_LINE_RE.match(line)
+    return bool(m) and m.group(2).strip() == "[Retired]"
+
+
+def constraint_sections(text: list[str]) -> dict[str, list[str]]:
+    """Section name (C01 and so on) to its lines, without the heading and without edge blanks."""
+    found: dict[str, list[str]] = {}
+    name = None
+    for line in text:
+        if line.startswith("## "):
+            head = line[3:].strip()
+            name = head if SECTION_RE.match(head) else None
+            if name:
+                found[name] = []
+            continue
+        if name:
+            found[name].append(line)
+    for body in found.values():
+        while body and not body[0].strip():
+            body.pop(0)
+        while body and not body[-1].strip():
+            body.pop()
+    return found
+
+
+def read_table(text: list[str], functions: tuple) -> list[tuple[str, list[str], list[str]]]:
+    """The rows of CONTEXT X04: reader, policy clauses, constraint sections. The first row is for every reader and
+    the others are the delivery functions, each once and no other. Refused when it cannot be read exactly."""
+    rows, inside = [], False
+    for line in text:
+        if line.startswith("## "):
+            inside = line[3:].strip() == TABLE
+            continue
+        if not inside or not line.lstrip().startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) != 3:
+            raise Refused(f"a row of the read-in table ({CONTEXT} {TABLE}) has {len(cells)} cells, not 3")
+        if cells[0].lower() == "reader" or set("".join(cells)) <= set("-: "):
+            continue
+        policy = [token.strip() for token in cells[1].split(",") if token.strip()]
+        sections = [token.strip() for token in cells[2].split(",") if token.strip()]
+        for token in policy:
+            if token != PREAMBLE and not NUMBER_RE.match(token):
+                raise Refused(f"the read-in table cites {token!r}, which is not a clause number")
+        for token in sections:
+            if not SECTION_RE.match(token):
+                raise Refused(f"the read-in table cites {token!r}, which is not a section of the constraints")
+        rows.append((cells[0], policy, sections))
+    if not rows or rows[0][0].lower() != EVERY:
+        raise Refused(f"the read-in table ({CONTEXT} {TABLE}) is missing, or its first row is not for {EVERY}")
+    names = [row[0].lower() for row in rows]
+    if len(names) != len(set(names)):
+        raise Refused("the read-in table names a reader twice")
+    named = [row[0] for row in rows[1:]]
+    for name in named:
+        if name not in functions:
+            raise Refused(f"the read-in table has a row for {name!r}, which is not a delivery function; its rows are "
+                          f"{EVERY}, " + ", ".join(functions))
+    for name in functions:
+        if name not in named:
+            raise Refused(f"the read-in table has no row for the {name} function")
+    return rows
+
+
+def table_problems(rows, clauses: dict[str, str], sections: dict[str, list[str]]) -> list[str]:
+    """Every citation must be a clause in force or a section that exists. One sentence for each that is not."""
+    problems = []
+    for reader, policy, cited in rows:
+        for number in policy:
+            if number not in clauses:
+                problems.append(f"the row for {reader} cites {number}, which the policy does not hold")
+            elif number != PREAMBLE and retired(clauses[number]):
+                problems.append(f"the row for {reader} cites {number}, which is retired")
+        for name in cited:
+            if name not in sections:
+                problems.append(f"the row for {reader} cites {name}, which the constraints do not hold")
+    return problems
+
+
+def function_rows(rows, functions: tuple, carried: list[str]) -> list[tuple[str, list[str], list[str]]]:
+    """The rows for the functions the open packet gives the caller, in the packet tool's order; all of them when it
+    gives the caller none."""
+    by_name = {row[0]: row for row in rows[1:]}
+    return [by_name[name] for name in functions if name in (carried or functions)]
+
+
+def shown(row, clauses, sections, already: set[str], heads: dict | None = None) -> tuple[list[str], list[str]]:
+    """The lines for one row, and what they cite. A clause already shown in this OPEN is not printed twice. With
+    heads, each clause stands under its own heading of the law, printed once for the clauses that follow it."""
+    lines, cited, last = [], [], None
+    for number in row[1]:
+        if number in already:
+            continue
+        already.add(number)
+        cited.append(number)
+        head = (heads or {}).get(number)
+        if head and head != last:
+            lines += head
+            last = head
+        lines += clauses[number].splitlines() if number == PREAMBLE else [clauses[number]]
+    for name in row[2]:
+        if name in already:
+            continue
+        already.add(name)
+        cited.append(name)
+        lines += ["", f"{name} (constraints):", *sections[name]]
+    return lines, cited
+
+
+# --------------------------------------------------------------------------
+# The caller, and the state files. Every directory is made at mode 0700 and
+# every file at 0600.
+# --------------------------------------------------------------------------
+def caller(args) -> tuple[str, dict, str]:
+    """The caller's registry key, its registry entry and a digest of its body. Never a session id."""
+    try:
+        mind = sibling("mind")
+    except Refused as exc:
+        raise Unverified(str(exc)) from None
+    if os.environ.get(mind.SEAM) is None and args.registry.resolve() != REGISTRY.resolve():
+        raise Refused("the caller is verified through the room's canonical registry; another registry serves tests only")
+    try:
+        key = mind.caller_key(types.SimpleNamespace(room=args.room, registry=args.registry))
+        entry, problems = mind.registered(mind.read_registry(args.registry), key, args.room)
+    except mind.Refused as exc:
+        raise Unverified(str(exc)) from None
+    if problems or entry is None:
+        raise Unverified("; ".join(problems) or "the registry holds no entry for the caller")
+    if not KEY_RE.match(key) or not isinstance(entry.get("session_id"), str) or not entry["session_id"]:
+        raise Unverified("the caller's registry entry names no body")
+    return key, entry, sha256(entry["session_id"].encode("utf-8"))[:16]
+
+
+def open_packet(args) -> dict:
+    """The open packet as the packet tool reads it: its id and the head of its leaf. A leaf that cannot be read
+    gives no head, and what the packet tool's ledger remembers of it is not taken in its place."""
+    packet = sibling("packet")
+    if not (args.room / packet.WORKTREE).is_dir():
+        return {"packet": None, "head": None, "note": None}
+    try:
+        active = packet.Active(types.SimpleNamespace(room=args.room), lenient=True)
+        name, head, damage = active.id, active.head, active.damage
+    except packet.Refused as exc:
+        return {"packet": None, "head": None, "note": str(exc)}
+    except Exception as exc:                # the packet tool's own fault is no reason to show a reader less of the law
+        return {"packet": None, "head": None, "note": f"the packet tool could not read the open packet ({exc.__class__.__name__})"}
+    if damage or not isinstance(head, dict):
+        return {"packet": name, "head": None, "note": f"the leaf of {name} cannot be read"}
+    return {"packet": name, "head": head, "note": None}
+
+
+def duty(args, key: str, active: dict | None = None) -> dict:
+    """The open packet and the functions its leaf gives this key. A function is work in one packet, so it is read
+    from that packet's leaf and from nowhere else: never from a registry entry, and never from what a caller says."""
+    active = open_packet(args) if active is None else active
+    head = active["head"] or {}
+    return {"packet": active["packet"], "functions": [name for name in function_names() if head.get(name) == key],
+            "note": active["note"]}
+
+
+def duty_text(found: dict) -> str:
+    """One line: which functions, in which packet."""
+    mine, packet = found.get("functions") or [], found.get("packet")
+    if mine:
+        return (mine[0] if len(mine) == 1 else ", ".join(mine[:-1]) + " and " + mine[-1]) + (f" in {packet}" if packet else "")
+    if found.get("note"):
+        return f"unknown ({found['note']})"
+    return f"none in {packet}" if packet else "none; no packet is open"
+
+
+def room_keys(args) -> list[dict]:
+    """The registry entries that live in this room, for the roster."""
+    mind = sibling("mind")
+    try:
+        rows = mind.identity_rows(args.registry)
+    except mind.Refused as exc:
+        raise Refused(str(exc)) from None
+    return [row for row in rows if isinstance(row, dict) and isinstance(row.get("key"), str) and KEY_RE.match(row["key"])
+            and isinstance(row.get("room"), str) and Path(row["room"]).resolve() == args.room]
+
+
+def private_parents(room: Path, path: Path) -> None:
+    current = room
+    for part in path.parent.relative_to(room).parts:
+        current = current / part
+        if not current.exists() and not current.is_symlink():
+            current.mkdir(mode=0o700)
+
+
+def write_private(room: Path, rel: Path, content: str) -> None:
+    path = room / rel
+    private_parents(room, path)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix="." + path.name + ".")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(content.encode("utf-8"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
+
+
+@contextlib.contextmanager
+def room_lock(room: Path):
+    """One OPEN step at a time in one room."""
+    path = room / LOCK
+    private_parents(room, path)
+    fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    with os.fdopen(fd, "a") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def ledger_append(room: Path, line: dict) -> None:
+    path = room / LEDGER
+    private_parents(room, path)
+    fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    try:
+        os.write(fd, (json.dumps(line, sort_keys=True) + "\n").encode("utf-8"))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def ledger_rows(room: Path) -> list[dict]:
+    """Every readable line of the ledger, oldest first. A line that is not a record is passed over, never repaired."""
+    path, rows = room / LEDGER, []
+    if path.is_file() and not path.is_symlink():
+        for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            with contextlib.suppress(ValueError):
+                row = json.loads(raw)
+                if isinstance(row, dict) and row.get("action") == "open" and isinstance(row.get("key"), str):
+                    rows.append(row)
+    return rows
+
+
+def last_open(room: Path, key: str, body: str | None = None) -> dict | None:
+    """The newest complete OPEN of this key; with body, the newest made in that body."""
+    found = None
+    for row in ledger_rows(room):
+        if row["key"] == key and (body is None or row.get("body") == body):
+            found = row
+    return found
+
+
+def pending_path(key: str) -> Path:
+    return PENDING / f"{key}.json"
+
+
+def read_pending(room: Path, key: str) -> dict | None:
+    path = room / pending_path(key)
+    if not path.is_file() or path.is_symlink():
+        return None
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return None
+    return state if isinstance(state, dict) and isinstance(state.get("parts"), list) else None
+
+
+def drop_pending(room: Path, key: str) -> None:
+    with contextlib.suppress(OSError):
+        (room / pending_path(key)).unlink()
+
+
+# --------------------------------------------------------------------------
+# Standing: is an OPEN good. One function, the one a tool that requires an
+# OPEN would call.
+# --------------------------------------------------------------------------
+def hashes(law: dict[str, bytes]) -> dict[str, str]:
+    return {path: sha256(data) for path, data in law.items()}
+
+
+def standing(room: Path, key: str, body: str, law: dict[str, str], now: dt.datetime,
+             found: dict | None = None) -> tuple[dict | None, str]:
+    """The caller's good OPEN, or None with the reason in plain words. With found, which is what `duty` returns, the
+    OPEN must also have shown the clauses for each function the open packet gives the caller now."""
+    record = last_open(room, key)
+    if record is None:
+        return None, "none is on record"
+    if record.get("body") != body:
+        return None, "the last one was made in another body"
+    changed = [path for path in LAW if (record.get("law") or {}).get(path) != law[path]]
+    if changed:
+        return None, "the law changed since it was made: " + ", ".join(changed)
+    until = parse_time(record.get("until"))
+    if until is None or now >= until:
+        return None, f"its shift ended at {record.get('until')}"
+    rows = record.get("rows") if isinstance(record.get("rows"), list) else []
+    missing = [name for name in (found or {}).get("functions") or [] if name not in rows]
+    if missing:
+        return None, "it did not show the clauses for " + duty_text(dict(found, functions=missing))
+    return record, f"good until {record['until']}"
+
+
+# --------------------------------------------------------------------------
+# The present state: read, never stored.
+# --------------------------------------------------------------------------
+def side(cmd: list[str], drop_seam: bool) -> tuple[int, list[str]]:
+    env = {k: v for k, v in os.environ.items() if not (drop_seam and k == SEAM)}
+    try:
+        done = subprocess.run(cmd, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=SIDE_TIMEOUT, env=env)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 1, [exc.__class__.__name__]
+    return done.returncode, [line.rstrip() for line in (done.stdout + done.stderr).splitlines() if line.strip()]
+
+
+def packet_status(args) -> list[str]:
+    """What the packet tool's own status prints, or one line saying it did not answer."""
+    code, lines = side([sys.executable, "-I", "-B", str(SCRIPTS / "packet.py"), "--room", str(args.room),
+                        "--registry", str(args.registry), "status"], drop_seam=False)
+    if code or not lines:
+        return ["packet: unknown (the packet tool did not answer: " + (lines[0][:120] if lines else "no message") + ")"]
+    return lines[:16]
+
+
+def age_text(seconds) -> str:
+    if not isinstance(seconds, (int, float)) or seconds < 0:
+        return "at an unknown time"
+    if seconds < 90:
+        return f"{int(seconds)} seconds ago"
+    if seconds < 5400:
+        return f"{int(seconds // 60)} minutes ago"
+    return f"{int(seconds // 3600)} hours ago"
+
+
+def fullness(args, key: str) -> str:
+    """The gauge's one reading of the caller, printed and not appended. Unknown is said, never guessed (PoT 4.4.4).
+    Only the figures are taken from the gauge's row; its body path and session are never printed."""
+    code, lines = side([sys.executable, "-I", "-B", str(SCRIPTS / "gauge.py"), "--registry", str(args.registry),
+                        "--key", key, "--no-ledger", "--json"], drop_seam=True)
+    row = None
+    for line in lines:
+        with contextlib.suppress(ValueError):
+            found = json.loads(line)
+            if isinstance(found, dict) and found.get("key") == key:
+                row = found
+    if code or row is None:
+        return "unknown (the gauge gave no reading)"
+    percent, tokens, window = row.get("percent"), row.get("tokens"), row.get("window")
+    state, reason = row.get("state") or "unknown", row.get("reason")
+    if not isinstance(percent, (int, float)) or not isinstance(tokens, int) or not isinstance(window, int):
+        return f"unknown ({reason or state})"
+    return (f"{percent:.1f} percent of the window ({tokens:,} of {window:,} tokens), read {age_text(row.get('age_seconds'))}, "
+            f"state {state}" + (f" ({reason})" if reason else ""))
+
+
+def board_lines(text: list[str]) -> list[str]:
+    """The board's present-state sections, as they stand. The board is orientation, not law (PoT 1.3.3)."""
+    kept, inside = [], False
+    for line in text:
+        if line.startswith("## "):
+            inside = line[3:].strip() in BOARD_SECTIONS
+            if inside:
+                kept.append(line)
+            continue
+        if inside and line.strip():
+            kept.append(line)
+    return kept or [line for line in text if line.strip()][:12]
+
+
+def newest_entry(text: list[str]) -> str:
+    found = None
+    for line in text:
+        m = ENTRY_RE.match(line)
+        if m:
+            found = m
+    return f"{found.group(1)} ({found.group(2).strip()})" if found else "unknown"
+
+
+def since_lines(room: Path, record: dict | None, commit: str) -> list[str]:
+    """What landed on main since the caller's last OPEN in this body."""
+    old = (record or {}).get("main")
+    if not isinstance(old, str) or old == commit:
+        return []
+    count = git_text(room, "rev-list", "--count", f"{old}..{commit}")
+    if count is None:
+        return [f"since your OPEN of {record.get('time')}: main moved; the earlier commit is no longer known here"]
+    added = git_text(room, "diff", "--name-only", "--diff-filter=A", old, commit, "--", LEAVES) or ""
+    packets = [m.group(1) for m in map(LEAF_RE.match, added.splitlines()) if m]
+    return [f"since your OPEN of {record.get('time')}: main moved by {count} commit(s)"
+            + (", landing " + ", ".join(packets) if packets else "")]
+
+
+# --------------------------------------------------------------------------
+# The document and its parts.
+# --------------------------------------------------------------------------
+def pack(sections: list[list[str]]) -> list[list[str]]:
+    """A section joins the part before it when it fits there whole, and begins a new part when it does not. A
+    section larger than a part is cut between lines, never inside one."""
+    def weight(lines: list[str]) -> int:
+        return sum(len(line.encode("utf-8")) + 1 for line in lines)
+
+    def fits(part: list[str], more: list[str]) -> bool:
+        return len(part) + len(more) <= PART_LINES and weight(part) + weight(more) <= PART_BYTES
+
+    parts: list[list[str]] = [[]]
+    for section in sections:
+        if fits(parts[-1], section):
+            parts[-1] += section
+            continue
+        if parts[-1]:
+            parts.append([])
+        opening = True                          # a section that begins a part needs no blank line before it
+        for line in section:
+            if opening and not line.strip():
+                continue
+            opening = False
+            if parts[-1] and not fits(parts[-1], [line]):
+                parts.append([])
+            parts[-1].append(line)
+    return [part for part in parts if part]
+
+
+def frame(parts: list[list[str]], trace: str, until: str) -> list[str]:
+    total, framed = len(parts), []
+    for number, lines in enumerate(parts, 1):
+        head = f"===== SESSIONS OPEN, part {number} of {total} ({len(lines)} lines) ====="
+        foot = (f"===== END SESSIONS OPEN: complete and recorded. Trace {trace}; good until {until} =====" if number == total
+                else f"===== part {number} of {total} ends. The read-in is not complete. Run: {NEXT} =====")
+        framed.append("\n".join([head, *lines, foot]) + "\n")
+    return framed
+
+
+def clean_intent(text: str | None) -> str:
+    intent = " ".join((text or "").split())
+    if not intent:
+        raise Refused("an OPEN states what the shift is for: add --intent TEXT, one line")
+    if len(intent) > INTENT_LIMIT or any(ord(c) < 32 or ord(c) == 127 for c in intent):
+        raise Refused(f"the intent is one plain line of at most {INTENT_LIMIT} characters")
+    return intent
+
+
+def read_in(law: dict[str, bytes], found: dict | None, already_whole: dict[str, str] | None):
+    """The law printed whole where it must be, the clauses for every reader, and the clauses for the caller's
+    functions. Returns the lines of the files printed whole, the lines of the clauses, the files printed whole, the
+    clauses cited and the function rows shown. An unverified reader has no functions and is shown none."""
+    functions = function_names()
+    clauses = policy_clauses(lines_of(law[POLICY]))
+    sections = constraint_sections(lines_of(law[CONSTRAINTS]))
+    heads = clause_heads(lines_of(law[POLICY]))
+    rows = read_table(lines_of(law[CONTEXT]), functions)
+    problems = table_problems(rows, clauses, sections)
+    if problems:
+        raise Refused("; ".join(problems[:4]) + f". Nothing is opened: the read-in table ({CONTEXT} {TABLE}) is mended by a packet")
+    printed, whole = [], []
+    if already_whole is not None:
+        for path in LAW:
+            if already_whole.get(path) == sha256(law[path]):
+                continue
+            text = lines_of(law[path])
+            why = "this body has not been shown it" if path not in already_whole else "it changed since your last OPEN"
+            printed += ["", f"[THE LAW, WHOLE: {path}, {len(text)} lines, because {why}]", *text]
+            whole.append(path)
+    seen: set[str] = set()
+    lines, cited = shown(rows[0], clauses, sections, seen, heads)
+    out = ["", f"[EVERY READER: the clauses of {POLICY} that every OPEN repeats, as they stand on main]", *lines]
+    chosen = [] if found is None else function_rows(rows, functions, found["functions"])
+    if found is not None and found["functions"]:
+        for row in chosen:
+            lines, more = shown(row, clauses, sections, seen, heads)
+            cited += more
+            out += ["", f"[YOUR FUNCTION IN {found['packet']}: {row[0]}]", *(lines or ["its clauses are shown above"])]
+    elif found is not None:
+        why = ("the open packet could not be read" if found["note"] else
+               f"the leaf of {found['packet']} gives you none" if found["packet"] else "no packet is open")
+        out += ["", f"[THE FUNCTIONS: all {len(chosen)} are shown, because {why}; a packet's leaf says who carries each]"]
+        for row in chosen:
+            lines, more = shown(row, clauses, sections, seen, heads)
+            cited += more
+            out += ["", f"{row[0]}:", *(lines or ["its clauses are shown above"])]
+    return printed, out, whole, cited, [row[0] for row in chosen]
+
+
+def state_lines(args, commit: str, key: str, entry: dict, found: dict, record: dict | None, trace: str,
+                until: str) -> list[str]:
+    board = on_main(args.room, commit, BOARD)
+    decisions = on_main(args.room, commit, DECISIONS)
+    gauge = fullness(args, key)
+    state = ["", "[PRESENT STATE: read now, never remembered]", *packet_status(args),
+             f"ledger: the newest entry is {newest_entry(lines_of(decisions)) if decisions is not None else 'unknown'}",
+             *since_lines(args.room, record, commit), f"fullness: {gauge}"]
+    state += ["", f"[THE BOARD: {BOARD} on main; orientation, not law]",
+              *(board_lines(lines_of(board)) if board is not None else ["the board is not on main"])]
+    report = ["", "[REPORT: give the operator these lines as they stand, then your own words]",
+              f"- identity: {entry.get('person')}, registry key {key}",
+              f"- function: {duty_text(found)}",
+              "- parent authority: Control",
+              f"- read-in: OPEN {trace}, the law on main at {commit[:12]}, good until {until}",
+              f"- fullness: {gauge}"]
+    return state + report
+
+
+def freshness(commit: str, law: dict[str, bytes], who: str, function: str | None, intent: str, trace: str | None,
+              until: str | None) -> list[str]:
+    lines = ["[FRESHNESS]", f"- caller: {who}", *([f"- function: {function}"] if function else []), f"- intent: {intent}",
+             f"- law on main at {commit[:12]}: " + ", ".join(f"{Path(p).name} {sha256(law[p])[:12]}" for p in LAW)]
+    if trace:
+        lines += [f"- trace: {trace}", f"- good for: this body, this law, the functions shown here, and until {until}",
+                  "- a part that does not end with its own closing line was cut by your shell tool: stop and report it"]
+    return lines
+
+
+# --------------------------------------------------------------------------
+# Commands.
+# --------------------------------------------------------------------------
+def emit(text: str) -> None:
+    sys.stdout.write(text)
+    sys.stdout.flush()
+
+
+def finish(args, key: str, state: dict) -> None:
+    ledger_append(args.room, {
+        "action": "open", "trace": state["trace"], "time": state["time"], "until": state["until"], "key": key,
+        "body": state["body"], "law": state["law"], "main": state["main"], "intent": state["intent"],
+        "packet": state["packet"], "functions": state["functions"], "rows": state["rows"],
+        "whole": state["whole"], "clauses": state["clauses"], "parts": len(state["parts"]),
+        "output": sha256("".join(state["parts"]).encode("utf-8")), "completed": iso(args.now)})
+    drop_pending(args.room, key)
+
+
+def step(args, key: str, state: dict) -> int:
+    """Print the next part; record the OPEN when it was the last."""
+    index = state["next"]
+    emit(state["parts"][index])
+    state["next"] = index + 1
+    if state["next"] >= len(state["parts"]):
+        finish(args, key, state)
+    else:
+        write_private(args.room, pending_path(key), json.dumps(state, sort_keys=True))
+    return 0
+
+
+def cmd_open(args) -> int:
+    commit = room_main(args.room)
+    law = read_law(args.room, commit)
+    try:
+        key, entry, body = caller(args)
+    except Unverified as exc:
+        _, common, _, _, _ = read_in(law, None, None)
+        emit("\n".join(["===== SESSIONS OPEN: the common read-in; no shift is opened =====",
+                        *freshness(commit, law, f"unverified ({exc})", None, "none", None, None), *common, "",
+                        f"The law, whole: {POLICY}, {CONTEXT}, {CONSTRAINTS}.",
+                        "===== END: nothing was recorded. An unverified reader says so and waits for the operator. ====="]) + "\n")
+        return 2
+    intent = clean_intent(args.intent)
+    with room_lock(args.room):
+        record = last_open(args.room, key, body)
+        trace = f"open-{args.now.strftime('%Y%m%dT%H%M%SZ')}-{os.urandom(4).hex()}"
+        until = iso(args.now + dt.timedelta(seconds=SHIFT))
+        found = duty(args, key)
+        printed, common, whole, cited, rows = read_in(law, found, (record or {}).get("law") or {})
+        who = f"{key} ({entry.get('person')})"
+        head = freshness(commit, law, who, duty_text(found), intent, trace, until)
+        state = state_lines(args, commit, key, entry, found, record, trace, until)
+        # The whole law is one run of lines, cut where a part fills. The clauses are a second run and the present
+        # state a third: each stays whole when it fits in a part, and they share a part when they fit together.
+        document = [head + printed, common, state] if printed else [head + common, state]
+        dropped = read_pending(args.room, key)
+        state = {"trace": trace, "time": iso(args.now), "until": until, "body": body,
+                 "law": hashes(law), "main": commit, "intent": intent, "whole": whole, "clauses": cited,
+                 "packet": found["packet"], "functions": found["functions"], "rows": rows,
+                 "parts": frame(pack(document), trace, until), "next": 0}
+        if dropped is not None:
+            print(f"note: your unfinished OPEN {dropped.get('trace')} is dropped; this one replaces it", file=sys.stderr)
+        return step(args, key, state)
+
+
+def cmd_next(args) -> int:
+    key, _, body = verified(args)
+    commit = room_main(args.room)
+    law = hashes(read_law(args.room, commit))
+    with room_lock(args.room):
+        state = read_pending(args.room, key)
+        if state is None:
+            raise Refused(f"you have no unfinished OPEN; begin one with: python3 -I -B {TOOL} --intent TEXT")
+        started = parse_time(state.get("time"))
+        stale = (None if state.get("body") == body else "it was begun in another body") \
+            or (None if state.get("law") == law else "the law changed while you were reading") \
+            or (None if started and (args.now - started).total_seconds() <= PENDING_LIFE else "it waited too long for its next part")
+        if stale:
+            drop_pending(args.room, key)
+            raise Refused(f"your unfinished OPEN is dropped: {stale}; begin again with: python3 -I -B {TOOL} --intent TEXT")
+        return step(args, key, state)
+
+
+def verified(args) -> tuple[str, dict, str]:
+    try:
+        return caller(args)
+    except Unverified as exc:
+        raise Refused(f"the caller is not verified, so there is no OPEN to speak of: {exc}") from None
+
+
+def cmd_check(args) -> int:
+    key, _, body = verified(args)
+    commit = room_main(args.room)
+    record, reason = standing(args.room, key, body, hashes(read_law(args.room, commit)), args.now, duty(args, key))
+    if record is None:
+        raise Refused(f"no good OPEN: {reason}; run: python3 -I -B {TOOL} --intent TEXT")
+    print(f"OPEN good: {key}, trace {record['trace']}, {reason}; intent: {record.get('intent')}")
+    return 0
+
+
+def cmd_roster(args) -> int:
+    commit = room_main(args.room)
+    law = hashes(read_law(args.room, commit))
+    print(f"roster: the law on main at {commit[:12]}; a shift is {SHIFT // 3600} hours")
+    rows = sorted(room_keys(args), key=lambda row: row["key"])
+    active = open_packet(args)
+    for row in rows:
+        body = sha256(row["session_id"].encode("utf-8"))[:16] if isinstance(row.get("session_id"), str) else ""
+        record, reason = standing(args.room, row["key"], body, law, args.now, duty(args, row["key"], active))
+        last = last_open(args.room, row["key"])
+        tail = f"; intent: {record.get('intent')}" if record else (f"; last OPEN {last.get('time')}" if last else "")
+        print(f"{row['key']:<22} {'OPEN' if record else 'no OPEN'}: {reason}{tail}")
+    if not rows:
+        print("roster: the registry names no resident in this room")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="open", description="The read-in a resident runs before it works.")
+    p.add_argument("--room", type=Path, default=SESSIONS, help=argparse.SUPPRESS)
+    p.add_argument("--registry", type=Path, default=REGISTRY, help=argparse.SUPPRESS)
+    p.add_argument("--now", help=argparse.SUPPRESS)
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument("--intent", help="begin an OPEN: one line saying what this shift is for")
+    mode.add_argument("--next", action="store_true", help="print the next part of your unfinished OPEN")
+    mode.add_argument("--check", action="store_true", help="say whether you hold a good OPEN")
+    mode.add_argument("--roster", action="store_true", help="say who in the room holds a good OPEN")
+    return p
+
+
+def main(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        args.room = args.room.resolve()
+        args.now = parse_time(args.now) if args.now else clock()
+        if args.now is None:
+            raise Refused("--now is not a time of the form 2026-11-12T10:00:00Z")
+        if args.next:
+            return cmd_next(args)
+        if args.check:
+            return cmd_check(args)
+        if args.roster:
+            return cmd_roster(args)
+        return cmd_open(args)
+    except Refused as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 2
+    except OSError as exc:
+        print(f"refused: {exc.__class__.__name__}: {exc.strerror or exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

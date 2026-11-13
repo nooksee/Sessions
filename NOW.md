@@ -7,7 +7,7 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 ## Now
 
 - **Repository:** `nooksee/Sessions`, public; `main` protected (strict `sessions-gates`); a change lands only as one dispatch packet (PoT 6.1.4).
-- **Team:** the Manager, the Assistant, the Apprentice, the Auditor (PoT 4.1.9) and the Orchestrator, who ships each packet (C16). Everyone starts with `packet.py status`.
+- **Team:** a packet's leaf names by registry key who carries each function: Integrator, Contractor, Auditor, Orchestrator (PoT 6.1.4). Start with `ops/bin/open`, then `packet.py status`.
 - **Routes:** Claude residents by session message; the Apprentice by the accepted relay; others by the operator's paste.
 - **Custody:** three roots on three disks; tier 2 is hard_vol1 by the operator's ruling of 2026-11-08; the failing medium is read-only.
 - **Host:** SQLite rolled back to the official 3.45.1-1ubuntu2.8 on 2026-11-07, its .9 pinned out, by the maintenance resident's receipt; the indexer quiet since; its audit is Control's.
@@ -35,4 +35,5 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 
 ## Read-in
 
-`bash ops/bin/help read` gives the order. Law: `PoT.md`. Ledger: `RoR.md`. Methods: `docs/MANUAL.md`.
+- **Read-in:** `ops/bin/open` after every wake and at each shift; it shows the law from `main`, by function, and records it; `--roster` shows who is on shift.
+- `bash ops/bin/help read` gives the order of the files. Law: `PoT.md`. Ledger: `RoR.md`. Methods: `docs/MANUAL.md`.
