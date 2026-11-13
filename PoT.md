@@ -36,7 +36,7 @@ The room carries continuity. A resident's memory supplies judgment, not law.
 - **1.2.7** Routing must distinguish prepared, delivered and acknowledged work; an unsupported delivery claim is a failure.
 - **1.2.8** Canon outranks recollection. Memory, summaries and minds are continuity input, never authority.
 - **1.2.9** Protected bodies, records and archives are preserved by verified custody before removal. Permanent deletion requires the operator's named go.
-- **1.2.10** The operator decides policy, irreversible acts, mind entries and exceptions. An act's receipt records its authority; RoR records ratifications and changes to planned process. Operator words remain in private sources; published derivatives carry their verified digests. Operational recording and rendering follow the canonical contract.
+- **1.2.10** The operator decides policy, irreversible acts, the design of the mind and exceptions. An act's receipt records its authority; RoR records ratifications and changes to planned process. Operator words remain in private sources; published derivatives carry their verified digests. Operational recording and rendering follow the canonical contract.
 - **1.2.11** [Retired]
 - **1.2.12** Present-state orientation is not law; a domain's canonical source wins over its summary.
 - **1.2.13** Records are immutable. Corrections are attributed additions; maintained surfaces change only through their writer.
@@ -125,15 +125,17 @@ with its scope; it does not confer unrelated authority.
 - **4.1.4 Assistant:** assigned implementation and the Manager's rotation.
 - **4.1.5 Apprentice:** assigned measurement, cross-checks and bounded writing.
 - **4.1.6 Independent Reviewer:** Control-defined independent review; a substitute requires the operator's appointment.
-- **4.1.7 Resident:** follows the applicable closeout contract and proposes its own mind entries.
+- **4.1.7 Resident:** follows the applicable closeout contract and writes its own mind leaves under the mind contract.
 - **4.1.8** Role is authority, person is identity. A temporary role does not replace the person or confer another resident's lineage.
 - **4.1.9 Auditor:** the operator's appointed independent reviewer and post-change auditor for this room's material work (4.1.6, 6.1.3); Control surfaces keep Control's review.
+- **4.1.10 Orchestrator:** stays in the loop from dispatch through closeout and performs the team's Git mechanics on handoff. The Orchestrator decides nothing about content, review or acceptance and creates no authority; when it is unavailable, another resident of the team performs the same mechanics under the same rules, with the reason recorded.
+- **4.1.11 Delivery functions.** A change to the repository is carried by four functions, named as the Central Repository names them: Integrator, Contractor, Auditor and Orchestrator. A function is work in one dispatch packet, not a role, an identity or a grant of authority (4.1.8). The Session Continuity Manager integrates; the Assistant, the Apprentice or the Manager contracts; the Auditor audits (4.1.9); the Orchestrator ships (4.1.10). No one audits work it contracted (4.2.2).
 
 ### 4.2 Separation
 - **4.2.1** One named writer per exact surface; standing own-handoff and tool-output scopes follow the operational contract.
 - **4.2.2** No role serves as the independent verifier, reviewer or auditor of its own work. Writers still run and report their own gates, hash checks and validations.
 - **4.2.3** A resident does not perform its own rotation.
-- **4.2.4** The resident proposes a mind entry; only the mind tool writes it after the operator's recorded yes.
+- **4.2.4** A resident writes only its own mind leaves, and only through the mind tool, under the mind contract; a leaf needs no separate approval. A leaf states no rule of the room; where it touches policy it cites the clause, and the policy governs (1.2.8).
 
 ### 4.3 Conduct
 - **4.3.1** Control's behavioral standard applies. The constraints manifest carries the room's operational reporting and identity discipline.
@@ -192,7 +194,7 @@ with its scope; it does not confer unrelated authority.
 - **6.1.1** Irreversible acts require named go. Its target, custody and relied-on gates must remain valid; native provider appends alone do not cancel it.
 - **6.1.2** Unattended automation/configuration and registry changes require independent review and named go. Control's emergency restoration may precede review but still requires named go; an approved named rollback authorizes only that rollback.
 - **6.1.3** Material work is independently reviewed before reliance and audited after execution under Control's routing.
-- **6.1.4** The owning writer edits; Git follows Control's accepted work-session route. Control-directed surfaces keep that process and its named writer.
+- **6.1.4** The owning writer edits. A change to the repository reaches `main` only as one dispatch packet, one at a time: the Integrator opens it with an exact scope, the Contractor works only within that scope, the Auditor passes or fails the exact content, and the Orchestrator ships only what was passed, with every review finding answered. No change takes another route; the packet contract owns the procedure and states the limits of its enforcement (1.3.8). Control-directed surfaces keep Control's process and its named writer.
 - **6.1.5** Tests inspect no real body, mind or record content and write none. Disposable native live validation is a separate named operation.
 - **6.1.6** Changes are bounded, reviewable and unrelated edits excluded. Resident rollout proceeds through one accepted resident before expansion.
 - **6.1.7** [Retired]

@@ -1,12 +1,12 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-12, the Session Continuity Manager: a change lands only as one dispatch packet (RoR-25); the Orchestrator ships it (RoR-23).
+Updated: 2026-11-12, the Session Continuity Manager: the policy amended (RoR-26): it states the mind, the four functions and the packet route.
 Status: active current-state board. At most 40 lines of at most 200 characters, checked by `ops/bin/help --test`.
 Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/`. This board grants no live act.
 
 ## Now
 
-- **Repository:** `nooksee/Sessions`, public; `main` protected (strict `sessions-gates`); a change lands only as one dispatch packet (C17).
+- **Repository:** `nooksee/Sessions`, public; `main` protected (strict `sessions-gates`); a change lands only as one dispatch packet (PoT 6.1.4).
 - **Team:** the Manager, the Assistant, the Apprentice, the Auditor (PoT 4.1.9) and the Orchestrator, who ships each packet (C16). Everyone starts with `packet.py status`.
 - **Routes:** Claude residents by session message; the Apprentice by the accepted relay; others by the operator's paste.
 - **Custody:** three roots on three disks; tier 2 is hard_vol1 by the operator's ruling of 2026-11-08; the failing medium is read-only.
@@ -29,7 +29,7 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 
 - Two 6 TB drives replace the old ones as they arrive; 42 sets on one drive wait for George Friend, standing down.
 - Control's rounds timer exits 2 at every run (a work order with Control).
-- No new resident or seat until one real rotation runs (RoR-20). RoR-21 (lease pushes) has no use under C17.
+- No new resident or seat until one real rotation runs (RoR-20). RoR-21 (lease pushes) ended with the amendment (RoR-26).
 - Parked until the first real rotation: a proposal to bound handoffs; what the residents' running deviation counts are made of.
 - The README first screen and two `storage/lab/` folders: Central's word.
 

@@ -380,6 +380,12 @@ A resident changes only its own leaves.
 address, a pull request or version number, code or a command line, an
 identifier, medical content and secrets. Say the idea instead of the fact.
 
+**What the screen cannot refuse.** A rule of the room written down as if it
+were an idea. A leaf states no rule (PoT 4.2.4): rules live in the policy and
+its contracts, and a copy in a mind goes stale on the day the rule changes.
+Where a leaf touches policy, cite the clause and write what you carry: the
+habit, the method, the reason.
+
 **Limits.** A title of at most 100 characters, a body of at most 2,000, and at
 most 200 live leaves. A full index refuses a new leaf; supersede or retire one.
 
@@ -579,6 +585,6 @@ Also:
 - **Team:** the Manager, Assistant and Apprentice, identified through the registry.
 - **Dispatch packet:** the one unit in which a change reaches `main`: one id, one branch, one pull request, one kept leaf (section 1B). Not the resident packet, which is a routing form.
 - **Packet leaf:** `archives/packets/DP-SES-NNNN.md`, the kept record of one dispatch packet; a different thing from a leaf of the mind.
-- **Delivery function:** one of the four kinds of work in a dispatch packet: Integrator, Contractor, Auditor, Orchestrator (CONSTRAINTS C16 and C17). The leaf names by registry key who carries each; a function is not a seat.
+- **Delivery function:** one of the four kinds of work in a dispatch packet: Integrator, Contractor, Auditor, Orchestrator (PoT 4.1.11; CONSTRAINTS C16 and C17). The leaf names by registry key who carries each; a function is not a seat.
 - **Station:** one step of a dispatch packet, one command run by the resident who carries its function: draft, open, close, audit, ship.
 - **Packet gate:** the rules of a valid dispatch packet read from Git objects alone, run by the required check; a different thing from the single-writer gate.
