@@ -39,7 +39,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 SESSIONS = HERE.parents[2]
 GAUGE = HERE / "gauge.py"
-DEFAULTS = {"registry": SESSIONS / "ops" / "etc" / "resident-identities.json",
+DEFAULTS = {"room": SESSIONS,                       # whose Integrator and Contractors the card speaks of (tests name another)
+            "registry": SESSIONS / "ops" / "etc" / "resident-identities.json",
             "spec": SESSIONS / "docs" / "ops" / "specs" / "scripts" / "gauge.md",
             "state-dir": SESSIONS / "logs" / "closeout",
             "template": SESSIONS / "ops" / "src" / "reports" / "closeout.md.tpl"}
@@ -114,7 +115,7 @@ def options(argv: list[str]) -> dict:
     for arg in argv:
         if arg.startswith("--") and "=" in arg:
             name, value = arg[2:].split("=", 1)
-            if name in ("registry", "spec", "state-dir", "template"):
+            if name in ("room", "registry", "spec", "state-dir", "template"):
                 opts[name] = Path(value)
             elif name in ("now", "limit-seconds"):
                 opts[name] = value
@@ -241,21 +242,36 @@ def named(entry: dict, what: str) -> tuple[str, str]:
     return key, person.strip()
 
 
-def rotation_writer(identities: list, key: str) -> str:
-    """Who runs this resident's rotation, from the registry's roles. A writer is never the resident being moved.
+def in_room(entry, room: Path) -> bool:
+    """Whether a registry entry is registered to this room: its room is an absolute path that resolves to this room's.
+    The registry covers the whole host, and other rooms hold roles of the same names. A relative room would mean
+    whatever folder the hook happens to run in, so it is no room."""
+    value = entry.get("room") if isinstance(entry, dict) else None
+    if not isinstance(value, str) or not Path(value).is_absolute():
+        return False
+    try:
+        return Path(value).resolve() == room
+    except (OSError, RuntimeError, ValueError):
+        return False
 
-    The Integrator runs every rotation but its own. Its own is run by the Contractor the operator assigns to it
-    (PoT 4.1.4). The registry holds no such assignment, so the card says so and names nobody. With no Contractor
-    in the registry but the Integrator itself there is no one to assign, and that is unknown.
+
+def rotation_writer(identities: list, key: str, room: Path) -> str:
+    """Who runs this resident's rotation, from the roles of this room in the registry. A writer is never the resident
+    being moved.
+
+    This room's Integrator runs every rotation but its own, whichever room the resident is registered to. Its own is
+    run by the Contractor the operator assigns to it (PoT 4.1.4). The registry holds no such assignment, so the card
+    says so and names nobody. With no Contractor in this room but the Integrator itself there is no one to assign,
+    and that is unknown. An Integrator or a Contractor of another room is that room's and is not counted.
     """
-    integrators = [i for i in identities if isinstance(i, dict) and i.get("role") == INTEGRATOR_ROLE]
+    integrators = [i for i in identities if in_room(i, room) and i.get("role") == INTEGRATOR_ROLE]
     if len(integrators) != 1:
-        raise Unknown("the registry does not name exactly one Integrator")
+        raise Unknown("the registry does not name exactly one Integrator of this room")
     integrator_key, integrator = named(integrators[0], "Integrator")
     if integrator_key != key:
         return f"{integrator}'s desk"
-    if not any(isinstance(i, dict) and i.get("role") == CONTRACTOR_ROLE and i.get("key") != key for i in identities):
-        raise Unknown("the registry names no Contractor to run the Integrator's rotation")
+    if not any(in_room(i, room) and i.get("role") == CONTRACTOR_ROLE and i.get("key") != key for i in identities):
+        raise Unknown("the registry names no Contractor of this room to run the Integrator's rotation")
     return ASSIGNED_CONTRACTOR
 
 
@@ -424,7 +440,7 @@ def decide(opts: dict, raw: bytes, now: dt.datetime):
         card = render_card(card_template(opts["template"]), {    # first: a defect is unknown and uses up no band
             "PERCENT": f"{percent:.1f}", "WINDOW": f"{window:,} tokens",
             "READING_TIME": when.astimezone().strftime("%Y-%m-%d %H:%M %Z") if when else "an unknown time",
-            "ROTATION_WRITER": rotation_writer(identities, ctx["key"])})
+            "ROTATION_WRITER": rotation_writer(identities, ctx["key"], opts["room"].resolve())})
         told = read_state(state_dir).get(session_id)
         if isinstance(told, dict) and isinstance(told.get("band"), int) and band <= told["band"]:
             if told.get("unknown"):
