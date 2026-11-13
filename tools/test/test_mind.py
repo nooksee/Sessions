@@ -787,7 +787,7 @@ class MindLockLocation(unittest.TestCase):
 
 
 DOCTOR_SID = "0000d0c0-0000-4000-8000-000000000001"
-ASSISTANT_SID = "0000c1a0-0000-4000-8000-000000000002"
+CONTRACTOR_SID = "0000c1a0-0000-4000-8000-000000000002"
 CODEX_SID = "0000c0de-0000-4000-8000-000000000003"
 
 
@@ -798,7 +798,7 @@ class BindingTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.base = Path(self.tmp.name)
         self.r = Room(self.base, keys=())
-        rows = [("session-doctor", DOCTOR_SID, "claude"), ("claudine-colbert", ASSISTANT_SID, "claude"),
+        rows = [("session-doctor", DOCTOR_SID, "claude"), ("claudine-colbert", CONTRACTOR_SID, "claude"),
                 ("joe-codex", CODEX_SID, "codex")]
         self.r.registry.write_text(json.dumps({"identities": [
             {"key": k, "person": f"Person {k}", "role": "Role", "room": str(self.r.room), "session_id": sid,
@@ -936,14 +936,14 @@ class BindingTests(unittest.TestCase):
         self.assertIn("written by session-doctor", out)
 
     def test_real_route_refuses_another_residents_key(self):
-        rc, _, err = self.real(self.signal("claude", ASSISTANT_SID), agent="session-doctor")
+        rc, _, err = self.real(self.signal("claude", CONTRACTOR_SID), agent="session-doctor")
         self.assertEqual(rc, 2)
         self.assertIn("the caller is 'claudine-colbert', not --agent 'session-doctor'", err)
         self.nothing_written()
 
     def test_real_route_retire_refuses_another_residents_key(self):
         self.ok(self.r.add(agent="session-doctor"))
-        rc, _, err = self.real(self.signal("claude", ASSISTANT_SID), agent="session-doctor", command="retire")
+        rc, _, err = self.real(self.signal("claude", CONTRACTOR_SID), agent="session-doctor", command="retire")
         self.assertEqual(rc, 2)
         self.assertIn("a resident writes only as itself", err)
         self.assertEqual(self.r.ids(), ["MIND-2026-10-30-001"])
@@ -986,9 +986,9 @@ class BindingTests(unittest.TestCase):
         self.nothing_written()
 
     def test_real_route_never_prints_a_session_id(self):
-        for caller in (self.signal("claude", ASSISTANT_SID), self.signal("claude", "0000eeee-0000-4000-8000-00000000000e")):
+        for caller in (self.signal("claude", CONTRACTOR_SID), self.signal("claude", "0000eeee-0000-4000-8000-00000000000e")):
             _, out, err = self.real(caller)
-            for sid in (DOCTOR_SID, ASSISTANT_SID, "0000eeee-0000-4000-8000-00000000000e"):
+            for sid in (DOCTOR_SID, CONTRACTOR_SID, "0000eeee-0000-4000-8000-00000000000e"):
                 self.assertNotIn(sid, out + err)
 
     def test_without_the_seam_another_registry_is_refused(self):
@@ -1024,7 +1024,7 @@ class BindingTests(unittest.TestCase):
         data["identities"].append(dict(data["identities"][1], key="claudine-twin"))
         self.r.registry.write_text(json.dumps(data))
         cases = [self.signal("claude", DOCTOR_SID), self.signal("codex", CODEX_SID),
-                 self.signal("claude", ASSISTANT_SID), self.signal("claude", "0000eeee-0000-4000-8000-00000000000e"),
+                 self.signal("claude", CONTRACTOR_SID), self.signal("claude", "0000eeee-0000-4000-8000-00000000000e"),
                  self.signal("codex", DOCTOR_SID)]
         for caller in cases:
             with self.subTest(caller=caller.provider + ":" + caller.session_id[:8]):

@@ -4,7 +4,7 @@
 The legacy script came without a test suite. This suite proves only that the
 ported copy is present and compiles; it runs nothing, reads no body and writes
 nothing. Behavior cases: [PLACEHOLDER: behavior cases on synthetic inputs,
-owner: the writer the Session Continuity Manager names for estimate]. Run:
+owner: the writer the Integrator names for estimate]. Run:
 
     python3 -I -B tools/test/test_estimate.py
 """

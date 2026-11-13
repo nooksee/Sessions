@@ -20,5 +20,5 @@ Ported legacy tool. Its own docstring opens: "Resident Resource Governor -- coll
 
 - Refusal and read-only statements in the docstring: "This mirrors the Session Clinic's public aggregate contract: numbers and states leave, identity never does." "WHAT THIS DOES NOT DO." "It does not purchase, upgrade, downgrade, switch models, block launches, or change any account setting." "The supported telemetry carries plan *windows* only -- it does not expose usage-credit balance or month-to-date credit spend, and this collector does not attempt to obtain those by any other means."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/resident_resource_collector.py` until Control repoints them; this room's own documents name `ops/lib/scripts/resources.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]
 - Collects when invoked, `--help` included; it is never run by a test.

@@ -28,4 +28,4 @@ Ported legacy tool. Its own docstring opens: "Archive selected Codex session fil
 
 - Refusal and read-only statements in the docstring: "It never edits, prunes, moves, or deletes the source session file."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/archive_codex_session.py` until Control repoints them; this room's own documents name `ops/lib/scripts/archive.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

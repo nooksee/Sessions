@@ -29,4 +29,4 @@ Ported legacy tool. Its own docstring opens: "Watch Codex sessions and emit oper
 
 - Refusal and read-only statements in the docstring: "Read-only."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/watch_codex_session_size.py` until Control repoints them; this room's own documents name `ops/lib/scripts/watch.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

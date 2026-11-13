@@ -470,14 +470,14 @@ class ResidentSelfCheckTests(unittest.TestCase):
 
     def test_claude_provider_name_and_role_orientation_is_correlated(self) -> None:
         fixture = Fixture(self.root, "claude")
-        fixture.role = "Session Continuity Manager"
+        fixture.role = "Integrator"
         fixture.person = "Claude Shannon"
         fixture.display = f"{fixture.role} ({fixture.person})"
         fixture.write_layers()
         rows = fixture.claude_rows()
         rows[0]["message"]["content"] = (
             "<session_clinic_orientation>\n"
-            "You are Claude, Session Continuity Manager II, the resident "
+            "You are Claude, Integrator II, the resident "
             "session-health specialist in the Sessions room.\n"
             "</session_clinic_orientation>"
         )

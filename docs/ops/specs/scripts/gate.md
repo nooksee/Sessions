@@ -22,4 +22,4 @@ Ported legacy tool. Its own docstring opens: "Verify the single-writer gate befo
 
 - Refusal and read-only statements in the docstring: "The rule this script enforces: identify a process by what it IS -- its resolved `/proc/PID/exe` and its argv[0] -- never by a substring of its arguments." "And never count yourself or your own ancestors." "Read-only."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/check_writer_gate.py` until Control repoints them; this room's own documents name `ops/lib/scripts/gate.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

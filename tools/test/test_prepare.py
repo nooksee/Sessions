@@ -341,7 +341,7 @@ class ArtifactLimit(unittest.TestCase):
 
 
 class HousekeepingPairs(unittest.TestCase):
-    """Break 7 (the Manager's read of phase 4): the provider's api-request-blob rows carry no uuid and repeat the call's
+    """Break 7 (the Integrator's read of phase 4): the provider's api-request-blob rows carry no uuid and repeat the call's
     tool_use and tool_result blocks. Tool pairs are counted on rows that carry a uuid only, in the window (phase 4) and
     in the static list (phase 5), as the engine's reader counts them since #81. Invented rows in the real shape."""
 

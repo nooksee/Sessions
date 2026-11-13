@@ -11,7 +11,7 @@ read-only mode against a synthetic workspace and task history in a temporary
 directory. No case reads the IDE's own state, a session body, or the room's own
 chats file, and no case runs --preview-dir or --apply. Behavior cases for
 --preview-dir and --apply: [PLACEHOLDER: synthetic cases for the two writing
-modes, owner: the writer the Session Continuity Manager names for pycharm]. Run:
+modes, owner: the writer the Integrator names for pycharm]. Run:
 
     python3 -I -B tools/test/test_pycharm.py
 """

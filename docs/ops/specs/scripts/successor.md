@@ -26,4 +26,4 @@ Ported legacy tool. Its own docstring opens: "Build a new Claude resident from a
 
 - Refusal and read-only statements in the docstring: "RE-ID IS SCOPED TO IDENTITY FIELDS, NEVER TO TEXT." "Rewriting any of those makes the body assert that a past measurement returned a value it did not return, that a file held content it did not hold, or that a command was run that never was." "Never inside a string, whatever that string contains.** 3." "Without an explicit orientation message a resident inherits a large transcript with no grounding and no idea it moved." "The donor body is opened read-only and never modified."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/build_claude_resident.py` until Control repoints them; this room's own documents name `ops/lib/scripts/successor.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

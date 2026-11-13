@@ -25,4 +25,4 @@ Ported legacy tool. Its own docstring opens: "Move base64 media out of a Claude 
 
 - Refusal and read-only statements in the docstring: "What is deliberately NOT done: * nothing is deleted, here or anywhere; * the donor is opened read-only and never written; * non-media rows are re-serialised only if they were touched, and every row is compared for text equality afterwards by the caller's gates; * output goes beside the original as `.NEW`, per the operator's standing rule: he performs the swap himself with the application closed, because a live body is appended to every turn and a torn write there is unrecoverable." "Streaming, one line at a time: a 600 MB body must never be held in memory."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/externalize_claude_image_payloads.py` until Control repoints them; this room's own documents name `ops/lib/scripts/media.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

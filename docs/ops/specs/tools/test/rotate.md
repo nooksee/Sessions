@@ -166,7 +166,7 @@ The gate's 20-percent bound checks a hash-bound supplied wake estimate; it
 does not implement a tokenizer or claim a measured native wake. Media files
 and candidate bytes exist only during the synthetic invocation, including
 later model phases, not as durable custody. A killed process's residual is never adopted.
-The Auditor independently reviews the frozen source; the Apprentice integrates it.
+The Auditor independently reviews the frozen source; the Contractor on Codex (Joe Codex) integrates it.
 
 ## Third-slice coverage and limits
 

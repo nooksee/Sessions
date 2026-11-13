@@ -28,4 +28,4 @@ Ported legacy tool. Its own docstring opens: "Elide oversized Codex tool-call ou
 
 - Refusal and read-only statements in the docstring: "Dropping the raw bulk buys back most of the context window without removing a single conversational turn." "Read-only unless `--write`."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/elide_codex_tool_outputs.py` until Control repoints them; this room's own documents name `ops/lib/scripts/elide.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

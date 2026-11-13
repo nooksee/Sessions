@@ -8,7 +8,7 @@ Ported legacy tool. Its own docstring opens: "Analyze Codex JSONL response-item 
 
 ## Mechanics and Sequencing
 
-1. Behavior is the legacy script's, unchanged: `Scripts/analyze_codex_response_item_pressure.py` (sha256 `83741d481dc848edc89828b2ad56af95ac3055e9876c43f03c839dba90ec8f55`) was copied to `ops/lib/scripts/items.py` on 2026-11-01 with 1 edit(s): parents[2] -> parents[4] (1).
+1. Behavior is the legacy script's, unchanged: `Scripts/analyze_codex_response_item_pressure.py` (sha256 `83741d481dc848edc89828b2ad56af95ac3055e9876c43f03c839dba90ec8f55`) was copied to `ops/lib/scripts/items.py` on 2026-11-01 with 1 edit(s): parents[2] -> parents[4] (1). On 2026-11-13 one description string was reworded; no behavior changed.
 2. Command line: `python3 -I -B ops/lib/scripts/items.py`. Options as the script declares them:
    - `--session`: JSONL session or copied candidate to inspect.
    - `--stamp`: Stable evidence stamp. Default: local timestamp.
@@ -26,4 +26,4 @@ Ported legacy tool. Its own docstring opens: "Analyze Codex JSONL response-item 
 
 - Refusal and read-only statements in the docstring: "Analyze Codex JSONL response-item pressure without rewriting sessions."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/analyze_codex_response_item_pressure.py` until Control repoints them; this room's own documents name `ops/lib/scripts/items.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

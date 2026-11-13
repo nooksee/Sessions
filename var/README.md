@@ -1,7 +1,7 @@
 # Local scratch layout
 
 Introduced: 2026-11-03 00:55:13 EST (-0500) / 2026-11-03 05:55:13 UTC.
-Writer: Session Continuity Apprentice (Joe Codex), joe-codex.
+Writer: Contractor (Joe Codex), joe-codex.
 Filing authority: PoT 1.1.4, 1.1.12 and 1.1.13. The initial introduction is
 recorded privately in archives/receipts/project-var-tmp-introduction-20261103.md;
 the immediate policy/default integration is recorded in RoR-16 and its receipt.

@@ -27,4 +27,4 @@ Ported legacy tool. Its own docstring opens: "Build a current-version, CLI-nativ
 
 - Refusal and read-only statements in the docstring: "The Remote Device tablet body of 2026-07-22 is the case that motivated it: - the donor ran VS Code on Windows (`codex_vscode`, `cwd c:\Users\Highs`) at CLI `0.145.0-alpha.27`; the successor must run the Codex CLI at the current version, so scaffolding cannot simply be carried across; - no container can be created by hand on the destination, because the destination is a tablet the operator holds and this agent must not touch." It also states that the evidence body is opened read-only and is never modified.
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/build_tablet_codex_successor.py` until Control repoints them; this room's own documents name `ops/lib/scripts/tablet.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

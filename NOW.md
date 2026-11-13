@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-12, the Session Continuity Manager: the policy amended (RoR-26): it states the mind, the four functions and the packet route.
+Updated: 2026-11-13, the Integrator: the roles of PoT 4.1.3 and 4.1.4 are named Integrator and Contractor (RoR-28); the read-in is `ops/bin/open` (RoR-27).
 Status: active current-state board. At most 40 lines of at most 200 characters, checked by `ops/bin/help --test`.
 Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/`. This board grants no live act.
 
@@ -8,7 +8,7 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 
 - **Repository:** `nooksee/Sessions`, public; `main` protected (strict `sessions-gates`); a change lands only as one dispatch packet (PoT 6.1.4).
 - **Team:** a packet's leaf names by registry key who carries each function: Integrator, Contractor, Auditor, Orchestrator (PoT 6.1.4). Start with `ops/bin/open`, then `packet.py status`.
-- **Routes:** Claude residents by session message; the Apprentice by the accepted relay; others by the operator's paste.
+- **Routes:** Claude residents by session message; the Contractor on Codex by the accepted relay; others by the operator's paste.
 - **Custody:** three roots on three disks; tier 2 is hard_vol1 by the operator's ruling of 2026-11-08; the failing medium is read-only.
 - **Host:** SQLite rolled back to the official 3.45.1-1ubuntu2.8 on 2026-11-07, its .9 pinned out, by the maintenance resident's receipt; the indexer quiet since; its audit is Control's.
 
@@ -30,6 +30,7 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 - Two 6 TB drives replace the old ones as they arrive; 42 sets on one drive wait for George Friend, standing down.
 - Control's rounds timer exits 2 at every run (a work order with Control).
 - No new resident or seat until one real rotation runs (RoR-20). RoR-21 (lease pushes) ended with the amendment (RoR-26).
+- The roles of PoT 4.1.3 and 4.1.4 are Integrator and Contractor (RoR-28): each resident retires or supersedes its own mind leaves and trims its own handoff where they carry an earlier name.
 - Parked until the first real rotation: a proposal to bound handoffs; what the residents' running deviation counts are made of.
 - The README first screen and two `storage/lab/` folders: Central's word.
 

@@ -22,4 +22,4 @@ No receipt names `build_codex_session_handoff.py`. Its history before this port 
 
 - Refusal and read-only statements in the docstring: "It does not read secrets, edit sessions, or claim that transcript content outranks canon."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/build_codex_session_handoff.py` until Control repoints them; this room's own documents name `ops/lib/scripts/dossier.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

@@ -70,7 +70,7 @@ the default fixture mode's earlier Codex metadata checks remain unchanged.
 Design limits retained, not silently claimed built: unregistered disposable
 admission, real closed-writer/ownership proof, persistent checkpoints and
 restart, native W5 joins, physical custody, durable media paths, native
-promotion/load/rollback and both named live exercises. The Manager owns the
+promotion/load/rollback and both named live exercises. The Integrator owns the
 separate custody-tool disk check. Safe roots, F1 registry privacy and C09
 remain required. This slice creates no runtime map entry or live capability.
 
@@ -392,7 +392,7 @@ this is not hostile same-user descriptor confinement.
    carried window length/text. A media pointer must name the actual private
    staged file, not merely a matching short digest somewhere else.
    Recheck inputs and holders again before success. Always remove this
-   invocation's temporary directory through its own context manager. This
+   invocation's temporary directory through its own `with` block. This
    rehearses real construction/gates but retains no successor or media.
    A killed process can leave staging; the next phase-3-or-later attempt
    refuses it without cleanup or inferred ownership. It is not durable

@@ -25,4 +25,4 @@ Ported legacy tool. Its own docstring opens: "Rotate a Codex resident into a fre
 
 - Refusal and read-only statements in the docstring: "The compaction `replacement_history` is never replayed: it is already compacted state and can contain hundreds of retained user messages without their assistant replies; - a lineage capsule is inserted both as a `compacted` marker for house tooling and as a developer message the model can actually read; - only structural identifiers are rewritten." "Prose is never touched." "The donor is opened read-only and never modified."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/build_codex_rotation.py` until Control repoints them; this room's own documents name `ops/lib/scripts/rotation.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]

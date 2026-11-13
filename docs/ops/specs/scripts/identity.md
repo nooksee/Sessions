@@ -21,7 +21,7 @@ Ported legacy tool. Its own docstring opens: "Verify that every resident's ident
 
 - Refusal and read-only statements in the docstring: "The launcher roster and host bindings must NOT name them, because the launcher rejects the whole roster when it meets a provider it does not support." "A provider this script does not know is reported as unsupported and incomplete, never scanned as Codex." "Any other value of "launcher" is a mismatch, never ignored, and so is "held" on a Copilot or unknown-provider row or with a session id that is not a string." "Read-only."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/check_identity_lock.py` until Control repoints them; this room's own documents name `ops/lib/scripts/identity.py`.
-- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Session Continuity Manager]
+- [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]
 
 ## What counts as an orientation row
 
@@ -32,7 +32,7 @@ A row counts as an orientation row only when `<session_clinic_orientation>` begi
 Added 2026-11-06, from what the operator saw after the update to PyCharm 2026.3: a resident stood on his phone and not in PyCharm while this tool said `ok`. Neither report changes a count, a row's state or the exit status, and `--quiet` prints neither. Neither prints an identifier.
 
 - **A registered label on other threads.** Each registered label is looked for on every other thread in the live folder, and the report gives the count by where the thread's rollout stands: `live`, `archived stub` or `no rollout`, by file name under `~/.codex/sessions` and `~/.codex/archived_sessions`. Two archived stubs under a resident's label are why the operator can see a chat that will not load, while the registered thread stands live and correct.
-- **The phone names.** Each registered Codex row is compared with `~/.codex/session_index.jsonl`, Codex's own index. That the phone shows this index was stated by the Manager on 2026-11-06 and has not been measured; it goes firm if the operator confirms it from his phone. Only the `id` and `thread_name` of a row are read, and the last row of a thread stands. A row reads `same`, `differs` or `absent`, and a row whose rollout is an archived stub is not asked. The name itself is not printed, because it can be a first turn's automatic summary. An index that cannot be read is said, and nothing is compared.
+- **The phone names.** Each registered Codex row is compared with `~/.codex/session_index.jsonl`, Codex's own index. That the phone shows this index was stated by the Integrator on 2026-11-06 and has not been measured; it goes firm if the operator confirms it from his phone. Only the `id` and `thread_name` of a row are read, and the last row of a thread stands. A row reads `same`, `differs` or `absent`, and a row whose rollout is an archived stub is not asked. The name itself is not printed, because it can be a first turn's automatic summary. An index that cannot be read is said, and nothing is compared.
 
 ## The label leg's sources
 

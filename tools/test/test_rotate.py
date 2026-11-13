@@ -2544,7 +2544,7 @@ class NativeDisposableTests(unittest.TestCase):
         self.mkdir(self.case)
         self.registry_path = self.room / "ops/etc/resident-identities.json"
         self.registry = {"identities": [
-            {"key": WRITER, "person": "Fixture Writer", "role": "Assistant",
+            {"key": WRITER, "person": "Fixture Writer", "role": "Contractor",
              "room": str(self.room), "provider": "codex", "session_id": WRITER_SID},
             {"key": "fixture-auditor", "person": "Fixture Auditor", "role": "Auditor",
              "room": str(self.room), "provider": "claude",

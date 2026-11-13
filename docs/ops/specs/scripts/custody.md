@@ -1,10 +1,10 @@
 # Technical Specification: custody
 
-Script: `ops/lib/scripts/custody.py`. Tests: `tools/test/test_custody.py`. Spec writer: Claude Shannon (Session Continuity Manager), 2026-11-08. Status: built, first slice; proposal P5.3 of the review plan of 2026-11-07, accepted by the operator.
+Script: `ops/lib/scripts/custody.py`. Tests: `tools/test/test_custody.py`. Spec writer: Claude Shannon (Integrator), 2026-11-08. Status: built, first slice; proposal P5.3 of the review plan of 2026-11-07, accepted by the operator.
 
 ## First Principles Rationale
 
-Custody kept every private source safe, one act at a time: by 2026-11-07 tier 1 held 25 batches from four days, each written by its own one-off script in the Manager's scratch, eight such scripts in all, none of them a maintained tool, and each batch took its own audit. A rule that the tool enforces is safer than a rule each script restates: the same bytes on every root, an append-only record, private modes, and a close after which nothing is added.
+Custody kept every private source safe, one act at a time: by 2026-11-07 tier 1 held 25 batches from four days, each written by its own one-off script in the Integrator's scratch, eight such scripts in all, none of them a maintained tool, and each batch took its own audit. A rule that the tool enforces is safer than a rule each script restates: the same bytes on every root, an append-only record, private modes, and a close after which nothing is added.
 
 ## Mechanics and Sequencing
 
