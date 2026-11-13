@@ -12,9 +12,10 @@ mind tool resolves it. Every reader is shown the clauses the context manifest
 lists for every reader (CONTEXT X04). A resident is shown, besides, the
 clauses listed for each delivery function the open packet's leaf gives it:
 Integrator, Contractor, Auditor or Orchestrator. A function is read from that
-leaf and from nowhere else; when no open packet names the caller, all four are
-shown. The text of a clause is read from `main` at the time of the OPEN and is
-never copied into this tool or into the manifest.
+leaf and from nowhere else, and only from the leaf the packet tool last wrote;
+when no open packet names the caller, all four are shown. The text of a clause
+is read from `main` at the time of the OPEN and is never copied into this tool
+or into the manifest.
 
 A file of the law is printed whole when this body has not been shown it as it
 now stands: on a body's first OPEN, and after every change to that file. An
@@ -378,22 +379,33 @@ def caller(args) -> tuple[str, dict, str]:
     return key, entry, sha256(entry["session_id"].encode("utf-8"))[:16]
 
 
+UNREAD = "the open packet could not be read"
+UNWRITTEN = "the open packet's leaf is not the one the packet tool last wrote"
+
+
 def open_packet(args) -> dict:
-    """The open packet as the packet tool reads it: its id and the head of its leaf. A leaf that cannot be read
-    gives no head, and what the packet tool's ledger remembers of it is not taken in its place."""
+    """The open packet as the packet tool reads it: its id and the head of its leaf. A leaf gives a head only when
+    it is, byte for byte, the leaf the packet tool last wrote. A leaf that cannot be read gives none, and neither
+    does one that parses but was written by another hand; what the packet tool's ledger remembers of the packet is
+    not taken in its place."""
     packet = sibling("packet")
     if not (args.room / packet.WORKTREE).is_dir():
-        return {"packet": None, "head": None, "note": None}
+        return {"packet": None, "head": None, "note": None, "why": None}
     try:
         active = packet.Active(types.SimpleNamespace(room=args.room), lenient=True)
         name, head, damage = active.id, active.head, active.damage
+        written = not damage and active.intact()
     except packet.Refused as exc:
-        return {"packet": None, "head": None, "note": str(exc)}
+        return {"packet": None, "head": None, "note": str(exc), "why": UNREAD}
     except Exception as exc:                # the packet tool's own fault is no reason to show a reader less of the law
-        return {"packet": None, "head": None, "note": f"the packet tool could not read the open packet ({exc.__class__.__name__})"}
+        return {"packet": None, "head": None, "why": UNREAD,
+                "note": f"the packet tool could not read the open packet ({exc.__class__.__name__})"}
     if damage or not isinstance(head, dict):
-        return {"packet": name, "head": None, "note": f"the leaf of {name} cannot be read"}
-    return {"packet": name, "head": head, "note": None}
+        return {"packet": name, "head": None, "note": f"the leaf of {name} cannot be read", "why": UNREAD}
+    if not written:
+        return {"packet": name, "head": None, "note": f"the leaf of {name} is not the one the packet tool last wrote",
+                "why": UNWRITTEN}
+    return {"packet": name, "head": head, "note": None, "why": None}
 
 
 def duty(args, key: str, active: dict | None = None) -> dict:
@@ -402,7 +414,7 @@ def duty(args, key: str, active: dict | None = None) -> dict:
     active = open_packet(args) if active is None else active
     head = active["head"] or {}
     return {"packet": active["packet"], "functions": [name for name in function_names() if head.get(name) == key],
-            "note": active["note"]}
+            "note": active["note"], "why": active["why"]}
 
 
 def duty_text(found: dict) -> str:
@@ -716,7 +728,7 @@ def read_in(law: dict[str, bytes], found: dict | None, already_whole: dict[str, 
             cited += more
             out += ["", f"[YOUR FUNCTION IN {found['packet']}: {row[0]}]", *(lines or ["its clauses are shown above"])]
     elif found is not None:
-        why = ("the open packet could not be read" if found["note"] else
+        why = (found.get("why") or UNREAD if found["note"] else
                f"the leaf of {found['packet']} gives you none" if found["packet"] else "no packet is open")
         out += ["", f"[THE FUNCTIONS: all {len(chosen)} are shown, because {why}; a packet's leaf says who carries each]"]
         for row in chosen:
