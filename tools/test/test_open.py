@@ -4,8 +4,8 @@
 Every case builds its own room, with a law of its own on `main`, and a registry
 of invented residents in a temporary directory. Where a case needs an open
 packet it makes a real packet worktree whose leaf is rendered by the packet
-tool itself, so the caller's functions are read exactly as they are in the
-room. The packet tool's status and the gauge are stood in for, except in the
+tool itself and recorded in that tool's ledger as its open station records
+it, so the caller's functions are read exactly as they are in the room. The packet tool's status and the gauge are stood in for, except in the
 cases that say they run the real ones. Three cases read the room's own read-in
 table and law, as files, to prove that the table cites only clauses in force
 and has a row for each delivery function and for nothing else. No real
@@ -45,10 +45,12 @@ T0 = dt.datetime(2026, 11, 12, 10, 0, tzinfo=dt.timezone.utc)
 IDENTITY = {"GIT_AUTHOR_NAME": "Synthetic Room", "GIT_AUTHOR_EMAIL": "synthetic@example.invalid",
             "GIT_COMMITTER_NAME": "Synthetic Room", "GIT_COMMITTER_EMAIL": "synthetic@example.invalid"}
 FOUR = ("Integrator", "Contractor", "Auditor", "Orchestrator")
-KEYS = ("itg", "con", "aud", "orc", "out")          # four who may carry a function, and one more resident
+KEYS = ("itg", "con", "aud", "orc", "out", "au")    # four who may carry a function, one more resident, and one
+                                                    # whose key is contained in another's
 # What the registry says of each resident's role. It is a function's name with a mark, and never the function the
 # packet gives that resident: the tool must print none of it and decide nothing by it.
-ROLES = {"itg": "Auditor QX0", "con": "Orchestrator QX1", "aud": "Integrator QX2", "orc": "Contractor QX3", "out": "Auditor QX4"}
+ROLES = {"itg": "Auditor QX0", "con": "Orchestrator QX1", "aud": "Integrator QX2", "orc": "Contractor QX3", "out": "Auditor QX4",
+         "au": "Auditor QX5"}
 PACKET_ID = "DP-SES-0001"
 
 POLICY = """# Policy of Truth (PoT)
@@ -192,8 +194,12 @@ class Room:
         git(self.room, "worktree", "add", "-q", str(worktree), "-b", branch)
         path = worktree / packet.LEAVES / f"{name}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(packet.render_leaf(leaf))
-        self.head = head
+        text = packet.render_leaf(leaf)
+        path.write_text(text)
+        self.packet_ledger({"packet": name, "action": "open", "actor": head["Integrator"], "time": head["Opened"],
+                            "leaf": opn.sha256(text.encode("utf-8")), "text": text, "base": head["Base"][7:], "branch": branch,
+                            "functions": {function: head[function] for function in packet.FUNCTIONS}})
+        self.head, self.leaf = head, leaf
         return path
 
     def end_packet(self) -> None:
@@ -550,7 +556,6 @@ class AnOpen(Case):
 
     def test_a_leaf_that_cannot_be_read_gives_no_function_whatever_the_packet_tools_ledger_remembers(self):
         path = self.r.open_packet()
-        self.r.packet_ledger({"packet": PACKET_ID, "action": "open", "actor": "itg", "functions": self.r.head})
         path.write_text(path.read_text() + "a line the tool did not write\n")
         lenient = packet.Active(self.args(), lenient=True)
         self.assertTrue(lenient.damage)
@@ -561,6 +566,53 @@ class AnOpen(Case):
         self.assertNotIn("[YOUR FUNCTION", text)
         record = self.r.ledger()[-1]
         self.assertEqual((PACKET_ID, [], list(FOUR)), (record["packet"], record["functions"], record["rows"]))
+
+    def test_a_leaf_the_packet_tool_did_not_write_gives_no_function_though_it_parses(self):
+        path = self.r.open_packet()
+        written = path.read_text()
+        forged = dict(self.r.leaf, head=dict(self.r.head, Auditor="out"))
+        path.write_text(packet.render_leaf(forged))                   # a whole and valid leaf, by another hand
+        seen = packet.Active(self.args(), lenient=True)
+        self.assertEqual((None, "out", False), (seen.damage, seen.head["Auditor"], seen.intact()))
+        for who in ("out", "aud"):
+            with self.subTest(who=who):
+                text = self.r.open(who=who)[0].out
+                self.assertIn(f"- function: unknown (the leaf of {PACKET_ID} is not the one the packet tool last wrote)", text)
+                self.assertIn("[THE FUNCTIONS: all 4 are shown, because the open packet's leaf is not the one the packet tool "
+                              "last wrote;", text)
+                self.assertNotIn("[YOUR FUNCTION", text)
+                record = self.r.ledger()[-1]
+                self.assertEqual((PACKET_ID, [], list(FOUR)), (record["packet"], record["functions"], record["rows"]))
+        path.write_text(written)                                      # the leaf the tool wrote is put back
+        text = self.r.open(who="aud")[0].out
+        self.assertIn(f"[YOUR FUNCTION IN {PACKET_ID}: Auditor]", text)
+        self.assertNotIn(f"[YOUR FUNCTION IN {PACKET_ID}: Auditor]", self.r.open(who="out")[0].out)
+
+    def test_a_leaf_with_no_line_in_the_packet_tools_ledger_gives_no_function(self):
+        path = self.r.open_packet()
+        (self.r.room / packet.LEDGER).unlink()
+        self.assertFalse(packet.Active(self.args(), lenient=True).intact())
+        text = self.r.open(who="aud")[0].out
+        self.assertIn(f"- function: unknown (the leaf of {PACKET_ID} is not the one the packet tool last wrote)", text)
+        self.assertNotIn("[YOUR FUNCTION", text)
+        self.assertTrue(path.is_file())
+
+    def test_a_key_that_is_contained_in_another_is_not_that_other(self):
+        self.r.open_packet()                                          # the Auditor is aud; au is named for nothing
+        text = self.r.open(who="au")[0].out
+        self.assertIn(f"- function: none in {PACKET_ID}", text)
+        self.assertNotIn("[YOUR FUNCTION", text)
+        self.assertEqual([], self.r.ledger()[-1]["functions"])
+        self.r.end_packet()
+        self.r.open_packet(2, Contractor="au")                        # the Contractor is au; the Auditor is still aud
+        closing = closing_of(self.r.open(who="aud")[0].out)
+        self.assertIn("[YOUR FUNCTION IN DP-SES-0002: Auditor]", closing)
+        self.assertNotIn("DP-SES-0002: Contractor]", closing)
+        self.assertEqual(["Auditor"], self.r.ledger()[-1]["functions"])
+        closing = closing_of(self.r.open(who="au")[0].out)
+        self.assertIn("[YOUR FUNCTION IN DP-SES-0002: Contractor]", closing)
+        self.assertNotIn("DP-SES-0002: Auditor]", closing)
+        self.assertEqual(["Contractor"], self.r.ledger()[-1]["functions"])
 
     def test_a_fault_of_the_packet_tool_is_said_and_all_four_are_shown(self):
         self.r.open_packet()
