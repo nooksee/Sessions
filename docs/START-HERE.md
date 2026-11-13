@@ -45,7 +45,8 @@ Everything else is recoverable. These are the ones that cost real damage.
    (`~/.codex/archived_sessions/`); prefer it over anything we invent.
 4. **Write a receipt.** Every source, service, roster, session, or release
    change gets one in `archives/receipts/`. Quantitative, including what failed and
-   what you decided not to do.
+   what you decided not to do. A change to tracked files gets its record from
+   the packet tool instead: the leaf under `archives/packets/`.
 
 ## How a change ships
 

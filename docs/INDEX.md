@@ -115,7 +115,7 @@ Tests:
 ## 5. Templates (not documents; listed so they are found)
 * `../ops/src/docs/spec.md.tpl`: the spec template used by `ops/bin/template`.
 * `../ops/src/runbook/agents/agent-input.yaml`: resident packet form fields and delivery boundary.
-* `../ops/src/reports/source-change.md.tpl`: bounded source/configuration change receipt, distinct from rotation and custody receipts.
+* `../ops/src/reports/source-change.md.tpl`: bounded source/configuration change receipt, distinct from rotation and custody receipts; for a change to tracked files the packet leaf is the record.
 
 ## 6. Landed packets
 * [../archives/packets/README.md](../archives/packets/README.md): one kept leaf per landed dispatch packet, `DP-SES-NNNN.md`; written only by the packet tool, public, never edited after landing.
