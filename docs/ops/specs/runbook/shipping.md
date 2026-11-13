@@ -82,7 +82,7 @@ gates: sessions-gates success
 findings: none unanswered
 merge: #<number> by rebase
 sync: main <commit> is origin/main; tree <tree>
-LANDED: DP-SES-0007; the room is clean main, level with origin; the next packet may open
+LANDED: DP-SES-0007; reviews: <who reviewed, and the findings of each>; the room is clean main, level with origin; the next packet may open
 ```
 
 `PENDING` means run it again. `refused` and `FAILED` say what must happen next.
@@ -154,7 +154,7 @@ A good narrative is three to six sentences: what changed, why it satisfies the o
 | `the worktree changed after close` | the results no longer describe the content | the Contractor closes again |
 | `packet hash failure` | the leaf was edited by hand | the Integrator runs `restore`; the skipped station is then run properly |
 | `not the tree the Auditor passed` | content changed after the audit | the Contractor closes again; the Auditor audits again |
-| `PENDING` | the required check or a review is still running, or the head is resting | the Orchestrator runs `ship` again |
+| `PENDING` | the required check or a review is still running, a reviewer GitHub asked has not answered yet, or the head is resting | the Orchestrator runs `ship` again |
 | `review finding(s) are unanswered` | a reviewer left a comment on the pull request | answer it there, fixed or declined with a reason; a fix returns the packet to the Contractor |
 | `FAILED: the required check ... ended failure` | GitHub disagrees with the gates run here | the Contractor reworks; then close, audit and ship again |
 | `origin/main moved since this packet opened` | something else landed | the Integrator abandons and opens again; the work is kept as a patch |
@@ -181,7 +181,7 @@ A good narrative is three to six sentences: what changed, why it satisfies the o
 
 **The Auditor is away.** The packet waits. Another auditor is the operator's to name.
 
-**A reviewer commented on the pull request.** Every such comment is answered on its thread before the merge, by a fix or by a reason for declining. The tool waits while the reviewer says it is still reading.
+**A reviewer commented on the pull request.** Every such comment is answered on its thread before the merge, by a fix or by a reason for declining; which of the two is the judgement of the resident who answers. The tool waits while a reviewer says it is still reading, and for a reviewer GitHub has asked, up to fifteen minutes from the opening. The `LANDED` line then names who reviewed and what each left, so the operator sees it at every landing.
 
 **I want to stop a packet.** Before its branch is on origin, the Integrator runs `abandon` with a reason. Once the Orchestrator has pushed it, the Orchestrator runs `abandon`, or another resident does with `--fallback` and a one-line reason. Either way the work is kept as a patch, and the number is used by the next packet.
 

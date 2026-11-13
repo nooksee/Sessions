@@ -103,13 +103,17 @@ if method == "GET" and rest == ["pulls"]:
     out([p for p in pulls if p["head"]["ref"] == query["head"].split(":", 1)[1]])
 if method == "POST" and rest == ["pulls"]:
     made = {"number": state["next"], "state": "open", "merged_at": None, "title": fields["title"], "body": fields["body"],
-            "base": {"ref": fields["base"]}, "user": {"login": "room-account"},
+            "base": {"ref": fields["base"]}, "user": {"login": "room-account"}, "created_at": state.get("opened", "2026-11-12T09:00:00Z"),
             "head": {"ref": fields["head"], "sha": git("rev-parse", "refs/heads/" + fields["head"])}}
     state["next"] += 1
     pulls.append(made)
     out(made)
 if method == "GET" and rest[0] == "commits" and rest[2:] == ["check-runs"]:
     out({"check_runs": state["checks"]})
+if method == "GET" and rest[0] == "pulls" and len(rest) == 2:
+    out(dict(pull(rest[1]), requested_reviewers=state.get("asked", []), requested_teams=state.get("teams", [])))
+if method == "GET" and rest[0] == "pulls" and rest[2:] == ["reviews"]:
+    out(state.get("reviews", []))
 if method == "GET" and rest[0] == "pulls" and rest[2:] == ["comments"]:
     page, per = int(query.get("page", 1)), int(query.get("per_page", 30))
     out(state["comments"][(page - 1) * per:page * per])
@@ -132,6 +136,14 @@ if method == "PATCH" and rest[0] == "pulls":
     out(pull(rest[1]))
 if method == "GET" and rest[0] == "issues" and rest[2:] == ["comments"]:
     out(state["talk"])
+if method == "GET" and rest[0] == "issues" and rest[2:] == ["timeline"]:
+    if state.get("no_events"):
+        fail(state["no_events"])
+    events = state.get("events", [])
+    if not isinstance(events, list):
+        out(events)
+    page, per = int(query.get("page", 1)), int(query.get("per_page", 30))
+    out(events[(page - 1) * per:page * per])
 if method == "POST" and rest[0] == "issues" and rest[2:] == ["comments"]:
     state["notes"].append({"number": int(rest[1]), "body": fields["body"]})
     out({"id": len(state["notes"])})
@@ -1050,6 +1062,139 @@ class Ship(Case):
         stale = self.r.ship(now="2026-11-12T11:00:00Z")
         self.assertEqual(0, stale.code, stale.text)
         self.assertIn("taken as stopped", stale.out)
+
+    def test_a_reviewer_github_asked_is_waited_for_and_not_for_ever(self):
+        """As GitHub gives it for an application that reviews every pull request by itself: the request stands in the
+        pull request's events and never in its list of requested reviewers, and the review carries another name."""
+        asked = {"event": "review_requested", "requested_reviewer": {"login": "Copilot", "type": "Bot", "id": 41}}
+        self.r.through("audit")
+        self.r.gh(opened="2026-11-12T10:50:00Z", asked=[], events=[{"event": "committed"}, asked], teams=[{"slug": "readers"}])
+        held = self.r.ship(now="2026-11-12T11:00:00Z")                         # ten minutes after it opened
+        self.refused(held, "PENDING", "a review that GitHub asked for has not arrived (Copilot, team readers) on pull request #7", code=3)
+        self.assertEqual([], [call for call in self.r.gh()["calls"] if call[2] == "PUT"])
+        self.r.gh(teams=[], events=[asked, {"event": "copilot_work_started"},
+                                    {"event": "reviewed", "state": "commented", "user": {"login": "Copilot", "type": "Bot", "id": 41}}],
+                  reviews=[{"user": {"login": "copilot-pull-request-reviewer[bot]", "type": "Bot", "id": 41}, "state": "COMMENTED"}])
+        landed = self.r.ship(now="2026-11-12T11:01:00Z")                       # it answered, under its other name
+        self.assertEqual(0, landed.code, landed.text)
+        self.assertIn("LANDED: DP-SES-0001; reviews: copilot-pull-request-reviewer[bot] no findings; the room is clean main", landed.out)
+        self.r.through("audit", text="alpha, a second time\n", title="A second one")
+        self.r.gh(opened="2026-11-12T10:50:00Z", events=[asked], reviews=[], pulls=[])
+        self.refused(self.r.ship(now="2026-11-12T11:04:59Z"), "PENDING", "has not arrived (Copilot)", code=3)
+        silent = self.r.ship(now="2026-11-12T11:05:00Z")                       # fifteen minutes: a reviewer that is down holds no packet
+        self.assertEqual(0, silent.code, silent.text)
+        self.assertIn("reviews: Copilot asked and silent 900 seconds after the pull request opened; not waited for longer", silent.out)
+        self.assertIn("LANDED: DP-SES-0002; reviews: Copilot asked, no answer; the room is clean main", silent.out)
+
+    def test_the_events_are_read_in_order_and_a_reviewer_is_known_by_its_account_number(self):
+        def asks(login, number=None):
+            return {"event": "review_requested", "requested_reviewer": dict({"login": login}, **({"id": number} if number else {}))}
+
+        def answers(login, number=None, kind="reviewed"):
+            who = dict({"login": login}, **({"id": number} if number else {}))
+            return dict({"event": kind}, **({"user": who} if kind == "reviewed" else {"requested_reviewer": who}))
+
+        def waited(events, asked=()):
+            self.r.gh(events=events, asked=list(asked))
+            return packet.asked_reviewers(self.r.room, "o/r", {"number": 7})
+
+        self.r.through("audit")
+        self.refused(self.r.ship("--hold"), "PENDING", "held before the merge", code=3)       # the pull request exists
+        with mock.patch.dict(os.environ, PATH=f"{self.r.base / 'bin'}{os.pathsep}{os.environ['PATH']}", FAKE_GH_STATE=str(self.r.state)):
+            self.assertEqual(([], "2026-11-12T09:00:00Z", True), waited([]))
+            self.assertEqual(["Copilot"], waited([asks("Copilot", 41)])[0])
+            self.assertEqual([], waited([asks("Copilot", 41), answers("copilot-other-name", 41)])[0])          # the number, not the name
+            self.assertEqual(["Copilot"], waited([asks("Copilot", 41), answers("Copilot", 42)])[0])            # another account's review
+            self.assertEqual(["Copilot"], waited([asks("Copilot", 41), answers("Copilot", 41), asks("Copilot", 41)])[0])   # asked again
+            self.assertEqual(["Copilot"], waited([answers("Copilot", 41), asks("Copilot", 41)])[0])            # a review before the request
+            self.assertEqual([], waited([asks("Copilot", 41), answers("Copilot", 41, "review_request_removed")])[0])
+            self.assertEqual(["ada"], waited([asks("ada"), asks("bo"), answers("bo")])[0])                     # no number: by name
+            self.assertEqual(["ada", "bo"], waited([asks("bo", 43)], asked=[{"login": "ada", "id": 44}, {"login": "bo", "id": 43}])[0])
+            self.assertEqual([], waited([{"event": "review_requested"}, {"event": "review_requested", "requested_reviewer": "x"},
+                                         {"event": "review_requested", "requested_reviewer": {"id": 45}},
+                                         {"event": "reviewed", "user": None}, "not an event", {"event": "closed"}])[0])
+            late = [{"event": "labeled"}] * 100 + [asks("Copilot", 41)]
+            self.assertEqual(["Copilot"], waited(late)[0])                                                     # on the second page
+            self.assertEqual([], waited(late + [{"event": "labeled"}] * 99 + [answers("Copilot", 41)])[0])     # and on the third
+            mine = {"number": 7, "user": {"login": "room-account"}}
+            self.r.gh(events=[asks("ada", 44), answers("ada", 44)], asked=[], reviews=[{"user": {"login": "ada", "id": 44}, "state": "COMMENTED"}])
+            self.assertEqual("ada no findings", packet.review_record(self.r.room, "o/r", mine))
+            self.r.gh(events=[asks("ada", 44), answers("ada", 44), asks("ada", 44)])
+            self.assertEqual("ada no findings; ada asked, no answer", packet.review_record(self.r.room, "o/r", mine))   # asked again
+
+    def test_events_that_cannot_be_read_stop_no_landing(self):
+        self.r.through("audit")
+        self.r.gh(opened="2026-11-12T10:50:00Z", no_events="Not Found", asked=[{"login": "ada", "id": 44}])
+        held = self.r.ship(now="2026-11-12T11:00:00Z")
+        self.refused(held, "PENDING", "has not arrived (ada)", code=3)                         # GitHub's own list is still waited on
+        self.assertIn("reviews: the pull request's events could not be read; only GitHub's own list of requested reviewers is waited on", held.out)
+        self.r.gh(asked=[])
+        landed = self.r.ship(now="2026-11-12T11:01:00Z")
+        self.assertEqual(0, landed.code, landed.text)
+        self.assertIn("LANDED: DP-SES-0001; reviews: events not read; the room is clean main", landed.out)
+        self.r.through("audit", text="alpha, a second time\n", title="A second one")
+        self.r.gh(no_events="", events={"message": "an answer that is no list"}, pulls=[])
+        other = self.r.ship()
+        self.assertEqual(0, other.code, other.text)
+        self.assertIn("LANDED: DP-SES-0002; reviews: events not read; the room is clean main", other.out)
+
+    def test_an_asked_reviewer_is_asked_after_the_rest_and_an_opening_time_that_cannot_be_read_is_long_ago(self):
+        def asking():
+            return [call[3] for call in self.r.gh()["calls"]
+                    if call[2] == "GET" and call[3].endswith(("/pulls/7", "/issues/7/timeline?per_page=100&page=1"))]
+
+        self.r.through("audit")
+        self.r.gh(opened="2026-11-12T10:58:00Z", asked=[{"login": "Copilot", "type": "Bot"}],
+                  checks=[{"name": packet.REQUIRED_CHECK, "status": "completed", "conclusion": "success", "started_at": "2026-11-12T10:58:00Z"}])
+        self.refused(self.r.ship(now="2026-11-12T11:00:00Z"), "PENDING", "rests 300 seconds", code=3)      # the rest first
+        self.assertEqual([], asking())
+        self.refused(self.r.ship(now="2026-11-12T11:03:00Z"), "PENDING", "has not arrived (Copilot)", code=3)
+        self.assertEqual(2, len(asking()), asking())                           # the pull request and its events, once each
+        self.r.gh(opened="not a time", pulls=[dict(self.r.gh()["pulls"][0], created_at="not a time")])
+        landed = self.r.ship(now="2026-11-12T11:03:30Z")
+        self.assertEqual(0, landed.code, landed.text)
+        self.assertIn("not waited for longer", landed.out)
+
+    def test_the_landing_names_who_reviewed_and_what_each_left(self):
+        def marker(status):
+            state = {"code_review": {"commit_sha": None, "has_any_findings": False, "status": status}, "security_review": {"status": None}}
+            return {"user": {"login": "review-bot[bot]", "type": "Bot"}, "updated_at": "2026-11-12T09:30:00Z",
+                    "body": f"<!-- codex-review-state:v1 {json.dumps(state)} -->"}
+
+        self.r.through("audit")
+        nothing = self.r.ship()
+        self.assertIn("LANDED: DP-SES-0001; reviews: none arrived; the room is clean main", nothing.out)
+        self.assertEqual("none arrived", self.r.ledger()[-1]["reviews"])
+        self.assertIn("Shipped by orc. Reviews: none arrived.", self.r.gh()["notes"][-1]["body"])
+        self.r.through("audit", text="alpha, a second time\n", title="A second one")
+        finding = lambda n, who, **more: dict({"id": n, "user": {"login": who}, "path": "docs/a.md", "line": 1}, **more)
+        self.r.gh(talk=[marker("completed"), {"user": {"login": "someone", "type": "User"}, "body": marker("completed")["body"]}],
+                  reviews=[{"user": {"login": "second-reviewer[bot]"}, "state": "COMMENTED"}, {"user": {"login": "room-account"}, "state": "COMMENTED"},
+                           {"user": {"login": "quiet-reviewer"}, "state": "APPROVED"}, {"user": None}],
+                  comments=[finding(1, "second-reviewer[bot]"), finding(2, "second-reviewer[bot]"), finding(3, "room-account"),
+                            finding(4, "room-account", in_reply_to_id=1), finding(5, "room-account", in_reply_to_id=2),
+                            finding(6, "second-reviewer[bot]", in_reply_to_id=1)])
+        landed = self.r.ship()
+        self.assertEqual(0, landed.code, landed.text)
+        want = "quiet-reviewer no findings; review-bot[bot] no findings; second-reviewer[bot] 2 finding(s), answered"
+        self.assertIn(f"LANDED: DP-SES-0002; reviews: {want}; the room is clean main", landed.out)
+        self.assertEqual(want, self.r.ledger()[-1]["reviews"])
+        self.assertIn(f"Reviews: {want}.", self.r.gh()["notes"][-1]["body"])
+
+    def test_a_finding_that_arrives_after_the_merge_is_named_and_a_review_that_cannot_be_read_stops_nothing(self):
+        self.r.through("hold")
+        self.r.merge_outside()
+        self.r.gh(comments=[{"id": 9, "user": {"login": "late-reviewer"}, "path": "docs/a.md", "line": 1}],
+                  talk=[{"user": {"login": "review-bot[bot]", "type": "Bot"}, "body": '<!-- codex-review-state:v1 {"code_review": {"status": "running"}} -->'}])
+        landed = self.r.ship()
+        self.assertEqual(0, landed.code, landed.text)
+        self.assertIn("reviews: late-reviewer 1 finding(s), 1 unanswered; review-bot[bot] still running; the room", landed.out)
+        self.r.through("hold", text="alpha, a second time\n", title="A second one")
+        self.r.merge_outside()
+        self.r.gh(reviews="not a list", comments=[], talk=[])
+        unread = self.r.ship()
+        self.assertEqual(0, unread.code, unread.text)
+        self.assertIn("LANDED: DP-SES-0002; reviews: not read; the room is clean main", unread.out)
 
     def test_an_unanswered_review_finding_stops_the_merge(self):
         self.r.through("audit")
