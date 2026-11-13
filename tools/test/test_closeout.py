@@ -104,7 +104,7 @@ class World:
         payload = raw if raw is not None else json.dumps({
             "session_id": sid, "transcript_path": str(transcript), "cwd": str(self.base),
             "hook_event_name": "UserPromptSubmit", "prompt": f"please continue {SECRET}"}).encode()
-        cmd = [sys.executable, "-I", "-B", str(CLOSEOUT), f"--registry={self.registry}", f"--spec={self.spec}",
+        cmd = [sys.executable, "-I", "-B", str(CLOSEOUT), f"--room={ROOM}", f"--registry={self.registry}", f"--spec={self.spec}",
                f"--state-dir={self.state}", f"--template={self.template}", "--now=2026-10-30T16:00:00Z", *extra]
         return subprocess.run(cmd, input=payload, capture_output=True, timeout=timeout, env=env)
 
@@ -424,6 +424,48 @@ class Closeout(unittest.TestCase):
                 for row in contractors:                                                # whoever they are, none is named
                     self.assertNotIn(row["person"].strip() or "nameless", text)
 
+    def test_the_roles_are_those_of_this_room_and_other_rooms_keep_theirs(self):
+        """The registry covers the whole host, and other rooms hold an Integrator and a Contractor of their own."""
+        integrator, contractor = INTEGRATOR["session_id"], CONTRACTOR["session_id"]
+        elsewhere = [dict(INTEGRATOR, key="other-integrator", person="Other Integrator", room="/synthetic/stela", session_id=cid(41)),
+                     dict(INTEGRATOR, key="third-integrator", person="Third Integrator", room="/synthetic/central", session_id=cid(42)),
+                     dict(CONTRACTOR, key="other-contractor", person="Other Contractor", room="/synthetic/stela", session_id=cid(43)),
+                     dict(CONTRACTOR, key="third-contractor", person="Third Contractor", room="/synthetic/central", session_id=cid(44))]
+        self.w.identities += elsewhere
+        self.w.write_registry()
+        for n, sid in enumerate((contractor, cid(41), cid(43))):                       # here or elsewhere, this room's desk runs it
+            with self.subTest(closer=sid):
+                text = self.card(self.w.hook(sid, self.at(sid, 700_000)))
+                self.assertTrue(text.endswith("Step five: Claude Shannon's desk runs it."))
+        text = self.card(self.w.hook(integrator, self.at(integrator, 700_000)))
+        self.assertTrue(text.endswith("Step five: The Contractor the operator assigns runs it."))
+        self.w.identities = [dict(INTEGRATOR), *elsewhere]                             # another room's Contractor is not this room's
+        self.w.write_registry()
+        self.silent(self.w.hook(integrator, self.at(integrator, 760_000, "m2")))
+        self.assertIn("names no Contractor of this room", self.w.log()[-1]["why"])
+        self.w.identities = [dict(CONTRACTOR), *elsewhere]                             # nor is another room's Integrator
+        self.w.write_registry()
+        self.silent(self.w.hook(contractor, self.at(contractor, 760_000, "m2")))
+        self.assertIn("exactly one Integrator of this room", self.w.log()[-1]["why"])
+
+    def test_a_room_is_this_room_however_the_registry_writes_it(self):
+        integrator, contractor = INTEGRATOR["session_id"], CONTRACTOR["session_id"]
+        for n, written in enumerate(("/synthetic/room/", "/synthetic/./room", "/synthetic/other/../room")):
+            with self.subTest(written):
+                self.w.identities = [dict(INTEGRATOR, room=written), dict(CONTRACTOR, room=written)]
+                self.w.write_registry()
+                text = self.card(self.w.hook(contractor, self.at(contractor, 700_000 + 50_000 * n, f"c{n}")))
+                self.assertTrue(text.endswith("Step five: Claude Shannon's desk runs it."))
+                text = self.card(self.w.hook(integrator, self.at(integrator, 700_000 + 50_000 * n, f"i{n}")))
+                self.assertTrue(text.endswith("Step five: The Contractor the operator assigns runs it."))
+        for n, room in enumerate((None, "", "   ", 7, "/synthetic/roo", "/synthetic/room/inner")):
+            with self.subTest(room=room):
+                self.w.identities = [dict(INTEGRATOR, room=room), dict(CONTRACTOR)]
+                self.w.write_registry()
+                self.silent(self.w.hook(contractor, self.at(contractor, 900_000 + n, f"n{n}")))
+                why = [e for e in self.w.log() if e["event"] == "unknown"][-1]["why"]
+                self.assertIn("exactly one Integrator of this room", why)              # no room, or another, is not this room
+
     def test_a_resident_entry_without_a_key_is_unknown(self):
         self.w.identities.append({"provider": "claude", "session_id": cid(70), "person": "x", "role": "r"})
         self.w.write_registry()
@@ -631,19 +673,20 @@ class StateLocation(unittest.TestCase):
         script.parent.mkdir(parents=True)
         shutil.copyfile(CLOSEOUT, script)
         shutil.copyfile(CLOSEOUT.with_name("gauge.py"), script.with_name("gauge.py"))
-        for path, data in ((room / "ops/etc/resident-identities.json", world.registry.read_bytes()),
+        here = [dict(i, room=str(room)) if i.get("room") == ROOM else i for i in world.identities]    # the staged room is the tool's own
+        for path, data in ((room / "ops/etc/resident-identities.json", json.dumps({"identities": here}).encode()),
                            (room / "docs/ops/specs/scripts/gauge.md", world.spec.read_bytes()),
                            (room / "ops/src/reports/closeout.md.tpl", world.template.read_bytes())):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
         return room, script
 
-    def run_hook(self, script, sid, body, *args):
+    def run_hook(self, script, sid, body, *args, cwd=None):
         payload = json.dumps({"session_id": sid, "transcript_path": str(body),
                               "hook_event_name": "UserPromptSubmit", "prompt": SECRET}).encode()
         return subprocess.run([sys.executable, "-I", "-B", str(script),
                                "--now=2026-10-30T16:00:00Z", *args],
-                              input=payload, capture_output=True, timeout=10)
+                              input=payload, capture_output=True, timeout=10, cwd=cwd)
 
     def resident(self, world=None):
         world = world or self.world
@@ -652,6 +695,10 @@ class StateLocation(unittest.TestCase):
 
     def assert_silent(self, result):
         self.assertEqual((result.returncode, result.stdout, result.stderr), (0, b"", b""))
+
+    def card_from(self, result):
+        self.assertEqual((result.returncode, result.stderr), (0, b""))
+        return json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
 
     def test_default_creates_only_logs_closeout_state(self):
         sid, body = self.resident()
@@ -662,6 +709,23 @@ class StateLocation(unittest.TestCase):
         self.assertTrue((room / "logs/closeout/state.json").is_file())
         self.assertTrue((room / "logs/closeout/log.jsonl").is_file())
         self.assertFalse((room / "storage").exists())
+
+    def test_the_default_room_is_the_tools_own_and_a_blank_room_is_not_the_working_folder(self):
+        sid, body = self.resident()
+        room, script = self.stage()
+        elsewhere = self.base / "elsewhere"
+        elsewhere.mkdir()
+        self.card_from(self.run_hook(script, sid, body, cwd=elsewhere))          # the room is where the tool stands, not where it runs
+        for n, blank in enumerate(("", ".", "   ")):
+            with self.subTest(room=blank):
+                world = World(self.base / f"blank-{n}")
+                world.identities[0]["room"] = blank
+                world.write_registry()
+                sid, body = self.resident(world)
+                room, script = self.stage(world)
+                self.assert_silent(self.run_hook(script, sid, body, cwd=room))   # run from inside the room itself
+                report = json.loads((room / "logs/closeout/log.jsonl").read_text().splitlines()[-1])
+                self.assertIn("exactly one Integrator of this room", report["why"])
 
     def test_legacy_state_refuses_default_card_without_rewriting_legacy_bytes(self):
         sid, body = self.resident()
