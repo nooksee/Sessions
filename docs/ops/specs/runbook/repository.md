@@ -18,7 +18,7 @@ This bootstrap changes neither the ratified PoT nor the pending amendments. Root
 
 The initial snapshot is committed on agent/repository-bootstrap-2026-10-31 and then established as main. The private remote receives that exact snapshot only after the allowlist and staged-file checks pass. Future changes use one assigned writer and a bounded agent branch with review before integration. This bootstrap grants no resident admission, body mutation, hook activation or production deployment.
 
-Commit subjects stay under 72 characters and carry the claim alone; the body carries the rest. Integration is by rebase merge at the reviewed exact head, the one merge style since 2026-11-05 (the porter's review, item 10).
+Commit subjects stay under 72 characters and carry the claim alone; the body carries the rest. Integration is by rebase merge at the reviewed exact head, the one merge style since 2026-11-05 (the porter's review, item 10). Since 2026-11-12 every change travels as one dispatch packet (CONSTRAINTS C17; `docs/ops/specs/runbook/shipping.md`): the bounded agent branch, the review and the rebase merge at the exact head are the packet's stations, the packet tool performs each Git step, and it never forces a push. The change's record is the packet leaf under `archives/packets/`.
 
 ## Recovery
 

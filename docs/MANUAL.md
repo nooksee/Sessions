@@ -274,7 +274,7 @@ ops/bin/template packet --slots-file packet.slots   # TO FROM RELAYED_BY OWNER S
 ops/bin/template closeout --slot PERCENT=65.2 --slot WINDOW=1,000,000 --slot READING_TIME='16:40 EDT' --slot "ROTATION_WRITER=Shannon's desk"
 ops/bin/template source-change                       # lists the required source/configuration receipt fields
 ~~~
-The forms live in `ops/src/` as `.tpl` files (the operator, 2026-10-30: the agent kept changing the form, or at times forgot it). A slots file holds `KEY=VALUE` lines. Report mode refuses a missing, unknown or empty slot, a `[PLACEHOLDER`, any `{{...}}` left in the output, and an existing `--out` file. Report forms are not tool names. The rotation `receipt` remains distinct from `source-change`, which records bounded source/configuration work, exact heads, validation, review, integration and rollback.
+The forms live in `ops/src/` as `.tpl` files (the operator, 2026-10-30: the agent kept changing the form, or at times forgot it). A slots file holds `KEY=VALUE` lines. Report mode refuses a missing, unknown or empty slot, a `[PLACEHOLDER`, any `{{...}}` left in the output, and an existing `--out` file. Report forms are not tool names. The rotation `receipt` remains distinct from `source-change`, which records bounded source/configuration work, exact heads, validation, review, integration and rollback. Since 2026-11-12 a change to tracked files is recorded by its packet leaf, which the packet tool writes (section 1B); the `source-change` form remains for a configuration change that touches no tracked file.
 
 The storage root is not an output directory. Only `storage/.gitignore`,
 `storage/README.md` and the lane `.gitkeep` files are admitted; all case and
