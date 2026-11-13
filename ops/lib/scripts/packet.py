@@ -75,6 +75,7 @@ NET_TIMEOUT = 300          # seconds for one answer from origin or GitHub
 GATE_TIMEOUT = 3600        # seconds for one gate
 REVIEW_SETTLE = 300        # seconds a pull request's head rests before it may merge, so a review can land
 REVIEW_STALE = 1800        # seconds after which a reviewer that still says it is running is taken to have stopped
+REVIEW_WAIT = 900          # seconds from a pull request's opening that a reviewer GitHub has asked is waited for
 REQUIRED_CHECK = "sessions-gates"
 # The tool as it first landed (pull request #91), by its Git blob id. It named two of the delivery functions
 # otherwise, so the leaf header it writes is not the one this gate reads. No leaf it wrote reached main.
@@ -816,20 +817,137 @@ def required_check(room: Path, slug: str, commit: str) -> dict | None:
     return max(runs, key=lambda r: r.get("started_at") or "") if runs else None
 
 
-def unanswered_findings(room: Path, slug: str, pull: dict) -> list[str]:
-    """Review comments by anyone but the pull request's own account that it has not replied to."""
-    author = (pull.get("user") or {}).get("login")
+def review_comments(room: Path, slug: str, pull: dict) -> list[dict]:
+    """Every review comment on the pull request, across every page."""
     comments, page = [], 1
     while True:
         batch = gh(room, "GET", f"repos/{slug}/pulls/{pull['number']}/comments?per_page=100&page={page}") or []
         comments += batch
         if len(batch) < 100:
-            break
+            return comments
         page += 1
+
+
+def open_findings(pull: dict, comments: list[dict]) -> list[dict]:
+    """Review comments by anyone but the pull request's own account that it has not replied to."""
+    author = (pull.get("user") or {}).get("login")
     answered = {c.get("in_reply_to_id") for c in comments if (c.get("user") or {}).get("login") == author}
-    return [f"{c.get('path')}:{c.get('line') or c.get('original_line')}" + (f" {c['html_url']}" if c.get("html_url") else "")
-            for c in comments
+    return [c for c in comments
             if c.get("in_reply_to_id") is None and (c.get("user") or {}).get("login") != author and c.get("id") not in answered]
+
+
+def unanswered_findings(room: Path, slug: str, pull: dict) -> list[str]:
+    """Where each unanswered review finding stands, for the refusal."""
+    return [f"{c.get('path')}:{c.get('line') or c.get('original_line')}" + (f" {c['html_url']}" if c.get("html_url") else "")
+            for c in open_findings(pull, review_comments(room, slug, pull))]
+
+
+def pull_events(room: Path, slug: str, pull: dict) -> list[dict] | None:
+    """Every event of the pull request, oldest first, across every page. None when GitHub does not give them: the
+    events are read for a wait only, and a wait that cannot be made stops no landing."""
+    events, page = [], 1
+    try:
+        while True:
+            batch = gh(room, "GET", f"repos/{slug}/issues/{pull['number']}/timeline?per_page=100&page={page}") or []
+            if not isinstance(batch, list):
+                return None
+            events += [event for event in batch if isinstance(event, dict)]
+            if len(batch) < 100:
+                return events
+            page += 1
+    except Refused:
+        return None
+
+
+def asked_reviewers(room: Path, slug: str, pull: dict) -> tuple[list[str], str | None, bool]:
+    """The reviewers asked for this pull request that have not answered yet, when it was opened, and whether its
+    events could be read.
+
+    A reviewer is read from the pull request's own events, in order: a request adds it, and a withdrawn request or
+    its own review removes it. GitHub's list of requested reviewers is added and is not enough alone: it does not
+    hold an application that reviews every pull request by itself, not even while that application works. A
+    reviewer is known by its account number, since GitHub gives one application one name where it is asked and
+    another on its review. A team is taken from GitHub's list of requested teams."""
+    fresh = gh(room, "GET", f"repos/{slug}/pulls/{pull['number']}") or {}
+    events = pull_events(room, slug, pull)
+    waiting: dict[object, str] = {}
+    for event in events or []:
+        kind = event.get("event")
+        who = event.get("user") if kind == "reviewed" else event.get("requested_reviewer")
+        if not isinstance(who, dict) or not who.get("login"):
+            continue
+        key = who.get("id") or who["login"]
+        if kind == "review_requested":
+            waiting[key] = str(who["login"])
+        elif kind in ("review_request_removed", "reviewed"):
+            waiting.pop(key, None)
+    for who in fresh.get("requested_reviewers") or []:
+        if isinstance(who, dict) and who.get("login"):
+            waiting.setdefault(who.get("id") or who["login"], str(who["login"]))
+    teams = {f"team {t['slug']}" for t in fresh.get("requested_teams") or [] if isinstance(t, dict) and t.get("slug")}
+    return sorted(set(waiting.values()) | teams), fresh.get("created_at"), events is not None
+
+
+def awaited_reviewers(args, room: Path, slug: str, pull: dict) -> list[str]:
+    """The asked reviewers still waited for. One that has not answered REVIEW_WAIT seconds after the pull request
+    opened is no longer waited for, so that a reviewer that is down holds no packet; the landing names it. A pull
+    request whose opening time cannot be read is taken as opened long ago."""
+    asked, opened, read = asked_reviewers(room, slug, pull)
+    if not read:
+        print("reviews: the pull request's events could not be read; only GitHub's own list of requested reviewers "
+              "is waited on", flush=True)
+    try:
+        age = ((args.now if args.fixed_now else clock()) - dt.datetime.fromisoformat((opened or "").replace("Z", "+00:00"))).total_seconds()
+    except (ValueError, TypeError):
+        age = float(REVIEW_WAIT)
+    if asked and age >= REVIEW_WAIT:
+        print(f"reviews: {', '.join(asked)} asked and silent {REVIEW_WAIT} seconds after the pull request opened; "
+              "not waited for longer", flush=True)
+        return []
+    return asked
+
+
+def review_record(room: Path, slug: str, pull: dict) -> str:
+    """Who reviewed this pull request and what each left, in one line for the landing.
+
+    Every account but the pull request's own that submitted a review, announced a review state or left a review
+    comment is named with its count of findings and how many of them stand unanswered; then whoever was asked and
+    has not answered since, which names a reviewer a second time when it was asked again after its review. A
+    finding is a review comment that opens a thread."""
+    author = (pull.get("user") or {}).get("login")
+    found: dict[str, list[int]] = {}
+    for review in gh(room, "GET", f"repos/{slug}/pulls/{pull['number']}/reviews?per_page=100") or []:
+        login = (review.get("user") or {}).get("login")
+        if login and login != author:
+            found.setdefault(login, [0, 0])
+    running = set()
+    for comment in gh(room, "GET", f"repos/{slug}/issues/{pull['number']}/comments?per_page=100") or []:
+        user, marker = comment.get("user") or {}, REVIEW_STATE_RE.search(comment.get("body") or "")
+        if user.get("type") != "Bot" or not user.get("login") or not marker:
+            continue
+        found.setdefault(user["login"], [0, 0])
+        with contextlib.suppress(ValueError, AttributeError):
+            if any(isinstance(r, dict) and r.get("status") == "running" for r in json.loads(marker.group(1)).values()):
+                running.add(user["login"])
+    comments = review_comments(room, slug, pull)
+    still_open = {c.get("id") for c in open_findings(pull, comments)}
+    for comment in comments:
+        login = (comment.get("user") or {}).get("login")
+        if login and login != author and comment.get("in_reply_to_id") is None:
+            count = found.setdefault(login, [0, 0])
+            count[0] += 1
+            count[1] += comment.get("id") in still_open
+    parts = []
+    for login, (findings, unanswered) in sorted(found.items()):
+        if findings:
+            parts.append(f"{login} {findings} finding(s), " + (f"{unanswered} unanswered" if unanswered else "answered"))
+        else:
+            parts.append(f"{login} " + ("still running" if login in running else "no findings"))
+    asked, _, read = asked_reviewers(room, slug, pull)
+    parts += [f"{name} asked, no answer" for name in asked]              # one asked again after its review is named twice
+    if not read:
+        parts.append("events not read")
+    return "; ".join(parts) if parts else "none arrived"
 
 
 def review_running(args, room: Path, slug: str, pull: dict) -> bool:
@@ -1245,9 +1363,11 @@ def publish(args, active: Active, me: str, fallback: str | None, slug: str, pull
     while True:
         rest = REVIEW_SETTLE - seconds_since(args, check.get("started_at"))
         reading = rest <= 0 and review_running(args, room, slug, pull)        # asked only once the floor has passed
-        if rest <= 0 and not reading:
+        awaited = [] if rest > 0 or reading else awaited_reviewers(args, room, slug, pull)
+        if rest <= 0 and not reading and not awaited:
             break
         why = "a review is still running" if reading else \
+            f"a review that GitHub asked for has not arrived ({', '.join(awaited)})" if awaited else \
             f"the head rests {REVIEW_SETTLE} seconds before it merges, so a review can land, and {int(rest) + 1} remain"
         pause = rest if rest > 0 else 20.0
         if args.fixed_now or time.monotonic() + pause > deadline:
@@ -1318,12 +1438,15 @@ def cmd_ship(args):
             raise Refused("main is level with origin but its tree is not this packet's tree; stop and report")
         print(f"sync: main {landed[:12]} is origin/main; tree {want[:12]}", flush=True)
         remove_packet(room, active, on_origin=True)
-        record(args, active.id, "landed", me, main=landed, tree=want, number=pull["number"], fallback=fallback)
+        reviews = "not read"                                 # the landing stands whether or not GitHub answers this
+        with contextlib.suppress(Refused, KeyError, TypeError, AttributeError):
+            reviews = review_record(room, slug, pull)
+        record(args, active.id, "landed", me, main=landed, tree=want, number=pull["number"], fallback=fallback, reviews=reviews)
         with contextlib.suppress(Refused):
             gh(room, "POST", f"repos/{slug}/issues/{pull['number']}/comments",
                {"body": f"Landed {active.id}: main is commit {landed}, level with origin; tree {want}. "
-                        f"The packet branch and worktree are removed. Shipped by {me}."})
-    print(f"LANDED: {active.id}; the room is clean main, level with origin; the next packet may open")
+                        f"The packet branch and worktree are removed. Shipped by {me}. Reviews: {reviews}."})
+    print(f"LANDED: {active.id}; reviews: {reviews}; the room is clean main, level with origin; the next packet may open")
     return 0
 
 
