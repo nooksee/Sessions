@@ -111,10 +111,14 @@ if method == "POST" and rest == ["pulls"]:
 if method == "GET" and rest[0] == "commits" and rest[2:] == ["check-runs"]:
     out({"check_runs": state["checks"]})
 if method == "GET" and rest[0] == "pulls" and len(rest) == 2:
+    if state.get("pull_answer"):
+        out(state["pull_answer"]["is"])
     out(dict(pull(rest[1]), requested_reviewers=state.get("asked", []), requested_teams=state.get("teams", [])))
 if method == "GET" and rest[0] == "pulls" and rest[2:] == ["reviews"]:
     out(state.get("reviews", []))
 if method == "GET" and rest[0] == "pulls" and rest[2:] == ["comments"]:
+    if not isinstance(state["comments"], list):
+        out(state["comments"])
     page, per = int(query.get("page", 1)), int(query.get("per_page", 30))
     out(state["comments"][(page - 1) * per:page * per])
 if method == "PUT" and rest[0] == "pulls" and rest[2:] == ["merge"]:
@@ -1053,6 +1057,10 @@ class Ship(Case):
         held = self.r.ship(now="2026-11-12T11:00:00Z")
         self.refused(held, "PENDING", "a review is still running on pull request #7", code=3)
         self.assertEqual([], [call for call in self.r.gh()["calls"] if call[2] == "PUT"])
+        for unreadable in ({}, None, False, "words"):                      # an answer that cannot be read does not say that none is running
+            self.r.gh(talk=unreadable)
+            self.refused(self.r.ship(now="2026-11-12T11:00:30Z"), "GitHub's answer to GET repos/", "/issues/7/comments is not a list")
+            self.assertEqual([], [call for call in self.r.gh()["calls"] if call[2] == "PUT"], repr(unreadable))
         passer_by = dict(says("running"), user={"login": "someone", "type": "User"})
         self.r.gh(talk=[{"user": {"login": "review-bot", "type": "Bot"}, "body": "<!-- codex-review-state:v1 {not json} -->"},
                         passer_by, says("completed")])
@@ -1121,6 +1129,13 @@ class Ship(Case):
             self.assertEqual("ada no findings", packet.review_record(self.r.room, "o/r", mine))
             self.r.gh(events=[asks("ada", 44), answers("ada", 44), asks("ada", 44)])
             self.assertEqual("ada no findings; ada asked, no answer", packet.review_record(self.r.room, "o/r", mine))   # asked again
+            for unreadable in ({}, None, False, [], "words"):                                                  # no pull request: refused, in both reads
+                self.r.gh(pull_answer={"is": unreadable})
+                with self.assertRaises(packet.Refused, msg=repr(unreadable)):
+                    packet.asked_reviewers(self.r.room, "o/r", {"number": 7})
+                with self.assertRaises(packet.Refused, msg=repr(unreadable)):
+                    packet.review_record(self.r.room, "o/r", mine)
+            self.r.gh(pull_answer=None)
 
     def test_events_that_cannot_be_read_stop_no_landing(self):
         self.r.through("audit")
@@ -1137,6 +1152,17 @@ class Ship(Case):
         other = self.r.ship()
         self.assertEqual(0, other.code, other.text)
         self.assertIn("LANDED: DP-SES-0002; reviews: events not read; the room is clean main", other.out)
+        with mock.patch.dict(os.environ, PATH=f"{self.r.base / 'bin'}{os.pathsep}{os.environ['PATH']}", FAKE_GH_STATE=str(self.r.state)):
+            last = {"number": self.r.gh()["pulls"][-1]["number"]}
+            for unreadable in ({}, None, False, 0, "", "words", {"message": "no list"}):      # an empty or null answer is no event history
+                self.r.gh(events=unreadable)
+                self.assertIsNone(packet.pull_events(self.r.room, "o/r", last), repr(unreadable))
+                asked, _, read = packet.asked_reviewers(self.r.room, "o/r", last)
+                self.assertEqual(([], False), (asked, read), repr(unreadable))
+            self.r.gh(events=[])
+            self.assertEqual([], packet.pull_events(self.r.room, "o/r", last))                # an empty list is one: read, and empty
+            asked, _, read = packet.asked_reviewers(self.r.room, "o/r", last)
+            self.assertEqual(([], True), (asked, read))
 
     def test_an_asked_reviewer_is_asked_after_the_rest_and_an_opening_time_that_cannot_be_read_is_long_ago(self):
         def asking():
@@ -1150,10 +1176,17 @@ class Ship(Case):
         self.assertEqual([], asking())
         self.refused(self.r.ship(now="2026-11-12T11:03:00Z"), "PENDING", "has not arrived (Copilot)", code=3)
         self.assertEqual(2, len(asking()), asking())                           # the pull request and its events, once each
+        for unreadable in ({}, None, False, [], [1], "words"):                 # no pull request is not one that nobody was asked to review
+            self.r.gh(pull_answer={"is": unreadable})
+            self.refused(self.r.ship(now="2026-11-12T11:03:10Z"), "GitHub's answer to GET repos/", "/pulls/7 is not a pull request")
+            self.assertNotIn("Traceback", self.r.said[-1], repr(unreadable))
+            self.assertEqual([], [call for call in self.r.gh()["calls"] if call[2] == "PUT"], repr(unreadable))
+        self.r.gh(pull_answer=None)
         self.r.gh(opened="not a time", pulls=[dict(self.r.gh()["pulls"][0], created_at="not a time")])
         landed = self.r.ship(now="2026-11-12T11:03:30Z")
         self.assertEqual(0, landed.code, landed.text)
-        self.assertIn("not waited for longer", landed.out)
+        self.assertIn("Copilot asked; the pull request's opening time could not be read and is taken as long ago; not waited for longer", landed.out)
+        self.assertNotIn("silent 900 seconds", landed.out)                     # a count of seconds that was not measured is not said
 
     def test_the_landing_names_who_reviewed_and_what_each_left(self):
         def marker(status):
@@ -1180,6 +1213,21 @@ class Ship(Case):
         self.assertIn(f"LANDED: DP-SES-0002; reviews: {want}; the room is clean main", landed.out)
         self.assertEqual(want, self.r.ledger()[-1]["reviews"])
         self.assertIn(f"Reviews: {want}.", self.r.gh()["notes"][-1]["body"])
+        mine, broken = {"number": 8, "user": {"login": "room-account"}}, dict(marker("completed"), body="<!-- codex-review-state:v1 {not json} -->")
+        with mock.patch.dict(os.environ, PATH=f"{self.r.base / 'bin'}{os.pathsep}{os.environ['PATH']}", FAKE_GH_STATE=str(self.r.state)):
+            self.r.gh(talk=[broken], reviews=[], comments=[])                # a marker that cannot be read names no reviewer
+            self.assertEqual("none arrived", packet.review_record(self.r.room, "o/r", mine))
+            self.r.gh(talk=[dict(broken, body="<!-- codex-review-state:v1 {} -->")])           # one that reads, and says nothing, does
+            self.assertEqual("review-bot[bot] no findings", packet.review_record(self.r.room, "o/r", mine))
+            self.r.gh(talk=[broken, marker("running")])
+            self.assertEqual("review-bot[bot] still running", packet.review_record(self.r.room, "o/r", mine))
+            for unreadable in ({}, None, False, "words"):                    # an empty or null answer is no list of reviews or comments
+                self.r.gh(talk=[], reviews=unreadable)
+                with self.assertRaises(packet.Refused, msg=repr(unreadable)):
+                    packet.review_record(self.r.room, "o/r", mine)
+                self.r.gh(talk=unreadable, reviews=[])
+                with self.assertRaises(packet.Refused, msg=repr(unreadable)):
+                    packet.review_record(self.r.room, "o/r", mine)
 
     def test_a_finding_that_arrives_after_the_merge_is_named_and_a_review_that_cannot_be_read_stops_nothing(self):
         self.r.through("hold")
@@ -1191,7 +1239,7 @@ class Ship(Case):
         self.assertIn("reviews: late-reviewer 1 finding(s), 1 unanswered; review-bot[bot] still running; the room", landed.out)
         self.r.through("hold", text="alpha, a second time\n", title="A second one")
         self.r.merge_outside()
-        self.r.gh(reviews="not a list", comments=[], talk=[])
+        self.r.gh(reviews={}, comments=[], talk=[])                        # an empty object where the reviews should be a list
         unread = self.r.ship()
         self.assertEqual(0, unread.code, unread.text)
         self.assertIn("LANDED: DP-SES-0002; reviews: not read; the room is clean main", unread.out)
@@ -1208,6 +1256,10 @@ class Ship(Case):
         other = {"id": 13, "in_reply_to_id": 11, "user": {"login": "bystander"}, "path": "docs/a.md", "line": 1, "body": "Agreed."}
         self.r.gh(comments=[finding, own, other])
         self.refused(self.r.ship(), "1 review finding(s) are unanswered")
+        for unreadable in ({}, None, False, "words"):                      # an answer that cannot be read is not "no finding"
+            self.r.gh(comments=unreadable)
+            self.refused(self.r.ship(), "GitHub's answer to GET repos/", "/pulls/7/comments is not a list")
+            self.assertEqual([], [call for call in self.r.gh()["calls"] if call[2] == "PUT"], repr(unreadable))
         answer = {"id": 14, "in_reply_to_id": 11, "user": {"login": "room-account"}, "path": "docs/a.md", "line": 1, "body": "Declined: out of scope."}
         self.r.gh(comments=[finding, own, other, answer])
         self.assertEqual(0, self.r.ship().code, self.r.said[-1])

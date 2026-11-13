@@ -804,6 +804,25 @@ def gh(room: Path, method: str, endpoint: str, fields: dict | None = None, body_
         raise Refused(f"GitHub's answer to {what} is not JSON") from None
 
 
+def listed(room: Path, endpoint: str) -> list:
+    """A GitHub answer that has to be a list. Anything else is refused, an empty object, null and false among them,
+    so that an answer that cannot be read is never taken for an empty one."""
+    answer = gh(room, "GET", endpoint)
+    if not isinstance(answer, list):
+        raise Refused(f"GitHub's answer to GET {endpoint.split('?')[0]} is not a list")
+    return answer
+
+
+def described(room: Path, endpoint: str) -> dict:
+    """A GitHub answer that has to describe one thing, as an object that holds something. Anything else is refused,
+    an empty object, null, false and a list among them, so that an answer that cannot be read is never taken for a
+    pull request that nobody was asked to review."""
+    answer = gh(room, "GET", endpoint)
+    if not isinstance(answer, dict) or not answer:
+        raise Refused(f"GitHub's answer to GET {endpoint.split('?')[0]} is not a pull request")
+    return answer
+
+
 def find_pull(room: Path, slug: str, branch: str) -> dict | None:
     """The newest pull request from this branch, in any state."""
     pulls = gh(room, "GET", f"repos/{slug}/pulls?head={slug.split('/')[0]}:{branch}&state=all&per_page=10") or []
@@ -818,10 +837,11 @@ def required_check(room: Path, slug: str, commit: str) -> dict | None:
 
 
 def review_comments(room: Path, slug: str, pull: dict) -> list[dict]:
-    """Every review comment on the pull request, across every page."""
+    """Every review comment on the pull request, across every page. An answer that is no list is refused: the merge
+    waits on these, and an answer that cannot be read is not the same as no finding."""
     comments, page = [], 1
     while True:
-        batch = gh(room, "GET", f"repos/{slug}/pulls/{pull['number']}/comments?per_page=100&page={page}") or []
+        batch = listed(room, f"repos/{slug}/pulls/{pull['number']}/comments?per_page=100&page={page}")
         comments += batch
         if len(batch) < 100:
             return comments
@@ -848,9 +868,7 @@ def pull_events(room: Path, slug: str, pull: dict) -> list[dict] | None:
     events, page = [], 1
     try:
         while True:
-            batch = gh(room, "GET", f"repos/{slug}/issues/{pull['number']}/timeline?per_page=100&page={page}") or []
-            if not isinstance(batch, list):
-                return None
+            batch = listed(room, f"repos/{slug}/issues/{pull['number']}/timeline?per_page=100&page={page}")
             events += [event for event in batch if isinstance(event, dict)]
             if len(batch) < 100:
                 return events
@@ -868,7 +886,7 @@ def asked_reviewers(room: Path, slug: str, pull: dict) -> tuple[list[str], str |
     hold an application that reviews every pull request by itself, not even while that application works. A
     reviewer is known by its account number, since GitHub gives one application one name where it is asked and
     another on its review. A team is taken from GitHub's list of requested teams."""
-    fresh = gh(room, "GET", f"repos/{slug}/pulls/{pull['number']}") or {}
+    fresh = described(room, f"repos/{slug}/pulls/{pull['number']}")       # refused when it is no pull request: the wait rests on it
     events = pull_events(room, slug, pull)
     waiting: dict[object, str] = {}
     for event in events or []:
@@ -891,7 +909,8 @@ def asked_reviewers(room: Path, slug: str, pull: dict) -> tuple[list[str], str |
 def awaited_reviewers(args, room: Path, slug: str, pull: dict) -> list[str]:
     """The asked reviewers still waited for. One that has not answered REVIEW_WAIT seconds after the pull request
     opened is no longer waited for, so that a reviewer that is down holds no packet; the landing names it. A pull
-    request whose opening time cannot be read is taken as opened long ago."""
+    request whose opening time cannot be read is taken as opened long ago, and the tool says that, not a count of
+    seconds it did not measure."""
     asked, opened, read = asked_reviewers(room, slug, pull)
     if not read:
         print("reviews: the pull request's events could not be read; only GitHub's own list of requested reviewers "
@@ -899,7 +918,11 @@ def awaited_reviewers(args, room: Path, slug: str, pull: dict) -> list[str]:
     try:
         age = ((args.now if args.fixed_now else clock()) - dt.datetime.fromisoformat((opened or "").replace("Z", "+00:00"))).total_seconds()
     except (ValueError, TypeError):
-        age = float(REVIEW_WAIT)
+        age = None
+    if asked and age is None:
+        print(f"reviews: {', '.join(asked)} asked; the pull request's opening time could not be read and is taken "
+              "as long ago; not waited for longer", flush=True)
+        return []
     if asked and age >= REVIEW_WAIT:
         print(f"reviews: {', '.join(asked)} asked and silent {REVIEW_WAIT} seconds after the pull request opened; "
               "not waited for longer", flush=True)
@@ -913,22 +936,26 @@ def review_record(room: Path, slug: str, pull: dict) -> str:
     Every account but the pull request's own that submitted a review, announced a review state or left a review
     comment is named with its count of findings and how many of them stand unanswered; then whoever was asked and
     has not answered since, which names a reviewer a second time when it was asked again after its review. A
-    finding is a review comment that opens a thread."""
+    finding is a review comment that opens a thread. A state marker that cannot be read counts as no marker and
+    names no reviewer. The reviews and the comments must each come as a list, or the record is not read."""
     author = (pull.get("user") or {}).get("login")
     found: dict[str, list[int]] = {}
-    for review in gh(room, "GET", f"repos/{slug}/pulls/{pull['number']}/reviews?per_page=100") or []:
+    for review in listed(room, f"repos/{slug}/pulls/{pull['number']}/reviews?per_page=100"):
         login = (review.get("user") or {}).get("login")
         if login and login != author:
             found.setdefault(login, [0, 0])
     running = set()
-    for comment in gh(room, "GET", f"repos/{slug}/issues/{pull['number']}/comments?per_page=100") or []:
+    for comment in listed(room, f"repos/{slug}/issues/{pull['number']}/comments?per_page=100"):
         user, marker = comment.get("user") or {}, REVIEW_STATE_RE.search(comment.get("body") or "")
         if user.get("type") != "Bot" or not user.get("login") or not marker:
             continue
+        try:
+            states = list(json.loads(marker.group(1)).values())
+        except (ValueError, AttributeError):
+            continue                                       # read first: a marker that cannot be read names no reviewer
         found.setdefault(user["login"], [0, 0])
-        with contextlib.suppress(ValueError, AttributeError):
-            if any(isinstance(r, dict) and r.get("status") == "running" for r in json.loads(marker.group(1)).values()):
-                running.add(user["login"])
+        if any(isinstance(r, dict) and r.get("status") == "running" for r in states):
+            running.add(user["login"])
     comments = review_comments(room, slug, pull)
     still_open = {c.get("id") for c in open_findings(pull, comments)}
     for comment in comments:
@@ -953,8 +980,9 @@ def review_record(room: Path, slug: str, pull: dict) -> str:
 def review_running(args, room: Path, slug: str, pull: dict) -> bool:
     """Whether a reviewer that announces its state says it is still reading. Only an application's own account is
     believed, so a passer-by cannot hold a merge with a comment. A marker that cannot be read counts as no marker,
-    and one that has said running for longer than REVIEW_STALE is taken to have stopped."""
-    for comment in gh(room, "GET", f"repos/{slug}/issues/{pull['number']}/comments?per_page=100") or []:
+    and one that has said running for longer than REVIEW_STALE is taken to have stopped. An answer that is no list
+    is refused, for an answer that cannot be read does not say that no review is running."""
+    for comment in listed(room, f"repos/{slug}/issues/{pull['number']}/comments?per_page=100"):
         if (comment.get("user") or {}).get("type") != "Bot":
             continue
         marker = REVIEW_STATE_RE.search(comment.get("body") or "")
