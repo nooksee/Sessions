@@ -46,12 +46,16 @@ def sha(path: Path) -> str:
 
 
 def direct_sha(path: Path) -> str:
+    """The digest of a file read back with O_DIRECT. A read the medium or its filesystem does not allow is refused,
+    with the reader's own last line, so that the refusal says why. The reader speaks the C locale, so that line
+    reads the same on every machine."""
     done = subprocess.run(
         ["dd", f"if={path}", "bs=1M", "iflag=direct,noatime", "status=none"],
-        capture_output=True, check=False,
+        capture_output=True, check=False, env=dict(os.environ, LC_ALL="C"),
     )
     if done.returncode:
-        raise Refused(f"direct read failed: {path}")
+        said = done.stderr.decode("utf-8", "replace").strip().splitlines()
+        raise Refused(f"direct read failed: {path}: {said[-1] if said else 'the reader gave no reason'}")
     return hashlib.sha256(done.stdout).hexdigest()
 
 

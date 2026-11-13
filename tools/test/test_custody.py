@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import mmap
 import os
 import sys
 import tempfile
@@ -205,9 +206,66 @@ class TestCustody(Base):
                                      "--writer", "session-doctor", "--date", "20261108", str(f))
         self.assertEqual(rc, 2)
         self.assertIn("names no --root", err)
-        rc, out, err = self.run_tool("add", *self.roots_args(), "--direct", str(self.roots[1]) + "/",
-                                     "--writer", "session-doctor", "--date", "20261108", str(f))
+        read = []
+
+        def through(path):
+            read.append(path)
+            return custody.sha(path)
+
+        from unittest import mock
+        with mock.patch.object(custody, "direct_sha", through):          # no real direct read: the machine's disk decides nothing here
+            rc, out, err = self.run_tool("add", *self.roots_args(), "--direct", str(self.roots[1]) + "/",
+                                         "--writer", "session-doctor", "--date", "20261108", str(f))
         self.assertEqual(rc, 0, err)
+        self.assertEqual([self.batch(self.roots[1]) / ".a.txt.part"], read)   # the named root alone, by its other spelling
+
+    def test_a_direct_read_gives_the_digest_where_the_disk_allows_one(self) -> None:
+        f = self.item("a.bin", bytes(range(256)) * 9)
+        try:                                                             # asked of the folder itself, never of the tool:
+            fd = os.open(f, os.O_RDONLY | os.O_DIRECT | os.O_NOATIME)    # the reader's own flags, and one aligned read
+            try:
+                with mmap.mmap(-1, 1 << 20) as block:
+                    os.readv(fd, [block])
+            finally:
+                os.close(fd)
+        except OSError as why:
+            note = f"this machine's temporary folder allows no direct read: {why}"
+            print(f"note: {note}", file=sys.stderr)                      # a skip's reason is not printed otherwise
+            self.skipTest(note)
+        self.assertEqual(custody.sha(f), custody.direct_sha(f))          # the folder allows one, so the tool must make it
+
+    def test_a_direct_read_that_fails_is_refused_with_the_readers_own_reason(self) -> None:
+        gone = self.base / "one" / "gone.bin"
+        with self.assertRaises(custody.Refused) as caught:
+            custody.direct_sha(gone)
+        said = str(caught.exception)
+        self.assertTrue(said.startswith(f"direct read failed: {gone}: "), said)
+        reason = said.removeprefix(f"direct read failed: {gone}: ")      # the reader's own words, which differ by machine
+        self.assertTrue(reason.strip() and reason != "the reader gave no reason", said)
+        f = self.item("a.txt", b"a")
+
+        def silent(*args, **kwargs):
+            return custody.subprocess.CompletedProcess(args, 1, b"", b"")
+
+        def wordy(*args, **kwargs):
+            self.assertEqual("C", kwargs["env"]["LC_ALL"])
+            return custody.subprocess.CompletedProcess(args, 1, b"", b"dd: a first line\ndd: the last line\n")
+
+        from unittest import mock
+        with mock.patch.object(custody.subprocess, "run", silent):
+            rc, out, err = self.run_tool("add", *self.roots_args(), "--direct", str(self.roots[0]),
+                                         "--writer", "session-doctor", "--date", "20261108", str(f))
+        self.assertEqual(rc, 2)
+        self.assertIn("direct read failed: ", err)
+        self.assertIn(".a.txt.part: the reader gave no reason", err)
+        with mock.patch.object(custody.subprocess, "run", wordy):
+            rc, out, err = self.run_tool("add", *self.roots_args(), "--direct", str(self.roots[0]),
+                                         "--writer", "session-doctor", "--date", "20261108", str(f))
+        self.assertEqual(rc, 2)
+        self.assertIn(".a.txt.part: dd: the last line", err)
+        self.assertNotIn("a first line", err)
+        for r in self.roots:                                               # a refused direct read leaves nothing behind
+            self.assertFalse(self.batch(r).exists() and any(self.batch(r).iterdir()))
 
     def test_verify_refuses_a_name_outside_the_form(self) -> None:
         for bad in ("../x", "sessions-x", "other-20261108"):
