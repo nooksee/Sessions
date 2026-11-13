@@ -1,6 +1,6 @@
 # Technical Specification: packet
 
-Script: `Sessions/ops/lib/scripts/packet.py`. Tests: `Sessions/tools/test/test_packet.py` (`TEST-55`). Registry: `docs/ops/registry/scripts.md` (`SCRIPT-50`). Contract: CONSTRAINTS C17, with C16 for the Orchestrator. Design: the operator's direction of 2026-11-12, cited and not quoted: STELA's shipping workflow in this room, one dispatch packet per pull request from start to finish, carried by the four delivery functions the team already names (C16). Status: built and tested on synthetic rooms with a simulated host, and rehearsed against GitHub without a merge on 2026-11-12; the first real packet is the team's.
+Script: `Sessions/ops/lib/scripts/packet.py`. Tests: `Sessions/tools/test/test_packet.py` (`TEST-55`). Registry: `docs/ops/registry/scripts.md` (`SCRIPT-50`). Contract: PoT 6.1.4, 4.1.10 and 4.1.11; CONSTRAINTS C17, with C16 for the Orchestrator. Design: the operator's direction of 2026-11-12, cited and not quoted: STELA's shipping workflow in this room, one dispatch packet per pull request from start to finish, carried by the four delivery functions the team already names (C16). Status: built and tested on synthetic rooms with a simulated host, and rehearsed against GitHub without a merge on 2026-11-12; the first real packet is the team's.
 
 ## First Principles Rationale
 
@@ -193,4 +193,4 @@ The tool first landed, as pull request #91, calling two of the functions Manager
 - **The tool sees what Git sees.** A new file that the room's `.gitignore` does not admit is not part of the packet; admit it in the same packet.
 - **The ledger is tool state.** If `logs/packets/ledger.jsonl` is lost while a packet is open, every station refuses and nothing can be restored; the Integrator abandons the packet, the work is kept as a patch, and the packet is opened again.
 - **One packet at a time is a property of one checkout.** Two clones can each open the same number; the first to merge keeps it, and the gate fails the second.
-- **PoT 6.1.4 still says Git follows Control's work-session route.** This workflow is the room's route by the operator's direction, as C16 is. The wording of that clause is the operator's to amend under PoT 7.3. PoT 6.1.2 asks an independent review and a named go for a change to automation: this tool landed on the operator's approval of its plan, and its review follows the landing.
+- **PoT 6.1.4 states this route, and 4.1.10 and 4.1.11 name who carries it.** C16, C17 and this specification are its delegated contract (PoT 1.2.3): they hold the procedure and add no authority. PoT 6.1.2 asks an independent review and a named go for a change to automation: this tool landed on the operator's approval of its plan, and its review follows the landing.

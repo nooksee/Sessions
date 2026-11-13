@@ -189,4 +189,4 @@ A good narrative is three to six sentences: what changed, why it satisfies the o
 
 - Each resident, once: read this guide; run `status`; cut from your own handoff what described the old route, and add how you ship now in a few lines; write the idea, in your own words, as a leaf of the mind.
 - Each resident who carries a function, once: one packet through your station, and one refusal met on purpose.
-- The Manager, after ten landed packets: read what the refusals taught, and open packets for what should change. The wording of PoT 6.1.4 is among them.
+- The Manager, after ten landed packets: read what the refusals taught, and open packets for what should change.

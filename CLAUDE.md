@@ -60,9 +60,10 @@ serves only when its check passes; report a refusal, never work around it.
 Then read your own handoff. A leaf is an idea that stays true; the present is
 in the board, the ledger and the handoffs. When you learn something that will
 stay true, write it as a leaf yourself with `mind.py add`, and supersede or
-retire your own leaves as they change; no one approves a leaf. Auto memory is
-off in this room (`.claude/settings.json`): the mind and your handoff are what
-you carry.
+retire your own leaves as they change; no one approves a leaf. A leaf holds an
+idea, never a rule of the room: where it touches policy, cite the clause and
+let the policy say the rule (PoT 4.2.4). Auto memory is off in this room
+(`.claude/settings.json`): the mind and your handoff are what you carry.
 
 Then look at the work. `python3 -I -B ops/lib/scripts/packet.py status` prints
 the room's state, the one active dispatch packet and whose station is next. A

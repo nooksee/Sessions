@@ -28,7 +28,7 @@ READ_ORDER=(
   "docs/ops/README.md|the system map: four tools, one loop"
   "docs/MANUAL.md|operator manual"
 )
-LOOP_LINE="gauge -> closeout -> the operator says yes -> mind -> rotate -> gauge"
+LOOP_LINE="gauge -> closeout -> mind -> rotate, on the operator's go -> gauge"
 
 usage() {
   cat <<'USAGE'

@@ -26,7 +26,7 @@ STELA's help solved the same problem for STELA: deterministic wayfinding, specs 
      8. `INDEX.md`
      9. `docs/ops/README.md`
      10. `docs/MANUAL.md`
-   - The loop: gauge, closeout, the operator says yes, mind, rotate, gauge.
+   - The loop: gauge, closeout, mind, rotate on the operator's go, gauge.
    - One row per tool, from the union of `docs/ops/specs/scripts/*.md` and `ops/lib/scripts/*.py`, with the same columns as `specs` below.
    - the two binaries, the help modes, and where things live (`storage/` working payload with only its declared skeleton admitted; `var/tmp/` task scratch under PoT 1.1.13; archives and custody kept; identity in `ops/etc/resident-identities.json`).
 4. **`read`.** Checks the ten read-in files in order. For each: present or `MISSING`, its line count, and how many lines carry `[PLACEHOLDER`. Any missing file fails the command after the full list is printed.
