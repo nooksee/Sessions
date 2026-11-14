@@ -836,16 +836,36 @@ def required_check(room: Path, slug: str, commit: str) -> dict | None:
     return max(runs, key=lambda r: r.get("started_at") or "") if runs else None
 
 
-def review_comments(room: Path, slug: str, pull: dict) -> list[dict]:
-    """Every review comment on the pull request, across every page. An answer that is no list is refused: the merge
-    waits on these, and an answer that cannot be read is not the same as no finding."""
-    comments, page = [], 1
+def every_page(room: Path, endpoint: str) -> list[dict]:
+    """A GitHub list of objects, read across every page. A page that is no list is refused, and so is an item that
+    is no object, or whose `user` is neither an object nor absent: what cannot be read is never passed over as if
+    it said nothing, and never met later as a fault of the tool."""
+    items, page = [], 1
     while True:
-        batch = listed(room, f"repos/{slug}/pulls/{pull['number']}/comments?per_page=100&page={page}")
-        comments += batch
+        batch = listed(room, f"{endpoint}?per_page=100&page={page}")
+        if not all(isinstance(item, dict) for item in batch):
+            raise Refused(f"GitHub's answer to GET {endpoint} holds an item that is no object")
+        if not all(isinstance(item.get("user"), (dict, type(None))) for item in batch):
+            raise Refused(f"GitHub's answer to GET {endpoint} holds an item whose user is no object")
+        items += batch
         if len(batch) < 100:
-            return comments
+            return items
         page += 1
+
+
+def review_comments(room: Path, slug: str, pull: dict) -> list[dict]:
+    """Every review comment on the pull request, across every page. An answer that is no list, or an item in it that
+    is no object, is refused: the merge waits on these, and an answer that cannot be read is not the same as no
+    finding."""
+    return every_page(room, f"repos/{slug}/pulls/{pull['number']}/comments")
+
+
+def account(user) -> object:
+    """What one account is known by: its account number, and its login only where no number is given. GitHub signs
+    one application's findings with one login and its review with another, under one number."""
+    if not isinstance(user, dict):
+        return None
+    return user.get("id") or user.get("login")
 
 
 def open_findings(pull: dict, comments: list[dict]) -> list[dict]:
@@ -854,6 +874,12 @@ def open_findings(pull: dict, comments: list[dict]) -> list[dict]:
     answered = {c.get("in_reply_to_id") for c in comments if (c.get("user") or {}).get("login") == author}
     return [c for c in comments
             if c.get("in_reply_to_id") is None and (c.get("user") or {}).get("login") != author and c.get("id") not in answered]
+
+
+def changed_since(comment: dict) -> bool:
+    """GitHub's own mark on a finding whose line was changed afterwards: the comment keeps the line it was made on
+    and no longer has a line in the present content."""
+    return comment.get("line") is None and comment.get("original_line") is not None
 
 
 def unanswered_findings(room: Path, slug: str, pull: dict) -> list[str]:
@@ -878,8 +904,17 @@ def pull_events(room: Path, slug: str, pull: dict) -> list[dict] | None:
 
 
 def asked_reviewers(room: Path, slug: str, pull: dict) -> tuple[list[str], str | None, bool]:
-    """The reviewers asked for this pull request that have not answered yet, when it was opened, and whether its
-    events could be read.
+    """The names of the reviewers asked for this pull request that have not answered yet, when it was opened, and
+    whether its events could be read. See asked_requests, which also says when each was asked."""
+    asked, opened, read = asked_requests(room, slug, pull)
+    return sorted(asked), opened, read
+
+
+def asked_requests(room: Path, slug: str, pull: dict) -> tuple[dict[str, str | None], str | None, bool]:
+    """The reviewers asked for this pull request that have not answered yet, each with the time of the request that
+    still stands, then when the pull request was opened, and whether its events could be read. A reviewer asked
+    again after its review is waited for from that later request. A request with no time of its own, one from
+    GitHub's own list and a team, is counted from the opening.
 
     A reviewer is read from the pull request's own events, in order: a request adds it, and a withdrawn request or
     its own review removes it. GitHub's list of requested reviewers is added and is not enough alone: it does not
@@ -888,46 +923,65 @@ def asked_reviewers(room: Path, slug: str, pull: dict) -> tuple[list[str], str |
     another on its review. A team is taken from GitHub's list of requested teams."""
     fresh = described(room, f"repos/{slug}/pulls/{pull['number']}")       # refused when it is no pull request: the wait rests on it
     events = pull_events(room, slug, pull)
-    waiting: dict[object, str] = {}
+    waiting: dict[object, tuple[str, str | None]] = {}
     for event in events or []:
         kind = event.get("event")
         who = event.get("user") if kind == "reviewed" else event.get("requested_reviewer")
         if not isinstance(who, dict) or not who.get("login"):
             continue
-        key = who.get("id") or who["login"]
+        key = account(who)
         if kind == "review_requested":
-            waiting[key] = str(who["login"])
+            when = event.get("created_at")
+            waiting[key] = (str(who["login"]), when if isinstance(when, str) else None)
         elif kind in ("review_request_removed", "reviewed"):
             waiting.pop(key, None)
     for who in fresh.get("requested_reviewers") or []:
         if isinstance(who, dict) and who.get("login"):
-            waiting.setdefault(who.get("id") or who["login"], str(who["login"]))
-    teams = {f"team {t['slug']}" for t in fresh.get("requested_teams") or [] if isinstance(t, dict) and t.get("slug")}
-    return sorted(set(waiting.values()) | teams), fresh.get("created_at"), events is not None
+            waiting.setdefault(account(who), (str(who["login"]), None))
+    asked = {name: when for name, when in waiting.values()}
+    for team in fresh.get("requested_teams") or []:
+        if isinstance(team, dict) and team.get("slug"):
+            asked.setdefault(f"team {team['slug']}", None)
+    return asked, fresh.get("created_at"), events is not None
 
 
 def awaited_reviewers(args, room: Path, slug: str, pull: dict) -> list[str]:
-    """The asked reviewers still waited for. One that has not answered REVIEW_WAIT seconds after the pull request
-    opened is no longer waited for, so that a reviewer that is down holds no packet; the landing names it. A pull
-    request whose opening time cannot be read is taken as opened long ago, and the tool says that, not a count of
-    seconds it did not measure."""
-    asked, opened, read = asked_reviewers(room, slug, pull)
+    """The asked reviewers still waited for. One that has not answered REVIEW_WAIT seconds after it was asked is no
+    longer waited for, so that a reviewer that is down holds no packet; the landing names it. The seconds run from
+    the request that still stands, so a reviewer asked again on a later push is waited for from that request; a
+    request with no time of its own is counted from the opening of the pull request. Where neither time can be
+    read the request is taken as made long ago, and the tool says that, not a count of seconds it did not measure."""
+    asked, opened, read = asked_requests(room, slug, pull)
     if not read:
         print("reviews: the pull request's events could not be read; only GitHub's own list of requested reviewers "
               "is waited on", flush=True)
-    try:
-        age = ((args.now if args.fixed_now else clock()) - dt.datetime.fromisoformat((opened or "").replace("Z", "+00:00"))).total_seconds()
-    except (ValueError, TypeError):
-        age = None
-    if asked and age is None:
-        print(f"reviews: {', '.join(asked)} asked; the pull request's opening time could not be read and is taken "
+
+    def age(when):
+        try:
+            return ((args.now if args.fixed_now else clock()) - dt.datetime.fromisoformat((when or "").replace("Z", "+00:00"))).total_seconds()
+        except (ValueError, TypeError, AttributeError):
+            return None
+
+    waited, late_request, late_opening, unread = [], [], [], []
+    for name in sorted(asked):
+        own = age(asked[name])
+        since = own if own is not None else age(opened)
+        if since is None:
+            unread.append(name)
+        elif since < REVIEW_WAIT:
+            waited.append(name)
+        else:
+            (late_request if own is not None else late_opening).append(name)
+    if unread:
+        print(f"reviews: {', '.join(unread)} asked; the pull request's opening time could not be read and is taken "
               "as long ago; not waited for longer", flush=True)
-        return []
-    if asked and age >= REVIEW_WAIT:
-        print(f"reviews: {', '.join(asked)} asked and silent {REVIEW_WAIT} seconds after the pull request opened; "
+    if late_opening:
+        print(f"reviews: {', '.join(late_opening)} asked and silent {REVIEW_WAIT} seconds after the pull request opened; "
               "not waited for longer", flush=True)
-        return []
-    return asked
+    if late_request:
+        print(f"reviews: {', '.join(late_request)} asked and silent {REVIEW_WAIT} seconds after the request; "
+              "not waited for longer", flush=True)
+    return waited
 
 
 def review_record(room: Path, slug: str, pull: dict) -> str:
@@ -936,40 +990,60 @@ def review_record(room: Path, slug: str, pull: dict) -> str:
     Every account but the pull request's own that submitted a review, announced a review state or left a review
     comment is named with its count of findings and how many of them stand unanswered; then whoever was asked and
     has not answered since, which names a reviewer a second time when it was asked again after its review. A
-    finding is a review comment that opens a thread. A state marker that cannot be read counts as no marker and
-    names no reviewer. The reviews and the comments must each come as a list, or the record is not read."""
-    author = (pull.get("user") or {}).get("login")
-    found: dict[str, list[int]] = {}
-    for review in listed(room, f"repos/{slug}/pulls/{pull['number']}/reviews?per_page=100"):
-        login = (review.get("user") or {}).get("login")
-        if login and login != author:
-            found.setdefault(login, [0, 0])
-    running = set()
-    for comment in listed(room, f"repos/{slug}/issues/{pull['number']}/comments?per_page=100"):
-        user, marker = comment.get("user") or {}, REVIEW_STATE_RE.search(comment.get("body") or "")
-        if user.get("type") != "Bot" or not user.get("login") or not marker:
+    reviewer is one account, known by its account number and by its login only where no number is given; it is
+    named once, by the login on its review where it has one. A finding is a review comment that opens a thread.
+    An answered finding whose line was not changed afterwards, by GitHub's own mark, is counted as answered without
+    a change: a pointer to one thread for the operator to read, never a judgement, and it stops nothing. A state
+    marker that cannot be read counts as no marker and names no reviewer. The reviews and the comments are read
+    across every page and must each come as a list of objects, or the record is not read."""
+    owner = pull.get("user") if isinstance(pull.get("user"), dict) else {}
+    own = {value for value in (owner.get("id"), owner.get("login")) if value}
+
+    def other(user) -> bool:
+        return isinstance(user, dict) and bool(user.get("login")) and not ({user.get("id"), user.get("login")} & own)
+
+    found: dict[object, dict] = {}
+
+    def reviewer(user, on_review=False) -> dict:
+        one = found.setdefault(account(user), {"name": str(user["login"]), "reviewed": False, "findings": 0,
+                                               "unanswered": 0, "unchanged": 0, "running": False})
+        if on_review and not one["reviewed"]:
+            one["name"], one["reviewed"] = str(user["login"]), True        # the login on its review names it
+        return one
+
+    for review in every_page(room, f"repos/{slug}/pulls/{pull['number']}/reviews"):
+        if other(review.get("user")):
+            reviewer(review["user"], on_review=True)
+    for comment in every_page(room, f"repos/{slug}/issues/{pull['number']}/comments"):
+        user, marker = comment.get("user"), REVIEW_STATE_RE.search(comment.get("body") or "")
+        if not isinstance(user, dict) or user.get("type") != "Bot" or not user.get("login") or not marker:
             continue
         try:
             states = list(json.loads(marker.group(1)).values())
         except (ValueError, AttributeError):
             continue                                       # read first: a marker that cannot be read names no reviewer
-        found.setdefault(user["login"], [0, 0])
+        one = reviewer(user)
         if any(isinstance(r, dict) and r.get("status") == "running" for r in states):
-            running.add(user["login"])
+            one["running"] = True
     comments = review_comments(room, slug, pull)
     still_open = {c.get("id") for c in open_findings(pull, comments)}
     for comment in comments:
-        login = (comment.get("user") or {}).get("login")
-        if login and login != author and comment.get("in_reply_to_id") is None:
-            count = found.setdefault(login, [0, 0])
-            count[0] += 1
-            count[1] += comment.get("id") in still_open
+        if other(comment.get("user")) and comment.get("in_reply_to_id") is None:
+            one = reviewer(comment["user"])
+            one["findings"] += 1
+            if comment.get("id") in still_open:
+                one["unanswered"] += 1
+            elif not changed_since(comment):
+                one["unchanged"] += 1
     parts = []
-    for login, (findings, unanswered) in sorted(found.items()):
-        if findings:
-            parts.append(f"{login} {findings} finding(s), " + (f"{unanswered} unanswered" if unanswered else "answered"))
+    for one in sorted(found.values(), key=lambda one: one["name"]):
+        if one["findings"]:
+            said = f"{one['unanswered']} unanswered" if one["unanswered"] else "answered"
+            if one["unchanged"]:
+                said += f", {one['unchanged']} " + ("answered " if one["unanswered"] else "") + "without a change"
+            parts.append(f"{one['name']} {one['findings']} finding(s), {said}")
         else:
-            parts.append(f"{login} " + ("still running" if login in running else "no findings"))
+            parts.append(f"{one['name']} " + ("still running" if one["running"] else "no findings"))
     asked, _, read = asked_reviewers(room, slug, pull)
     parts += [f"{name} asked, no answer" for name in asked]              # one asked again after its review is named twice
     if not read:
@@ -981,8 +1055,9 @@ def review_running(args, room: Path, slug: str, pull: dict) -> bool:
     """Whether a reviewer that announces its state says it is still reading. Only an application's own account is
     believed, so a passer-by cannot hold a merge with a comment. A marker that cannot be read counts as no marker,
     and one that has said running for longer than REVIEW_STALE is taken to have stopped. An answer that is no list
-    is refused, for an answer that cannot be read does not say that no review is running."""
-    for comment in listed(room, f"repos/{slug}/issues/{pull['number']}/comments?per_page=100"):
+    or an item in it that is no object, is refused, for an answer that cannot be read does not say that no review
+    is running. The comments are read across every page."""
+    for comment in every_page(room, f"repos/{slug}/issues/{pull['number']}/comments"):
         if (comment.get("user") or {}).get("type") != "Bot":
             continue
         marker = REVIEW_STATE_RE.search(comment.get("body") or "")

@@ -115,7 +115,11 @@ if method == "GET" and rest[0] == "pulls" and len(rest) == 2:
         out(state["pull_answer"]["is"])
     out(dict(pull(rest[1]), requested_reviewers=state.get("asked", []), requested_teams=state.get("teams", [])))
 if method == "GET" and rest[0] == "pulls" and rest[2:] == ["reviews"]:
-    out(state.get("reviews", []))
+    reviews = state.get("reviews", [])
+    if not isinstance(reviews, list):
+        out(reviews)
+    page, per = int(query.get("page", 1)), int(query.get("per_page", 30))
+    out(reviews[(page - 1) * per:page * per])
 if method == "GET" and rest[0] == "pulls" and rest[2:] == ["comments"]:
     if not isinstance(state["comments"], list):
         out(state["comments"])
@@ -139,7 +143,10 @@ if method == "PATCH" and rest[0] == "pulls":
     pull(rest[1])["state"] = fields["state"]
     out(pull(rest[1]))
 if method == "GET" and rest[0] == "issues" and rest[2:] == ["comments"]:
-    out(state["talk"])
+    if not isinstance(state["talk"], list):
+        out(state["talk"])
+    page, per = int(query.get("page", 1)), int(query.get("per_page", 30))
+    out(state["talk"][(page - 1) * per:page * per])
 if method == "GET" and rest[0] == "issues" and rest[2:] == ["timeline"]:
     if state.get("no_events"):
         fail(state["no_events"])
@@ -926,6 +933,12 @@ class Work(Case):
 
 
 # --------------------------------------------------------------------------
+def argparse_like(now):
+    """The two fields of the parsed arguments that the review functions read: a fixed time for the test."""
+    import types
+    return types.SimpleNamespace(now=now, fixed_now=True)
+
+
 class Ship(Case):
     def test_ship_lands_the_packet_end_to_end(self):
         self.r.through("audit")
@@ -1209,7 +1222,7 @@ class Ship(Case):
                             finding(6, "second-reviewer[bot]", in_reply_to_id=1)])
         landed = self.r.ship()
         self.assertEqual(0, landed.code, landed.text)
-        want = "quiet-reviewer no findings; review-bot[bot] no findings; second-reviewer[bot] 2 finding(s), answered"
+        want = "quiet-reviewer no findings; review-bot[bot] no findings; second-reviewer[bot] 2 finding(s), answered, 2 without a change"
         self.assertIn(f"LANDED: DP-SES-0002; reviews: {want}; the room is clean main", landed.out)
         self.assertEqual(want, self.r.ledger()[-1]["reviews"])
         self.assertIn(f"Reviews: {want}.", self.r.gh()["notes"][-1]["body"])
@@ -1228,6 +1241,153 @@ class Ship(Case):
                 self.r.gh(talk=unreadable, reviews=[])
                 with self.assertRaises(packet.Refused, msg=repr(unreadable)):
                     packet.review_record(self.r.room, "o/r", mine)
+
+    def host(self):
+        """The stand-in host for a function of the tool called by itself, once a pull request stands."""
+        self.r.through("audit")
+        self.refused(self.r.ship("--hold"), "PENDING", "held before the merge", code=3)
+        return mock.patch.dict(os.environ, PATH=f"{self.r.base / 'bin'}{os.pathsep}{os.environ['PATH']}", FAKE_GH_STATE=str(self.r.state))
+
+    @staticmethod
+    def finding(number, login, account=None, outdated=True, **more):
+        """A review comment as GitHub gives it: one whose line was changed afterwards keeps its first line only."""
+        who = dict({"login": login}, **({"id": account} if account else {}))
+        return dict({"id": number, "user": who, "path": "docs/a.md", "line": None if outdated else 4, "original_line": 4}, **more)
+
+    def test_a_reviewer_is_one_account_and_is_named_once_by_the_login_on_its_review(self):
+        """As GitHub gave it on a real pull request: one application signs its finding with one login and its review
+        with another, under one account number."""
+        mine = {"number": 7, "user": {"login": "room-account", "id": 5}}
+        marker = {"user": {"login": "review-bot[bot]", "type": "Bot", "id": 99}, "body": "<!-- codex-review-state:v1 {} -->"}
+        review = {"user": {"login": "copilot-pull-request-reviewer[bot]", "type": "Bot", "id": 41}, "state": "COMMENTED"}
+        answer = self.finding(2, "room-account", 5, in_reply_to_id=1)
+        with self.host():
+            self.r.gh(talk=[marker], reviews=[review, dict(review), {"user": {"login": "room-account", "id": 5}}],
+                      comments=[self.finding(1, "Copilot", 41), answer])
+            self.assertEqual("copilot-pull-request-reviewer[bot] 1 finding(s), answered; review-bot[bot] no findings",
+                             packet.review_record(self.r.room, "o/r", mine))
+            self.r.gh(reviews=[], comments=[self.finding(1, "Copilot", 41), answer, review | {"id": 3, "in_reply_to_id": 1}])
+            self.assertEqual("Copilot 1 finding(s), answered; review-bot[bot] no findings",                    # no review: the login it has
+                             packet.review_record(self.r.room, "o/r", mine))
+            self.r.gh(reviews=[review], comments=[self.finding(1, "Copilot", 41), answer], talk=[dict(marker, user=dict(marker["user"], id=41))])
+            self.assertEqual("copilot-pull-request-reviewer[bot] 1 finding(s), answered",                      # its marker is the same account too
+                             packet.review_record(self.r.room, "o/r", mine))
+            self.r.gh(talk=[], reviews=[{"user": {"login": "copilot-pull-request-reviewer[bot]"}}], comments=[self.finding(1, "Copilot"), answer])
+            self.assertEqual("Copilot 1 finding(s), answered; copilot-pull-request-reviewer[bot] no findings", # no number: a login is all there is
+                             packet.review_record(self.r.room, "o/r", mine))
+            self.r.gh(reviews=[{"user": {"login": "renamed-account", "id": 5}}], comments=[self.finding(1, "another-name", 5)])
+            self.assertEqual("none arrived", packet.review_record(self.r.room, "o/r", mine))                   # the pull request's own account, by number
+
+    def test_the_landing_counts_findings_answered_without_a_change(self):
+        mine = {"number": 7, "user": {"login": "room-account"}}
+        answers = [self.finding(10 + n, "room-account", in_reply_to_id=n) for n in (1, 2, 3)]
+        with self.host():
+            self.r.gh(talk=[], reviews=[], comments=[self.finding(1, "ada"), self.finding(2, "ada", outdated=False), *answers[:2]])
+            self.assertEqual("ada 2 finding(s), answered, 1 without a change", packet.review_record(self.r.room, "o/r", mine))
+            self.r.gh(comments=[self.finding(1, "ada"), self.finding(2, "ada"), *answers[:2]])
+            self.assertEqual("ada 2 finding(s), answered", packet.review_record(self.r.room, "o/r", mine))  # each line was changed
+            self.r.gh(comments=[self.finding(1, "ada", outdated=False), self.finding(2, "ada", outdated=False), self.finding(3, "ada"), answers[0], answers[2]])
+            self.assertEqual("ada 3 finding(s), 1 unanswered, 1 answered without a change", packet.review_record(self.r.room, "o/r", mine))
+            self.r.gh(comments=[self.finding(1, "ada", outdated=False)])
+            self.assertEqual("ada 1 finding(s), 1 unanswered", packet.review_record(self.r.room, "o/r", mine))  # unanswered is not "without a change"
+            self.assertNotIn("declined", packet.review_record(self.r.room, "o/r", mine))
+        self.r.gh(comments=[self.finding(1, "ada", outdated=False), answers[0]])
+        landed = self.r.ship()                                                 # a pointer for the operator: it stops nothing
+        self.assertEqual(0, landed.code, landed.text)
+        self.assertIn("LANDED: DP-SES-0001; reviews: ada 1 finding(s), answered, 1 without a change; the room is clean main", landed.out)
+
+    def test_the_reviews_and_the_comments_are_read_across_every_page(self):
+        mine = {"number": 7, "user": {"login": "room-account"}}
+        filler = [{"user": {"login": "someone", "type": "User"}, "body": "a remark"}] * 100
+        running = {"user": {"login": "review-bot[bot]", "type": "Bot"}, "updated_at": "2026-11-12T10:59:00Z",
+                   "body": '<!-- codex-review-state:v1 {"code_review": {"status": "running"}} -->'}
+        at = argparse_like(now=dt.datetime(2026, 11, 12, 11, 0, tzinfo=dt.timezone.utc))
+        with self.host():
+            self.r.gh(talk=filler + [running], reviews=[{"user": {"login": "ada"}}] * 100 + [{"user": {"login": "zed"}}], comments=[])
+            self.assertEqual("ada no findings; review-bot[bot] still running; zed no findings", packet.review_record(self.r.room, "o/r", mine))
+            self.assertTrue(packet.review_running(at, self.r.room, "o/r", mine))                               # on the second page
+            self.r.gh(talk=filler * 2 + [running])
+            self.assertTrue(packet.review_running(at, self.r.room, "o/r", mine))                               # and on the third
+            self.r.gh(talk=filler)
+            self.assertFalse(packet.review_running(at, self.r.room, "o/r", mine))
+            calls = [call[3] for call in self.r.gh()["calls"] if "/issues/7/comments" in call[3]]
+            self.assertEqual(["page=1", "page=2"], [call.rsplit("&", 1)[1] for call in calls[-2:]])           # a full page asks for the next
+
+    def test_an_item_that_is_no_object_is_refused_plainly(self):
+        mine = {"number": 7, "user": {"login": "room-account"}}
+        at = argparse_like(now=dt.datetime(2026, 11, 12, 11, 0, tzinfo=dt.timezone.utc))
+        good = {"user": {"login": "ada"}, "body": "a remark"}
+        with self.host():
+            for strange in (None, 7, "words", [good]):
+                with self.subTest(item=strange):
+                    for where in ("reviews", "talk", "comments"):
+                        self.r.gh(**dict({"reviews": [], "talk": [], "comments": []}, **{where: [good, strange]}))
+                        with self.assertRaises(packet.Refused) as caught:
+                            packet.review_record(self.r.room, "o/r", mine)
+                        self.assertIn("holds an item that is no object", str(caught.exception))
+                    self.r.gh(reviews=[], comments=[], talk=[good, strange])
+                    with self.assertRaises(packet.Refused):
+                        packet.review_running(at, self.r.room, "o/r", mine)
+                    self.r.gh(talk=[], comments=[strange])
+                    with self.assertRaises(packet.Refused):
+                        packet.unanswered_findings(self.r.room, "o/r", mine)
+            for strange in ("words", 7, ["ada"], True):                        # an object whose user is no object
+                with self.subTest(user=strange):
+                    odd = dict(good, user=strange)
+                    for where in ("reviews", "talk", "comments"):
+                        self.r.gh(**dict({"reviews": [], "talk": [], "comments": []}, **{where: [good, odd]}))
+                        with self.assertRaises(packet.Refused) as caught:
+                            packet.review_record(self.r.room, "o/r", mine)
+                        self.assertIn("holds an item whose user is no object", str(caught.exception))
+                    self.r.gh(reviews=[], comments=[], talk=[odd])
+                    with self.assertRaises(packet.Refused):
+                        packet.review_running(at, self.r.room, "o/r", mine)
+                    self.r.gh(talk=[], comments=[odd])
+                    with self.assertRaises(packet.Refused):
+                        packet.unanswered_findings(self.r.room, "o/r", mine)
+            self.r.gh(reviews=[dict(good, user=None)], talk=[dict(good, user=None)], comments=[])   # no user at all is read, and names nobody
+            self.assertEqual("none arrived", packet.review_record(self.r.room, "o/r", mine))
+        for where in ("talk", "comments"):                                     # at the station: refused, no traceback, no merge
+            for item, why in ((None, "holds an item that is no object"), ({"user": "words", "body": "x"}, "holds an item whose user is no object")):
+                self.r.gh(**dict({"talk": [], "comments": []}, **{where: [item]}))
+                self.refused(self.r.ship(), "GitHub's answer to GET repos/", why)
+                self.assertNotIn("Traceback", self.r.said[-1])
+                self.assertEqual([], [call for call in self.r.gh()["calls"] if call[2] == "PUT"])
+
+    def test_a_reviewer_asked_again_is_waited_for_from_that_request(self):
+        def asks(when):
+            return dict({"event": "review_requested", "requested_reviewer": {"login": "Copilot", "type": "Bot", "id": 41}},
+                        **({"created_at": when} if when else {}))
+
+        def waited(now):
+            said = io.StringIO()
+            with contextlib.redirect_stdout(said):
+                still = packet.awaited_reviewers(argparse_like(now=dt.datetime.fromisoformat(now)), self.r.room, "o/r", {"number": 7})
+            return still, said.getvalue()
+
+        reviewed = {"event": "reviewed", "user": {"login": "Copilot", "type": "Bot", "id": 41}}
+        with self.host():
+            self.r.gh(opened="2026-11-12T09:00:00Z", pulls=[dict(self.r.gh()["pulls"][0], created_at="2026-11-12T09:00:00Z")],
+                      events=[asks("2026-11-12T09:00:02Z"), reviewed, asks("2026-11-12T12:00:00Z")], asked=[], teams=[])
+            self.assertEqual(({"Copilot": "2026-11-12T12:00:00Z"}, "2026-11-12T09:00:00Z", True),
+                             packet.asked_requests(self.r.room, "o/r", {"number": 7}))
+            self.assertEqual((["Copilot"], ""), waited("2026-11-12T12:14:59+00:00"))       # hours after the opening, and still waited for
+            still, said = waited("2026-11-12T12:15:00+00:00")
+            self.assertEqual([], still)
+            self.assertIn("reviews: Copilot asked and silent 900 seconds after the request; not waited for longer", said)
+            self.r.gh(events=[asks(None)], asked=[{"login": "ada", "id": 44}], teams=[{"slug": "readers"}])   # no time of its own: from the opening
+            self.assertEqual((["Copilot", "ada", "team readers"], ""), waited("2026-11-12T09:14:59+00:00"))
+            still, said = waited("2026-11-12T09:15:00+00:00")
+            self.assertEqual([], still)
+            self.assertIn("reviews: Copilot, ada, team readers asked and silent 900 seconds after the pull request opened; not waited for longer", said)
+            self.r.gh(events=[asks("2026-11-12T09:10:00Z")], asked=[{"login": "ada", "id": 44}], teams=[])    # one late, one not
+            still, said = waited("2026-11-12T09:16:00+00:00")
+            self.assertEqual(["Copilot"], still)
+            self.assertIn("reviews: ada asked and silent 900 seconds after the pull request opened", said)
+            self.r.gh(events=[asks("not a time")], asked=[], pulls=[dict(self.r.gh()["pulls"][0], created_at="not a time")], opened="not a time")
+            still, said = waited("2026-11-12T09:16:00+00:00")
+            self.assertEqual([], still)
+            self.assertIn("Copilot asked; the pull request's opening time could not be read and is taken as long ago", said)
 
     def test_a_finding_that_arrives_after_the_merge_is_named_and_a_review_that_cannot_be_read_stops_nothing(self):
         self.r.through("hold")

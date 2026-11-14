@@ -102,7 +102,7 @@ Tests:
 * [ops/specs/tools/test/myself.md](ops/specs/tools/test/myself.md): the self-check's suite.
 * [ops/specs/tools/test/notice.md](ops/specs/tools/test/notice.md): the notice's suite.
 * [ops/specs/tools/test/rotate.md](ops/specs/tools/test/rotate.md): the rotate runner's suite, synthetic dry-run phases 0 to 9.
-* [ops/specs/tools/test/packet.md](ops/specs/tools/test/packet.md): what `tools/test/test_packet.py` proves, by group (97).
+* [ops/specs/tools/test/packet.md](ops/specs/tools/test/packet.md): what `tools/test/test_packet.py` proves, by group (102).
 * [ops/specs/tools/test/open.md](ops/specs/tools/test/open.md): what `tools/test/test_open.py` proves, by group (79).
 * [ops/specs/tools/test/role_names.md](ops/specs/tools/test/role_names.md): what `tools/test/test_role_names.py` proves, by group (10).
 
