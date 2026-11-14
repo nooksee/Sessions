@@ -17,10 +17,10 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import mmap
 import os
 import re
 import shutil
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -45,18 +45,36 @@ def sha(path: Path) -> str:
     return h.hexdigest()
 
 
+DIRECT_BLOCK = 1 << 20     # bytes asked for in one direct read: a whole number of device blocks, into an aligned buffer
+
+
 def direct_sha(path: Path) -> str:
-    """The digest of a file read back with O_DIRECT. A read the medium or its filesystem does not allow is refused,
-    with the reader's own last line, so that the refusal says why. The reader speaks the C locale, so that line
-    reads the same on every machine."""
-    done = subprocess.run(
-        ["dd", f"if={path}", "bs=1M", "iflag=direct,noatime", "status=none"],
-        capture_output=True, check=False, env=dict(os.environ, LC_ALL="C"),
-    )
-    if done.returncode:
-        said = done.stderr.decode("utf-8", "replace").strip().splitlines()
-        raise Refused(f"direct read failed: {path}: {said[-1] if said else 'the reader gave no reason'}")
-    return hashlib.sha256(done.stdout).hexdigest()
+    """The digest of a file read back with O_DIRECT and without an access-time update, by this tool itself: no other
+    program is called, since the machine's own may not make a direct read at all.
+
+    Each read asks for DIRECT_BLOCK bytes into a page-aligned buffer. A read that comes back short is the end of the
+    file, and no read is asked after it: the place after a short read is not a whole block, and some filesystems
+    refuse a direct read there. What was read must be the whole file, by the size the open file reports. A read
+    the medium or its filesystem does not allow is refused with the operating system's own reason."""
+    digest, seen = hashlib.sha256(), 0
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_DIRECT | os.O_NOATIME)
+        try:
+            size = os.fstat(fd).st_size
+            with mmap.mmap(-1, DIRECT_BLOCK) as block:
+                while True:
+                    got = os.readv(fd, [block])
+                    digest.update(block[:got])
+                    seen += got
+                    if got < DIRECT_BLOCK:
+                        break
+        finally:
+            os.close(fd)
+    except OSError as why:
+        raise Refused(f"direct read failed: {path}: {why.strerror or why}") from None
+    if seen != size:
+        raise Refused(f"direct read failed: {path}: {seen} of {size} bytes were read")
+    return digest.hexdigest()
 
 
 def batch_name(writer: str, date: str) -> str:

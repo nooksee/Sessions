@@ -234,38 +234,84 @@ class TestCustody(Base):
             self.skipTest(note)
         self.assertEqual(custody.sha(f), custody.direct_sha(f))          # the folder allows one, so the tool must make it
 
-    def test_a_direct_read_that_fails_is_refused_with_the_readers_own_reason(self) -> None:
+    def buffered(self):
+        """The tool's own reader on any machine: the direct flag is taken off at the open, and every open and read
+        the tool asks for is kept. The one real direct read is the test above, behind its probe of the folder."""
+        from unittest import mock
+        real_open, real_readv, asked = os.open, os.readv, {"flags": [], "reads": []}
+
+        def opening(path, flags, *more, **named):
+            asked["flags"].append(flags)
+            return real_open(path, flags & ~os.O_DIRECT, *more, **named)
+
+        def reading(fd, buffers):
+            asked["reads"].append(real_readv(fd, buffers))
+            return asked["reads"][-1]
+
+        both = contextlib.ExitStack()
+        both.enter_context(mock.patch.object(custody.os, "open", opening))
+        both.enter_context(mock.patch.object(custody.os, "readv", reading))
+        return both, asked
+
+    def test_the_tool_asks_for_a_direct_read_without_an_access_time_update_and_calls_no_program(self) -> None:
+        f = self.item("a.bin", bytes(range(256)) * 9)
+        self.assertFalse(hasattr(custody, "subprocess"))                 # no other program is there to be called
+        both, asked = self.buffered()
+        with both:
+            self.assertEqual(custody.sha(f), custody.direct_sha(f))
+        self.assertEqual(1, len(asked["flags"]))
+        for flag in (os.O_DIRECT, os.O_NOATIME):                         # both, or the read is not the one custody promises
+            self.assertEqual(flag, asked["flags"][0] & flag)
+        self.assertEqual(0, asked["flags"][0] & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC))
+        self.assertEqual(0, mmap.PAGESIZE and custody.DIRECT_BLOCK % mmap.PAGESIZE)       # whole blocks, in an aligned buffer
+
+    def test_a_short_read_ends_the_file_and_the_whole_file_is_read_at_every_size(self) -> None:
+        block = custody.DIRECT_BLOCK
+        self.assertEqual(1 << 20, block)
+        for size in (0, 1, 4096, block - 1, block, block + 777, 2 * block):
+            with self.subTest(size=size):
+                f = self.item(f"s{size}.bin", (bytes(range(251)) * (size // 251 + 1))[:size])
+                both, asked = self.buffered()
+                with both:
+                    self.assertEqual(custody.sha(f), custody.direct_sha(f))
+                self.assertEqual(size // block + 1, len(asked["reads"]))                  # no read is asked after a short one
+                self.assertEqual([block] * (size // block) + [size % block], asked["reads"])
+
+    def test_a_direct_read_that_fails_is_refused_with_the_systems_own_reason(self) -> None:
+        import errno
+        from unittest import mock
         gone = self.base / "one" / "gone.bin"
         with self.assertRaises(custody.Refused) as caught:
             custody.direct_sha(gone)
-        said = str(caught.exception)
-        self.assertTrue(said.startswith(f"direct read failed: {gone}: "), said)
-        reason = said.removeprefix(f"direct read failed: {gone}: ")      # the reader's own words, which differ by machine
-        self.assertTrue(reason.strip() and reason != "the reader gave no reason", said)
-        f = self.item("a.txt", b"a")
+        self.assertEqual(f"direct read failed: {gone}: {os.strerror(errno.ENOENT)}", str(caught.exception))
+        f = self.item("a.bin", b"abc")
+        both, asked = self.buffered()
+        with both, mock.patch.object(custody.os, "readv", lambda fd, buffers: 0):         # the file ends before its size
+            with self.assertRaises(custody.Refused) as caught:
+                custody.direct_sha(f)
+        self.assertEqual(f"direct read failed: {f}: 0 of 3 bytes were read", str(caught.exception))
+        real_open = os.open
 
-        def silent(*args, **kwargs):
-            return custody.subprocess.CompletedProcess(args, 1, b"", b"")
+        def refusing(path, flags, *more, **named):                       # as a filesystem that allows no direct read answers
+            if flags & os.O_DIRECT:
+                raise OSError(errno.EINVAL, os.strerror(errno.EINVAL), str(path))
+            return real_open(path, flags, *more, **named)
 
-        def wordy(*args, **kwargs):
-            self.assertEqual("C", kwargs["env"]["LC_ALL"])
-            return custody.subprocess.CompletedProcess(args, 1, b"", b"dd: a first line\ndd: the last line\n")
+        def breaking(fd, buffers):                                       # as a medium that fails under the read answers
+            raise OSError(errno.EIO, os.strerror(errno.EIO))
 
-        from unittest import mock
-        with mock.patch.object(custody.subprocess, "run", silent):
-            rc, out, err = self.run_tool("add", *self.roots_args(), "--direct", str(self.roots[0]),
-                                         "--writer", "session-doctor", "--date", "20261108", str(f))
-        self.assertEqual(rc, 2)
-        self.assertIn("direct read failed: ", err)
-        self.assertIn(".a.txt.part: the reader gave no reason", err)
-        with mock.patch.object(custody.subprocess, "run", wordy):
-            rc, out, err = self.run_tool("add", *self.roots_args(), "--direct", str(self.roots[0]),
-                                         "--writer", "session-doctor", "--date", "20261108", str(f))
-        self.assertEqual(rc, 2)
-        self.assertIn(".a.txt.part: dd: the last line", err)
-        self.assertNotIn("a first line", err)
-        for r in self.roots:                                               # a refused direct read leaves nothing behind
-            self.assertFalse(self.batch(r).exists() and any(self.batch(r).iterdir()))
+        for fault, reason in ((mock.patch.object(custody.os, "open", refusing), os.strerror(errno.EINVAL)),
+                              (mock.patch.object(custody.os, "readv", breaking), os.strerror(errno.EIO))):
+            with self.subTest(reason=reason):
+                both, asked = self.buffered()
+                with both, fault:
+                    rc, out, err = self.run_tool("add", *self.roots_args(), "--direct", str(self.roots[0]),
+                                                 "--writer", "session-doctor", "--date", "20261108", str(f))
+                self.assertEqual(rc, 2)
+                self.assertIn("custody refuses: direct read failed: ", err)
+                self.assertTrue(err.strip().endswith(f".a.bin.part: {reason}"), err)
+                for r in self.roots:                                     # a refused direct read leaves nothing behind
+                    self.assertFalse(self.batch(r).exists() and any(self.batch(r).iterdir()))
 
     def test_verify_refuses_a_name_outside_the_form(self) -> None:
         for bad in ("../x", "sessions-x", "other-20261108"):
