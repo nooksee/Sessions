@@ -480,9 +480,9 @@ Every donor is preserved whole. A rotation, a relabel or a removal never proceed
 
 **What goes into custody for a rotation:** the donor's closed copy, unmodified; the pristine destination; the successor; the capsule; the gate output; externalized media; the registry and launcher binding before the change.
 
-**Drive health.** The map records that the tier-2 drive is failing and a replacement is pending. A tier-2 copy on a failing drive is still read back and hashed; a mismatch is a stop, not a warning.
+**Drive health.** The failing drive was replaced by 2026-11-11, and the map names the three roots that hold custody now. Drive health is read before a custody act and reported to the operator on a change. A copy on a medium known to be failing is still read back directly and hashed (PoT 5.3.3); a mismatch is a stop, not a warning.
 
-[PLACEHOLDER: the current location of `PRESERVATION_MANIFEST.md` named in `DOCTRINE.md` section 8 (not found at the top two levels of `Backup/` on 2026-10-30), and the replacement tier-2 drive once the operator has it. Owner: Claude Shannon.]
+[PLACEHOLDER: the current location of `PRESERVATION_MANIFEST.md` named in `DOCTRINE.md` section 8 (not found at the top two levels of `Backup/` on 2026-10-30). Owner: Claude Shannon.]
 
 The receipt for each operation names the exact custody paths and hashes. Permanent deletion is never the default.
 

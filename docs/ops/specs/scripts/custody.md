@@ -25,7 +25,7 @@ What it does not do: it opens no session content, reads no live root in its test
 
 ## Interim roots, 2026-11-08
 
-On the operator's word the interim tier 2 is a folder on the large external drive, while the failing medium is being imaged and its replacement is delayed. The roots are given on each call, so the swap to the new drive changes the command, not the tool.
+On the operator's word of 2026-11-08 tier 2 is a folder on the large external drive. The failing medium has since been replaced, and by his word of 2026-11-11 its replacement is counted as the third root. The roots are given on each call, so the swap to the new drive changes the command, not the tool.
 
 ## Anecdotal Anchor
 
