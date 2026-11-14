@@ -181,7 +181,7 @@ A good narrative is three to six sentences: what changed, why it satisfies the o
 
 **The Auditor is away.** The packet waits. Another auditor is the operator's to name.
 
-**A reviewer commented on the pull request.** Every such comment is answered on its thread before the merge, by a fix or by a reason for declining; which of the two is the judgement of the resident who answers. The tool waits while a reviewer says it is still reading, and for a reviewer GitHub has asked, up to fifteen minutes from the opening. The `LANDED` line then names who reviewed and what each left, so the operator sees it at every landing.
+**A reviewer commented on the pull request.** Every such comment is answered on its thread before the merge, by a fix or by a reason for declining; which of the two is the judgement of the resident who answers. The tool waits while a reviewer says it is still reading, and for a reviewer GitHub has asked, up to fifteen minutes from that request, so a reviewer asked again on a later push is waited for again. The `LANDED` line then names who reviewed and what each left, each reviewer once, so the operator sees it at every landing. Where it says `without a change`, a finding was answered and its line was not changed afterwards: read that one thread; it is a pointer, not a judgement, and it stops nothing.
 
 **I want to stop a packet.** Before its branch is on origin, the Integrator runs `abandon` with a reason. Once the Orchestrator has pushed it, the Orchestrator runs `abandon`, or another resident does with `--fallback` and a one-line reason. Either way the work is kept as a patch, and the number is used by the next packet.
 
