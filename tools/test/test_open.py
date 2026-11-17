@@ -108,6 +108,7 @@ in two lines.
 
 Records. The second section.
 """
+RETIRED_MAP = "| Retired number | Archived text |\n| --- | --- |\n| 1.2 | synthetic archived slot |\n"
 BOARD = """# Board
 
 Updated: now.
@@ -155,7 +156,7 @@ class Room:
         git(self.room, "-c", "init.templateDir=", "init", "-q", "-b", "main", ".")
         git(self.room, "config", "commit.gpgsign", "false")
         self.commit({opn.POLICY: policy, opn.CONTEXT: context, opn.CONSTRAINTS: constraints, opn.BOARD: BOARD,
-                     opn.DECISIONS: DECISIONS, ".gitignore": "/logs/\n/var/tmp/\n"})
+                     opn.DECISIONS: DECISIONS, opn.RETIRED: RETIRED_MAP, ".gitignore": "/logs/\n/var/tmp/\n"})
         self.registry = self.base / "registry.json"
         self.sessions = {key: SESSION.format(n) for n, key in enumerate(KEYS)}
         self.write_registry()
@@ -326,6 +327,18 @@ class ReadingTheLaw(unittest.TestCase):
         self.assertTrue(opn.retired(clauses["1.2"]))
         self.assertFalse(opn.retired(clauses["1.1"]))
 
+    def test_map_listed_retired_numbers_and_headings_are_refused_without_printed_slots(self):
+        numbers = opn.retired_numbers((RETIRED_MAP + "| 6.2 | synthetic retired heading |\n").splitlines())
+        self.assertTrue(opn.retired("1.2", numbers))
+        self.assertTrue(opn.retired("6.2", numbers))
+        clauses = opn.policy_clauses(POLICY.replace("- **1.2** [Retired]\n", "").splitlines())
+        problems = opn.table_problems([("every reader", ["1.2", "6.2"], [])], clauses, {}, numbers)
+        self.assertEqual(2, len(problems))
+        self.assertTrue(all("which is retired" in p for p in problems))
+        for broken in ("", RETIRED_MAP + "| 1.2 | duplicate |\n", "| not-a-number | unknown |\n", "| 1.2 | |\n"):
+            with self.subTest(broken=broken), self.assertRaises(opn.Refused):
+                opn.retired_numbers(broken.splitlines())
+
     def test_constraint_sections_are_split_at_their_headings_without_edge_blanks(self):
         sections = opn.constraint_sections(CONSTRAINTS.splitlines())
         self.assertEqual(["C01", "C02"], sorted(sections))
@@ -437,7 +450,8 @@ class TheRoomsOwnTable(unittest.TestCase):
         self.assertEqual([opn.EVERY, *packet.FUNCTIONS], [row[0] for row in self.rows])
 
     def test_every_citation_of_the_rooms_table_is_a_clause_in_force(self):
-        self.assertEqual([], opn.table_problems(self.rows, self.clauses, self.sections))
+        numbers = opn.retired_numbers((ROOT / opn.RETIRED).read_text(encoding="utf-8").splitlines())
+        self.assertEqual([], opn.table_problems(self.rows, self.clauses, self.sections, numbers))
         for row in self.rows:
             self.assertTrue(row[1] or row[2], f"the row for {row[0]} cites nothing")
             for number in row[1]:
@@ -657,7 +671,8 @@ class AnOpen(Case):
         state = text[text.index("[PRESENT STATE"):]
         for line in STATUS:
             self.assertIn(line, state)
-        self.assertIn("ledger: the newest entry is RoR-2 (standing direction)", state)
+        self.assertIn("ledger: the newest entry is RoR-2", state)
+        self.assertNotIn("(standing direction)", state)
         self.assertIn("fullness: unknown (a stand-in)", state)
         self.assertIn("## Now\n- **Repository:** a synthetic room.\n## Open\n- One open item.", state)
         self.assertNotIn("A track line", state)
@@ -858,6 +873,15 @@ class Standing(Case):
         self.r.commit({"docs/a.md": "alpha\n"}, "a landing that is not law")
         self.assertEqual(0, self.r.run("--check").code)
 
+    def test_a_preservation_map_change_ends_freshness_and_only_the_map_is_shown_again(self):
+        self.r.open()
+        self.r.commit({opn.RETIRED: RETIRED_MAP + "| 6.2 | synthetic retired heading |\n"}, "map changed")
+        self.refused(self.r.run("--check"), f"the law changed since it was made: {opn.RETIRED}")
+        text = self.r.open()[0].out
+        self.assertIn(f"[THE LAW, WHOLE: {opn.RETIRED}", text)
+        self.assertEqual([opn.RETIRED], self.r.ledger()[-1]["whole"])
+        self.assertEqual(0, self.r.run("--check").code)
+
     def test_a_new_body_holds_no_open_and_is_shown_the_whole_law(self):
         self.r.open()
         self.r.sessions["itg"] = SESSION.format(7)
@@ -986,6 +1010,23 @@ class Refusals(Case):
     def test_a_file_of_the_law_missing_from_main_opens_nothing(self):
         self.r.commit({opn.CONSTRAINTS: None}, "the constraints are gone")
         self.refused(self.r.run("--intent", "blocked"), f"{opn.CONSTRAINTS} is not on main")
+
+    def test_a_missing_or_malformed_preservation_map_refuses_before_output_or_record(self):
+        for text in (None, "", RETIRED_MAP + "| 1.2 | duplicate |\n", "| broken | unknown |\n"):
+            with self.subTest(text=text):
+                self.r.commit({opn.RETIRED: text}, "unusable map")
+                result = self.r.run("--intent", "blocked")
+                self.refused(result, "not on main" if text is None else "preservation map")
+                self.assertEqual("", result.out)
+                self.assertEqual([], self.r.ledger())
+
+    def test_a_retired_number_without_a_printed_slot_refuses_before_output_or_record(self):
+        self.r.commit({opn.POLICY: POLICY.replace("- **1.2** [Retired]\n", ""),
+                       opn.CONTEXT: CONTEXT.replace("| Auditor | 2.1.2 | |", "| Auditor | 2.1.2, 1.2 | |")}, "retired citation")
+        result = self.r.run("--intent", "blocked")
+        self.refused(result, "1.2, which is retired")
+        self.assertEqual("", result.out)
+        self.assertEqual([], self.r.ledger())
 
     def test_a_room_without_main_or_without_git_is_refused(self):
         git(self.r.room, "branch", "-m", "main", "trunk")

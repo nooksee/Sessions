@@ -31,9 +31,10 @@ remains ignored; a visible Git skeleton confers no payload admission.
 Records and RoR. A kept record explains what it is, why it exists and where
 to look next, for a reader without the prior conversation. Event-time next
 steps are labeled as such and point to the current handoff. The act's receipt
-holds its go; anomalies are counted there and enter RoR only when they alter
-planned process. A ledger entry identifies decision, given time/source,
-reason, act-record pointer, operator-word digest and entering writer/time.
+holds its go. RoR is the Record of Record: PoT ratifications, scoped packet
+addenda for the unforeseen, missed or impassable blocker, and design choices
+(PoT 1.2.10); no rule binds from it. An entry identifies its clause or packet,
+given time/source, reason, act-record pointer, operator-word digest and entering writer/time.
 The private companion holds words in place; the published derivative holds
 the digest defined by the redact specification. Keep the private source and
 the derivative preimage in verified custody before rendering. Preserve older
@@ -200,7 +201,7 @@ repointing maintained citations and dependent readers rather than rewriting
 history. Control pointers use Control's writer route. Missing required assets
 are named-owner placeholders; no reader treats them as installed or accepted.
 Historical citations retain their event-time meaning. Current citations to a
-retired clause are repointed using the accepted preservation map. An amendment
+retired clause are repointed using docs/ops/pot-retired.md (PoT 7.5). An amendment
 does not silently waive an unrelated obligation or gate unaffected work.
 
 ## C16

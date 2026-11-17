@@ -28,10 +28,10 @@ re-arming; current readings after compaction; own-transcript and registered
 session gates; exit-zero failure behavior; unknown windows and notifications;
 template refusal and substitution; malformed inputs and bounded runtime; who
 runs a rotation, read from the roles of the tool's own room in a registry that
-holds the same roles for other rooms, with the Integrator's own left to the
-Contractor the operator assigns and nobody named; and the tool's two
-role names, with its words for that Contractor, against clauses 4.1.3 and
-4.1.4 of the policy in the tree under test.
+holds the same roles for other rooms, with the Integrator's own and the Session Continuity Manager's left to the
+Contractor the operator assigns and nobody named; absent or foreign-room
+Contractors and duplicate titles refuse. Role and title names and the
+Contractor wording are checked against clauses 4.1.3, 4.1.4 and 4.1.12 of the policy in the tree under test.
 The installed hook and native delivery path are outside the suite.
 
 ## Not Covered

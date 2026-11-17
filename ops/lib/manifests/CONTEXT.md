@@ -46,8 +46,8 @@ requirement. No reader acquires a resident identity merely by entering the room.
 | Context membership | ops/lib/manifests/CONTEXT.md | Entry pointers/help direct the human/agent here |
 | Identity | ops/etc/resident-identities.json | Identity/gauge/mind tools; resident identity and worker parent/assignment checks under X01 |
 | Roster and launch binding | ops/etc/residents.json; ops/etc/host-bindings.json | Existing verified launcher/identity interfaces; not prose authority |
-| Decision source | archives/RoR-words.md | Authorized ledger writer; private, excluded from Git |
-| Derived decisions | RoR.md | Read-in and exact base/head constitution gate |
+| Record of Record source | archives/RoR-words.md | Ratifications, packet addenda and design choices; authorized writer; private, excluded from Git |
+| Derived Record of Record | RoR.md | Read-in and exact base/head constitution gate; not a source of rules |
 | Present state | NOW.md | Orientation only; domain source wins |
 | Work in flight | Mapped resident handoffs | Own writer; other readers receive information, not authority |
 | Repository work in flight | The one active dispatch packet: `ops/lib/scripts/packet.py status`; its worktree `var/tmp/packet/` | Every resident; the leaf's contract is the assignment (CONSTRAINTS C17) |

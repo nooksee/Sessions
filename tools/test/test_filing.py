@@ -102,8 +102,10 @@ class FilingTest(unittest.TestCase):
 
     def test_filing_authority_paths_match_the_landed_shape(self):
         law, _, context = filing_contracts()
-        self.assertIn("- **1.1.6** [Retired]", law)
-        self.assertIn("- **1.1.7** [Retired]", law)
+        self.assertNotIn("[Retired]", law)
+        retired = text("docs/ops/pot-retired.md")
+        self.assertIn("| 1.1.6 |", retired)
+        self.assertIn("| 1.1.7 |", retired)
         self.assertIn("- **1.1.12** `logs/`", law)
         self.assertIn("ops/etc/resident-identities.json", context)
         self.assertIn("archives/receipts/", context)

@@ -57,8 +57,9 @@ UNKNOWN_NOTICE = 3                 # consecutive unknowns before Kevin is told
 SID_RE = re.compile(r"[0-9A-Za-z-]{8,64}")
 
 CARD_SLOTS = ("PERCENT", "WINDOW", "READING_TIME", "ROTATION_WRITER")   # what this hook fills, no more and no less
-INTEGRATOR_ROLE = "Integrator"                                          # runs every rotation but its own (PoT 4.1.3)
-CONTRACTOR_ROLE = "Contractor"                                          # the one the operator assigns runs the Integrator's (PoT 4.1.4)
+INTEGRATOR_ROLE = "Integrator"                                          # rotates residents other than the two holders below
+CONTRACTOR_ROLE = "Contractor"                                          # the operator assigns both holders' rotation (PoT 4.1.4)
+SEAT_ROLE = "Session Continuity Manager"                                # the titled seat of PoT 4.1.12
 ASSIGNED_CONTRACTOR = "The Contractor the operator assigns"             # the card's words for it: the registry holds no assignment
 MARKER_RE = re.compile(r"\{\{([^{}\n]*)\}\}")          # as grep -oE '\{\{[^{}]*\}\}', line by line
 LEFTOVER_RE = re.compile(r"\{\{.*\}\}")                  # as check_rendered: any {{...}} on one line
@@ -259,8 +260,8 @@ def rotation_writer(identities: list, key: str, room: Path) -> str:
     """Who runs this resident's rotation, from the roles of this room in the registry. A writer is never the resident
     being moved.
 
-    This room's Integrator runs every rotation but its own, whichever room the resident is registered to. Its own is
-    run by the Contractor the operator assigns to it (PoT 4.1.4). The registry holds no such assignment, so the card
+    This room's Integrator runs rotations except its own and the Session Continuity Manager's. Both are
+    run by the Contractor the operator assigns (PoT 4.1.4). The registry holds no such assignment, so the card
     says so and names nobody. With no Contractor in this room but the Integrator itself there is no one to assign,
     and that is unknown. An Integrator or a Contractor of another room is that room's and is not counted.
     """
@@ -268,10 +269,14 @@ def rotation_writer(identities: list, key: str, room: Path) -> str:
     if len(integrators) != 1:
         raise Unknown("the registry does not name exactly one Integrator of this room")
     integrator_key, integrator = named(integrators[0], "Integrator")
-    if integrator_key != key:
+    seats = [i for i in identities if in_room(i, room) and i.get("role") == SEAT_ROLE]
+    if len(seats) > 1:
+        raise Unknown("the registry names more than one Session Continuity Manager of this room")
+    seat_keys = {named(i, SEAT_ROLE)[0] for i in seats}
+    if integrator_key != key and key not in seat_keys:
         return f"{integrator}'s desk"
     if not any(in_room(i, room) and i.get("role") == CONTRACTOR_ROLE and i.get("key") != key for i in identities):
-        raise Unknown("the registry names no Contractor of this room to run the Integrator's rotation")
+        raise Unknown("the registry names no Contractor of this room to run the holder's rotation")
     return ASSIGNED_CONTRACTOR
 
 

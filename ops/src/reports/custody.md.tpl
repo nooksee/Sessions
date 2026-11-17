@@ -19,7 +19,7 @@ slot_notes:
   BATCH: the custody batch name, one word with its date, as the folder is named in both tiers
   DATE: the date and the clock span of the operation, read from a clock, not estimated
   WRITER: the one writer, as Role (Person) and registry key
-  AUTHORITY: the operator decision this carries out, cited by its RoR.md entry
+  AUTHORITY: cite the receipt recording the operator's named go and its scope; never quote the go (PoT 1.2.10)
   CONTENTS: what was copied, as paths relative to the room, with file counts and bytes
   TIER1: the tier 1 path, its file count, and the sha256 of its SHA256SUMS file
   TIER2: the tier 2 path, its file count, and how each copy was verified there (a direct read for a medium known to be failing, PoT 5.3.3)

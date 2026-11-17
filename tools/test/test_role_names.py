@@ -38,6 +38,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RECORDS = ("archives/",)             # kept records: not read
 LEDGER = "RoR.md"                    # the ledger: not read, and the proof that the digests still match their names
 RUN = re.compile(r"[A-Za-z]+")
+SEAT_TITLES = ("Session Continuity Manager", "Desktop Continuity Manager")
 
 # name -> the digests of its singular and its plural. ANY is compared with the run in small letters; CAPITAL with the run as it stands.
 ANY = {
@@ -64,10 +65,11 @@ def needles(word: str) -> tuple[str, str]:
 class Finder:
     """One pair of tables, with a cache by run. The room's own tables and the invented ones both go through it."""
 
-    def __init__(self, any_case: dict[str, tuple[str, ...]], capital: dict[str, tuple[str, ...]]) -> None:
+    def __init__(self, any_case: dict[str, tuple[str, ...]], capital: dict[str, tuple[str, ...]], titles: tuple[str, ...] = ()) -> None:
         self.any_case = {digest: name for name, digests in any_case.items() for digest in digests}
         self.capital = {digest: name for name, digests in capital.items() for digest in digests}
         self.cache: dict[str, frozenset[str]] = {}
+        self.titles = re.compile(r"(?<![A-Za-z])(?:" + "|".join(re.escape(t) for t in titles) + r")(?![A-Za-z])") if titles else None
 
     def in_run(self, run: str) -> frozenset[str]:
         hit = self.cache.get(run)
@@ -78,6 +80,8 @@ class Finder:
 
     def in_line(self, line: str) -> set[str]:
         found: set[str] = set()
+        if self.titles:
+            line = self.titles.sub("", line)
         for run in RUN.findall(line):
             found |= self.in_run(run)
         return found
@@ -123,7 +127,7 @@ class RoomTest(unittest.TestCase):
     """The tree under test."""
 
     def setUp(self) -> None:
-        self.finder = Finder(ANY, CAPITAL)
+        self.finder = Finder(ANY, CAPITAL, SEAT_TITLES)
 
     def test_no_file_outside_the_records_holds_one_of_the_names(self) -> None:
         names = [name for name in tracked_files(ROOT) if read(name)]
@@ -144,7 +148,7 @@ class RoomTest(unittest.TestCase):
         for digest in digests:
             self.assertRegex(digest, r"\A[0-9a-f]{64}\Z")
         own = Path(__file__).read_text(encoding="utf-8")
-        self.assertEqual(set(), Finder(ANY, CAPITAL).in_line(own.replace("\n", " ")))
+        self.assertEqual(set(), Finder(ANY, CAPITAL, SEAT_TITLES).in_line(own.replace("\n", " ")))
 
     def test_the_ledger_and_the_archives_are_not_read_and_nothing_else_is_spared(self) -> None:
         self.assertFalse(read("RoR.md"))
@@ -175,6 +179,21 @@ class FinderTest(unittest.TestCase):
 
     def test_both_rules_are_found_in_one_line(self) -> None:
         self.assertEqual({"any", "capital"}, self.finder.in_line("The Helper and the WARDEN"))
+
+    def test_only_exact_complete_seat_titles_are_spared(self) -> None:
+        finder = Finder({"any": needles("warden")}, {}, ("Session Continuity Warden", "Desktop Continuity Warden"))
+        for title in ("Session Continuity Warden", "Desktop Continuity Warden"):
+            self.assertEqual(set(), finder.in_line(title))
+            self.assertEqual(set(), finder.in_line("(" + title + ")"))
+            for altered in (title.lower(), title.upper(), title + "s", "Other " + title.split()[-1], "warden", "x" + title):
+                self.assertEqual({"any"}, finder.in_line(altered), altered)
+            self.assertEqual({"any"}, finder.in_line(title + " and warden"))
+
+    def test_the_rooms_two_seat_titles_do_not_spare_the_old_word_alone(self) -> None:
+        finder = Finder(ANY, CAPITAL, SEAT_TITLES)
+        for title in SEAT_TITLES:
+            self.assertEqual(set(), finder.in_line(title))
+            self.assertTrue(finder.in_line(title.split()[-1]))
 
 
 class TreeTest(unittest.TestCase):

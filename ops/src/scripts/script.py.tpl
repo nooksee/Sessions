@@ -22,7 +22,7 @@ Spec: docs/ops/specs/scripts/{{WORD}}.md. Tests: tools/test/test_{{WORD}}.py.
 
 {{READS_AND_WRITES}}
 
-Filing authority: PoT 1.1.4, 1.1.13 and 1.1.14. Task-local intermediates use
+Filing authority: PoT 1.1.1, 1.1.4 and 1.1.13. Task-local intermediates use
 SCRATCH; storage/active/ holds new case payloads; storage/intake/ holds incoming
 data, not installed code or tool state. Existing state has a bounded migration
 hold documented in the map; it is not a pattern for new state.

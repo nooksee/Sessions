@@ -163,10 +163,10 @@ class RedactTests(unittest.TestCase):
 
     def test_a_words_field_is_digested_whole_with_its_inner_quotes(self):
         words = 'the "role" has to be first, not the name'
-        text = f'### RoR-9\n\n- **Words:** "{words}"\n- **Act:** standing direction\n'
+        text = f'### RoR-9\n\n- **Words:** "{words}"\n- **Act:** design choice\n'
         public, r = self.rendered(text)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(self.body(public), f'### RoR-9\n\n- **Words:** "[words sha256={sha256(words)}]"\n- **Act:** standing direction\n')
+        self.assertEqual(self.body(public), f'### RoR-9\n\n- **Words:** "[words sha256={sha256(words)}]"\n- **Act:** design choice\n')
 
     def test_a_direction_field_and_an_attributed_quote_are_digested(self):
         text = '- **Direction (02:2x):** "preserve the shape"\nKevin said, at noon, "do it now" and left.\n'
