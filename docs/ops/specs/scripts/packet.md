@@ -194,3 +194,7 @@ The tool first landed, as pull request #91, calling two of the functions by name
 - **The ledger is tool state.** If `logs/packets/ledger.jsonl` is lost while a packet is open, every station refuses and nothing can be restored; the Integrator abandons the packet, the work is kept as a patch, and the packet is opened again.
 - **One packet at a time is a property of one checkout.** Two clones can each open the same number; the first to merge keeps it, and the gate fails the second.
 - **PoT 6.1.4 states this route, and 4.1.10 and 4.1.11 name who carries it.** C16, C17 and this specification are its delegated contract (PoT 1.2.3): they hold the procedure and add no authority. PoT 6.1.2 asks an independent review and a named go for a change to automation: this tool landed on the operator's approval of its plan, and its review follows the landing.
+
+## Record-of-Record amendment
+
+The standing ledger directions RoR-9, RoR-13, RoR-20, RoR-24, RoR-25, RoR-27, RoR-29 and RoR-30 ended with RoR-31. Historical references above explain events, not current rules. The packet workflow follows PoT 6.1.4 and C17; OPEN follows its specification and the manual. Authority in a new leaf cites the applicable ratification or the recorded digest of the operator direction, not an ended standing entry. RoR itself holds only PoT ratifications, scoped packet addenda and design choices (PoT 1.2.10).

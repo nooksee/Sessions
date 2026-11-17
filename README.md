@@ -15,7 +15,7 @@ Three ideas run through everything here:
 | Path | What lives there |
 | --- | --- |
 | `PoT.md` | the law in force, numbered and permanent; amended only through its own route |
-| `RoR.md` | the ledger: ratifications and the rare times a planned process was altered, with the reasoning |
+| `RoR.md` | Record of Record: PoT ratifications, scoped packet addenda and design choices; no rule binds from it |
 | `NOW.md` | the live board: present state, open items |
 | `ops/bin/` | the three binaries: `open` (the read-in: the law on the caller's own screen, and a record that it was shown), `help` (the map, with a self-test) and `template` (every recurring record comes from a template) |
 | `ops/lib/scripts/` | one-word tools, listed in `docs/ops/registry/scripts.md`: `gauge` (fullness), `closeout` (the card), `mind` (the room's concepts, pointer first), `rotation`, `identity`, `myself`, `capsule`, `redact`, `packet` (how a change ships: one dispatch packet per pull request) and the rest; each has a spec and a suite |

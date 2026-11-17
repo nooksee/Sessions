@@ -45,7 +45,7 @@ STELA's `template` is a router to its `factory` and `manifest` backends. Session
    | report | `ops/src/reports/receipt.md.tpl` | RESIDENT, ROTATION, DATE, WRITER, AUTHORITY, TIER, DONOR, DESTINATION, CUT_AND_REASON, GATES, CUSTODY, MIND_INDEX, INSTALL, ESTIMATE_VS_MEASURED, DEVIATIONS, ACCEPTANCE, ROLLBACK (17, from `rotate.md` phase 9) |
    | report | `ops/src/reports/packet.md.tpl` | TO, FROM, RELAYED_BY, OWNER, SCOPE, AUTHORITY, SOURCES, RULES, STOP_CONDITION, POST_TO (10, from `agent-input.md`) |
    | report | `ops/src/reports/closeout.md.tpl` | PERCENT, WINDOW, READING_TIME, ROTATION_WRITER (4) |
-   | report | `ops/src/reports/ror.md.tpl` | ENTRY, KIND, GIVEN, WORDS, ACT, RECORD, ENTERED_BY (7, one entry of the decision ledger `RoR.md`, PoT 1.2.10) |
+   | report | `ops/src/reports/ror.md.tpl` | ENTRY, KIND, GIVEN, WORDS, ACT, RECORD, ENTERED_BY (7, one entry of the Record of Record `RoR.md`: PoT ratification, packet addendum or design choice, PoT 1.2.10) |
    | report | `ops/src/reports/custody.md.tpl` | BATCH, DATE, WRITER, AUTHORITY, CONTENTS, TIER1, TIER2, VERIFICATION, EXCLUDED, COUNTS, DEVIATIONS (11, the receipt of a custody operation, PoT 5.3 and 6.4.5) |
    | report | `ops/src/reports/validation.md.tpl` | TEST, DATE, WRITER, AUTHORITY, SUBJECT, SETUP, STEPS, VERDICT, TEARDOWN, REVIEW, COUNTS, DEVIATIONS (12, the receipt of a live validation, PoT 6.1.5 and 6.4.5) |
    | report | `ops/src/reports/source-change.md.tpl` | CHANGE, DATE, WRITER, AUTHORITY, SCOPE, BASE, CANDIDATE, DIFF, VALIDATION, REVIEW, INTEGRATION, DEVIATIONS, ROLLBACK (13; bounded source/configuration change closeout) |

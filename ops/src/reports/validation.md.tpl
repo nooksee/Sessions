@@ -20,7 +20,7 @@ slot_notes:
   TEST: the test name, one word with its number, as the runbook names it
   DATE: the date and the clock span, read from a clock, not estimated
   WRITER: the one writer accountable for the test thread, as Role (Person) and registry key
-  AUTHORITY: the RoR.md entry and the operator's named go, quoted, naming folder, settings file, command and frozen hashes
+  AUTHORITY: cite the receipt recording the operator's named go, naming folder, settings file, command and frozen hashes; never quote it (PoT 1.2.10)
   SUBJECT: each tool and template under test, with its frozen sha256
   SETUP: the folder, the settings file and its sha256, the command string, and the fixtures, each with its sha256
   STEPS: each step as runbook step, prompt or action, expected outcome, observed outcome (measured), and pass or fail

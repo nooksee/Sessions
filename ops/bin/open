@@ -59,7 +59,8 @@ TOOL = "ops/bin/open"
 POLICY = "PoT.md"
 CONTEXT = "ops/lib/manifests/CONTEXT.md"
 CONSTRAINTS = "ops/lib/manifests/CONSTRAINTS.md"
-LAW = (POLICY, CONTEXT, CONSTRAINTS)           # the files an OPEN binds by hash, in the order they are printed whole
+RETIRED = "docs/ops/pot-retired.md"
+LAW = (POLICY, CONTEXT, CONSTRAINTS, RETIRED)  # the law and its preservation map, bound to the same main revision
 BOARD = "NOW.md"
 DECISIONS = "RoR.md"
 LEAVES = "archives/packets"
@@ -244,9 +245,28 @@ def clause_heads(text: list[str]) -> dict[str, tuple[str, ...]]:
     return found
 
 
-def retired(line: str) -> bool:
+def retired_numbers(text: list[str]) -> set[str]:
+    """Read the preservation map's first column, including retired headings. Never infer a missing map."""
+    found = set()
+    for line in text:
+        if not line.startswith("| "):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if cells[0] == "Retired number" or set("".join(cells)) <= set("-: "):
+            continue
+        if len(cells) != 2 or not NUMBER_RE.fullmatch(cells[0]) or not cells[1] or cells[0] in found:
+            raise Refused("the preservation map has a malformed or duplicate retired number")
+        found.add(cells[0])
+    if not found:
+        raise Refused("the preservation map holds no retired numbers")
+    return found
+
+
+def retired(line: str, numbers: set[str] | None = None) -> bool:
+    """A map-listed number is retired even though no slot remains in current PoT; old fixtures remain readable."""
     m = CLAUSE_LINE_RE.match(line)
-    return bool(m) and m.group(2).strip() == "[Retired]"
+    number = m.group(1) if m else line
+    return number in (numbers or set()) or bool(m) and m.group(2).strip() == "[Retired]"
 
 
 def constraint_sections(text: list[str]) -> dict[str, list[str]]:
@@ -310,15 +330,15 @@ def read_table(text: list[str], functions: tuple) -> list[tuple[str, list[str], 
     return rows
 
 
-def table_problems(rows, clauses: dict[str, str], sections: dict[str, list[str]]) -> list[str]:
+def table_problems(rows, clauses: dict[str, str], sections: dict[str, list[str]], numbers: set[str] | None = None) -> list[str]:
     """Every citation must be a clause in force or a section that exists. One sentence for each that is not."""
     problems = []
     for reader, policy, cited in rows:
         for number in policy:
-            if number not in clauses:
-                problems.append(f"the row for {reader} cites {number}, which the policy does not hold")
-            elif number != PREAMBLE and retired(clauses[number]):
+            if number != PREAMBLE and retired(clauses.get(number, number), numbers):
                 problems.append(f"the row for {reader} cites {number}, which is retired")
+            elif number not in clauses:
+                problems.append(f"the row for {reader} cites {number}, which the policy does not hold")
         for name in cited:
             if name not in sections:
                 problems.append(f"the row for {reader} cites {name}, which the constraints do not hold")
@@ -631,7 +651,7 @@ def newest_entry(text: list[str]) -> str:
         m = ENTRY_RE.match(line)
         if m:
             found = m
-    return f"{found.group(1)} ({found.group(2).strip()})" if found else "unknown"
+    return found.group(1) if found else "unknown"
 
 
 def since_lines(room: Path, record: dict | None, commit: str) -> list[str]:
@@ -706,7 +726,7 @@ def read_in(law: dict[str, bytes], found: dict | None, already_whole: dict[str, 
     sections = constraint_sections(lines_of(law[CONSTRAINTS]))
     heads = clause_heads(lines_of(law[POLICY]))
     rows = read_table(lines_of(law[CONTEXT]), functions)
-    problems = table_problems(rows, clauses, sections)
+    problems = table_problems(rows, clauses, sections, retired_numbers(lines_of(law[RETIRED])))
     if problems:
         raise Refused("; ".join(problems[:4]) + f". Nothing is opened: the read-in table ({CONTEXT} {TABLE}) is mended by a packet")
     printed, whole = [], []

@@ -27,7 +27,7 @@ class Fixture:
         git(root, "config", "user.email", "synthetic@example.invalid")
         self.base_law = b"synthetic constitutional baseline\n"
         self.write("PoT.md", self.base_law)
-        self.write("RoR.md", b"# Synthetic decision ledger\n")
+        self.write("RoR.md", b"# Synthetic Record of Record\n")
         self.write("README.md", b"baseline\n")
         self.base = self.commit("baseline")
 

@@ -22,7 +22,7 @@ READ_ORDER=(
   "ops/lib/manifests/CONTEXT.md|canonical read-in, reader classes and domain pointers"
   "ops/lib/manifests/CONSTRAINTS.md|delegated operational contract, not a second constitution"
   "CLAUDE.md|Claude identity/read-in; verify through the native signal and registry"
-  "RoR.md|the operator decision ledger"
+  "RoR.md|Record of Record: ratifications, packet addenda and design choices"
   "NOW.md|current state; wins over older embedded counts"
   "INDEX.md|room index"
   "docs/ops/README.md|the system map: four tools, one loop"

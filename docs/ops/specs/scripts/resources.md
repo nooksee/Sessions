@@ -4,7 +4,7 @@ Script: `Sessions/ops/lib/scripts/resources.py` (writer: not recorded in the fil
 
 ## First Principles Rationale
 
-Ported legacy tool. Its own docstring opens: "Resident Resource Governor -- collector." (non-ASCII transliterated, PoT 4.3.4) (the file names no author; attributed to the file). The earliest receipt that names it is `Receipts/sessions-custody-review-and-correction-20260805.md` (2026-08-05); 1 receipt(s) name it in all.
+Ported legacy tool. Its own docstring opens: "Resident Resource Governor -- collector." (non-ASCII transliterated under the Control behavioral standard, PoT 4.3.1) (the file names no author; attributed to the file). The earliest receipt that names it is `Receipts/sessions-custody-review-and-correction-20260805.md` (2026-08-05); 1 receipt(s) name it in all.
 
 ## Mechanics and Sequencing
 

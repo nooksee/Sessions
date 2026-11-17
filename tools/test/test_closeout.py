@@ -944,12 +944,31 @@ class RoleNames(unittest.TestCase):
     def test_the_names_are_those_of_clauses_4_1_3_and_4_1_4(self):
         named = dict(re.findall(r"(?m)^- \*\*(4\.1\.[34]) ([^:*]+):\*\* ", self.policy))
         self.assertEqual(named, {"4.1.3": self.tool.INTEGRATOR_ROLE, "4.1.4": self.tool.CONTRACTOR_ROLE})
+        title = re.search(r"(?m)^- \*\*4\.1\.12 ([^:*]+):\*\* ", self.policy).group(1)
+        self.assertEqual(title, self.tool.SEAT_ROLE)
 
     def test_the_cards_words_for_the_integrators_rotation_are_the_clauses_own(self):
         clause = re.search(r"(?m)^- \*\*4\.1\.4 [^\n]*$", self.policy).group(0)
         words = self.tool.ASSIGNED_CONTRACTOR
         self.assertEqual(words[:1], "T")
-        self.assertIn(f"; t{words[1:]} to it performs the Integrator's rotation.", clause)
+        self.assertIn(f"; t{words[1:]} to it performs the rotation of the Integrator and of the Session Continuity Manager (4.2.3).", clause)
+
+    def test_the_titled_seat_uses_the_assigned_contractor_not_the_integrators_desk(self):
+        room = Path("/synthetic-room")
+        identities = [{"key": "itg", "person": "Synthetic Integrator", "room": str(room), "role": self.tool.INTEGRATOR_ROLE},
+                      {"key": "seat", "person": "Synthetic Seat", "room": str(room), "role": self.tool.SEAT_ROLE},
+                      {"key": "con", "person": "Synthetic Contractor", "room": str(room), "role": self.tool.CONTRACTOR_ROLE}]
+        self.assertEqual(self.tool.ASSIGNED_CONTRACTOR, self.tool.rotation_writer(identities, "seat", room))
+        self.assertEqual(self.tool.ASSIGNED_CONTRACTOR, self.tool.rotation_writer(identities, "itg", room))
+        self.assertEqual("Synthetic Integrator's desk", self.tool.rotation_writer(identities, "con", room))
+        with self.assertRaises(self.tool.Unknown):
+            self.tool.rotation_writer(identities[:-1], "seat", room)
+        foreign = dict(identities[-1], room="/another-synthetic-room")
+        with self.assertRaises(self.tool.Unknown):
+            self.tool.rotation_writer(identities[:-1] + [foreign], "seat", room)
+        duplicate = dict(identities[1], key="seat-two")
+        with self.assertRaises(self.tool.Unknown):
+            self.tool.rotation_writer(identities + [duplicate], "seat", room)
 
 
 if __name__ == "__main__":

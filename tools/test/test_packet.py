@@ -1810,3 +1810,5 @@ class Gate(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
+
+# Ledger references in synthetic Authority fields are invented fixture values, not current standing rules.
