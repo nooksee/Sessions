@@ -12,6 +12,7 @@
     {"id": "no-stored-provider", "file": "~/.codemoss/config.json", "key": "codex.providers", "expect": "absent or empty"},
     {"id": "codex-sandbox", "file": "~/.codex/config.toml", "key": "sandbox_mode", "expect": "danger-full-access"},
     {"id": "codex-approval", "file": "~/.codex/config.toml", "key": "approval_policy", "expect": "never"},
+    {"id": "codex-notify", "file": "~/.codex/config.toml", "key": "notify", "expect": ["/usr/bin/env", "node", "~/.tokentracker/bin/notify.cjs"], "why": "Token Tracker's, kept by the operator; the home folder is written as ~"},
     {"id": "claude-hooks", "file": "~/.claude/settings.json", "key": "hooks", "expect": ["Stop", "SessionEnd"], "why": "Token Tracker's, kept by the operator"},
     {"id": "tracker-telemetry", "file": "~/.tokentracker/tracker/config.json", "key": "telemetry", "expect": false},
     {"id": "login-unchanged", "file": "~/.codex/auth.json", "key": null, "expect": {"bytes": 4132, "mtime": "2026-11-23T21:54:03-05:00", "mode": "0600"}, "why": "measured by stat on 2026-11-24, never read; a difference is expected only when the operator logged in again, and the new values then replace these"}

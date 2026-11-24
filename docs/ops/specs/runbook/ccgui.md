@@ -27,6 +27,8 @@ One page per program. Settings are not portable between programs, so this page b
 | Provider Management, Claude Code | local settings and CLI login | not authorized | Claude residents are attended in Swttch. Authorizing would let the plugin use and write the Claude settings that every Claude resident shares. | the operator |
 | Provider Management, CLI | Codex CLI | the standalone package behind `~/.local/bin/codex`, at least the version that last wrote any resident thread | An older reader over threads written by a newer one is avoided. The page's hint to install the CLI with npm globally is not followed, since it would place a second Codex beside the standalone one. | the maintenance resident |
 | Permissions | Codex sandbox | danger-full-access | Equal to the shared Codex configuration the residents already run under. | the operator |
+| none: the shared Codex configuration, `~/.codex/config.toml` | `approval_policy` | `never` | The residents already run under it; a program that changes it changes the turns of every Codex resident. | the operator, then the maintenance resident |
+| none: the shared Codex configuration, `~/.codex/config.toml` | `notify` | Token Tracker's script, `~/.tokentracker/bin/notify.cjs`, run by `node` through `/usr/bin/env` | It runs after each turn of every Codex resident. It is Token Tracker's, kept by the operator with the usage page; any other value is reported. | the operator, then the maintenance resident |
 | Prompt Library | prompts | global prompts only: the four of `prompts.json` (section 4) | Global prompts are kept in `~/.codemoss/prompt.json`. Project prompts are written into the project folder (`.codemoss/prompt.json`), which this room's Git ignores and the parent Control repository does not. | the operator |
 | Prompts (custom prompts) | attached to a resident | none | Such a prompt is sent as system instructions at the start of a conversation, above the resident's own. | the operator |
 | Prompt Enhancer | use on a resident prompt | never | It rewrites what was typed before sending. | the operator |
@@ -51,14 +53,14 @@ The page's working parts sit in the room's runbook home, `ops/src/runbook/ccgui/
 - `baseline.json`: the values section 5 compares against, the adapter between this program and the room. When the plugin changes, this file and this page change, and the residents do not.
 - `prompts.json`: the operator's four global prompts, in the Prompt Library's own export format: Identity check, Wake check, Closeout card and Packet status. Each keeps the id of the prompt the operator saved, so an import that chooses Overwrite replaces that prompt in place. The room is written as `<room>`, and the operator is named by role.
 
-To put the prompts back, the Session Continuity Manager writes a copy of `prompts.json` with the room's path in place of `<room>` into the room's scratch, `var/tmp/`. The operator imports that copy as global prompts and chooses Overwrite, and the copy is then deleted. Nothing for this program is kept in `storage/`, which holds case payload and handoffs, not tool state (PoT 1.1.4). Neither file holds a secret value; a login is checked only for its time and size.
+To put the prompts back, the Session Continuity Manager writes a copy of `prompts.json` with the room's path in place of `<room>` into the room's scratch, `var/tmp/`. The operator imports that copy as global prompts and chooses Overwrite, and the copy is then deleted. Nothing for this program is kept in `storage/`, which holds case payload and handoffs, not tool state (PoT 1.1.4). Neither file holds a secret value; a login is checked only for its size, time and mode.
 
 ## 5. After an update, or when something looks changed
 
 Before any resident turn, in this order. `baseline.json` holds the expected values of each step:
 
 1. **The plugin's version and the Codex CLI's version.** Provider Management, CLI, and the CLI's own `--version`.
-2. **The shared Codex login and configuration.** The login file's time and size, read by `stat` and never opened, equal `baseline.json` unless the operator logged in again; after a new login its new values replace them there. The sandbox and approval settings, and the notify entry, are as section 2 holds them.
+2. **The shared Codex login and configuration.** The login file's size, time and mode, read by `stat` and never opened, equal `baseline.json` unless the operator logged in again; after a new login its new values replace them there. The sandbox, approval and notify entries are as section 2 holds them.
 3. **The plugin's own configuration.** `aiTitleGenerationEnabled` is false; the current Codex provider is the CLI login; no stored provider exists.
 4. **The shared Claude settings.** Their hooks are as section 2 holds them.
 5. **Token Tracker.** Its telemetry is still off.
