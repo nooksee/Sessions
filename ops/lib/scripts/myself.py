@@ -185,11 +185,17 @@ def _load_json(path: Path) -> tuple[object | None, str | None]:
 def _environment_signals(environ: Mapping[str, str]) -> tuple[list[CallerSignal], list[str]]:
     signals: list[CallerSignal] = []
     errors: list[str] = []
+    # CLAUDE_SESSION_ID is not read. On this host only the CC GUI plugin's
+    # bridge sets it, as its own permission key, and passes it to every Codex
+    # command it runs, where it named no Claude session (measured 2026-11-24).
+    # Claude Code itself sets CLAUDE_CODE_SESSION_ID. Dropping the other name
+    # never changes which identity resolves, since an accepted value always had
+    # to equal a Claude ancestor's own identifier; it only stops a key that
+    # names no session from being reported as a finding.
     mapping = {
         "CODEX_THREAD_ID": "codex",
         "COPILOT_AGENT_SESSION_ID": "copilot",
         "CLAUDE_CODE_SESSION_ID": "claude",
-        "CLAUDE_SESSION_ID": "claude",
     }
     for key, provider in mapping.items():
         value = environ.get(key)

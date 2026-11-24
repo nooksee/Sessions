@@ -35,7 +35,7 @@ Ported legacy tool. Its own docstring opens: "Measure one resident's native iden
 ## Caller signals (added 2026-11-11)
 
 The caller is resolved from a native session variable only when it is corroborated above the caller in the process tree:
-- **Claude:** `CLAUDE_CODE_SESSION_ID` or `CLAUDE_SESSION_ID`, and the same identifier in a Claude ancestor's arguments.
+- **Claude:** `CLAUDE_CODE_SESSION_ID`, and the same identifier in a Claude ancestor's arguments. `CLAUDE_SESSION_ID` is not read (DP-SES-0019). On this host only the CC GUI plugin's bridge sets it, as its own permission key, and it reached every command a Codex resident ran there while naming no Claude session (measured 2026-11-24).
 - **Codex:** `CODEX_THREAD_ID`, and that thread's writer lock held open by a Codex ancestor.
 - **Copilot:** `COPILOT_AGENT_SESSION_ID`, and that session's own state folder holding an in-use lock named for a Copilot ancestor's process (`inuse.<pid>.lock`). Measured on 2026-11-11 by variable names and a yes or no only: the Orchestrator's session carries the variable, and its value equals the seat's registry row.
 

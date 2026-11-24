@@ -30,6 +30,7 @@ SPEC.loader.exec_module(check_myself)
 NOW = dt.datetime(2026, 8, 9, 23, 0, tzinfo=dt.timezone.utc)
 CODEX_ID = "0000b1b1-0000-4000-8000-00000000b1b1"
 CLAUDE_ID = "0000b2b2-0000-4000-8000-00000000b2b2"
+PLUGIN_KEY = "0000b3b3-0000-4000-8000-00000000b3b3"   # a permission key the CC GUI bridge passes on
 
 
 def json_line(payload: dict) -> str:
@@ -614,6 +615,50 @@ class ResidentSelfCheckTests(unittest.TestCase):
         self.assertEqual(1, report.exit_code)
         self.assertEqual("undetermined", report.legs[0].status)
         self.assertIn("no matching exact Claude session", report.legs[0].detail)
+
+    def test_codex_caller_beside_a_plugin_permission_key_passes(self) -> None:
+        # The CC GUI bridge passes its own permission key to every Codex
+        # command it runs; it names no Claude session and is not a signal.
+        fixture = Fixture(self.root, "codex")
+        pid = fixture.fake_codex_parent()
+        report = fixture.run(
+            environ={
+                "CODEX_THREAD_ID": fixture.session_id,
+                "CLAUDE_SESSION_ID": PLUGIN_KEY,
+                "CLAUDE_PERMISSION_DIR": "/tmp/claude-permission",
+            },
+            start_pid=pid,
+        )
+        output = check_myself.render(report)
+        self.assertEqual(0, report.exit_code, output)
+        self.assertEqual("pass", report.legs[0].status, output)
+        self.assertIn("provider=codex", output)
+        self.assertNotIn("CLAUDE_SESSION_ID", output)
+
+    def test_claude_session_id_alone_is_no_signal(self) -> None:
+        fixture = Fixture(self.root, "claude")
+        report = check_myself.run_check(
+            fixture.paths,
+            environ={"CLAUDE_SESSION_ID": fixture.session_id},
+            start_pid=None,
+            now=NOW,
+        )
+        self.assertEqual(1, report.exit_code)
+        self.assertEqual("undetermined", report.legs[0].status)
+        self.assertIn("no provider-bound native session signal", report.legs[0].detail)
+        self.assertNotIn("CLAUDE_SESSION_ID", report.legs[0].detail)
+
+    def test_claude_caller_still_resolves_from_ancestry_beside_the_plugin_key(self) -> None:
+        fixture = Fixture(self.root, "claude")
+        pid = fixture.fake_claude_parent()
+        report = fixture.run(
+            environ={"CLAUDE_SESSION_ID": PLUGIN_KEY},
+            start_pid=pid,
+        )
+        output = check_myself.render(report)
+        self.assertEqual(0, report.exit_code, output)
+        self.assertIn("provider=claude", output)
+        self.assertNotIn(PLUGIN_KEY, output)
 
     def test_duplicate_native_bodies_fail_closed(self) -> None:
         fixture = Fixture(self.root, "codex")
