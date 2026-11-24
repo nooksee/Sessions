@@ -357,7 +357,7 @@ specification records the implementation boundary; PoT 6.1.2 governs wiring.
 2. Finish the current step if it is short; otherwise stop at a clean point. Start nothing new and material.
 3. Write the closing handoff: work in flight, open promises, owners, first steps for the successor.
 4. Write any idea learned that stays true as a leaf (`mind.py add`), and supersede or retire your own leaves that no longer hold. No approval is asked.
-5. Tell the operator the resident is ready for rotation. Shannon's desk runs it; for Shannon himself, Claudine runs it.
+5. Tell the operator the resident is ready for rotation. The Integrator's desk runs it; for the Integrator or the Session Continuity Manager, the Contractor the operator assigns runs it (PoT 4.1.4, 4.2.3).
 
 **Codex and Copilot residents.** Codex CLI 0.166 documents the same hook (Joe Codex, `joe.md`); the PyCharm path is untested, so it is tried on one Codex resident before anyone relies on it. Until then, and for Copilot, the operator pastes the card. For a Codex resident in CC GUI the card is the operator's Closeout card prompt (section 9).
 
@@ -526,7 +526,7 @@ Notes:
 
 ### The operator's prompts
 
-For the Codex residents in CC GUI the operator keeps four prompts in the plugin's Prompt Library. An exclamation mark typed in the chat input lists them. Each is sent as it stands. The resident reports and stops, with two exceptions: at its own packet station it works that station, and the Closeout card has it write its closing handoff and any leaf. The same texts serve a Claude or Copilot resident when the operator pastes them.
+For the Codex residents in CC GUI the operator keeps four prompts in the plugin's Prompt Library. An exclamation mark typed in the chat input lists them. Each is sent as it stands. The resident reports and stops, with two exceptions: at its own packet station it works that station, and the Closeout card has it write its closing handoff and any leaf. Wake check, Identity check and Packet status serve a Claude or Copilot resident as they stand when the operator pastes them. The saved Closeout card names the Integrator's desk as the one that runs the rotation, so it serves every resident except the Integrator and the Session Continuity Manager; for those two the operator gives the canonical card (section 4; its one source is `ops/src/reports/closeout.md.tpl`), whose rotation writer is the Contractor the operator assigns.
 
 | Prompt | When | What comes back |
 | --- | --- | --- |
