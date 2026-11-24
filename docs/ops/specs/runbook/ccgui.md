@@ -46,6 +46,8 @@ One page per program. Settings are not portable between programs, so this page b
 - **File Context.** The chip attaches the editor's open file to a prompt. It is checked before a resident prompt is sent.
 - **Titles.** A custom title is written only to `~/.codemoss/session-titles.json`; the Codex thread's own name is untouched. The title is what the history search finds.
 - **Archive.** `codex archive` refuses a thread whose session file is already gone, and leaves it unchanged.
+- **Prompts in the input.** An exclamation mark typed in the chat input opens a list of the global and project prompts, with an entry to create a new one.
+- **Import.** A prompt whose id is already in the library is a conflict, resolved by the operator's choice of Skip, Overwrite or Duplicate; a prompt with a new id is added. A name is 1 to 30 characters.
 
 ## 4. Working parts
 
@@ -53,7 +55,14 @@ The page's working parts sit in the room's runbook home, `ops/src/runbook/ccgui/
 - `baseline.json`: the values section 5 compares against, the adapter between this program and the room. When the plugin changes, this file and this page change, and the residents do not.
 - `prompts.json`: the operator's four global prompts, in the Prompt Library's own export format: Identity check, Wake check, Closeout card and Packet status. Each keeps the id of the prompt the operator saved, so an import that chooses Overwrite replaces that prompt in place. The room is written as `<room>`, and the operator is named by role.
 
-To put the prompts back, the Session Continuity Manager writes a copy of `prompts.json` with the room's path in place of `<room>` into the room's scratch, `var/tmp/`. The operator imports that copy as global prompts and chooses Overwrite, and the copy is then deleted. Nothing for this program is kept in `storage/`, which holds case payload and handoffs, not tool state (PoT 1.1.4). Neither file holds a secret value; a login is checked only for its size, time and mode.
+`prompts.json` is the master, and the Prompt Library is a copy of it. Every change to the prompts, and every return of them after a reinstall, runs in this order:
+1. **Export first.** The operator exports the library into the room's scratch, `var/tmp/ccgui/`, never into a folder of the room's checkout that Git does not ignore: any file there that Git lists stops the next ship. The export is the way back, and it shows any prompt changed in the plugin since the last import.
+2. **The master changes by packet.** The Session Continuity Manager edits `prompts.json` in a packet, folding in any change the export shows; several changes travel in one packet. A new prompt is added when a routine repeats, not before.
+3. **A copy with the room's path.** From the master on `main`, or from a tree the Auditor passed, the Session Continuity Manager writes a copy with the room's path in place of `<room>` into the same scratch folder.
+4. **Import with Overwrite.** The operator imports that copy as global prompts and chooses Overwrite.
+5. **Export again and compare.** The operator exports once more; the Session Continuity Manager compares that export with the copy, prompt by prompt, then deletes the scratch files.
+
+Nothing for this program is kept in `storage/`, which holds case payload and handoffs, not tool state (PoT 1.1.4). Neither file holds a secret value; a login is checked only for its size, time and mode.
 
 ## 5. After an update, or when something looks changed
 

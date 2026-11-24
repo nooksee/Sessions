@@ -283,7 +283,7 @@ handoff payload stays ignored. Before a storage commit, verify the exact staged
 path set rather than relying on ignore rules alone. Use `var/tmp/` for
 disposable scratch.
 
-Every spec carries a `Status:` line before its first section, so that `help` can show it. `ops/bin/help curriculum` remains a placeholder: closeout source exists, but the exact wake/closeout curriculum and rotate script are not complete.
+Every spec carries a `Status:` line before its first section, so that `help` can show it. `ops/bin/help curriculum` prints the wake, closeout and rotation sequences and the operator's prompts, each with its canonical source; no closeout hook is installed for any provider.
 
 ---
 
@@ -359,7 +359,7 @@ specification records the implementation boundary; PoT 6.1.2 governs wiring.
 4. Write any idea learned that stays true as a leaf (`mind.py add`), and supersede or retire your own leaves that no longer hold. No approval is asked.
 5. Tell the operator the resident is ready for rotation. Shannon's desk runs it; for Shannon himself, Claudine runs it.
 
-**Codex and Copilot residents.** Codex CLI 0.166 documents the same hook (Joe Codex, `joe.md`); the PyCharm path is untested, so it is tried on one Codex resident before anyone relies on it. Until then, and for Copilot, the operator pastes the card.
+**Codex and Copilot residents.** Codex CLI 0.166 documents the same hook (Joe Codex, `joe.md`); the PyCharm path is untested, so it is tried on one Codex resident before anyone relies on it. Until then, and for Copilot, the operator pastes the card. For a Codex resident in CC GUI the card is the operator's Closeout card prompt (section 9).
 
 The implementation and `tools/test/test_closeout.py` already exist. A native
 delivery check and any hook, notification or timer installation follow the
@@ -523,6 +523,19 @@ Notes:
 - **Container** is opened from the room's own root so the provider files it under that room. The writer labels it a spare at once.
 - **Go** counts only when it is given for this replacement, after custody. A go given at the start does not count.
 - **Hello** is two things: the load test (a correct first reply) and the operator's acceptance. A correct status alone is not acceptance.
+
+### The operator's prompts
+
+For the Codex residents in CC GUI the operator keeps four prompts in the plugin's Prompt Library. An exclamation mark typed in the chat input lists them. Each is sent as it stands. The resident reports and stops, with two exceptions: at its own packet station it works that station, and the Closeout card has it write its closing handoff and any leaf. The same texts serve a Claude or Copilot resident when the operator pastes them.
+
+| Prompt | When | What comes back |
+| --- | --- | --- |
+| Wake check | the first turn after a wake, a move or a compaction | the caller identity, identity registry and context pressure lines, every check line that does not pass, the result, the last entry of its own handoff, and the model it runs |
+| Identity check | when a resident's identity is in doubt, and as the last step of the re-check after a plugin update | the two identity lines and the result |
+| Packet status | when a packet waits on a resident's station | the resident works its station, or reports whose station it is |
+| Closeout card | when the gauge reaches the reserve (section 4) | the closeout begun, the closing handoff, any leaf written, and ready for rotation |
+
+The two identity lines settle who a resident is; the health lines are reported, and a result that fails on them alone does not unseat a resident (`CLAUDE.md`, "ON WAKE"). The prompts' text, their master and how they change are in RUNBOOK-05 (`docs/ops/specs/runbook/ccgui.md`, section 4). `help curriculum` lists them with the wake, closeout and rotation sequences.
 
 ---
 

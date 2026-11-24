@@ -1,6 +1,6 @@
 # Technical Specification: help
 
-Binary: `Sessions/ops/bin/help` (Bash, no library). Self-test: `ops/bin/help --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/help` and its spec (`Projects/STELA`). Status: built 2026-10-30, self-test 14 of 14 passing; read-only, wired to no hook and no timer. The Auditor reviews it before it is relied on. Map: `docs/ops/README.md`.
+Binary: `Sessions/ops/bin/help` (Bash, no library). Self-test: `ops/bin/help --test`. Spec writer: a Claude subagent working for Claude Shannon, 2026-10-30, adapted from STELA's `ops/bin/help` and its spec (`Projects/STELA`). Status: built 2026-10-30, curriculum mode built 2026-11-24 (DP-SES-0021), self-test 16 of 16 passing; read-only, wired to no hook and no timer. The Auditor reviews it before it is relied on. Map: `docs/ops/README.md`.
 
 ## First Principles Rationale
 
@@ -37,14 +37,15 @@ STELA's help solved the same problem for STELA: deterministic wayfinding, specs 
    - `docs/MANUAL.md`;
    - the rest of `docs/`.
    Files are searched in sorted order. Zero matches prints an explicit no-reference line and exits 0. The bare form is kept from STELA; `term` exists so that a mode word such as `specs` can itself be searched for.
-8. **`curriculum`.** Not built. It prints a placeholder for the wake/closeout commands and accepted provider routes; closeout source exists but is not installed, and `rotate.py` is not written. It then points to the hand procedures (`CLAUDE.md` "ON WAKE", `HANDOFF.md`, `closeout.md`, `rotate.md`).
-9. **`--test`.** Fifteen cases.
+8. **`curriculum`.** Prints, from text held in the binary, the wake sequence as `CLAUDE.md` gives it under "ON WAKE"; the closeout card's source (`docs/MANUAL.md` section 4), with the fact that no closeout hook is installed for any provider; the rotation's sources (`docs/MANUAL.md` sections 6 and 9, `rotate.md`); and the operator's four prompts from RUNBOOK-05, each with when it is used. It reads no file. When a source changes, this text changes with it in the same packet; the self-test holds the prompt names to `prompts.json`.
+9. **`--test`.** Sixteen cases.
    - Three read-only passes over the live room: ten read-in entries; one row each for gauge, closeout, mind and rotate; a non-empty historical doctrine index.
    - Nine on a fixture room built under explicit `TMPDIR` or project-local `var/tmp/`: a missing read-in file fails; the placeholder manual is flagged; `Status:` is taken from the header only; a spec without one and a script without a spec are each reported; search is case-insensitive and keeps tier order; zero matches is reported; an empty term fails; doctrine without sections fails.
    - One through the binary itself, on the argument contract.
    - The menu.
    - The board's size: the live `NOW.md` holds at most 40 lines of at most 200 characters, a fixture of 41 lines, one with a 201-character line, and an absent board each fail, and fixtures of exactly 40 lines and of a 200-character line each pass.
-   The fixture is removed when the test exits. Output is `OK: help self-test passed (15/15).`
+   - The curriculum, read-only over the live room: it names every prompt in `ops/src/runbook/ccgui/prompts.json`, the master holds at least one, and it holds no placeholder.
+   The fixture is removed when the test exits. Output is `OK: help self-test passed (16/16).`
 10. **Colour.** Used only when standard output is a terminal, so captured output is plain text.
 
 Dropped from STELA, each because its subject does not exist here:
@@ -52,8 +53,6 @@ Dropped from STELA, each because its subject does not exist here:
 - the curriculum of STELA commands (`open`, `dump`, `certify`, `bundle`, `prune`); `open` came back on 2026-11-12 as this room's own binary (`docs/ops/specs/binaries/open.md`), and the menu lists it;
 - the STELA command index;
 - the telemetry leaves STELA's `common.sh` writes to `logs/` at the Git top level, which here would land in the Control root.
-
-[PLACEHOLDER: a menu row and a `curriculum` sequence for each tool as it is built (closeout, rotate), owner Claude Shannon.]
 
 ## Anecdotal Anchor
 
