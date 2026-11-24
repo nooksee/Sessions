@@ -1,0 +1,30 @@
+{
+  "program": "CC GUI",
+  "plugin_id": "com.github.idea-claude-code-gui",
+  "measured_version": "0.6.6-fix1",
+  "measured_on": "2026-11-24",
+  "page": "docs/ops/specs/runbook/ccgui.md",
+  "registry": "RUNBOOK-05",
+  "note": "The values the re-check of the page compares against. Paths are relative to the user's home. No value here is a secret; a key that names a login is checked for presence or absence only, and the login file by its size, time and mode.",
+  "file_checks": [
+    {"id": "title-generation", "file": "~/.codemoss/config.json", "key": "aiTitleGenerationEnabled", "expect": false},
+    {"id": "codex-provider", "file": "~/.codemoss/config.json", "key": "codex.current", "expect": "__codex_cli_login__"},
+    {"id": "no-stored-provider", "file": "~/.codemoss/config.json", "key": "codex.providers", "expect": "absent or empty"},
+    {"id": "codex-sandbox", "file": "~/.codex/config.toml", "key": "sandbox_mode", "expect": "danger-full-access"},
+    {"id": "codex-approval", "file": "~/.codex/config.toml", "key": "approval_policy", "expect": "never"},
+    {"id": "claude-hooks", "file": "~/.claude/settings.json", "key": "hooks", "expect": ["Stop", "SessionEnd"], "why": "Token Tracker's, kept by the operator"},
+    {"id": "tracker-telemetry", "file": "~/.tokentracker/tracker/config.json", "key": "telemetry", "expect": false},
+    {"id": "login-unchanged", "file": "~/.codex/auth.json", "key": null, "expect": {"bytes": 4132, "mtime": "2026-11-23T21:54:03-05:00", "mode": "0600"}, "why": "measured by stat on 2026-11-24, never read; a difference is expected only when the operator logged in again, and the new values then replace these"}
+  ],
+  "command_checks": [
+    {"id": "codex-cli", "command": "~/.local/bin/codex --version", "expect": "at least the newest version that wrote a resident thread"}
+  ],
+  "panel_checks": [
+    {"panel": "Basic, Behavior", "setting": "AI session title generation", "expect": "Disabled"},
+    {"panel": "Basic, Behavior", "setting": "Match sessions by Git remote repository", "expect": "Disabled"},
+    {"panel": "Basic, Behavior", "setting": "Send Opened File Path", "expect": "Disabled"},
+    {"panel": "Provider Management, Claude Code", "setting": "local settings and CLI login", "expect": "not authorized"},
+    {"panel": "Prompt Library", "setting": "Global Prompts", "expect": "the four prompts of prompts.json are present, with the room's path in place of <room>"}
+  ],
+  "final_check": "one resident's identity check through the new build: caller identity and identity registry both pass"
+}

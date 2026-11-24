@@ -93,6 +93,7 @@ Runbook:
 * [ops/specs/runbook/port.md](ops/specs/runbook/port.md): the port of the room's legacy lanes to the STELA base, every lane, with the path map and what Control must still repoint.
 * [ops/specs/runbook/shipping.md](ops/specs/runbook/shipping.md): the field guide to shipping: how the team works a dispatch packet, function by function, with the working agreements and what each refusal means.
 * [ops/specs/runbook/repository.md](ops/specs/runbook/repository.md): the repository's boundary, Git lifecycle, recovery and hosted checks.
+* [ops/specs/runbook/ccgui.md](ops/specs/runbook/ccgui.md): the CC GUI plugin's settings that continuity relies on, what the plugin was measured to do, and the re-check after an update.
 
 Tests:
 * [ops/specs/tools/test/gauge.md](ops/specs/tools/test/gauge.md): what `tools/test/test_gauge.py` proves, test by test (21).
@@ -115,6 +116,8 @@ Tests:
 ## 5. Templates (not documents; listed so they are found)
 * `../ops/src/docs/spec.md.tpl`: the spec template used by `ops/bin/template`.
 * `../ops/src/runbook/agents/agent-input.yaml`: resident packet form fields and delivery boundary.
+* `../ops/src/runbook/ccgui/prompts.json`: the four global prompts of CC GUI's Prompt Library, in its own export format, with the room written as `<room>` (RUNBOOK-05).
+* `../ops/src/runbook/ccgui/baseline.json`: the values the CC GUI re-check compares against (RUNBOOK-05).
 * `../ops/src/reports/source-change.md.tpl`: bounded source/configuration change receipt, distinct from rotation and custody receipts; for a change to tracked files the packet leaf is the record.
 
 ## 6. Landed packets

@@ -497,7 +497,8 @@ The operator's policy, 2026-10-30: only the live, registered body carries the pl
 
 **Where a label lives.**
 - Claude: a `custom-title` and `agent-name` record appended to the session file.
-- Codex in PyCharm: the chat title in the PyCharm workspace state, edited only while PyCharm is closed.
+- Codex in CC GUI: the custom title in `~/.codemoss/session-titles.json`, set from CC GUI's own rename. The Codex thread's own name is untouched, and the title is what CC GUI's history search finds. The settings around it are in `docs/ops/specs/runbook/ccgui.md` (RUNBOOK-05).
+- Codex in PyCharm AI Chat, until its removal on 2026-11-24: the chat title in the PyCharm workspace state, edited only while PyCharm was closed. Those records are kept in custody.
 - Phone: the thread title record in the Codex state database.
 
 Back up before every label edit. At cutover the plain name moves to the new body and the donor label to the old one. Current map: `archives/receipts/resident-label-map-20261030.md`.

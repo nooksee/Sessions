@@ -1,0 +1,36 @@
+{
+ "format": "claude-code-prompts-export-v1",
+ "exportTime": "2026-11-24 14:01:22",
+ "promptCount": 4,
+ "provider": "codex",
+ "prompts": [
+  {
+   "id": "6f25ee05-0245-48ce-b5ac-7c241fbcce40",
+   "name": "Identity check",
+   "content": "A continuity check from Shannon, carried by the operator. Write nothing. Run python3 -I -B <room>/ops/lib/scripts/myself.py and report exactly its \"caller identity\" line, its \"identity registry\" line and its final \"result\" line. Report only, then stop.",
+   "provider": "codex",
+   "createdAt": 1795545416324
+  },
+  {
+   "id": "003a3ec9-16e9-4866-8c43-fa05e2f743da",
+   "name": "Wake check",
+   "content": "A wake check from Shannon, carried by the operator. Write nothing. Run python3 -I -B <room>/ops/lib/scripts/myself.py and report exactly its \"caller identity\", \"identity registry\" and \"context pressure\" lines, every other check line that does not read PASS, and its final \"result\" line. Then report the heading and time of the last entry in your own current handoff, or that it is absent and the path you looked at, and the model and reasoning effort your runtime gives you. Report only, then stop.",
+   "provider": "codex",
+   "createdAt": 1795545678145
+  },
+  {
+   "id": "46168c87-7a38-476c-bb8e-a42657abadac",
+   "name": "Closeout card",
+   "content": "The closeout card, carried by the operator. 1. Tell the operator plainly that your closeout has begun, with your measured fullness: the \"context pressure\" line of python3 -I -B <room>/ops/lib/scripts/myself.py. 2. Finish the current step if it is short; otherwise stop at a clean point. Start nothing new and material. 3. Write your closing handoff: work in flight, open promises, owners, first steps for your successor. 4. Write any idea you learned that stays true as a leaf of the mind (mind.py add), and supersede or retire your own leaves that no longer hold. No approval is asked. 5. Tell the operator you are ready for rotation. Shannon's desk runs it.",
+   "provider": "codex",
+   "createdAt": 1795545678146
+  },
+  {
+   "id": "111aab14-3194-41a5-85a4-8a2a89eb5f76",
+   "name": "Packet status",
+   "content": "From Shannon, carried by the operator: run python3 -I -B <room>/ops/lib/scripts/packet.py --room <room> status. If its station names you, work that station as the field guide <room>/docs/ops/specs/runbook/shipping.md says. If it names someone else, report the station line and stop.",
+   "provider": "codex",
+   "createdAt": 1795545678147
+  }
+ ]
+}
