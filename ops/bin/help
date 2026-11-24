@@ -296,20 +296,39 @@ search_docs() {
 }
 
 # ---------------------------------------------------------------------------
-# curriculum: not built
+# curriculum: the wake, closeout and rotation sequences, and the operator's prompts
 # ---------------------------------------------------------------------------
 
 show_curriculum() {
-  say "Curriculum mode is not built."
+  say "Curriculum: the wake, closeout and rotation sequences, and the operator's prompts."
   cat <<'EOF_CURRICULUM'
-[PLACEHOLDER: the wake and closeout sequences as exact commands and their
-accepted provider routes, owner Claude Shannon; closeout source exists but is
-not installed, and rotate.py is not written.]
 
-Until then, by hand:
-- Wake: Sessions/CLAUDE.md, section "ON WAKE", then HANDOFF.md.
-- Closeout: docs/ops/specs/scripts/closeout.md (source exists; installation is gated).
-- Rotation: docs/ops/specs/scripts/rotate.md (script not written).
+Wake, in this order (CLAUDE.md "ON WAKE")
+  1. python3 -I -B ops/lib/scripts/myself.py
+       both identity lines pass, or you are unverified and wait for the operator
+  2. your orientation capsule, if your body carries one: narrative, not authority
+  3. python3 -I -B ops/lib/scripts/mind.py show, and mind.py read <id> for a leaf that bears on the work
+  4. your own handoff
+  5. python3 -I -B ops/bin/open --intent "<what this shift is for>", then --next until complete
+  6. python3 -I -B ops/lib/scripts/packet.py status
+
+Closeout (docs/MANUAL.md section 4)
+  The card, five steps, when the gauge reaches the reserve. No closeout hook is
+  installed for any provider, so the operator gives the card: the Closeout card
+  prompt in CC GUI, or the card pasted.
+
+Rotation (docs/MANUAL.md sections 6 and 9; docs/ops/specs/scripts/rotate.md)
+  The writer runs it. The operator decides, opens the container, says go and
+  says hello. rotate.py runs the synthetic dry-run phases; it starts no provider
+  and changes no binding.
+
+The operator's prompts (RUNBOOK-05, docs/ops/specs/runbook/ccgui.md)
+  Master: ops/src/runbook/ccgui/prompts.json. An exclamation mark in CC GUI's
+  chat input lists them.
+  Wake check       the first turn after a wake, a move or a compaction
+  Identity check   when an identity is in doubt, and after a plugin update
+  Packet status    when a packet waits on a resident's station
+  Closeout card    when the gauge reaches the reserve
 EOF_CURRICULUM
 }
 
@@ -357,7 +376,7 @@ show_menu() {
   printf '  %sspecs%s         every spec with its own Status: line; tool rows show spec, script and tests\n' "$cyan" "$reset"
   printf '  %sdoctrine%s      section headings of DOCTRINE.md with line numbers\n' "$cyan" "$reset"
   printf '  %sterm <text>%s   fixed-string search, any case: specs, then docs/MANUAL.md, then docs/\n' "$cyan" "$reset"
-  printf '  %scurriculum%s    [PLACEHOLDER: exact wake/closeout curriculum and rotate tool, owner Claude Shannon]\n' "$cyan" "$reset"
+  printf '  %scurriculum%s    the wake, closeout and rotation sequences, and the operator'"'"'s prompts\n' "$cyan" "$reset"
   printf '  %s--test%s        self-test: fixtures plus a read-only pass over this room\n\n' "$cyan" "$reset"
 
   printf '%sWhere things live%s\n' "$bold" "$reset"
@@ -423,7 +442,7 @@ write_fixture_room() {
 run_self_test() {
   local out="" fx="" bare=""
   local passed=0
-  local total=15
+  local total=16
   local w
 
   bold=""; dim=""; green=""; cyan=""; reset=""
@@ -544,6 +563,18 @@ run_self_test() {
   expect "a 40-line board fits" board_fits "${SELFTEST_FIXTURE}/board-forty.md"
   printf '%200s\n' x > "${SELFTEST_FIXTURE}/board-twohundred.md"
   expect "a 200-character line fits" board_fits "${SELFTEST_FIXTURE}/board-twohundred.md"
+  passed=$((passed + 1))
+
+  # 16. Live room: the curriculum names every prompt of the master prompts.json and holds no placeholder.
+  out="$(cd "$ROOM_ROOT" && show_curriculum)"
+  local prompts="${ROOM_ROOT}/ops/src/runbook/ccgui/prompts.json" name names=0
+  expect "the prompts master is present" test -f "$prompts"
+  while IFS= read -r name; do
+    expect "curriculum names the prompt ${name}" contains "$out" "$name"
+    names=$((names + 1))
+  done < <(grep -oE '"name": "[^"]+"' "$prompts" | sed -e 's/^"name": "//' -e 's/"$//')
+  expect "prompts.json names at least one prompt" test "$names" -gt 0
+  expect "curriculum holds no placeholder" test "$(count_lines_matching "$out" '\[PLACEHOLDER')" = "0"
   passed=$((passed + 1))
 
   if [[ "$passed" != "$total" ]]; then
