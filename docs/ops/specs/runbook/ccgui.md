@@ -60,7 +60,9 @@ The page's working parts sit in the room's runbook home, `ops/src/runbook/ccgui/
 2. **The master changes by packet.** The Session Continuity Manager edits `prompts.json` in a packet, folding in any change the export shows; several changes travel in one packet. A new prompt is added when a routine repeats, not before.
 3. **A copy with the room's path.** From the master on `main`, or from a tree the Auditor passed, the Session Continuity Manager writes a copy with the room's path in place of `<room>` into the same scratch folder.
 4. **Import with Overwrite.** The operator imports that copy as global prompts and chooses Overwrite.
-5. **Export again and compare.** The operator exports once more; the Session Continuity Manager compares that export with the copy, prompt by prompt, then deletes the scratch files.
+5. **Export again and compare.** The operator exports once more; the Session Continuity Manager compares that export with the copy, prompt by prompt.
+   - **On a difference, stop.** Every file stays where it is: the first export is the way back, and all three are the evidence. The difference is reported to the operator.
+   - **On a match,** the hash of each file goes into the Session Continuity Manager's handoff first. The copy and the second export are rebuildable from the master and are then deleted. The first export is deleted only when every prompt in it equals a version of the master in Git or was folded in at step 2; otherwise it goes to the day's custody batch before it is deleted (CONSTRAINTS C01).
 
 Nothing for this program is kept in `storage/`, which holds case payload and handoffs, not tool state (PoT 1.1.4). Neither file holds a secret value; a login is checked only for its size, time and mode.
 
