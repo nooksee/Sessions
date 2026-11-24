@@ -29,7 +29,7 @@ One page per program. Settings are not portable between programs, so this page b
 | Permissions | Codex sandbox | danger-full-access | Equal to the shared Codex configuration the residents already run under. | the operator |
 | none: the shared Codex configuration, `~/.codex/config.toml` | `approval_policy` | `never` | The residents already run under it; a program that changes it changes the turns of every Codex resident. | the operator, then the maintenance resident |
 | none: the shared Codex configuration, `~/.codex/config.toml` | `notify` | Token Tracker's script, `~/.tokentracker/bin/notify.cjs`, run by `node` through `/usr/bin/env` | It runs after each turn of every Codex resident. It is Token Tracker's, kept by the operator with the usage page; any other value is reported. | the operator, then the maintenance resident |
-| Prompt Library | prompts | global prompts only: the four of `prompts.json` (section 4) | Global prompts are kept in `~/.codemoss/prompt.json`. Project prompts are written into the project folder (`.codemoss/prompt.json`), which this room's Git ignores and the parent Control repository does not. | the operator |
+| Prompt Library | prompts | global prompts only: those of `prompts.json` (section 4) | Global prompts are kept in `~/.codemoss/prompt.json`. Project prompts are written into the project folder (`.codemoss/prompt.json`), which this room's Git ignores and the parent Control repository does not. | the operator |
 | Prompts (custom prompts) | attached to a resident | none | Such a prompt is sent as system instructions at the start of a conversation, above the resident's own. | the operator |
 | Prompt Enhancer | use on a resident prompt | never | It rewrites what was typed before sending. | the operator |
 | Skills; MCP Servers (Codex) | toggles | as the shared Codex configuration holds them | A toggle here edits the configuration every Codex resident runs with. | the maintenance resident, on the operator's word |
@@ -53,7 +53,9 @@ One page per program. Settings are not portable between programs, so this page b
 
 The page's working parts sit in the room's runbook home, `ops/src/runbook/ccgui/`, beside the other runbook assets. The folder carries the page's one-word name, and each part has a one-word name of its own:
 - `baseline.json`: the values section 5 compares against, the adapter between this program and the room. When the plugin changes, this file and this page change, and the residents do not.
-- `prompts.json`: the operator's four global prompts, in the Prompt Library's own export format: Identity check, Wake check, Closeout card and Packet status. Each keeps the id of the prompt the operator saved, so an import that chooses Overwrite replaces that prompt in place. The room is written as `<room>`, and the operator is named by role.
+- `prompts.json`: the operator's global prompts, in the Prompt Library's own export format: Identity check, Wake check, Closeout card, Packet status and Compaction prep. Each keeps the id of the prompt the operator saved, so an import that chooses Overwrite replaces that prompt in place. The room is written as `<room>`.
+
+**How a prompt is worded.** No prompt names a person. The operator is named by role, and a prompt that names its sender names it by seat and registry key: a name does not address one seat, and a key does. The Closeout card names the desk that runs a rotation by seat and key for the same reason, and because it serves residents of rooms that have an Integrator of their own.
 
 `prompts.json` is the master, and the Prompt Library is a copy of it. Every change to the prompts, and every return of them after a reinstall, runs in this order:
 1. **Export first.** The operator exports the library into the room's scratch, `var/tmp/ccgui/`, never into a folder of the room's checkout that Git does not ignore: any file there that Git lists stops the next ship. The export is the way back, and it shows any prompt changed in the plugin since the last import.
@@ -76,7 +78,7 @@ Before any resident turn, in this order. `baseline.json` holds the expected valu
 4. **The shared Claude settings.** Their hooks are as section 2 holds them.
 5. **Token Tracker.** Its telemetry is still off.
 6. **The Behavior panel.** Its rows in section 2 hold.
-7. **The Prompt Library.** The four global prompts of `prompts.json` are present, each with its text as written there and the room's path in place of `<room>`; if not, they are put back as section 4 says.
+7. **The Prompt Library.** The global prompts of `prompts.json` are present, each with its text as written there and the room's path in place of `<room>`; if not, they are put back as section 4 says.
 8. **One resident's identity check, through the new build.** Both identity lines, caller and registry, pass.
 
 A difference is reported to the operator and the maintenance resident with what was measured. It is not corrected by the continuity desk, which measures and records.

@@ -329,6 +329,7 @@ The operator's prompts (RUNBOOK-05, docs/ops/specs/runbook/ccgui.md)
   Identity check   when an identity is in doubt, and after a plugin update
   Packet status    when a packet waits on a resident's station
   Closeout card    when the gauge reaches the reserve
+  Compaction prep  before a compaction the operator has chosen
 EOF_CURRICULUM
 }
 

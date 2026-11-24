@@ -526,7 +526,7 @@ Notes:
 
 ### The operator's prompts
 
-For the Codex residents in CC GUI the operator keeps four prompts in the plugin's Prompt Library. An exclamation mark typed in the chat input lists them. Each is sent as it stands. The resident reports and stops, with two exceptions: at its own packet station it works that station, and the Closeout card has it write its closing handoff and any leaf. Wake check, Identity check and Packet status serve a Claude or Copilot resident as they stand when the operator pastes them. The saved Closeout card names the Integrator's desk as the one that runs the rotation, so it serves every resident except the Integrator and the Session Continuity Manager; for those two the operator gives the canonical card (section 4; its one source is `ops/src/reports/closeout.md.tpl`), whose rotation writer is the Contractor the operator assigns.
+For the Codex residents in CC GUI the operator keeps a set of prompts in the plugin's Prompt Library. An exclamation mark typed in the chat input lists them. Each is sent as it stands. The resident reports and stops, with three exceptions: at its own packet station it works that station, the Closeout card has it write its closing handoff and any leaf, and Compaction prep has it update its own handoff. Wake check, Identity check and Packet status serve a Claude or Copilot resident as they stand when the operator pastes them. The saved Closeout card names the desk of the Session Continuity Manager (`session-doctor`) as the one that runs the rotation, so it serves every resident except the Integrator and the Session Continuity Manager; for those two the operator gives the canonical card (section 4; its one source is `ops/src/reports/closeout.md.tpl`), whose rotation writer is the Contractor the operator assigns.
 
 | Prompt | When | What comes back |
 | --- | --- | --- |
@@ -534,6 +534,9 @@ For the Codex residents in CC GUI the operator keeps four prompts in the plugin'
 | Identity check | when a resident's identity is in doubt, and as the last step of the re-check after a plugin update | the two identity lines and the result |
 | Packet status | when a packet waits on a resident's station | the resident works its station, or reports whose station it is |
 | Closeout card | when the gauge reaches the reserve (section 4) | the closeout begun, the closing handoff, any leaf written, and ready for rotation |
+| Compaction prep | before a compaction the operator has chosen, when a resident nears its window | its own handoff updated, the context pressure line, and ready for compaction |
+
+No prompt names a person: each names the operator by role, and one that names its sender names it by seat and registry key.
 
 The two identity lines settle who a resident is; the health lines are reported, and a result that fails on them alone does not unseat a resident (`CLAUDE.md`, "ON WAKE"). The prompts' text, their master and how they change are in RUNBOOK-05 (`docs/ops/specs/runbook/ccgui.md`, section 4). `help curriculum` lists them with the wake, closeout and rotation sequences.
 
