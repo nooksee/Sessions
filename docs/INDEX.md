@@ -116,7 +116,7 @@ Tests:
 ## 5. Templates (not documents; listed so they are found)
 * `../ops/src/docs/spec.md.tpl`: the spec template used by `ops/bin/template`.
 * `../ops/src/runbook/agents/agent-input.yaml`: resident packet form fields and delivery boundary.
-* `../ops/src/runbook/ccgui/prompts.json`: the four global prompts of CC GUI's Prompt Library, in its own export format, with the room written as `<room>` (RUNBOOK-05).
+* `../ops/src/runbook/ccgui/prompts.json`: the operator's global prompts for CC GUI's Prompt Library, in its own export format, with the room written as `<room>` (RUNBOOK-05).
 * `../ops/src/runbook/ccgui/baseline.json`: the values the CC GUI re-check compares against (RUNBOOK-05).
 * `../ops/src/reports/source-change.md.tpl`: bounded source/configuration change receipt, distinct from rotation and custody receipts; for a change to tracked files the packet leaf is the record.
 

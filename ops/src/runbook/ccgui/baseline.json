@@ -25,7 +25,7 @@
     {"panel": "Basic, Behavior", "setting": "Match sessions by Git remote repository", "expect": "Disabled"},
     {"panel": "Basic, Behavior", "setting": "Send Opened File Path", "expect": "Disabled"},
     {"panel": "Provider Management, Claude Code", "setting": "local settings and CLI login", "expect": "not authorized"},
-    {"panel": "Prompt Library", "setting": "Global Prompts", "expect": "the four prompts of prompts.json are present, with the room's path in place of <room>"}
+    {"panel": "Prompt Library", "setting": "Global Prompts", "expect": "the prompts of prompts.json are present, with the room's path in place of <room>"}
   ],
   "final_check": "one resident's identity check through the new build: caller identity and identity registry both pass"
 }
