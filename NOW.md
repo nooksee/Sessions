@@ -1,6 +1,6 @@
 # Session Continuity Command Center
 
-Updated: 2026-11-16, DP-SES-0018: the ratified amendment and its dependent readers; RoR records no standing rules.
+Updated: 2026-11-27, DP-SES-0023: the custody line, the parent's move and the rounds line, each as measured on 2026-11-27.
 Status: active current-state board. At most 40 lines of at most 200 characters, checked by `ops/bin/help --test`.
 Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/`. This board grants no live act.
 
@@ -9,13 +9,12 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 - **Repository:** `nooksee/Sessions`, public; `main` protected (strict `sessions-gates`); a change lands only as one dispatch packet (PoT 6.1.4).
 - **Team:** a packet's leaf names by registry key who carries each function: Integrator, Contractor, Auditor, Orchestrator (PoT 6.1.4). Start with `ops/bin/open`, then `packet.py status`.
 - **Routes:** Claude residents use session messages; Codex and Copilot residents currently receive the operator's paste. This describes the present routes, not a rule.
-- **Custody:** three roots on three disks: user_vol; hard_vol1 (tier 2, the operator's ruling of 2026-11-08); hard_vol2, the drive that replaced the failing one (his ruling of 2026-11-11).
+- **Custody:** ruled as three roots on three disks (2026-11-08, 2026-11-11). Measured 2026-11-27: the user_vol root's folder is on hard_vol1, so two disks hold the three; a ruling is awaited.
 - **Host:** SQLite rolled back to the official 3.45.1-1ubuntu2.8 on 2026-11-07, its .9 pinned out, by the maintenance resident's receipt; the indexer quiet since; its audit is Control's.
 
 ## Tracks: the first-wins plan, point B
 
 - **Priority,** by the operator 2026-11-09: real rotations; W6 to a native wake and the operator's acceptance.
-
 - **W3** health desk: measured and corrected; one unregistered family and six Control drift paths open.
 - **W4** cadence: the finite retry passed on 2026-11-07, 4 of 4 dry-run cycles, withdrawn whole, audited.
 - **W4** next: the first real notification, its own named go.
@@ -28,7 +27,8 @@ Detail: `archives/board-history-20261107.md`, the manual and `archives/receipts/
 ## Open
 
 - Of two 6 TB drives, one is in as hard_vol2 and the failing drive is out of the host; the other replaces an old one as it arrives; 42 sets on one drive wait for George Friend, standing down.
-- Control's rounds timer exits 2 at every run (a work order with Control).
+- The parent was reorganised from 2026-11-26: seven room folders moved under `projects/`, one renamed. Registry rows keep a room's old path until its residents are rewired; that work began 2026-11-27.
+- Control's rounds timer (a work order with Control) is not installed: measured 2026-11-27, its log last written 2026-11-15; `rounds.sh` names a Control detector whose folder is gone.
 - RoR-31 ends RoR-9, RoR-13, RoR-20, RoR-24, RoR-25, RoR-27, RoR-29 and RoR-30. Historical entries remain unchanged; current authority is PoT.
 - The roles of PoT 4.1.3 and 4.1.4 are Integrator and Contractor (RoR-28): each resident retires or supersedes its own mind leaves and trims its own handoff where they carry an earlier name.
 - Parked until the first real rotation: a proposal to bound handoffs; what the residents' running deviation counts are made of.
