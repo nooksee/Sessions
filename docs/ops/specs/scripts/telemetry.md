@@ -12,7 +12,7 @@ Ported legacy tool. Its own docstring opens: "Report token health for Codex roll
 2. Command line: `python3 -I -B ops/lib/scripts/telemetry.py` <paths>. Options as the script declares them:
    - `--root`: Session root to scan when no paths given.
    - `--json`: Emit JSON instead of a table.
-   - `paths` (positional): Rollout JSONL files. Default: scan host + VM roots.
+   - `paths` (positional): Rollout JSONL files. Default: scan host Codex sessions only.
 3. Reads and writes: as the docstring states (867 characters; the first paragraph is quoted above and the rest remains in the script). The port added no read and no write.
 
 ## Anecdotal Anchor

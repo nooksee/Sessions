@@ -59,11 +59,11 @@ Three findings of the house check of 2026-11-27, each a tool that names a place 
 
 ## Results
 
-- Closed: 2026-11-27T22:12:46Z
+- Closed: 2026-11-28T17:18:27Z
 - Contractor: joe-codex
 - Paths changed: 28
 - Deviations: 0
-- Tree: tree 5a64b6031ff90af4aa1d83b62a47cb5822ae9631
+- Tree: tree 1db36ef2e374a88f5ee61f000e19f9289c83f24f
 - Gate: exit 0 in 0 s: tools/test/test_alerts.py
 - Gate: exit 0 in 0 s: tools/test/test_alerts_arity.py
 - Gate: exit 0 in 0 s: tools/test/test_archive.py
@@ -94,7 +94,7 @@ Three findings of the house check of 2026-11-27, each a tool that names a place 
 - Gate: exit 0 in 8 s: tools/test/test_mind.py
 - Gate: exit 0 in 0 s: tools/test/test_miner.py
 - Gate: exit 0 in 1 s: tools/test/test_myself.py
-- Gate: exit 0 in 1 s: tools/test/test_name_counts.py
+- Gate: exit 0 in 0 s: tools/test/test_name_counts.py
 - Gate: exit 0 in 3 s: tools/test/test_notice.py
 - Gate: exit 0 in 2 s: tools/test/test_open.py
 - Gate: exit 0 in 48 s: tools/test/test_packet.py
@@ -108,7 +108,7 @@ Three findings of the house check of 2026-11-27, each a tool that names a place 
 - Gate: exit 0 in 0 s: tools/test/test_retention.py
 - Gate: exit 0 in 0 s: tools/test/test_role_names.py
 - Gate: exit 0 in 1 s: tools/test/test_ror_join.py
-- Gate: exit 0 in 304 s: tools/test/test_rotate.py
+- Gate: exit 0 in 305 s: tools/test/test_rotate.py
 - Gate: exit 0 in 0 s: tools/test/test_rotation.py
 - Gate: exit 0 in 0 s: tools/test/test_rounds.py
 - Gate: exit 0 in 0 s: tools/test/test_sandbox.py
@@ -120,23 +120,22 @@ Three findings of the house check of 2026-11-27, each a tool that names a place 
 - Gate: exit 0 in 0 s: tools/test/test_watch.py
 - Gate: exit 0 in 0 s: tools/test/test_workers.py
 - Gate: exit 0 in 0 s: ops/bin/help --test
-- Gate: exit 0 in 2 s: ops/bin/template --test
+- Gate: exit 0 in 1 s: ops/bin/template --test
 
 ## Narrative
 
-The room rounds wrapper reports patient health without an external detector, and the four live-store defaults no longer name the retired VM share. Capsule generation is anchored on room canon; the gauge was changed by the packet Contractor under the operator direction, which also ended the former external drift binding. Rework corrects the capsule index description, removes the absent drift specification entry and aligns the external drift test row with the script registry. All three audit nits are addressed: durable rounds wording, removal of the redundant roots fallback and restoration of the capsule Tool pointer. No host file, service, timer or historical record was changed. Protocol deviations: none.
+The room rounds wrapper reports patient health without an external detector, and the four live-store defaults no longer name the retired VM share. Capsule generation is anchored on room canon; the gauge was changed by the packet Contractor under the operator direction, which also ended the former external drift binding. Audit rework corrects the index and registry entries and all three nits. PR review rework corrects telemetry guidance and states in the gauge specification and option help that explicit live roots replace the host default and drop the archived default unless archived roots are also supplied. No host file, service, timer or historical record was changed. Protocol deviations: none.
 
 ## Audit
 
 - Verdict: PASS
 - Auditor: claude-bernard
-- Audited: 2026-11-28T03:10:13Z
-- Tree: tree 5a64b6031ff90af4aa1d83b62a47cb5822ae9631
+- Audited: 2026-11-28T17:21:06Z
+- Tree: tree 1db36ef2e374a88f5ee61f000e19f9289c83f24f
 
 ## Audit note
 
-PASS. Auditor claude-bernard, by difference from my FAIL on the earlier tree. Read: the four files that changed, against my copy of that tree, and the gates on a copy of this one: the touched suites, test_filing, help --test and template --test pass.
-F1 answered: docs/INDEX.md line 58 describes the capsule from the room's own canon in the read-in order of help read, which I measured equal at the first audit; the drift entry is gone, and no line of the index names drift.
-F2 answered: TEST-22 names no folder and agrees with SCRIPT-24.
-The three nits are answered: TEST-13 keeps its Tool pointer; extra_codex_roots returns the module value, and no caller sets it to None; the rounds.sh header no longer names this packet.
-Still for the dependency sweep, outside this scope: the guidance that names the Control-Runtime folder, as listed at the first audit.
+PASS. Auditor claude-bernard, by difference from the tree I failed this morning. Read: the two files that changed, against my copy of that tree.
+F1 answered: gauge.md line 37 now says that --codex-root replaces the host live-root default and drops the archived default unless --codex-archived-root is also given, and that --codex-archived-root replaces the archived default. gauge.py lines 466 and 467 do exactly that and are unchanged; only the two help strings changed, and they say the same.
+Gates: the leaf records 57 of 57 at exit 0; on a copy of this tree test_gauge, test_name_counts, test_filing, test_fingerprint and help --test pass.
+Audit rounds of this packet, kept here because the leaf keeps only the last: FAIL, then PASS on the second tree, FAIL on the third, and this PASS on the fourth.
