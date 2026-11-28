@@ -10,7 +10,7 @@ Ported legacy tool. Its own docstring opens: "Watch Codex sessions and emit oper
 
 1. Behavior is the legacy script's, unchanged: `Scripts/watch_codex_session_size.py` (sha256 `f7c6d0e1614069303a7375fee7af0906e4da59a5bef94fe7e15d5d409697f30f`) was copied to `ops/lib/scripts/watch.py` on 2026-11-01 with 0 edit(s): none.
 2. Command line: `python3 -I -B ops/lib/scripts/watch.py`. Options as the script declares them:
-   - `--sessions-root`: Session root to scan; repeatable. Default: host + Workbench VM share, the share's root from the host fingerprint's working volume.
+   - `--sessions-root`: Session root to scan; repeatable. Default: host Codex sessions only.
    - `--evidence-dir`: (no help text in the script)
    - `--warn-bytes`: (no help text in the script)
    - `--critical-bytes`: (no help text in the script)
@@ -30,3 +30,7 @@ Ported legacy tool. Its own docstring opens: "Watch Codex sessions and emit oper
 - Refusal and read-only statements in the docstring: "Read-only."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/watch_codex_session_size.py` until Control repoints them; this room's own documents name `ops/lib/scripts/watch.py`.
 - [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]
+
+The former VM workbench share left the live host tree. Defaults no longer name
+that share. A future second live folder comes from host configuration, not
+code; this packet adds no configuration mechanism.

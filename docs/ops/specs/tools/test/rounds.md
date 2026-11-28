@@ -6,7 +6,7 @@ Status: three static/syntax checks; the wrapper is never executed.
 ## Purpose
 
 Ensure the shell entry point remains present and syntactically valid, and
-bind the preserved resident-center drift block to its registered text.
+pin local reporting and absence of any external drift dependency.
 
 ## Invocation
 
@@ -22,8 +22,8 @@ session-body reader. It writes no files.
 
 1. The wrapper exists.
 2. Bash accepts its syntax.
-3. The registered 6,489-byte drift suffix contains the detector and explicit
-   fault handling and matches the expected 16-hex digest prefix.
+3. The wrapper retains local collectors and reporting, contains no drift
+   detector or state, and exits on patient health alone.
 
 ## Not Covered
 

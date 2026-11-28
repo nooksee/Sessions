@@ -2,8 +2,8 @@
 """Smoke test for ops/lib/scripts/telemetry.py, ported from Scripts/check_codex_token_health.py on 2026-11-01.
 
 The legacy script came without a test suite. This suite proves only that the
-ported copy is present and compiles; it runs nothing, reads no body and writes
-nothing. Behavior cases: [PLACEHOLDER: behavior cases on synthetic inputs,
+ported copy is present and compiles; synthetic default and canon checks
+read no body. Further behavior cases: [PLACEHOLDER: behavior cases on synthetic inputs,
 owner: the writer the Integrator names for telemetry]. Run:
 
     python3 -I -B tools/test/test_telemetry.py
@@ -26,6 +26,18 @@ class SmokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             py_compile.compile(str(TOOL), cfile=str(Path(tmp) / "compiled.pyc"), doraise=True)
 
+
+
+class LiveDefaults(unittest.TestCase):
+    def test_only_supported_live_default(self):
+        import importlib.util
+        from unittest import mock
+        tool = Path(__file__).resolve().parents[2] / "ops/lib/scripts/telemetry.py"
+        spec = importlib.util.spec_from_file_location("local_default_telemetry", tool)
+        module = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules, {spec.name: module}), mock.patch.object(Path, "home", return_value=Path("/synthetic/home")):
+            spec.loader.exec_module(module)
+            self.assertEqual(module.default_roots(), [Path("/synthetic/home/.codex/sessions")])
 
 if __name__ == "__main__":
     unittest.main()

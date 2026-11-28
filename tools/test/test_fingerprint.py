@@ -271,11 +271,8 @@ class TheVolumeRoot(Base):
 
 
 class TheConsumers(Base):
-    """The 4 volume-rooted lines in this room's own code read the file where the path is used, through volume_root, under their own names."""
+    """The archive reader requires the fingerprint; host-only live defaults do not."""
     CASES = (
-        ("alerts", lambda m: m.extra_codex_roots(), [Path(WORKING) / "VMs/Shared/Workbench/sessions"]),
-        ("telemetry", lambda m: m.default_roots()[1:], [Path(WORKING) / "VMs/Shared/Workbench/sessions"]),
-        ("watch", lambda m: m.default_sessions_roots()[1:], [Path(WORKING) / "VMs/Shared/Workbench/sessions"]),
         ("retention", lambda m: [m._volume_root("archive")], [Path(ARCHIVE)]),
     )
 
@@ -292,6 +289,12 @@ class TheConsumers(Base):
                 with self.subTest(name), self.assertRaises(SystemExit) as caught:
                     call(consumer(name))
                 self.assertTrue(str(caught.exception.code).startswith(f"{name}.py refuses: the host fingerprint file"))
+
+    def test_live_defaults_need_no_fingerprint(self) -> None:
+        with mock.patch.object(shared_fingerprint(), "FILE", self.path):
+            self.assertEqual(consumer("alerts").extra_codex_roots(), [])
+            self.assertEqual(consumer("telemetry").default_roots(), [Path.home() / ".codex/sessions"])
+            self.assertEqual(consumer("watch").default_sessions_roots(), [Path.home() / ".codex/sessions"])
 
     def test_alerts_keeps_a_callers_roots(self) -> None:
         alerts = consumer("alerts")
