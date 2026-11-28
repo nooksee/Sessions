@@ -806,5 +806,17 @@ class DefaultLedger(Base):
                     proc.communicate()
 
 
+
+class LiveDefaults(unittest.TestCase):
+    def test_only_supported_live_default(self):
+        import importlib.util
+        from unittest import mock
+        tool = Path(__file__).resolve().parents[2] / "ops/lib/scripts/gauge.py"
+        spec = importlib.util.spec_from_file_location("local_default_gauge", tool)
+        module = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules, {spec.name: module}), mock.patch.object(Path, "home", return_value=Path("/synthetic/home")):
+            spec.loader.exec_module(module)
+            self.assertEqual(module.CODEX_LIVE, [Path("/synthetic/home/.codex/sessions")])
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

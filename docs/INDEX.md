@@ -37,7 +37,7 @@ Scripts (STELA's sections: rationale, mechanics, anchor, warnings):
 * [ops/specs/scripts/gauge.md](ops/specs/scripts/gauge.md): how full each resident is, from the provider's own token figures; states, window authority, the reviewed window table, the ledger.
 * [ops/specs/scripts/closeout.md](ops/specs/scripts/closeout.md): implemented closeout hook behavior, reserve, privacy limits and separate installation gates.
 * [ops/specs/scripts/mind.md](ops/specs/scripts/mind.md): the mind, pointer first: the index, concept-only leaves, the screen, the limits, the ledger and the commands.
-* [ops/specs/scripts/rounds.md](ops/specs/scripts/rounds.md): clinic report and separate Control source-drift wrapper behavior; no deployment authority.
+* [ops/specs/scripts/rounds.md](ops/specs/scripts/rounds.md): room-owned clinic report and health-only status; no deployment authority.
 * [ops/specs/scripts/rotate.md](ops/specs/scripts/rotate.md): the rotation, phase by phase with stop points; tiers, capsule, custody, install, acceptance, close.
 * [ops/specs/scripts/constitution.md](ops/specs/scripts/constitution.md): the PoT authorization gate; a changed law needs its coupled ledger entry, snapshot and authority leaf.
 * [ops/specs/scripts/redact.md](ops/specs/scripts/redact.md): the public-copy renderer; digests the operator's words, placeholders host paths and session identifiers, fails closed on the unclassified.
@@ -55,7 +55,7 @@ Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each sp
 * [ops/specs/scripts/dossier.md](ops/specs/scripts/dossier.md): ported from `Scripts/build_codex_session_handoff.py`; Build a deterministic Codex session handoff packet.
 * [ops/specs/scripts/reid.md](ops/specs/scripts/reid.md): ported from `Scripts/build_codex_session_reid_candidate.py`; Build a derivative Codex JSONL with structural session IDs rewritten.
 * [ops/specs/scripts/sandbox.md](ops/specs/scripts/sandbox.md): ported from `Scripts/build_codex_session_sandbox.py`; Prepare an isolated Codex session JSONL sandbox without launching Codex.
-* [ops/specs/scripts/capsule.md](ops/specs/scripts/capsule.md): ported from `Scripts/build_codex_succession_capsule.py`; Build a six-question Codex succession capsule from repo canon and evidence.
+* [ops/specs/scripts/capsule.md](ops/specs/scripts/capsule.md): build a six-question succession capsule from the room's own canon, in the read-in order printed by `ops/bin/help read`, and inventory evidence.
 * [ops/specs/scripts/chamber.md](ops/specs/scripts/chamber.md): ported from `Scripts/build_codex_vm_loadtest_env.py`; Build a local VM load-test chamber for a prepared Codex session sandbox.
 * [ops/specs/scripts/prime.md](ops/specs/scripts/prime.md): ported from `Scripts/build_prime_session_candidate_packet.py`; Build a prime session candidate packet without copying raw sessions.
 * [ops/specs/scripts/tablet.md](ops/specs/scripts/tablet.md): ported from `Scripts/build_tablet_codex_successor.py`; Build a current-version, CLI-native Codex successor from a copied session body.
@@ -64,7 +64,6 @@ Ported from `Scripts/` on 2026-11-01 (`docs/ops/specs/runbook/port.md`), each sp
 * [ops/specs/scripts/telemetry.md](ops/specs/scripts/telemetry.md): ported from `Scripts/check_codex_token_health.py`; Report token health for Codex rollout JSONL files.
 * [ops/specs/scripts/identity.md](ops/specs/scripts/identity.md): ported from `Scripts/check_identity_lock.py`; Verify that every resident's identity agrees in all four places it is written.
 * [ops/specs/scripts/myself.md](ops/specs/scripts/myself.md): ported from `Scripts/check_myself.py`; Measure one resident's native identity and session health, without writes.
-* [ops/specs/scripts/drift.md](ops/specs/scripts/drift.md): ported from `Scripts/check_resident_center_drift.py`; Detect drift between the frozen Sessions runtime donor and the product source. (no spec in this room; Control's tool, SCRIPT-24.)
 * [ops/specs/scripts/retention.md](ops/specs/scripts/retention.md): ported from `Scripts/check_session_retention.py`; Report, and on explicit request enforce, the official session-folder policy.
 * [ops/specs/scripts/gate.md](ops/specs/scripts/gate.md): ported from `Scripts/check_writer_gate.py`; Verify the single-writer gate before any session-body write.
 * [ops/specs/scripts/alerts.md](ops/specs/scripts/alerts.md): ported from `Scripts/clinic_alert_diff.py`; Edge-triggered alert layer for the clinic rounds report.

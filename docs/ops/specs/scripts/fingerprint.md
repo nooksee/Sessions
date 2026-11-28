@@ -1,6 +1,6 @@
 # Technical Specification: fingerprint
 
-Script: `ops/lib/scripts/fingerprint.py`. Tests: `tools/test/test_fingerprint.py` for the reader, and `tools/test/test_name_counts.py` for the count of names it exists to end. Status: built in programme W8's first slice; since P5.5's last step, `alerts.py`, `telemetry.py`, `watch.py` and `retention.py` read it through `volume_root`, and its live file is written on the operator's go before that change merges. `rounds.sh` does not read it: its drift step is byte-bound to Control's decision and keeps its path until Control says otherwise.
+Script: `ops/lib/scripts/fingerprint.py`. Tests: `tools/test/test_fingerprint.py` for the reader, and `tools/test/test_name_counts.py` for the count of names it exists to end. Status: retention.py retains its archive volume reader. Alerts, telemetry and watch live defaults no longer read volume_root. The operator ended the rounds drift binding on 2026-11-27; rounds has no external detector dependency.
 
 ## First Principles Rationale
 

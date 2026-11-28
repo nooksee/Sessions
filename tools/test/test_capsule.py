@@ -2,8 +2,8 @@
 """Smoke test for ops/lib/scripts/capsule.py, ported from Scripts/build_codex_succession_capsule.py on 2026-11-01.
 
 The legacy script came without a test suite. This suite proves only that the
-ported copy is present and compiles; it runs nothing, reads no body and writes
-nothing. Behavior cases: [PLACEHOLDER: behavior cases on synthetic inputs,
+ported copy is present and compiles; synthetic default and canon checks
+read no body. Further behavior cases: [PLACEHOLDER: behavior cases on synthetic inputs,
 owner: the writer the Integrator names for capsule]. Run:
 
     python3 -I -B tools/test/test_capsule.py
@@ -41,13 +41,32 @@ class SmokeTest(unittest.TestCase):
 class TheHostNames(unittest.TestCase):
     def text(self):
         module = load("capsule_under_test", TOOL)
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(module, "run_git", return_value="synthetic"):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(module, "run_git", return_value="synthetic"), mock.patch.object(module, "read_first_lines", return_value="synthetic canon"):
             return module, module.build_capsule(Path(tmp))
 
     def test_the_working_root_is_the_tools_own_place(self):
         module, text = self.text()
-        self.assertEqual(module.ROOT, TOOL.resolve().parents[4])
+        self.assertEqual(module.ROOT, TOOL.resolve().parents[3])
         self.assertIn(f"The working root for this repo is `{module.ROOT}`.", text)
+
+    def test_room_canon_and_no_retired_instructions(self):
+        module = load("capsule_local", TOOL)
+        self.assertEqual(module.INVENTORY, module.ROOT / "logs")
+        self.assertTrue(all((module.ROOT / p).is_file() for p in module.CANON_FILES))
+        with tempfile.TemporaryDirectory() as tmp:
+            room = Path(tmp) / "room"
+            room.mkdir()
+            seen = []
+            def checked(path, count):
+                self.assertTrue(path.is_relative_to(room))
+                seen.append(path)
+                return "synthetic canon"
+            with mock.patch.object(module, "ROOT", room), mock.patch.object(module, "run_git", return_value="synthetic"), mock.patch.object(module, "read_first_lines", side_effect=checked):
+                text = module.build_capsule(room / "logs")
+            self.assertEqual(seen, [room / "NOW.md", room / "docs/ops/README.md"])
+            self.assertNotIn("Dropbox", text)
+            self.assertNotIn("START.md", text)
+            self.assertIn("Read the boot canon listed above in order", text)
 
     def test_the_operator_is_named_by_role(self):
         _, text = self.text()

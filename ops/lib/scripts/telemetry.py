@@ -34,23 +34,9 @@ from typing import Any
 TAIL_BYTES = 8_000_000
 
 
-def _volume_root(name: str) -> Path:
-    """One volume root from the room's private host fingerprint, read only where a path needs it. A missing or
-    malformed file refuses this tool by name with exit 1 and names no value (fingerprint.py)."""
-    path = Path(__file__).resolve().with_name("fingerprint.py")
-    key = f"fingerprint@{path}"
-    module = sys.modules.get(key)
-    if module is None:
-        spec = importlib.util.spec_from_file_location(key, path)
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[key] = module   # the dataclass in it looks its module up here
-        spec.loader.exec_module(module)
-    return module.volume_root(Path(__file__).name, name)
-
-
 def default_roots() -> list[Path]:
-    """The host's Codex sessions, and George's: the Workbench VM mounts this share as its sessions dir."""
-    return [Path.home() / ".codex" / "sessions", _volume_root("working") / "VMs" / "Shared" / "Workbench" / "sessions"]
+    """Only the host live Codex sessions; no retired share is a default."""
+    return [Path.home() / ".codex" / "sessions"]
 
 ROTATE_PCT = 70.0
 
@@ -77,7 +63,7 @@ HEAD_BYTES = 120
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("paths", nargs="*", help="Rollout JSONL files. Default: scan host + VM roots.")
+    parser.add_argument("paths", nargs="*", help="Rollout JSONL files. Default: scan host Codex sessions only.")
     parser.add_argument("--root", default=None, help="Session root to scan when no paths given.")
     parser.add_argument("--json", action="store_true", help="Emit JSON instead of a table.")
     return parser.parse_args()

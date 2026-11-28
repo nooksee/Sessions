@@ -24,3 +24,7 @@ Ported legacy tool. Its own docstring opens: "Report token health for Codex roll
 - Refusal and read-only statements in the docstring: "Read-only." "Never modifies session files."
 - Callers outside this room (the rounds timer in Control, Control CI) still name `Scripts/check_codex_token_health.py` until Control repoints them; this room's own documents name `ops/lib/scripts/telemetry.py`.
 - [PLACEHOLDER: reviewer before this ported copy is relied on (PoT 4.2.2), owner: the Integrator]
+
+The former VM workbench share left the live host tree. Defaults no longer name
+that share. A future second live folder comes from host configuration, not
+code; this packet adds no configuration mechanism.

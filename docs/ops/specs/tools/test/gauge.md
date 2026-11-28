@@ -1,6 +1,6 @@
 # Technical Specification: tools/test/test_gauge.py
 
-Test file: `Sessions/tools/test/test_gauge.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/gauge.py`. Tool spec: `docs/ops/specs/scripts/gauge.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-01`). Spec written 2026-10-30 from a reading of the test file. Status: 21 of 21 passing at umask 0002, 0022 and 0077 on 2026-10-30.
+Test file: `Sessions/tools/test/test_gauge.py` (writer: Claudine Colbert). Tool under test: `Sessions/ops/lib/scripts/gauge.py`. Tool spec: `docs/ops/specs/scripts/gauge.md`. Registry entry: `docs/ops/registry/test.md` (`TEST-01`). Spec written 2026-10-30 from a reading of the test file. Historical baseline: 21 tests at three umasks on 2026-10-30. Current suite includes the synthetic host-only default regression; current counts are recorded by the packet gates.
 
 ## Purpose
 Prove, on synthetic bodies only, that `gauge` reads the provider's own token figure for each registered resident, takes the window from the right authority, labels every state honestly, prints "unknown" rather than a guess, never reads message content into any output, and writes its ledger exactly as specified.
@@ -57,7 +57,7 @@ Prove, on synthetic bodies only, that `gauge` reads the provider's own token fig
 
 ## Not covered
 - The compaction matcher's margin (gauge.md O1: the boundary is found within the first 6 leading fields). [PLACEHOLDER: a pinning test for the Claude Code boundary row form, re-checked on each Claude Code upgrade. Owner: Claudine Colbert, as writer of gauge.py.]
-- The real host roots and the VM-share Codex root: tests pass their own roots.
+- The real host roots: tests pass synthetic roots. The retired VM share is not a default.
 - Any timer or notification: none exists.
 
 ## Anecdotal Anchor
@@ -67,3 +67,5 @@ On 2026-10-30 this desk proposed rotating a resident because his body was 78 MB;
 - Tool spec: `docs/ops/specs/scripts/gauge.md`.
 - Script registry: `docs/ops/registry/scripts.md` (`SCRIPT-01`).
 - Review: Claudio Freeman, section 131 (0 blockers; C1 window order, C2 the compacted state, C3 for closeout).
+
+A synthetic-home regression also pins the host-only live default.

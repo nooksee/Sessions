@@ -39,7 +39,7 @@ def load(name):
 
 
 diff = load("alerts.py")
-# Hermetic: no test reads the host's Workbench share, and none needs the room's host fingerprint file.
+# Hermetic: no test reads an extra host session root, and none needs the room's host fingerprint file.
 diff.EXTRA_CODEX_ROOTS = []
 
 
@@ -238,15 +238,12 @@ class WrapperPopupTests(unittest.TestCase):
                 f"open({str(ran)!r}, 'w').close()\n"
                 "print('STATE=aligned SEVERITY=normal SHOULD_ALERT=0')\n")
             rounds = scripts / "rounds.sh"
-            # The wrapper names the live detector by absolute path, and running it writes Control's drift state.
-            # The copy under test must not reach it, or a run on this host consumes a real transition.
+            # No external detector can be reached by the room wrapper.
             text = self.ROUNDS.read_text()
-            detector = re.search(r'"(/[^"]+/check_resident_center_drift\.py)"', text)
-            self.assertIsNotNone(detector, "the wrapper no longer names its detector this way")
-            remainder = text.replace(detector.group(1), "")  # checked before the fixture's own path goes in
             for host_root in ("/media/", "/home/"):
-                self.assertNotIn(host_root, remainder)
-            rounds.write_text(text.replace(detector.group(1), str(scripts / "drift.py")))
+                self.assertNotIn(host_root, text)
+            self.assertNotIn("check_resident_center_drift", text)
+            rounds.write_text(text)
             log = rec / "calls.log"
             stub = rec / "notify-send"
             stub.write_text(f'#!/bin/sh\nfor a in "$@"; do echo "ARG:$a"; done >> {log}\n')
@@ -255,7 +252,7 @@ class WrapperPopupTests(unittest.TestCase):
             env.pop("SESSION_ROUNDS_NOTIFY", None)
             subprocess.run(["bash", str(rounds)], capture_output=True, env=env)
             calls = log.read_text()
-            self.assertTrue(ran.exists(), "the wrapper did not run the fixture's detector")
+            self.assertFalse(ran.exists(), "the wrapper must not run a detector")
         self.assertIn("ARG:-u", calls)
         self.assertIn("ARG:critical", calls)
         self.assertIn("ARG:🩺 Critical: Control (George Friend)", calls)
@@ -591,6 +588,19 @@ class PanelTests(unittest.TestCase):
         self.assertIn("SHOULD_ALERT=", out)
         self.assertTrue(diff.AGGREGATE_FILE.exists())
 
+
+
+class LiveDefaults(unittest.TestCase):
+    def test_only_supported_live_default(self):
+        import importlib.util
+        import sys
+        from unittest import mock
+        tool = Path(__file__).resolve().parents[2] / "ops/lib/scripts/alerts.py"
+        spec = importlib.util.spec_from_file_location("local_default_alerts", tool)
+        module = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules, {spec.name: module}), mock.patch.object(Path, "home", return_value=Path("/synthetic/home")):
+            spec.loader.exec_module(module)
+            self.assertEqual(module.extra_codex_roots(), [])
 
 if __name__ == "__main__":
     unittest.main()

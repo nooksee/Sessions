@@ -10,21 +10,12 @@ import subprocess
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[4]
-INVENTORY = ROOT / "Sessions" / "logs"
+ROOT = Path(__file__).resolve().parents[3]
+INVENTORY = ROOT / "logs"
 CANON_FILES = [
-    "README.md",
-    "START.md",
-    "STATUS.md",
-    "REVIEW.md",
-    "llms.txt",
-    "Sessions/README.md",
-    "Sessions/INDEX.md",
-    "Sessions/Plans/session-asset-management.md",
-    "Sessions/Plans/session-succession-management.md",
-    "Plans/operator-familiarity-management.md",
-    "Decisions/file-media-type-doctrine.md",
-    "Sessions/archives/legacy/Scripts/README.md",
+    "AGENTS.md", "PoT.md", "ops/lib/manifests/CONTEXT.md",
+    "ops/lib/manifests/CONSTRAINTS.md", "CLAUDE.md", "RoR.md",
+    "NOW.md", "INDEX.md", "docs/ops/README.md", "docs/MANUAL.md",
 ]
 
 
@@ -71,8 +62,8 @@ def build_capsule(inventory_dir: Path) -> str:
     canon_lines = "\n".join(f"- `{item}`" for item in CANON_FILES)
     session_assets = load_json(inventory_dir / "codex-session-assets-current.json")
     bloat = load_json(inventory_dir / "codex-session-bloat-analysis-current.json")
-    status_excerpt = read_first_lines(ROOT / "STATUS.md", 60)
-    review_excerpt = read_first_lines(ROOT / "REVIEW.md", 80)
+    status_excerpt = read_first_lines(ROOT / "NOW.md", 60)
+    review_excerpt = read_first_lines(ROOT / "docs/ops/README.md", 80)
     session_summary = read_summary(inventory_dir / "codex-session-assets-summary.txt")
     bloat_summary = read_summary(inventory_dir / "codex-session-bloat-analysis-summary.txt")
 
@@ -116,7 +107,7 @@ Current status excerpt:
 {status_excerpt}
 ```
 
-Current human-review excerpt:
+Current system-map excerpt:
 
 ```text
 {review_excerpt}
@@ -142,18 +133,18 @@ Session bloat summary:
 ## 5. Risks, Hard Rules, And Boundaries
 - Do not edit live Codex session files.
 - Do not commit raw sessions, repaired seeds, auth files, tokens, or credential material.
-- Do not put live session storage inside Dropbox payload.
+- Keep live session storage outside synchronised payload.
 - Treat session derivatives as experimental boot aids, not canon.
-- Preserve quarantine outside Dropbox payload.
+- Preserve private quarantine separately from live payload.
 - Exact duplicate retirement requires hash evidence.
 - Non-exact duplicate or derivative-family work requires adjudication evidence.
-- `Dropbox/Projects/home-ops` is for handoffs and instructions only.
+- Keep handoffs in the private room handoff lane.
 
 ## 6. Next Concrete Move
 If this capsule is used by a successor thread:
 
-1. Read `README.md`, `START.md`, `STATUS.md`, `REVIEW.md`, and `llms.txt`.
-2. Read `Sessions/Plans/session-asset-management.md` and `Sessions/Plans/session-succession-management.md`.
+1. Read the boot canon listed above in order.
+2. Follow the class-specific identity instructions before private evidence.
 3. Run `git status --short --branch`.
 4. Refresh only the evidence lane requested by the operator.
 5. If session repair is the task, run read-only analysis first and operate on copies only.

@@ -65,3 +65,7 @@ It matched the desk's independent hand reading for Claudine, 845,588 tokens, to 
 - **Window table.** A row needs a source and a date. Never add a window from memory or from a model's name.
 - **Scope.** `gauge` changes nothing outside its ledger, `ledger.lock` and their directory. It installs no timer, sends no notification and touches no registry.
 - **Boundary detection depends on two field values** (O1, resolved by the order-independent match in step 4). It no longer depends on field order or head length, but it still depends on Claude Code writing `type` `system` and `subtype` `compact_boundary`. Tests pin a boundary with extra leading fields, a side-conversation boundary that must not count, and a message whose content merely mentions the token. Re-check the two values on each Claude Code upgrade.
+
+The former VM workbench share left the live host tree. Defaults no longer name
+that share. A future second live folder comes from host configuration, not
+code; this packet adds no configuration mechanism.
